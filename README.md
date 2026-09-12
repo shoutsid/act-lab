@@ -59,6 +59,13 @@ static-MoE arms under the same synthetic batches and mutation budget:
 PYTHONPATH=src python -m act.evolution.cli --seeds 1,2,3,42 --steps 48
 ```
 
+Experiment 0 defaults to CPU for comparable deterministic studies. Use
+`--device cuda` to run a local study on a compatible NVIDIA GPU:
+
+```bash
+PYTHONPATH=src python -m act.evolution.cli --steps 48 --device cuda
+```
+
 The command prints and appends one `gate_study` record to
 `artifacts/experiments.jsonl`. For a single append-only experiment record, omit
 `--seeds` and choose an output path with `--output`.

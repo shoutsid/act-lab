@@ -9,6 +9,7 @@ import torch
 
 from act.model import StaticMoECausalLM, model_from_genome, rebuild_model_from_genome
 from act.topology import ArchitectureGenome, create_genome, genome_hash, grow_expert, prune_expert
+from act.training.runtime import resolve_device
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,7 @@ class ExperimentConfig:
     code_revision: str = "working-tree"
     adaptive_load_threshold: float = 0.50
     adaptive_expert_metric: str = "random"
+    device: str = "cpu"
 
 
 @dataclass(frozen=True)
@@ -74,6 +76,7 @@ class _Arm:
     fisher_ema: dict[str, float] | None = None
     previous_load: dict[str, float] | None = None
     mutation_history: list[dict[str, object]] | None = None
+    device: torch.device = torch.device("cpu")
 
 
 def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentResult:
@@ -81,6 +84,7 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
         raise ValueError("steps and mutation_interval must be positive")
     if config.validation_batches < 1:
         raise ValueError("validation_batches must be positive")
+    device = resolve_device(config.device)
     if not 0.0 < config.adaptive_load_threshold < 1.0:
         raise ValueError("adaptive_load_threshold must be between 0 and 1")
     if config.adaptive_expert_metric not in {
@@ -104,8 +108,9 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
     initial_model = model_from_genome(initial_genome, context_size=config.sequence_length)
     if not isinstance(initial_model, StaticMoECausalLM):
         raise TypeError("Experiment 0 requires a static MoE genome")
+    initial_model.to(device)
     arms = tuple(
-        _make_arm(mode, initial_genome, initial_model, config.learning_rate)
+        _make_arm(mode, initial_genome, initial_model, config.learning_rate, device)
         for mode in ("fixed", "random", "adaptive")
     )
     data = torch.Generator(device="cpu")
@@ -116,7 +121,7 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
             config.vocab_size,
             (config.batch_size, config.sequence_length),
             generator=data,
-        )
+        ).to(device)
         for arm in arms:
             arm.optimizer.zero_grad(set_to_none=True)
             loss = arm.model.loss(tokens)
@@ -137,7 +142,7 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
                     config.adaptive_load_threshold,
                     config.adaptive_expert_metric,
                 )
-    validation_tokens = _validation_batches(config)
+    validation_tokens = _validation_batches(config, device)
     results = tuple(
         _finish_arm(arm, validation_tokens) for arm in arms
     )
@@ -149,6 +154,7 @@ def _make_arm(
     genome: ArchitectureGenome,
     model: StaticMoECausalLM,
     learning_rate: float,
+    device: torch.device,
 ) -> _Arm:
     cloned_model = deepcopy(model)
     cloned_genome = deepcopy(genome)
@@ -159,6 +165,7 @@ def _make_arm(
         cloned_model,
         optimizer,
         deepcopy(genome),
+        device=device,
         importance_records=[],
         fisher_ema={},
         previous_load={},
@@ -271,7 +278,7 @@ def _mutate_arm(
     )
     if not isinstance(rebuilt, StaticMoECausalLM):
         raise TypeError("mutation changed the baseline model family")
-    arm.model = rebuilt
+    arm.model = rebuilt.to(arm.device)
     arm.optimizer = torch.optim.AdamW(arm.model.parameters(), lr=learning_rate)
     arm.mutations += 1
     arm.search_flops += arm.model.parameter_count * 4
@@ -299,10 +306,13 @@ def _latest_importance(arm: _Arm) -> dict[str, dict[str, object]]:
     return latest
 
 
-def _validation_batches(config: ExperimentConfig) -> tuple[torch.Tensor, ...]:
+def _validation_batches(
+    config: ExperimentConfig,
+    device: torch.device,
+) -> tuple[torch.Tensor, ...]:
     generator = torch.Generator(device="cpu")
     generator.manual_seed(config.seed ^ 0xA11CE)
-    return tuple(
+    batches = tuple(
         torch.randint(
             0,
             config.vocab_size,
@@ -311,6 +321,7 @@ def _validation_batches(config: ExperimentConfig) -> tuple[torch.Tensor, ...]:
         )
         for _ in range(config.validation_batches)
     )
+    return tuple(batch.to(device) for batch in batches)
 
 
 def _finish_arm(arm: _Arm, batches: tuple[torch.Tensor, ...]) -> ArmResult:

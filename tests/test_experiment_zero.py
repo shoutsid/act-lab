@@ -86,3 +86,20 @@ def test_gate_study_serializes_reproducible_summary() -> None:
         ExperimentConfig(steps=12, mutation_interval=6, mutation_budget=2),
         seeds=(1, 2),
     ).to_dict()
+
+
+def test_experiment_zero_can_run_on_cuda_when_available() -> None:
+    import torch
+
+    if not torch.cuda.is_available():
+        return
+    result = run_experiment(
+        ExperimentConfig(
+            device="cuda",
+            steps=2,
+            mutation_interval=2,
+            mutation_budget=1,
+            validation_batches=1,
+        )
+    )
+    assert all(math.isfinite(arm.final_loss) for arm in result.arms)
