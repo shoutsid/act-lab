@@ -9,6 +9,7 @@ from .signals import (
     measure_expert_signals,
     parameter_magnitude,
 )
+from .lifecycle import LifecycleFossil, LifecycleLedger
 
 __all__ = [
     "ExpertSignal",
@@ -18,4 +19,6 @@ __all__ = [
     "fisher_ema",
     "measure_expert_signals",
     "parameter_magnitude",
+    "LifecycleFossil",
+    "LifecycleLedger",
 ]
