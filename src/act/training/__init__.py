@@ -10,6 +10,7 @@ from .runtime import (
     resolve_device,
     save_checkpoint,
     train_steps,
+    validate_checkpoint_payload,
 )
 from .distributed import (
     DistributedConfig,
@@ -28,6 +29,7 @@ __all__ = [
 	"resolve_device",
 	"save_checkpoint",
 	"train_steps",
+	"validate_checkpoint_payload",
 	"DistributedConfig",
 	"distributed_config",
 	"initialize_distributed",

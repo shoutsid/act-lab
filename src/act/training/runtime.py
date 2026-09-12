@@ -196,8 +196,7 @@ def load_checkpoint(
     optimizer: torch.optim.Optimizer,
 ) -> TrainingState:
     payload: dict[str, Any] = torch.load(path, map_location="cpu", weights_only=False)
-    if payload.get("version") not in {1, 2, 3}:
-        raise ValueError(f"unsupported checkpoint version {payload.get('version')}")
+    validate_checkpoint_payload(payload)
     model.load_state_dict(payload["model"])
     optimizer.load_state_dict(payload["optimizer"])
     move_optimizer_state(optimizer, next(model.parameters()).device)
@@ -217,3 +216,25 @@ def load_checkpoint(
         experiment_config=dict(training.get("experiment_config", {})),
         code_revision=str(training.get("code_revision", "unknown")),
     )
+
+
+def validate_checkpoint_payload(payload: object) -> None:
+    """Reject malformed or unsupported checkpoint structures before loading state."""
+    if not isinstance(payload, dict):
+        raise ValueError("checkpoint payload must be a mapping")
+    version = payload.get("version")
+    if version not in {1, 2, 3}:
+        raise ValueError(f"unsupported checkpoint version {version}")
+    for key in ("model", "optimizer", "training"):
+        if key not in payload:
+            raise ValueError(f"checkpoint is missing {key}")
+    if not isinstance(payload["model"], dict):
+        raise ValueError("checkpoint model must be a state mapping")
+    if not isinstance(payload["optimizer"], dict):
+        raise ValueError("checkpoint optimizer must be a state mapping")
+    if not isinstance(payload["training"], dict):
+        raise ValueError("checkpoint training must be a mapping")
+    training = payload["training"]
+    for key in ("step", "tokens"):
+        if key not in training:
+            raise ValueError(f"checkpoint training is missing {key}")
