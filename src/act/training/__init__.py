@@ -1,12 +1,14 @@
 """Deterministic training and checkpoint utilities for ACT baselines."""
 
 from .runtime import (
-	TrainingConfig,
-	TrainingState,
-	load_checkpoint,
-	make_optimizer,
-	save_checkpoint,
-	train_steps,
+    TrainingConfig,
+    TrainingState,
+    load_checkpoint,
+    make_optimizer,
+    move_optimizer_state,
+    resolve_device,
+    save_checkpoint,
+    train_steps,
 )
 
 __all__ = [
@@ -14,6 +16,8 @@ __all__ = [
 	"TrainingState",
 	"load_checkpoint",
 	"make_optimizer",
+	"move_optimizer_state",
+	"resolve_device",
 	"save_checkpoint",
 	"train_steps",
 ]

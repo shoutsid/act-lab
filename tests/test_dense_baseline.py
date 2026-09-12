@@ -84,3 +84,17 @@ def test_static_moe_trains_with_shared_runtime() -> None:
     assert model.parameter_count > 0
     assert state.step == 2
     assert all(torch.isfinite(torch.tensor(loss)) for loss in losses)
+
+
+def test_device_resolution_rejects_unavailable_cuda() -> None:
+    from act.training.runtime import resolve_device
+
+    if torch.cuda.is_available():
+        assert resolve_device("cuda").type == "cuda"
+    else:
+        try:
+            resolve_device("cuda")
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("CUDA request should fail when CUDA is unavailable")

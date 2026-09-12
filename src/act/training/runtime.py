@@ -19,6 +19,7 @@ class TrainingConfig:
     sequence_length: int = 16
     learning_rate: float = 3e-4
     seed: int = 7
+    device: str = "auto"
 
 
 @dataclass
@@ -45,6 +46,9 @@ def train_steps(
     """Train for ``count`` synthetic batches and return their losses."""
     if count < 0:
         raise ValueError("count must be non-negative")
+    device = resolve_device(config.device)
+    model.to(device)
+    move_optimizer_state(optimizer, device)
     generator = torch.Generator(device="cpu")
     if state.generator_state is None:
         generator.manual_seed(config.seed)
@@ -58,7 +62,7 @@ def train_steps(
             model.config.vocab_size,
             (config.batch_size, config.sequence_length),
             generator=generator,
-        )
+        ).to(device)
         optimizer.zero_grad(set_to_none=True)
         loss = model.loss(tokens)
         loss.backward()
@@ -72,6 +76,28 @@ def train_steps(
 
 def make_optimizer(model: BaselineModel, config: TrainingConfig) -> torch.optim.Optimizer:
     return torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
+
+
+def resolve_device(requested: str) -> torch.device:
+    """Resolve an explicit device or prefer CUDA when the driver supports it."""
+    if requested == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if requested not in {"cpu", "cuda"}:
+        raise ValueError("device must be auto, cpu, or cuda")
+    if requested == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("CUDA was requested but no compatible device is available")
+    return torch.device(requested)
+
+
+def move_optimizer_state(
+    optimizer: torch.optim.Optimizer,
+    device: torch.device,
+) -> None:
+    """Move tensor state after loading a CPU checkpoint into a device model."""
+    for state in optimizer.state.values():
+        for key, value in state.items():
+            if isinstance(value, torch.Tensor):
+                state[key] = value.to(device)
 
 
 def save_checkpoint(
@@ -115,6 +141,7 @@ def load_checkpoint(
         raise ValueError(f"unsupported checkpoint version {payload.get('version')}")
     model.load_state_dict(payload["model"])
     optimizer.load_state_dict(payload["optimizer"])
+    move_optimizer_state(optimizer, next(model.parameters()).device)
     if "torch_rng_state" in payload:
         torch.set_rng_state(payload["torch_rng_state"])
     training = payload["training"]

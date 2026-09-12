@@ -19,6 +19,7 @@ from act.training.runtime import (
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--steps", type=int, default=8)
+    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     parser.add_argument("--checkpoint", type=Path, default=Path("artifacts/dense-baseline.pt"))
     args = parser.parse_args()
     if args.steps < 1:
@@ -26,7 +27,7 @@ def main() -> None:
 
     torch.manual_seed(19)
     model = DenseCausalLM(DenseBaselineConfig())
-    config = TrainingConfig()
+    config = TrainingConfig(device=args.device)
     state = TrainingState()
     optimizer = make_optimizer(model, config)
     losses = train_steps(model, optimizer, state, config, args.steps)
@@ -40,6 +41,7 @@ def main() -> None:
                 "step": state.step,
                 "tokens": state.tokens,
                 "loss": losses[-1],
+                "device": str(next(model.parameters()).device),
             },
             sort_keys=True,
         )
