@@ -8,6 +8,7 @@ import random
 import torch
 
 from act.model import StaticMoECausalLM, model_from_genome, rebuild_model_from_genome
+from act.evolution.controller import AdaptiveController
 from act.topology import ArchitectureGenome, create_genome, genome_hash, grow_expert, prune_expert
 from act.training.runtime import resolve_device
 
@@ -224,23 +225,16 @@ def _mutate_arm(
     layer = arm.genome.layers[chooser.randrange(len(arm.genome.layers))]
     if arm.mode == "adaptive":
         records = _latest_importance(arm)
-        loads = arm.model.routing_load[layer.index]
-        if max(loads) > adaptive_load_threshold and len(layer.experts) < 8:
-            operation = "grow"
-        else:
-            operation = "prune"
-            layer = min(
-                arm.genome.layers,
-                key=lambda candidate: min(
-                    float(
-                        records.get(
-                            f"{candidate.id}:{expert.id}",
-                            {"routing_load": 0.0},
-                        ).get("routing_load", 0.0)
-                    )
-                    for expert in candidate.experts
-                ),
-            )
+        decision = AdaptiveController(
+            load_threshold=adaptive_load_threshold,
+            metric=adaptive_expert_metric if adaptive_expert_metric != "random" else "routing_load",
+        ).decide(
+            arm.genome,
+            loads=arm.model.routing_load,
+            latest=records,
+        )
+        operation = decision.operation
+        layer = next(item for item in arm.genome.layers if item.id == decision.layer_id)
     else:
         operation = chooser.choice(("grow", "prune"))
     changed = False
@@ -249,14 +243,12 @@ def _mutate_arm(
     elif len(layer.experts) > 2:
         if arm.mode == "adaptive" and adaptive_expert_metric != "random":
             records = _latest_importance(arm)
-            expert = min(
-                layer.experts,
-                key=lambda candidate: float(
-                    records.get(
-                        f"{layer.id}:{candidate.id}",
-                        {adaptive_expert_metric: 0.0},
-                    ).get(adaptive_expert_metric, 0.0)
-                ),
+            decision = AdaptiveController(
+                load_threshold=adaptive_load_threshold,
+                metric=adaptive_expert_metric,
+            ).decide(arm.genome, loads=arm.model.routing_load, latest=records)
+            expert = next(
+                candidate for candidate in layer.experts if candidate.id == decision.expert_id
             )
         else:
             expert = chooser.choice(layer.experts)
