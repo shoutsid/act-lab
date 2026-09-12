@@ -90,7 +90,7 @@ a hold point before scaling.
 | Qwen-informed search | PARTIAL | Prior interface is available for imported architecture scores; no external Qwen artifacts are bundled or claimed. |
 | Teacher initialization | PARTIAL | Explicit teacher and evolved shape-safe parameter transfer policies now exist; multi-seed retraining comparisons remain. |
 | Architecture reusability and fresh initialization | PARTIAL | Fresh, evolved, and rewound initialization policies report copied/skipped tensors; architecture-equivalence studies remain. |
-| Cross-seed stability and architecture equivalence | DEFERRED |
+| Cross-seed stability and architecture equivalence | PARTIAL | Strict architecture-hash equivalence and cross-seed mean/stddev/min/max summaries now exist; full retraining studies remain. |
 | Compute-efficiency scaling | DEFERRED |
 
 ## Plan Sections 67-105: Scale and Final Deliverables

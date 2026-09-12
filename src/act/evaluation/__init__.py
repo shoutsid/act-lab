@@ -7,6 +7,7 @@ from act.evolution.study import GateStudyResult
 from .perplexity import PerplexityResult, evaluate_perplexity
 from .probes import CapabilityProbeResult, evaluate_capability_probes
 from .reports import ablation_report, efficiency_report
+from .stability import StabilitySummary, architecture_equivalence, summarize_stability
 
 
 def summarize_experiment(result: ExperimentResult) -> dict[str, object]:
@@ -56,6 +57,9 @@ __all__ = [
     "evaluate_capability_probes",
     "ablation_report",
     "efficiency_report",
+    "StabilitySummary",
+    "architecture_equivalence",
+    "summarize_stability",
     "evaluate_perplexity",
     "summarize_experiment",
     "summarize_study",
