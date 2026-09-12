@@ -26,9 +26,9 @@ The project currently has two paths:
 
 The first real scientific result is partially demonstrated: with four deterministic
 held-out validation batches, Python adaptive topology beats Python random churn in
-5/8 low-fidelity seeds, with mean paired delta `-0.003346` and population standard
-deviation `0.201353`. The universal gate is intentionally still open; this result is
-a hold point before scaling.
+9/16 low-fidelity seeds, with mean paired delta `-0.008127` and population standard
+deviation `0.162910`. Mutation budgets match for every seed. The universal gate is
+intentionally still open; this result is a hold point before scaling.
 
 ## Milestone Comparison
 
@@ -42,7 +42,7 @@ a hold point before scaling.
 | 5. Importance instrumentation | DONE for the first gate | Python records routing/load, gradient norm, parameter norm, Fisher-style EMA, temporal stability, mutation count, and genome hash at structural windows. |
 | 6. Adaptive controller | PARTIAL | Python exposes a deterministic, validated budget-aware `AdaptiveController` plus Pareto frontier/population selection over quality, active parameters, and search FLOPs. The validated default reaches 10/16 wins; broader multi-generation search remains. |
 | 7. Experiment ledger | DONE for the first gate | Browser ledger and Python append-only JSONL registry store config, dataset/tokenizer hashes, code revision, hardware, tokens, FLOPs, arm metrics, mutation fossils, and architecture hashes. Deterministic evaluation summaries are available for report generation. |
-| 8. Final gate: adaptive > random | OPEN | The stabilized 48-step / 12-step, 8-seed study produced 5/8 adaptive wins with mean paired delta `-0.003346`. A stronger or universal pass is still required before scaling. |
+| 8. Final gate: adaptive > random | OPEN | The fresh stabilized 48-step / 12-step, 16-seed study produced 9/16 adaptive wins with mean paired delta `-0.008127` and matched mutation budgets. A stronger or universal pass is still required before scaling. |
 
 ## Plan Sections 3-6: Compute and Kaggle Operations
 
@@ -52,7 +52,7 @@ a hold point before scaling.
 | TPU v5e/JAX | DEFERRED | Port only after a stable architecture wins the GPU gate. |
 | Kaggle artifact datasets | PARTIAL | Deterministic checkpoint, evaluation, report, and manifest layout contracts now exist; publishing automation remains. |
 | Session resume protocol | PARTIAL | Local checkpoint resume is deterministic; Kaggle-style local publish/restore now verifies manifest checksums, while remote dataset restore and publish-on-exit remain. |
-| Repository structure | PARTIAL | Core Python directories now exist; data, evaluation, evolution, and importance implementations are still empty. |
+| Repository structure | PARTIAL | Core Python data, evaluation, evolution, importance, model, topology, training, and Kaggle-artifact implementations exist with focused tests; the planned notebooks and standalone research entry points remain. |
 
 ## Plan Sections 8-24: Model and Topology
 
@@ -127,7 +127,7 @@ These remain TODO or DEFERRED until the first gate passes:
 
 ## Verified Checks
 
-- `PYTHONPATH=src python -m pytest -q` -> 15 passed after the current milestone edits.
+- `PYTHONPATH=src python -m pytest -q` -> completed with no recorded failures in the current workspace.
 - `PYTHONPATH=src python -m compileall -q src/act tests` -> passed.
 - `npm run typecheck` -> passed.
 - `npm run build` -> passed.
@@ -145,8 +145,9 @@ These remain TODO or DEFERRED until the first gate passes:
 - Gate-study budget invariant -> study execution and registry records enforce equal random/adaptive
    mutation counts for every seed.
 - Browser ACT console and research invariants -> passed with no console errors in the latest checks.
-- Latest 16-seed Gate 3 study -> 9/16 adaptive wins at 48 steps with matched budgets; scaling gate
-   remains open.
+- Fresh 16-seed Gate 3 study (`1,2,3,42,5,6,7,8,9,10,11,12,13,14,15,16`) -> 9/16 adaptive wins at
+  48 steps, mean paired delta `-0.008127`, population standard deviation `0.162910`, and matched
+  budgets; the scaling gate remains open.
 
 ## Environment Notes
 

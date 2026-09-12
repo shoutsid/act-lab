@@ -23,6 +23,43 @@ class ExpertSignal:
         return asdict(self)
 
 
+def aggregate_expert_signals(
+    populations: list[tuple[ExpertSignal, ...]] | tuple[tuple[ExpertSignal, ...], ...],
+) -> tuple[ExpertSignal, ...]:
+    """Average signals for matching experts across repeated evaluations."""
+    if not populations:
+        return ()
+    grouped: dict[tuple[str, str], list[ExpertSignal]] = {}
+    for population in populations:
+        for signal in population:
+            grouped.setdefault((signal.layer_id, signal.expert_id), []).append(signal)
+    aggregated: list[ExpertSignal] = []
+    for layer_id, expert_id in sorted(grouped):
+        signals = grouped[(layer_id, expert_id)]
+        average = lambda value: sum(value(signal) for signal in signals) / len(signals)
+        similarity_values = [
+            signal.functional_similarity
+            for signal in signals
+            if signal.functional_similarity is not None
+        ]
+        aggregated.append(
+            ExpertSignal(
+                layer_id=layer_id,
+                expert_id=expert_id,
+                routing_load=average(lambda signal: signal.routing_load),
+                gradient_norm=average(lambda signal: signal.gradient_norm),
+                parameter_norm=average(lambda signal: signal.parameter_norm),
+                temporal_stability=average(lambda signal: signal.temporal_stability),
+                functional_similarity=(
+                    sum(similarity_values) / len(similarity_values)
+                    if similarity_values
+                    else None
+                ),
+            )
+        )
+    return tuple(aggregated)
+
+
 def fisher_ema(
     previous: float,
     gradient_norm: float,

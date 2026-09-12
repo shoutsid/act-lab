@@ -2,6 +2,7 @@
 
 from .signals import (
     ExpertSignal,
+    aggregate_expert_signals,
     cosine_similarity,
     expert_ablation_delta,
     expert_functional_sketches,
@@ -13,6 +14,7 @@ from .lifecycle import LifecycleFossil, LifecycleLedger
 
 __all__ = [
     "ExpertSignal",
+    "aggregate_expert_signals",
     "cosine_similarity",
     "expert_ablation_delta",
     "expert_functional_sketches",

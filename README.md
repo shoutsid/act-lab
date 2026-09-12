@@ -31,17 +31,13 @@ A training process that jointly optimizes weights and computational topology can
 
 ## Quick Start
 ```bash
-pip install -e .
-PYTHONPATH=src python -m act.training.cli --steps 8
+uv sync --extra dev
+PYTHONPATH=src uv run python -m act.training.cli --steps 8
 ```
 
-For Pascal GPUs such as the GTX 1070 (compute capability 6.1), install the
-CUDA 12.6 PyTorch build rather than a newer CUDA build that omits `sm_61`:
-
-```bash
-python -m pip install --force-reinstall torch==2.14.0 \
-  --index-url https://download.pytorch.org/whl/cu126
-```
+The project pins the CUDA 12.6 PyTorch wheel so Pascal GPUs such as the GTX
+1070 (compute capability 6.1) receive `sm_61` kernels. Use `--device cpu` to
+override the automatic GPU selection.
 
 The browser research console uses the existing npm toolchain:
 
@@ -59,11 +55,11 @@ static-MoE arms under the same synthetic batches and mutation budget:
 PYTHONPATH=src python -m act.evolution.cli --seeds 1,2,3,42 --steps 48
 ```
 
-Experiment 0 defaults to CPU for comparable deterministic studies. Use
-`--device cuda` to run a local study on a compatible NVIDIA GPU:
+Experiment 0 automatically uses a compatible NVIDIA GPU when one is available.
+Use `--device cpu` for comparable deterministic studies:
 
 ```bash
-PYTHONPATH=src python -m act.evolution.cli --steps 48 --device cuda
+PYTHONPATH=src uv run python -m act.evolution.cli --steps 48
 ```
 
 The command prints and appends one `gate_study` record to

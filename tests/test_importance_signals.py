@@ -1,6 +1,9 @@
 import torch
+import pytest
 
 from act.importance import (
+    ExpertSignal,
+    aggregate_expert_signals,
     cosine_similarity,
     expert_ablation_delta,
     expert_functional_sketches,
@@ -13,6 +16,23 @@ from act.model import StaticMoECausalLM, StaticMoEConfig
 def test_cosine_similarity_is_bounded_and_shape_safe() -> None:
     assert cosine_similarity(torch.tensor([1.0, 0.0]), torch.tensor([1.0, 0.0])) == 1.0
     assert cosine_similarity(torch.tensor([1.0, 0.0]), torch.tensor([-1.0, 0.0])) == -1.0
+
+
+def test_expert_signal_population_aggregation_is_sorted_and_averaged() -> None:
+    first = ExpertSignal("L1", "L1E0", 0.2, 2.0, 4.0, 0.8, 0.4)
+    second = ExpertSignal("L0", "L0E0", 0.6, 4.0, 8.0, 0.4)
+    third = ExpertSignal("L1", "L1E0", 0.4, 4.0, 6.0, 1.0, 0.8)
+
+    aggregated = aggregate_expert_signals(((first, second), (third,)))
+
+    assert [signal.expert_id for signal in aggregated] == ["L0E0", "L1E0"]
+    assert aggregated[1].layer_id == "L1"
+    assert aggregated[1].expert_id == "L1E0"
+    assert aggregated[1].routing_load == pytest.approx(0.3)
+    assert aggregated[1].gradient_norm == pytest.approx(3.0)
+    assert aggregated[1].parameter_norm == pytest.approx(5.0)
+    assert aggregated[1].temporal_stability == pytest.approx(0.9)
+    assert aggregated[1].functional_similarity == pytest.approx(0.6)
 
 
 def test_expert_signals_are_finite_after_a_training_step() -> None:
