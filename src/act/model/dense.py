@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import torch
 from torch import Tensor, nn
+from torch.utils.checkpoint import checkpoint
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ class DenseCausalLM(nn.Module):
         self.position_embedding = nn.Embedding(config.context_size, config.hidden_size)
         self.blocks = nn.ModuleList(DenseBlock(config) for _ in range(config.num_layers))
         self.final_norm = nn.LayerNorm(config.hidden_size)
+        self.activation_checkpointing = False
 
     def forward(self, tokens: Tensor) -> Tensor:
         if tokens.ndim != 2:
@@ -65,7 +67,10 @@ class DenseCausalLM(nn.Module):
             diagonal=1,
         )
         for block in self.blocks:
-            hidden = block(hidden, mask)
+            if self.training and self.activation_checkpointing:
+                hidden = checkpoint(block, hidden, mask, use_reentrant=False)
+            else:
+                hidden = block(hidden, mask)
         hidden = self.final_norm(hidden)
         return hidden @ self.token_embedding.weight.transpose(0, 1)
 

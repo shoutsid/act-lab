@@ -25,6 +25,7 @@ class TrainingConfig:
     warmup_steps: int = 0
     total_steps: int = 0
     mixed_precision: str = "off"
+    activation_checkpointing: bool = False
 
 
 @dataclass
@@ -60,6 +61,8 @@ def train_steps(
         raise ValueError("mixed_precision must be off, fp16, or bf16")
     device = resolve_device(config.device)
     model.to(device)
+    if hasattr(model, "activation_checkpointing"):
+        model.activation_checkpointing = config.activation_checkpointing
     move_optimizer_state(optimizer, device)
     generator = torch.Generator(device="cpu")
     if state.generator_state is None:
