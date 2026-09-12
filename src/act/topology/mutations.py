@@ -143,3 +143,31 @@ def rewire_layer(genome: ArchitectureGenome, layer_id: str, input_layer_id: str)
         genome.layers = original.layers
         return False
     return True
+
+
+def change_module(genome: ArchitectureGenome, layer_id: str, module: str) -> bool:
+    """Change a layer's V0 module family while preserving its topology identity."""
+    if module not in {"attention", "gdn", "hybrid"}:
+        return False
+    layer = next((item for item in genome.layers if item.id == layer_id), None)
+    if layer is None or layer.module == module:
+        return False
+    original = deepcopy(genome)
+    layer.module = module
+    if not validate_genome(genome).valid:
+        genome.layers = original.layers
+        return False
+    return True
+
+
+def toggle_layer(genome: ArchitectureGenome, layer_id: str, enabled: bool) -> bool:
+    """Enable or disable a layer, rejecting genomes with no executable layers."""
+    layer = next((item for item in genome.layers if item.id == layer_id), None)
+    if layer is None or layer.enabled == enabled:
+        return False
+    original = deepcopy(genome)
+    layer.enabled = enabled
+    if not validate_genome(genome).valid:
+        genome.layers = original.layers
+        return False
+    return True

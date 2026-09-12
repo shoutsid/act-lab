@@ -85,7 +85,7 @@ a hold point before scaling.
 | Dynamic sparse prune/grow | PARTIAL | Implemented in the Python Experiment 0 runner for safe expert prune/grow; richer topology operators remain. |
 | Expert ecology clone/split/merge/death | TODO |
 | Module-type evolution | DEFERRED |
-| Adaptive depth | DEFERRED |
+| Adaptive depth | PARTIAL | Python topology mutations can safely toggle effective layer depth and change attention/GDN/hybrid module metadata; full multi-generation training comparisons remain. |
 | Hierarchical search | DEFERRED |
 | Qwen-informed search | DEFERRED |
 | Teacher initialization | DEFERRED |

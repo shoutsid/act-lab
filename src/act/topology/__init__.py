@@ -10,6 +10,8 @@ from .mutations import (
     split_expert,
     MutationResult,
     apply_transaction,
+    change_module,
+    toggle_layer,
 )
 
 __all__ = [
@@ -25,4 +27,6 @@ __all__ = [
     "rewire_layer",
     "split_expert",
     "validate_genome",
+    "change_module",
+    "toggle_layer",
 ]
