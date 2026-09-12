@@ -1,6 +1,7 @@
 """A tiny deterministic training loop for validating baseline checkpoints."""
 
 from dataclasses import dataclass, field
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,7 @@ class TrainingConfig:
     gradient_accumulation_steps: int = 1
     warmup_steps: int = 0
     total_steps: int = 0
+    mixed_precision: str = "off"
 
 
 @dataclass
@@ -54,6 +56,8 @@ def train_steps(
         raise ValueError("gradient_accumulation_steps must be positive")
     if config.warmup_steps < 0 or config.total_steps < 0:
         raise ValueError("scheduler steps must be non-negative")
+    if config.mixed_precision not in {"off", "fp16", "bf16"}:
+        raise ValueError("mixed_precision must be off, fp16, or bf16")
     device = resolve_device(config.device)
     model.to(device)
     move_optimizer_state(optimizer, device)
@@ -72,7 +76,8 @@ def train_steps(
             (config.batch_size, config.sequence_length),
             generator=generator,
         ).to(device)
-        loss = model.loss(tokens)
+        with _autocast_context(device, config.mixed_precision):
+            loss = model.loss(tokens)
         (loss / config.gradient_accumulation_steps).backward()
         should_step = (
             (batch_index + 1) % config.gradient_accumulation_steps == 0
@@ -118,6 +123,15 @@ def make_scheduler(
         )
 
     return torch.optim.lr_scheduler.LambdaLR(optimizer, scale, last_epoch=-1)
+
+
+def _autocast_context(device: torch.device, mode: str):
+    if mode == "off":
+        return nullcontext()
+    if device.type == "cpu" and mode == "fp16":
+        raise ValueError("fp16 mixed precision requires CUDA")
+    dtype = torch.float16 if mode == "fp16" else torch.bfloat16
+    return torch.autocast(device_type=device.type, dtype=dtype)
 
 
 def resolve_device(requested: str) -> torch.device:
