@@ -21,10 +21,11 @@ The project currently has two paths:
 2. A small PyTorch foundation with dense and static-MoE models, deterministic training,
    checkpoint resume, topology genomes, safe prune/grow, and mutation-aware MoE rebuilds.
 
-The first real scientific result is partially demonstrated: Python adaptive topology
-beats Python random churn in 10/16 low-fidelity seeds under identical tokens, mutation
-schedule, and mutation budget, with a negative mean adaptive-minus-random validation
-loss delta. The universal gate is intentionally still open.
+The first real scientific result is partially demonstrated: with four deterministic
+held-out validation batches, Python adaptive topology beats Python random churn in
+5/8 low-fidelity seeds, with mean paired delta `-0.003346` and population standard
+deviation `0.201353`. The universal gate is intentionally still open; this result is
+a hold point before scaling.
 
 ## Milestone Comparison
 
@@ -33,12 +34,12 @@ loss delta. The universal gate is intentionally still open.
 | 1. Foundation and baseline contract | DONE for the first gate | Python model, optimizer, training state, topology genome, hashing, model factory, and versioned checkpoint metadata are covered. Large-model and real-data contracts remain outside this gate. |
 | 2. Dense baseline | PARTIAL | Dense causal LM trains on deterministic synthetic batches and resumes parameter-for-parameter. It is a tiny gate model, not the planned 256M-350M research model; validation loss, FLOPs, and real data metrics are not yet recorded. |
 | 2. Static MoE baseline | DONE for the first gate | Static top-k MoE trains through the shared runtime and reports validation loss, active parameters, parameter count, and validation FLOPs. |
-| 3. Topology graph and safety | PARTIAL | Python genome serialization, validation, hashing, prune/grow, expert-ID weight preservation, and accepted mutation fossils exist. Merge, split, rewire, and post-mutation NaN gates remain deferred. |
+| 3. Topology graph and safety | PARTIAL | Python genome serialization, validation, hashing, prune/grow, merge/split/rewire guards, expert-ID weight preservation, and accepted mutation fossils exist. Full graph-aware model execution and post-mutation causal checks remain deferred. |
 | 4. Random topology control | DONE for the first gate | Python Experiment 0 provides reproducible random churn with matched cadence, mutation count, training/search accounting, and report metrics. Real data and scale remain deferred. |
 | 5. Importance instrumentation | DONE for the first gate | Python records routing/load, gradient norm, parameter norm, Fisher-style EMA, temporal stability, mutation count, and genome hash at structural windows. |
 | 6. Adaptive controller | PARTIAL | Python routing-led adaptive prune/grow mutates real static-MoE models and consumes persisted routing records. The validated default reaches 10/16 wins; routing, gradient, Fisher, and parameter-based expert pruning were probed and did not improve it. |
-| 7. Experiment ledger | DONE for the first gate | Browser ledger and Python append-only JSONL registry store config, dataset/tokenizer hashes, code revision, hardware, tokens, FLOPs, arm metrics, mutation fossils, and architecture hashes. |
-| 8. Final gate: adaptive > random | OPEN | The slower 48-step / 12-step schedule produces 10/16 adaptive wins with mean adaptive-minus-random validation loss delta `-0.032691`. A stronger or universal pass is still required before scaling. |
+| 7. Experiment ledger | DONE for the first gate | Browser ledger and Python append-only JSONL registry store config, dataset/tokenizer hashes, code revision, hardware, tokens, FLOPs, arm metrics, mutation fossils, and architecture hashes. Deterministic evaluation summaries are available for report generation. |
+| 8. Final gate: adaptive > random | OPEN | The stabilized 48-step / 12-step, 8-seed study produced 5/8 adaptive wins with mean paired delta `-0.003346`. A stronger or universal pass is still required before scaling. |
 
 ## Plan Sections 3-6: Compute and Kaggle Operations
 
@@ -118,7 +119,7 @@ These remain TODO or DEFERRED until the first gate passes:
    the slower 48-step / 12-step structural clock and exact random budget. Signal sweeps did not
    yet improve the 6/8 default result.
 6. DONE: add validation loss, active-parameter, and validation-FLOPs reporting to the runner.
-7. IN PROGRESS: repeat Gate 3 across more seeds and longer low-fidelity runs.
+7. HOLD: the stabilized 8-seed Gate 3 run produced 5/8 adaptive wins after averaging four held-out validation batches; scaling remains blocked.
 8. Do not add merge, split, GDN, Qwen priors, or scale until Gate 3 passes.
 
 ## Verified Checks
@@ -141,6 +142,8 @@ These remain TODO or DEFERRED until the first gate passes:
 - Gate-study budget invariant -> study execution and registry records enforce equal random/adaptive
    mutation counts for every seed.
 - Browser ACT console and research invariants -> passed with no console errors in the latest checks.
+- Latest 16-seed Gate 3 study -> 9/16 adaptive wins at 48 steps with matched budgets; scaling gate
+   remains open.
 
 ## Environment Notes
 

@@ -20,6 +20,7 @@ class LayerGene:
     experts: list[ExpertGene] = field(default_factory=list)
     active_experts: int = 0
     enabled: bool = True
+    inputs: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -41,6 +42,41 @@ class ArchitectureGenome:
 
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
+
+    @classmethod
+    def from_dict(cls, value: dict[str, object]) -> "ArchitectureGenome":
+        layers = [
+            LayerGene(
+                id=str(layer["id"]),
+                index=int(layer["index"]),
+                ffn=str(layer["ffn"]),
+                experts=[
+                    ExpertGene(
+                        id=str(expert["id"]),
+                        width=int(expert["width"]),
+                        birth_step=int(expert.get("birth_step", 0)),
+                    )
+                    for expert in layer.get("experts", [])
+                ],
+                active_experts=int(layer.get("active_experts", 0)),
+                enabled=bool(layer.get("enabled", True)),
+                inputs=[str(source) for source in layer.get("inputs", [])],
+            )
+            for layer in value["layers"]
+        ]
+        genome = cls(
+            version=int(value["version"]),
+            seed=int(value["seed"]),
+            hidden_size=int(value["hidden_size"]),
+            vocab_size=int(value["vocab_size"]),
+            layers=layers,
+            max_params=int(value["max_params"]),
+            max_active_params=int(value["max_active_params"]),
+        )
+        validation = validate_genome(genome)
+        if not validation.valid:
+            raise ValueError("invalid genome: " + "; ".join(validation.errors))
+        return genome
 
 
 def create_genome(
@@ -129,6 +165,14 @@ def validate_genome(genome: ArchitectureGenome) -> GenomeValidation:
                 errors.append(f"invalid expert width for {expert.id}")
     if enabled == 0:
         errors.append("genome has no enabled layers")
+    layer_id_set = {layer.id for layer in genome.layers}
+    for layer in genome.layers:
+        if any(source not in layer_id_set for source in layer.inputs):
+            errors.append(f"layer {layer.id} references an unknown input")
+        if layer.id in layer.inputs:
+            errors.append(f"layer {layer.id} cannot reference itself")
+    if genome.max_params <= 0 or genome.max_active_params <= 0:
+        errors.append("parameter ceilings must be positive")
     return GenomeValidation(valid=not errors, errors=errors)
 
 

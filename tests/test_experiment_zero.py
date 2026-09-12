@@ -14,6 +14,11 @@ def test_experiment_zero_uses_matched_mutation_budget() -> None:
     assert all(math.isfinite(arm.final_loss) for arm in arms.values())
     assert all(arm.training_flops > 0 for arm in arms.values())
     assert all(arm.validation_loss == arm.final_loss for arm in arms.values())
+    assert all(
+        arm.validation_flops
+        == arms[arm.mode].active_parameter_count * 2 * 12 * 2 * 4
+        for arm in arms.values()
+    )
     assert all(arm.active_parameter_count > 0 for arm in arms.values())
     assert all(arm.validation_flops > 0 for arm in arms.values())
     assert arms["fixed"].architecture_distance == 0
@@ -75,6 +80,7 @@ def test_gate_study_serializes_reproducible_summary() -> None:
     assert study.adaptive_wins >= 0
     assert len(study.experiments) == 2
     assert study.matched_mutation_budget
+    assert study.delta_stddev >= 0.0
     assert study.to_dict()["win_rate"] == study.win_rate
     assert study.to_dict() == run_gate_study(
         ExperimentConfig(steps=12, mutation_interval=6, mutation_budget=2),

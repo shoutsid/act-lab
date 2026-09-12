@@ -75,6 +75,7 @@ def append_study(path: str | Path, study: GateStudyResult) -> dict[str, object]:
         "adaptive_wins": study.adaptive_wins,
         "win_rate": study.win_rate,
         "mean_adaptive_delta": study.mean_adaptive_delta,
+        "delta_stddev": study.delta_stddev,
         "matched_mutation_budget": study.matched_mutation_budget,
         "tokens": sum(
             int(experiment.config["steps"])

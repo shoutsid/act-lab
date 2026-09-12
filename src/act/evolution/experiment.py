@@ -17,6 +17,7 @@ class ExperimentConfig:
     steps: int = 48
     batch_size: int = 2
     sequence_length: int = 12
+    validation_batches: int = 4
     mutation_interval: int = 12
     mutation_budget: int = 3
     hidden_size: int = 24
@@ -78,6 +79,8 @@ class _Arm:
 def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentResult:
     if config.steps < 1 or config.mutation_interval < 1:
         raise ValueError("steps and mutation_interval must be positive")
+    if config.validation_batches < 1:
+        raise ValueError("validation_batches must be positive")
     if not 0.0 < config.adaptive_load_threshold < 1.0:
         raise ValueError("adaptive_load_threshold must be between 0 and 1")
     if config.adaptive_expert_metric not in {
@@ -134,7 +137,7 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
                     config.adaptive_load_threshold,
                     config.adaptive_expert_metric,
                 )
-    validation_tokens = _validation_batch(config)
+    validation_tokens = _validation_batches(config)
     results = tuple(
         _finish_arm(arm, validation_tokens) for arm in arms
     )
@@ -296,21 +299,24 @@ def _latest_importance(arm: _Arm) -> dict[str, dict[str, object]]:
     return latest
 
 
-def _validation_batch(config: ExperimentConfig) -> torch.Tensor:
+def _validation_batches(config: ExperimentConfig) -> tuple[torch.Tensor, ...]:
     generator = torch.Generator(device="cpu")
     generator.manual_seed(config.seed ^ 0xA11CE)
-    return torch.randint(
-        0,
-        config.vocab_size,
-        (config.batch_size, config.sequence_length),
-        generator=generator,
+    return tuple(
+        torch.randint(
+            0,
+            config.vocab_size,
+            (config.batch_size, config.sequence_length),
+            generator=generator,
+        )
+        for _ in range(config.validation_batches)
     )
 
 
-def _finish_arm(arm: _Arm, tokens: torch.Tensor) -> ArmResult:
+def _finish_arm(arm: _Arm, batches: tuple[torch.Tensor, ...]) -> ArmResult:
     arm.model.eval()
     with torch.no_grad():
-        loss = float(arm.model.loss(tokens))
+        loss = sum(float(arm.model.loss(tokens)) for tokens in batches) / len(batches)
     active_parameter_count = arm.model.active_parameter_count
     return ArmResult(
         mode=arm.mode,
@@ -321,7 +327,9 @@ def _finish_arm(arm: _Arm, tokens: torch.Tensor) -> ArmResult:
         parameter_count=arm.model.parameter_count,
         active_parameter_count=active_parameter_count,
         training_flops=arm.training_flops,
-        validation_flops=active_parameter_count * tokens.numel() * 2,
+        validation_flops=sum(
+            active_parameter_count * tokens.numel() * 2 for tokens in batches
+        ),
         search_flops=arm.search_flops,
         architecture_distance=_architecture_distance(arm.initial_genome, arm.genome),
         architecture_hash=genome_hash(arm.genome),

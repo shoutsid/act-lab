@@ -80,11 +80,14 @@ def save_checkpoint(
     optimizer: torch.optim.Optimizer,
     state: TrainingState,
 ) -> None:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
-            "version": 2,
+            "version": 3,
             "model": model.state_dict(),
             "optimizer": optimizer.state_dict(),
+            "torch_rng_state": torch.get_rng_state(),
             "training": {
                 "step": state.step,
                 "tokens": state.tokens,
@@ -98,7 +101,7 @@ def save_checkpoint(
                 "code_revision": state.code_revision,
             },
         },
-        path,
+        target,
     )
 
 
@@ -108,15 +111,18 @@ def load_checkpoint(
     optimizer: torch.optim.Optimizer,
 ) -> TrainingState:
     payload: dict[str, Any] = torch.load(path, map_location="cpu", weights_only=False)
-    if payload.get("version") not in {1, 2}:
+    if payload.get("version") not in {1, 2, 3}:
         raise ValueError(f"unsupported checkpoint version {payload.get('version')}")
     model.load_state_dict(payload["model"])
     optimizer.load_state_dict(payload["optimizer"])
+    if "torch_rng_state" in payload:
+        torch.set_rng_state(payload["torch_rng_state"])
     training = payload["training"]
+    generator_state = training.get("generator_state")
     return TrainingState(
         step=int(training["step"]),
         tokens=int(training["tokens"]),
-        generator_state=training["generator_state"].clone(),
+        generator_state=generator_state.clone() if generator_state is not None else None,
         dataset_position=int(training.get("dataset_position", training["tokens"])),
         genome=training.get("genome"),
         mutation_history=list(training.get("mutation_history", [])),

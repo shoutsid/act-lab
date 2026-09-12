@@ -12,6 +12,7 @@ class GateStudyResult:
     experiments: tuple[ExperimentResult, ...]
     adaptive_wins: int
     mean_adaptive_delta: float
+    delta_stddev: float
     matched_mutation_budget: bool
 
     @property
@@ -25,6 +26,7 @@ class GateStudyResult:
             "adaptive_wins": self.adaptive_wins,
             "win_rate": self.win_rate,
             "mean_adaptive_delta": self.mean_adaptive_delta,
+            "delta_stddev": self.delta_stddev,
             "matched_mutation_budget": self.matched_mutation_budget,
             "experiments": [experiment.to_dict() for experiment in self.experiments],
         }
@@ -34,6 +36,8 @@ def run_gate_study(
     config: ExperimentConfig = ExperimentConfig(),
     seeds: tuple[int, ...] = (1, 2, 3, 42),
 ) -> GateStudyResult:
+    if not seeds:
+        raise ValueError("study requires at least one seed")
     if len(set(seeds)) != len(seeds):
         raise ValueError("study seeds must be unique")
     experiments = tuple(
@@ -50,6 +54,7 @@ def run_gate_study(
         experiments=experiments,
         adaptive_wins=sum(delta < 0.0 for delta in deltas),
         mean_adaptive_delta=sum(deltas) / len(deltas) if deltas else 0.0,
+        delta_stddev=_population_stddev(deltas),
         matched_mutation_budget=matched_budget,
     )
 
@@ -62,3 +67,10 @@ def _adaptive_delta(result: ExperimentResult) -> float:
 def _has_matched_budget(result: ExperimentResult) -> bool:
     arms = {arm.mode: arm for arm in result.arms}
     return arms["random"].mutation_count == arms["adaptive"].mutation_count
+
+
+def _population_stddev(values: tuple[float, ...]) -> float:
+    if len(values) < 2:
+        return 0.0
+    mean = sum(values) / len(values)
+    return (sum((value - mean) ** 2 for value in values) / len(values)) ** 0.5
