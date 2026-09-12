@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adaptive-computational-topology"
+version = "0.1.0"
+description = "Adaptive Computational Topology (ACT) - Dynamic architecture evolution during LLM pretraining"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "ACT Research Group" }]
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0",
+    "networkx>=3.0",
+    "tqdm>=4.65.0",
+    "safetensors>=0.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

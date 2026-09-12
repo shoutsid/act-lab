@@ -1,0 +1,66 @@
+import math
+
+from act.evolution import ExperimentConfig, run_experiment
+
+
+def test_experiment_zero_uses_matched_mutation_budget() -> None:
+    result = run_experiment(
+        ExperimentConfig(steps=12, mutation_interval=3, mutation_budget=2)
+    )
+    arms = {arm.mode: arm for arm in result.arms}
+    assert set(arms) == {"fixed", "random", "adaptive"}
+    assert arms["fixed"].mutation_count == 0
+    assert arms["random"].mutation_count == arms["adaptive"].mutation_count == 2
+    assert all(math.isfinite(arm.final_loss) for arm in arms.values())
+    assert all(arm.training_flops > 0 for arm in arms.values())
+    assert all(arm.validation_loss == arm.final_loss for arm in arms.values())
+    assert all(arm.active_parameter_count > 0 for arm in arms.values())
+    assert all(arm.validation_flops > 0 for arm in arms.values())
+    assert arms["fixed"].architecture_distance == 0
+    assert all(
+        arm.architecture_distance >= 0
+        for arm in (arms["random"], arms["adaptive"])
+    )
+    assert arms["random"].search_flops > 0
+    assert arms["adaptive"].search_flops > 0
+    assert len(arms["random"].mutation_history) == 2
+    assert len(arms["adaptive"].mutation_history) == 2
+    assert all(
+        event["architecture_hash_before"] != event["architecture_hash_after"]
+        or event["operation"] in {"grow", "prune"}
+        for event in arms["adaptive"].mutation_history
+    )
+    for mode in ("random", "adaptive"):
+        records = arms[mode].importance_records
+        assert records
+        assert all(record["architecture_hash"] for record in records)
+        assert all(
+            math.isfinite(float(record[field]))
+            for record in records
+            for field in (
+                "routing_load",
+                "gradient_norm",
+                "parameter_norm",
+                "fisher_ema",
+                "temporal_stability",
+            )
+        )
+
+
+def test_experiment_zero_is_deterministic() -> None:
+    config = ExperimentConfig(seed=17, steps=12, mutation_interval=6, mutation_budget=2)
+    first = run_experiment(config).to_dict()
+    second = run_experiment(config).to_dict()
+    assert first == second
+
+
+def test_experiment_zero_adaptive_gate_probe() -> None:
+    wins = 0
+    for seed in (1, 2, 3, 42):
+        arms = {
+            arm.mode: arm
+            for arm in run_experiment(ExperimentConfig(seed=seed)).arms
+        }
+        assert arms["random"].mutation_count == arms["adaptive"].mutation_count == 3
+        wins += arms["adaptive"].final_loss < arms["random"].final_loss
+    assert wins >= 3
