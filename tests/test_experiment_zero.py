@@ -1,6 +1,11 @@
 import math
 
-from act.evolution import ExperimentConfig, run_experiment, run_gate_study
+from act.evolution import (
+    ExperimentConfig,
+    GateStudyResult,
+    run_experiment,
+    run_gate_study,
+)
 
 
 def test_experiment_zero_uses_matched_mutation_budget() -> None:
@@ -64,7 +69,9 @@ def test_experiment_zero_adaptive_gate_probe() -> None:
     for seed in (1, 2, 3, 42):
         arms = {
             arm.mode: arm
-            for arm in run_experiment(ExperimentConfig(seed=seed)).arms
+            for arm in run_experiment(
+                ExperimentConfig(seed=seed, adaptive_policy="signal")
+            ).arms
         }
         assert arms["random"].mutation_count == arms["adaptive"].mutation_count == 3
         wins += arms["adaptive"].final_loss < arms["random"].final_loss
@@ -82,10 +89,75 @@ def test_gate_study_serializes_reproducible_summary() -> None:
     assert study.matched_mutation_budget
     assert study.delta_stddev >= 0.0
     assert study.to_dict()["win_rate"] == study.win_rate
+    assert study.to_dict()["gate_alpha"] == 0.05
+    assert study.to_dict()["gate_p_value"] == study.gate_p_value
+    assert study.to_dict()["gate_min_wins"] == study.gate_min_wins
+    assert study.to_dict()["gate_passed"] == study.gate_passed
+    assert study.gate_passed == (study.adaptive_wins >= study.gate_min_wins)
     assert study.to_dict() == run_gate_study(
         ExperimentConfig(steps=12, mutation_interval=6, mutation_budget=2),
         seeds=(1, 2),
     ).to_dict()
+
+
+def test_gate_study_binomial_verdict_matches_reference_values() -> None:
+    underpowered = GateStudyResult(
+        config={},
+        seeds=tuple(range(1, 25)),
+        experiments=(),
+        adaptive_wins=15,
+        mean_adaptive_delta=-0.024878,
+        delta_stddev=0.150671,
+        matched_mutation_budget=True,
+    )
+    assert math.isclose(underpowered.gate_p_value, 0.153728, abs_tol=1e-6)
+    assert underpowered.gate_min_wins == 17
+    assert underpowered.gate_passed is False
+    assert math.isclose(
+        underpowered.t_statistic,
+        (-0.024878 * math.sqrt(24)) / (0.150671 * math.sqrt(24 / 23)),
+        rel_tol=1e-6,
+    )
+
+    decisive = GateStudyResult(
+        config={},
+        seeds=tuple(range(1, 25)),
+        experiments=(),
+        adaptive_wins=17,
+        mean_adaptive_delta=-0.03,
+        delta_stddev=0.15,
+        matched_mutation_budget=True,
+    )
+    assert decisive.gate_p_value <= 0.05
+    assert decisive.gate_passed is True
+
+
+def test_gate_study_t_statistic_is_zero_for_single_seed() -> None:
+    single = GateStudyResult(
+        config={},
+        seeds=(1,),
+        experiments=(),
+        adaptive_wins=0,
+        mean_adaptive_delta=-0.2,
+        delta_stddev=0.0,
+        matched_mutation_budget=True,
+    )
+    assert single.t_statistic == 0.0
+    assert single.t_p_value_one_tailed == 0.5
+
+
+def test_gate_study_cannot_pass_when_underpowered() -> None:
+    tiny = GateStudyResult(
+        config={},
+        seeds=(1,),
+        experiments=(),
+        adaptive_wins=1,
+        mean_adaptive_delta=-0.1,
+        delta_stddev=0.0,
+        matched_mutation_budget=True,
+    )
+    assert tiny.gate_min_wins == 2
+    assert tiny.gate_passed is False
 
 
 def test_experiment_zero_can_run_on_cuda_when_available() -> None:

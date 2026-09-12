@@ -24,11 +24,21 @@ The project currently has two paths:
    token shards, explicit CPU/CUDA device contracts, and reusable importance
    signal extraction for static-MoE experts.
 
-The first real scientific result is partially demonstrated: with four deterministic
-held-out validation batches, Python adaptive topology beats Python random churn in
-9/16 low-fidelity seeds, with mean paired delta `-0.008127` and population standard
-deviation `0.162910`. Mutation budgets match for every seed. The universal gate is
-intentionally still open; this result is a hold point before scaling.
+The first real scientific result is now decided on three fronts. (1) The
+pre-registered 384-seed Gate 3 study (seeds 1000-1383) FAILED for the legacy
+cheap-signal controller: 195/384 wins (50.8%), mean delta `+0.006766`, binomial
+p `0.3993` - small-sample noise, no benefit. (2) A probe-guided diagnostic upper
+bound (`guided` arm) PASSED its 96-seed study (seeds 2000-2095): 59/96 wins,
+mean delta `-0.041325`, binomial p `0.0158`, t p `0.00025` - proving topology
+selection does express at this fidelity. (3) Making bounded probe-loss selection
+the adaptive controller's default decision rule (cap 4 candidates, 2 probe
+batches) PASSED the re-registered 384-seed Gate 3 re-run (seeds 3000-3383):
+213/384 wins (55.5%, threshold 209), mean delta `-0.025955`, binomial p
+`0.018138`, paired t p `7.4e-05`, matched budgets. The same pre-registration
+included a search-cost criterion (probe FLOPs <= 5% of training FLOPs) which
+FAILED at 41.9%: the quality gate is passed, compute-efficiency is not, and
+amortization at realistic scale is the explicit next question rather than an
+assumption.
 
 ## Milestone Comparison
 
@@ -42,7 +52,7 @@ intentionally still open; this result is a hold point before scaling.
 | 5. Importance instrumentation | DONE for the first gate | Python records routing/load, gradient norm, parameter norm, Fisher-style EMA, temporal stability, mutation count, and genome hash at structural windows. |
 | 6. Adaptive controller | PARTIAL | Python exposes a deterministic, validated budget-aware `AdaptiveController` plus Pareto frontier/population selection over quality, active parameters, and search FLOPs. The validated default reaches 10/16 wins; broader multi-generation search remains. |
 | 7. Experiment ledger | DONE for the first gate | Browser ledger and Python append-only JSONL registry store config, dataset/tokenizer hashes, code revision, hardware, tokens, FLOPs, arm metrics, mutation fossils, and architecture hashes. Deterministic evaluation summaries are available for report generation. |
-| 8. Final gate: adaptive > random | OPEN | The fresh stabilized 48-step / 12-step, 16-seed study produced 9/16 adaptive wins with mean paired delta `-0.008127` and matched mutation budgets. A stronger or universal pass is still required before scaling. |
+| 8. Final gate: adaptive > random | PASSED (quality) for the probe-loss controller; search-cost criterion failed | Studies now carry an objective verdict (exact binomial sign test, min passing wins at alpha=0.05, directed paired-t, per-arm search FLOPs). Legacy cheap-signal controller: FAILED (384 seeds, 195/384, p `0.3993`). Guided upper bound: PASSED (96 seeds, 59/96, p `0.0158`). New default bounded probe-loss adaptive controller: PASSED (384 seeds, 213/384 wins vs 209 required, mean delta `-0.025955`, binomial p `0.018138`, t p `7.4e-05`, matched budgets) but probe search cost 41.9% of training FLOPs exceeded the pre-registered 5% cap, so compute-efficiency remains open (it is a separate, still-deferred plan milestone). |
 
 ## Plan Sections 3-6: Compute and Kaggle Operations
 
@@ -122,15 +132,26 @@ These remain TODO or DEFERRED until the first gate passes:
    the slower 48-step / 12-step structural clock and exact random budget. Signal sweeps did not
    yet improve the 6/8 default result.
 6. DONE: add validation loss, active-parameter, and validation-FLOPs reporting to the runner.
-7. HOLD: the stabilized 8-seed Gate 3 run produced 5/8 adaptive wins after averaging four held-out validation batches; scaling remains blocked.
-8. Do not add merge, split, GDN, Qwen priors, or scale until Gate 3 passes.
+7. RESOLVED (PASSED on quality): the re-registered 384-seed Gate 3 re-run with
+   the bounded probe-loss controller (seeds 3000-3383) gave 213/384 wins
+   (threshold 209), mean delta `-0.025955`, binomial p `0.018138`, t p `7.4e-05`.
+   The earlier cheap-signal failure (195/384, p `0.3993`) is retained as the
+   documented negative result that motivated the controller change.
+8. NEXT: the passed gate carries a failed pre-registered cost criterion (probe
+   search 41.9% of training FLOPs vs the 5% cap). Before scaling: either (a)
+   pre-register a cheaper probe budget (fewer candidates/batches, sparser probe
+   cadence) as a NEW study, or (b) justify cost amortization with a real-scale
+   measurement, since probe cost is fixed per mutation event while training cost
+   grows with steps and model size. Do not iterate probe variants against the
+   same seed block until one passes - that is p-hacking; use fresh seeds.
 
 ## Verified Checks
 
-- `PYTHONPATH=src python -m pytest -q` -> completed with no recorded failures in the current workspace.
+- `PYTHONPATH=src python -m pytest -q` -> 86 passed, no failures.
 - `PYTHONPATH=src python -m compileall -q src/act tests` -> passed.
 - `npm run typecheck` -> passed.
 - `npm run build` -> passed.
+- `npm test -- --run` -> 185 passed, 0 failures (fixed grok-pwa-plugin and preview test port mismatches).
 - Python Experiment 0 mutation-budget test -> passed.
 - Python registry/CLI round trip -> passed.
 - Initial Gate 3 trial -> adaptive lost to random on seeds 1, 2, 3, and 42.
@@ -148,6 +169,36 @@ These remain TODO or DEFERRED until the first gate passes:
 - Fresh 16-seed Gate 3 study (`1,2,3,42,5,6,7,8,9,10,11,12,13,14,15,16`) -> 9/16 adaptive wins at
   48 steps, mean paired delta `-0.008127`, population standard deviation `0.162910`, and matched
   budgets; the scaling gate remains open.
+- **384-seed pre-registered Gate 3 study (seeds 1000-1383, steps=48, budgets matched)**
+  -> 195/384 adaptive wins (50.8%), mean paired delta `+0.006766`, stddev `0.131115`,
+  exact binomial p `0.3993`, paired-t p `0.8437` (directed: treatment helps = negative
+  delta); Gate 3 FAILED for the cheap-signal controller. Reproducible
+  (`study_id` `48163d824f2d6852`, recorded in `artifacts/gate3-384.jsonl`).
+- **96-seed guided-arm diagnostic (seeds 2000-2095, steps=48, budgets matched)**
+  -> 59/96 guided wins (61.5%), mean delta `-0.041325`, binomial p `0.015774`,
+  paired-t p `0.00025`; the probe-loss-greedy upper bound PASSED under the same
+  verdict machinery (`study_id` `d2b76921ac40d39b`, `artifacts/guided-diagnostic-96.jsonl`).
+- Gate-study verdict fields (`gate_alpha`, `gate_p_value`, `gate_min_wins`,
+  `gate_passed`, `t_statistic`, `t_p_value_one_tailed`, `treatment`) added to
+  `GateStudyResult` and gate-study registry records; `study_hash` now hashes the
+  gate-decision inputs rather than float aggregates; the t p-value direction was
+  corrected (helpful treatment = negative delta = P(T <= t)); covered by new unit tests.
+- New opt-in `guided` arm (`--arms random,guided`, `--treatment guided`) with exact
+  mutation-candidate enumeration, probe-loss selection, probe cost in `search_flops`,
+  and probe metadata in mutation history.
+- **Controller decision rule replaced**: the adaptive arm now defaults to bounded
+  probe-loss selection (`adaptive_policy="probe_loss"`, `probe_candidate_cap=4`,
+  `probe_batch_count=2`) via a shared probe-mutation engine; the legacy
+  routing/gradient/Fisher rule remains available as `adaptive_policy="signal"`.
+  Studies and registry records now include `search_flops_by_arm` and
+  `treatment_search_overhead_ratio` for explicit search-cost accounting.
+- **384-seed probe-loss Gate 3 re-run (seeds 3000-3383, steps=48, budgets matched)**
+  -> 213/384 adaptive wins (55.5%; 209 required), mean delta `-0.025955`, binomial
+  p `0.018138`, directed t p `7.4e-05`; quality PASSED, pre-registered <=5% search
+  cost FAILED at 41.9% (`study_id` `27fe7e53d0533f29`,
+  `artifacts/gate3-probe-loss-384.jsonl`).
+- Fixed: `injectGrokPwaHead` now prioritizes document title over site.json title for og:title.
+- Fixed: preview test port assertions updated to match PREVIEW_PORT=4174.
 
 ## Environment Notes
 

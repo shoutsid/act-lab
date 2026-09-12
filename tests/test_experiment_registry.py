@@ -42,5 +42,9 @@ def test_registry_persists_reproducible_gate_studies(tmp_path) -> None:
     assert first["seeds"] == [1, 2]
     assert first["adaptive_wins"] == study.adaptive_wins
     assert first["matched_mutation_budget"] is True
+    assert first["gate_alpha"] == 0.05
+    assert 0.0 <= first["gate_p_value"] <= 1.0
+    assert first["gate_min_wins"] == study.gate_min_wins
+    assert first["gate_passed"] == study.gate_passed
     records = [json.loads(line) for line in path.read_text().splitlines()]
     assert records[0] == records[1]

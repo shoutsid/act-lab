@@ -33,6 +33,10 @@ class ExperimentConfig:
     code_revision: str = "working-tree"
     adaptive_load_threshold: float = 0.50
     adaptive_expert_metric: str = "random"
+    adaptive_policy: str = "probe_loss"
+    probe_candidate_cap: int = 4
+    probe_batch_count: int = 2
+    arms: str = "fixed,random,adaptive"
     device: str = "cpu"
 
 
@@ -78,6 +82,21 @@ class _Arm:
     previous_load: dict[str, float] | None = None
     mutation_history: list[dict[str, object]] | None = None
     device: torch.device = torch.device("cpu")
+    probe_batches: tuple[torch.Tensor, ...] = ()
+
+
+def _parse_arms(spec: str) -> tuple[str, ...]:
+    """Parse and validate the comma-separated arm selection."""
+    modes = tuple(mode.strip() for mode in spec.split(",") if mode.strip())
+    supported = {"fixed", "random", "adaptive", "guided"}
+    if not modes:
+        raise ValueError("arms must name at least one arm")
+    if len(set(modes)) != len(modes):
+        raise ValueError("arms must be unique")
+    unknown = [mode for mode in modes if mode not in supported]
+    if unknown:
+        raise ValueError(f"unsupported arms: {unknown}")
+    return modes
 
 
 def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentResult:
@@ -96,6 +115,13 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
         "parameter_norm",
     }:
         raise ValueError("unsupported adaptive_expert_metric")
+    if config.adaptive_policy not in {"probe_loss", "signal"}:
+        raise ValueError("unsupported adaptive_policy")
+    if config.probe_candidate_cap < 1:
+        raise ValueError("probe_candidate_cap must be at least 1")
+    if config.probe_batch_count < 1:
+        raise ValueError("probe_batch_count must be at least 1")
+    arm_modes = _parse_arms(config.arms)
     torch.manual_seed(config.seed)
     initial_genome = create_genome(
         config.seed,
@@ -110,9 +136,30 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
     if not isinstance(initial_model, StaticMoECausalLM):
         raise TypeError("Experiment 0 requires a static MoE genome")
     initial_model.to(device)
+    probe_generator = torch.Generator(device="cpu")
+    probe_generator.manual_seed(config.seed ^ 0xB0B)
+    probe_batches = tuple(
+        batch.to(device)
+        for batch in (
+            torch.randint(
+                0,
+                config.vocab_size,
+                (config.batch_size, config.sequence_length),
+                generator=probe_generator,
+            )
+            for _ in range(config.validation_batches)
+        )
+    )
     arms = tuple(
-        _make_arm(mode, initial_genome, initial_model, config.learning_rate, device)
-        for mode in ("fixed", "random", "adaptive")
+        _make_arm(
+            mode,
+            initial_genome,
+            initial_model,
+            config.learning_rate,
+            device,
+            probe_batches,
+        )
+        for mode in arm_modes
     )
     data = torch.Generator(device="cpu")
     data.manual_seed(config.seed ^ 0x5EED)
@@ -142,6 +189,9 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
                     config.learning_rate,
                     config.adaptive_load_threshold,
                     config.adaptive_expert_metric,
+                    config.adaptive_policy,
+                    config.probe_candidate_cap,
+                    config.probe_batch_count,
                 )
     validation_tokens = _validation_batches(config, device)
     results = tuple(
@@ -156,6 +206,7 @@ def _make_arm(
     model: StaticMoECausalLM,
     learning_rate: float,
     device: torch.device,
+    probe_batches: tuple[torch.Tensor, ...],
 ) -> _Arm:
     cloned_model = deepcopy(model)
     cloned_genome = deepcopy(genome)
@@ -171,6 +222,7 @@ def _make_arm(
         fisher_ema={},
         previous_load={},
         mutation_history=[],
+        probe_batches=probe_batches,
     )
 
 
@@ -212,6 +264,110 @@ def _record_importance(arm: _Arm, step: int) -> None:
             )
 
 
+def _mutation_candidates(
+    genome: ArchitectureGenome,
+) -> tuple[tuple[str, str, str | None], ...]:
+    """Enumerate every feasible expert grow/prune candidate for a genome."""
+    candidates: list[tuple[str, str, str | None]] = []
+    for layer in genome.layers:
+        if layer.ffn != "moe":
+            continue
+        if len(layer.experts) < 16:
+            candidates.append(("grow", layer.id, None))
+        if len(layer.experts) > 2:
+            for expert in layer.experts:
+                candidates.append(("prune", layer.id, expert.id))
+    return tuple(candidates)
+
+
+def _mutate_by_probe(
+    arm: _Arm,
+    step: int,
+    learning_rate: float,
+    candidate_cap: int | None,
+    probe_batch_count: int,
+    policy_label: str,
+) -> None:
+    """Probe feasible mutations and apply the one with the lowest probe loss.
+
+    ``candidate_cap`` bounds the number of candidates evaluated (``None``
+    evaluates all of them, the exact guided upper bound) and
+    ``probe_batch_count`` bounds the probe batch budget. Probe forward cost is
+    booked into ``search_flops`` so selection strategies stay comparable.
+    """
+    if not arm.probe_batches:
+        raise RuntimeError("probe-guided mutation requires probe batches")
+    candidates = _mutation_candidates(arm.genome)
+    if not candidates:
+        return
+    if candidate_cap is not None:
+        candidates = candidates[:candidate_cap]
+    probe_batches = arm.probe_batches[:probe_batch_count]
+    probe_tokens = sum(batch.numel() for batch in probe_batches)
+    evaluated: list[tuple[float, int, str, str, str | None, ArchitectureGenome]] = []
+    for order, (operation, layer_id, expert_id) in enumerate(candidates):
+        trial_genome = deepcopy(arm.genome)
+        if operation == "grow":
+            if grow_expert(trial_genome, layer_id, step) is None:
+                continue
+        elif not prune_expert(trial_genome, layer_id, expert_id):
+            continue
+        probe_model = rebuild_model_from_genome(
+            deepcopy(arm.model),
+            trial_genome,
+            context_size=arm.model.config.context_size,
+            num_heads=arm.model.config.num_heads,
+        )
+        if not isinstance(probe_model, StaticMoECausalLM):
+            raise TypeError("probe mutation changed the baseline model family")
+        probe_model.to(arm.device)
+        probe_model.eval()
+        with torch.no_grad():
+            loss = (
+                sum(float(probe_model.loss(batch)) for batch in probe_batches)
+                / len(probe_batches)
+            )
+        arm.search_flops += (
+            probe_model.active_parameter_count * probe_tokens * 2
+        )
+        evaluated.append((loss, order, operation, layer_id, expert_id, trial_genome))
+    if not evaluated:
+        return
+    evaluated.sort(key=lambda item: (item[0], item[1]))
+    probe_loss, _, operation, layer_id, expert_id, winner = evaluated[0]
+    before_hash = genome_hash(arm.genome)
+    arm.genome = winner
+    rebuilt = rebuild_model_from_genome(
+        arm.model,
+        arm.genome,
+        context_size=arm.model.config.context_size,
+        num_heads=arm.model.config.num_heads,
+    )
+    if not isinstance(rebuilt, StaticMoECausalLM):
+        raise TypeError("mutation changed the baseline model family")
+    arm.model = rebuilt.to(arm.device)
+    arm.optimizer = torch.optim.AdamW(arm.model.parameters(), lr=learning_rate)
+    arm.mutations += 1
+    arm.search_flops += arm.model.parameter_count * 4
+    if arm.mutation_history is None:
+        raise RuntimeError("mutation history is not initialized")
+    arm.mutation_history.append(
+        {
+            "step": step,
+            "policy": policy_label,
+            "operation": operation,
+            "layer_id": layer_id,
+            "expert_id": expert_id,
+            "architecture_hash_before": before_hash,
+            "architecture_hash_after": genome_hash(arm.genome),
+            "mutation_count": arm.mutations,
+            "probe_loss": probe_loss,
+            "probe_candidates": len(evaluated),
+            "probe_batch_count": len(probe_batches),
+        }
+    )
+
+
 def _mutate_arm(
     arm: _Arm,
     step: int,
@@ -219,7 +375,30 @@ def _mutate_arm(
     learning_rate: float,
     adaptive_load_threshold: float,
     adaptive_expert_metric: str,
+    adaptive_policy: str,
+    probe_candidate_cap: int,
+    probe_batch_count: int,
 ) -> None:
+    if arm.mode == "guided":
+        _mutate_by_probe(
+            arm,
+            step,
+            learning_rate,
+            None,
+            len(arm.probe_batches),
+            "guided",
+        )
+        return
+    if arm.mode == "adaptive" and adaptive_policy == "probe_loss":
+        _mutate_by_probe(
+            arm,
+            step,
+            learning_rate,
+            probe_candidate_cap,
+            probe_batch_count,
+            "adaptive_probe_loss",
+        )
+        return
     chooser = random.Random(seed)
     before_hash = genome_hash(arm.genome)
     layer = arm.genome.layers[chooser.randrange(len(arm.genome.layers))]

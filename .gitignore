@@ -12,7 +12,8 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-artifacts/
+artifacts/*
+!artifacts/study-summaries/
 screenshots/*
 !screenshots/.gitkeep
 .DS_Store

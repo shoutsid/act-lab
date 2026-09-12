@@ -18,7 +18,18 @@ def experiment_hash(result: ExperimentResult) -> str:
 
 
 def study_hash(study: GateStudyResult) -> str:
-    encoded = json.dumps(study.to_dict(), sort_keys=True, separators=(",", ":"))
+    """Hash the gate decision inputs, not float aggregate summaries."""
+    payload = {
+        "config": study.config,
+        "seeds": list(study.seeds),
+        "adaptive_wins": study.adaptive_wins,
+        "mean_adaptive_delta": study.mean_adaptive_delta,
+        "delta_stddev": study.delta_stddev,
+        "matched_mutation_budget": study.matched_mutation_budget,
+        "treatment": study.treatment,
+        "gate_alpha": study.gate_alpha,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()[:16]
 
 
@@ -77,6 +88,15 @@ def append_study(path: str | Path, study: GateStudyResult) -> dict[str, object]:
         "mean_adaptive_delta": study.mean_adaptive_delta,
         "delta_stddev": study.delta_stddev,
         "matched_mutation_budget": study.matched_mutation_budget,
+        "treatment": study.treatment,
+        "search_flops_by_arm": study.search_flops_by_arm,
+        "treatment_search_overhead_ratio": study.treatment_search_overhead_ratio,
+        "gate_alpha": study.gate_alpha,
+        "gate_p_value": study.gate_p_value,
+        "gate_min_wins": study.gate_min_wins,
+        "gate_passed": study.gate_passed,
+        "t_statistic": study.t_statistic,
+        "t_p_value_one_tailed": study.t_p_value_one_tailed,
         "tokens": sum(
             int(experiment.config["steps"])
             * int(experiment.config["batch_size"])
