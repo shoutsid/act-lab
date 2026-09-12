@@ -6,6 +6,7 @@ from act.evolution.experiment import ExperimentResult
 from act.evolution.study import GateStudyResult
 from .perplexity import PerplexityResult, evaluate_perplexity
 from .probes import CapabilityProbeResult, evaluate_capability_probes
+from .reports import ablation_report, efficiency_report
 
 
 def summarize_experiment(result: ExperimentResult) -> dict[str, object]:
@@ -53,6 +54,8 @@ __all__ = [
     "PerplexityResult",
     "CapabilityProbeResult",
     "evaluate_capability_probes",
+    "ablation_report",
+    "efficiency_report",
     "evaluate_perplexity",
     "summarize_experiment",
     "summarize_study",
