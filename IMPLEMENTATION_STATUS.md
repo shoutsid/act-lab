@@ -88,8 +88,8 @@ a hold point before scaling.
 | Adaptive depth | PARTIAL | Python topology mutations can safely toggle effective layer depth and change attention/GDN/hybrid module metadata; full multi-generation training comparisons remain. |
 | Hierarchical search | PARTIAL | Deterministic layer/module candidate ranking now supports explicit depth penalties and inspectable priors. |
 | Qwen-informed search | PARTIAL | Prior interface is available for imported architecture scores; no external Qwen artifacts are bundled or claimed. |
-| Teacher initialization | DEFERRED |
-| Architecture reusability and fresh initialization | DEFERRED |
+| Teacher initialization | PARTIAL | Explicit teacher and evolved shape-safe parameter transfer policies now exist; multi-seed retraining comparisons remain. |
+| Architecture reusability and fresh initialization | PARTIAL | Fresh, evolved, and rewound initialization policies report copied/skipped tensors; architecture-equivalence studies remain. |
 | Cross-seed stability and architecture equivalence | DEFERRED |
 | Compute-efficiency scaling | DEFERRED |
 

@@ -19,6 +19,7 @@ from .distributed import (
     wrap_distributed,
 )
 from .session import SessionCheckpointPolicy, retain_checkpoints
+from .retraining import InitializationReport, initialize_retraining
 
 __all__ = [
 	"TrainingConfig",
@@ -37,4 +38,6 @@ __all__ = [
 	"wrap_distributed",
 	"SessionCheckpointPolicy",
 	"retain_checkpoints",
+	"InitializationReport",
+	"initialize_retraining",
 ]
