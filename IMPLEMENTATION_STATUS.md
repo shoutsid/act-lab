@@ -38,7 +38,36 @@ batches) PASSED the re-registered 384-seed Gate 3 re-run (seeds 3000-3383):
 included a search-cost criterion (probe FLOPs <= 5% of training FLOPs) which
 FAILED at 41.9%: the quality gate is passed, compute-efficiency is not, and
 amortization at realistic scale is the explicit next question rather than an
-assumption.
+assumption. (4) A cheaper pre-registered variant (cap 2, 1 probe batch,
+steps=144, seeds 4004-4383) satisfied the cost criterion (4.13% <= 5%,
+confirming probe cost amortizes with horizon) but FAILED quality: 181/380 wins
+(47.6%, threshold 207), mean delta `+0.011747`, binomial p `0.8351`, t p
+`0.8857`.The current
+map: probe-rich selection wins quality but misses toy-scale cost budgets;
+probe-poor selection meets cost but loses the quality edge. (5) A same-seed
+paired placement study (cheap probe, steps=144, mutations moved from steps
+12/24/36 to 40/80/120; seeds 4004-4383) tested whether early placement explains
+that failure: late placement was better in 201/380 pairs, mean paired delta
+`-0.015666`, paired t p `0.0788` - directionally suggestive but NOT significant,
+so placement does not statistically explain the horizon effect, even though it
+changes 39% of probe decisions. The next study should vary probe cadence, not
+placement. (6) A pre-registered probe-validity analysis (counterfactual branches
+forcing candidate k in {1,2,3} at the first mutation event, seeds 3000-3383)
+shows probe loss IS a statistically significant predictor of realized final loss
+(mean per-seed Spearman rho `0.1057`, t(383) `3.638`, one-tailed p `1.374e-04`;
+pooled z-scored Pearson r `0.1041`, z `4.09`) - but weakly: argmin concordance
+`0.281` is near the 0.25 chance level, and the probe-best choice mainly avoids
+the worst candidates (mean worst-branch excess avoided `0.0860` vs mean loss
+left on the table `0.0601`). A weak per-event signal over only 3 mutation
+events is consistent with the marginal Gate 3 pass and motivated a cadence
+study. (7) That cadence study (cheap probe cap=2/1-batch, steps=144, interval=24,
+budget=6 = six probe-loss events, fresh seeds 5000-5383) then FAILED HARD IN
+REVERSE: 137/384 wins (35.7%, threshold 209), mean delta `+0.047014`, binomial
+p `1.0`, and adaptive is significantly WORSE than random (worse-than-random
+sign test z `-5.61`, two-sided p ~ `2e-08`). Accumulated greedy argmin on a
+noisy single-batch probe is net harmful - consistent with a winner's-curse
+mechanism: selecting the probe-argmin over many events amplifies probe-batch
+noise instead of signal.
 
 ## Milestone Comparison
 
@@ -52,7 +81,7 @@ assumption.
 | 5. Importance instrumentation | DONE for the first gate | Python records routing/load, gradient norm, parameter norm, Fisher-style EMA, temporal stability, mutation count, and genome hash at structural windows. |
 | 6. Adaptive controller | PARTIAL | Python exposes a deterministic, validated budget-aware `AdaptiveController` plus Pareto frontier/population selection over quality, active parameters, and search FLOPs. The validated default reaches 10/16 wins; broader multi-generation search remains. |
 | 7. Experiment ledger | DONE for the first gate | Browser ledger and Python append-only JSONL registry store config, dataset/tokenizer hashes, code revision, hardware, tokens, FLOPs, arm metrics, mutation fossils, and architecture hashes. Deterministic evaluation summaries are available for report generation. |
-| 8. Final gate: adaptive > random | PASSED (quality) for the probe-loss controller; search-cost criterion failed | Studies now carry an objective verdict (exact binomial sign test, min passing wins at alpha=0.05, directed paired-t, per-arm search FLOPs). Legacy cheap-signal controller: FAILED (384 seeds, 195/384, p `0.3993`). Guided upper bound: PASSED (96 seeds, 59/96, p `0.0158`). New default bounded probe-loss adaptive controller: PASSED (384 seeds, 213/384 wins vs 209 required, mean delta `-0.025955`, binomial p `0.018138`, t p `7.4e-05`, matched budgets) but probe search cost 41.9% of training FLOPs exceeded the pre-registered 5% cap, so compute-efficiency remains open (it is a separate, still-deferred plan milestone). |
+| 8. Final gate: adaptive > random | PASSED once (cap-4/2-batch, 48 steps); every cheaper or higher-cadence variant FAILED, the cadence variant significantly WORSE than random | Factor map (all matched budgets, objective verdicts): cap-4/2-batch, 3 events, 48 steps -> PASS 213/384, p `0.0181`, at 41.9% search cost. Cap-2/1-batch, 3 events, 144 steps -> FAIL 181/380, p `0.8351`, at 4.13% cost. Placement (late, same seeds) -> no effect (p `0.0788`). Cap-2/1-batch, 6 events, 144 steps -> 137/384 (35.7%), significantly WORSE than random (z `-5.61`, p ~ `2e-08`). Probe validity is real but weak (rho `0.11`); greedy argmin repeated on a noisy probe compounds noise (winner's curse). Multiple-comparison caution applies across the five pre-registered quality tests; the single pass (sign p `0.0181`, paired-t p `7.4e-05`) survives Bonferroni only via the paired-t. |
 
 ## Plan Sections 3-6: Compute and Kaggle Operations
 
@@ -132,18 +161,19 @@ These remain TODO or DEFERRED until the first gate passes:
    the slower 48-step / 12-step structural clock and exact random budget. Signal sweeps did not
    yet improve the 6/8 default result.
 6. DONE: add validation loss, active-parameter, and validation-FLOPs reporting to the runner.
-7. RESOLVED (PASSED on quality): the re-registered 384-seed Gate 3 re-run with
-   the bounded probe-loss controller (seeds 3000-3383) gave 213/384 wins
-   (threshold 209), mean delta `-0.025955`, binomial p `0.018138`, t p `7.4e-05`.
-   The earlier cheap-signal failure (195/384, p `0.3993`) is retained as the
-   documented negative result that motivated the controller change.
-8. NEXT: the passed gate carries a failed pre-registered cost criterion (probe
-   search 41.9% of training FLOPs vs the 5% cap). Before scaling: either (a)
-   pre-register a cheaper probe budget (fewer candidates/batches, sparser probe
-   cadence) as a NEW study, or (b) justify cost amortization with a real-scale
-   measurement, since probe cost is fixed per mutation event while training cost
-   grows with steps and model size. Do not iterate probe variants against the
-   same seed block until one passes - that is p-hacking; use fresh seeds.
+7. RESOLVED (PASSED on quality, cost open): the cap-4/2-batch probe-loss
+   controller passed the 384-seed Gate 3 re-run (213/384, p `0.018138`) at 41.9%
+   search cost; a cheaper cap-2/1-batch variant at steps=144 then met the cost
+   budget (4.13%) but failed quality (181/380, p `0.8351`) on fresh seeds
+   4004-4383.
+8. NEXT: the cadence result reverses the accumulation hypothesis - more greedy
+   events on a noisy probe HURT. The one-factor follow-up that matches the
+   winner's-curse hypothesis is probe variance reduction: keep the passing
+   cap-4/2-batch config and its 3 events but on fresh seeds and a longer horizon,
+   or add probe batches at fixed cap. If probe variance is not the mechanism,
+   accept that greedy probe-loss selection does not beat random churn at toy
+   fidelity, retain the documented negative results, and gate further selection
+   work on real-scale measurement (compute-efficiency milestone).
 
 ## Verified Checks
 
@@ -197,6 +227,37 @@ These remain TODO or DEFERRED until the first gate passes:
   p `0.018138`, directed t p `7.4e-05`; quality PASSED, pre-registered <=5% search
   cost FAILED at 41.9% (`study_id` `27fe7e53d0533f29`,
   `artifacts/gate3-probe-loss-384.jsonl`).
+- **380-seed cheap-probe study (seeds 4004-4383, steps=144, cap=2, 1 probe batch,
+  budgets matched)** -> cost criterion PASSED (4.13% <= 5%; probe cost amortizes
+  with horizon) but quality FAILED: 181/380 wins (47.6%), mean delta `+0.011747`,
+  binomial p `0.8351`, t p `0.8857` (`study_id` `41f4b9f7cf6d82e0`,
+  `artifacts/gate3-cheap-probe-380.jsonl`, summary in `artifacts/study-summaries/`).
+  Confound noted: probe budget and horizon changed together vs the passing
+  cap-4/2-batch/48-step study.
+- **380-seed same-seed placement study (cheap probe, steps=144, interval=40 ->
+  mutations at 40/80/120; seeds 4004-4383 identical to the early-placement run)**
+  -> late placement better in 201/380 pairs, mean paired delta `-0.015666`,
+  paired t p `0.0788`; late-study vs random alone: 198/380, binomial p `0.2208`.
+  Placement changes 39% of probe decisions but does not statistically explain
+  the horizon effect (`study_id` `34a9a5216a8aac36`,
+  `artifacts/gate3-late-placement-380.jsonl`, summary in `artifacts/study-summaries/`).
+- Added `--mutation-interval` and `--mutation-budget` to the experiment CLI
+  (were config-only).
+- **384-seed cadence study (seeds 5000-5383, steps=144, interval=24, budget=6,
+  cheap probe cap=2/1-batch, budgets matched)** -> 137/384 adaptive wins (35.7%,
+  threshold 209), mean delta `+0.047014`, binomial p `1.0`; adaptive significantly
+  WORSE than random (z `-5.61`, two-sided p ~ `2e-08`); probe cost 8.41%
+  (descriptive only - the 5% cap was not part of this pre-registration)
+  (`study_id` `964e3f08e13a3710`, `artifacts/gate3-cadence-384.jsonl`, summary in
+  `artifacts/study-summaries/`).
+- **Probe-landscape instrumentation** (`--probe-landscape`, `--probe-force-candidate`,
+  `--probe-force-events`) records every candidate's probe loss per mutation event
+  and supports deterministic counterfactual branch runs; forced index 0 is verified
+  trajectory-identical to greedy selection. Probe-validity counterfactual study
+  (384 seeds x 4 candidate branches at event 1) recorded in
+  `artifacts/study-summaries/probe-validity-analysis.json`.
+- Gate studies now fail fast with a clear error when the `random` baseline arm is
+  missing from `--arms`.
 - Fixed: `injectGrokPwaHead` now prioritizes document title over site.json title for og:title.
 - Fixed: preview test port assertions updated to match PREVIEW_PORT=4174.
 

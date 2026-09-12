@@ -36,6 +36,9 @@ class ExperimentConfig:
     adaptive_policy: str = "probe_loss"
     probe_candidate_cap: int = 4
     probe_batch_count: int = 2
+    probe_landscape: bool = False
+    probe_force_candidate: int | None = None
+    probe_force_events: int | None = None
     arms: str = "fixed,random,adaptive"
     device: str = "cpu"
 
@@ -121,6 +124,10 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
         raise ValueError("probe_candidate_cap must be at least 1")
     if config.probe_batch_count < 1:
         raise ValueError("probe_batch_count must be at least 1")
+    if config.probe_force_candidate is not None and config.probe_force_candidate < 0:
+        raise ValueError("probe_force_candidate must be non-negative when set")
+    if config.probe_force_events is not None and config.probe_force_events < 1:
+        raise ValueError("probe_force_events must be at least 1 when set")
     arm_modes = _parse_arms(config.arms)
     torch.manual_seed(config.seed)
     initial_genome = create_genome(
@@ -192,6 +199,9 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
                     config.adaptive_policy,
                     config.probe_candidate_cap,
                     config.probe_batch_count,
+                    config.probe_landscape,
+                    config.probe_force_candidate,
+                    config.probe_force_events,
                 )
     validation_tokens = _validation_batches(config, device)
     results = tuple(
@@ -287,6 +297,9 @@ def _mutate_by_probe(
     candidate_cap: int | None,
     probe_batch_count: int,
     policy_label: str,
+    record_landscape: bool = False,
+    force_candidate: int | None = None,
+    force_events: int | None = None,
 ) -> None:
     """Probe feasible mutations and apply the one with the lowest probe loss.
 
@@ -294,6 +307,9 @@ def _mutate_by_probe(
     evaluates all of them, the exact guided upper bound) and
     ``probe_batch_count`` bounds the probe batch budget. Probe forward cost is
     booked into ``search_flops`` so selection strategies stay comparable.
+    ``record_landscape`` stores every candidate's probe loss in the mutation
+    history and ``force_candidate`` deterministically applies the candidate at
+    that evaluation index instead of the probe-best one (counterfactual runs).
     """
     if not arm.probe_batches:
         raise RuntimeError("probe-guided mutation requires probe batches")
@@ -334,7 +350,17 @@ def _mutate_by_probe(
     if not evaluated:
         return
     evaluated.sort(key=lambda item: (item[0], item[1]))
-    probe_loss, _, operation, layer_id, expert_id, winner = evaluated[0]
+    forced_here = (
+        force_candidate is not None
+        and (force_events is None or arm.mutations < force_events)
+    )
+    if forced_here and force_candidate >= len(evaluated):
+        raise ValueError(
+            f"probe_force_candidate {force_candidate} out of range "
+            f"(only {len(evaluated)} candidates evaluated)"
+        )
+    selected_index = force_candidate if forced_here else 0
+    probe_loss, _, operation, layer_id, expert_id, winner = evaluated[selected_index]
     before_hash = genome_hash(arm.genome)
     arm.genome = winner
     rebuilt = rebuild_model_from_genome(
@@ -351,21 +377,36 @@ def _mutate_by_probe(
     arm.search_flops += arm.model.parameter_count * 4
     if arm.mutation_history is None:
         raise RuntimeError("mutation history is not initialized")
-    arm.mutation_history.append(
-        {
-            "step": step,
-            "policy": policy_label,
-            "operation": operation,
-            "layer_id": layer_id,
-            "expert_id": expert_id,
-            "architecture_hash_before": before_hash,
-            "architecture_hash_after": genome_hash(arm.genome),
-            "mutation_count": arm.mutations,
-            "probe_loss": probe_loss,
-            "probe_candidates": len(evaluated),
-            "probe_batch_count": len(probe_batches),
-        }
-    )
+    entry: dict[str, object] = {
+        "step": step,
+        "policy": policy_label,
+        "operation": operation,
+        "layer_id": layer_id,
+        "expert_id": expert_id,
+        "architecture_hash_before": before_hash,
+        "architecture_hash_after": genome_hash(arm.genome),
+        "mutation_count": arm.mutations,
+        "probe_loss": probe_loss,
+        "probe_candidates": len(evaluated),
+        "probe_batch_count": len(probe_batches),
+    }
+    if record_landscape:
+        entry["probe_selected_index"] = selected_index
+        # evaluated holds (loss, order, operation, layer_id, expert_id, genome)
+        # sorted by (loss, order); landscape is reported in that sorted order,
+        # so index k in the landscape is the k-th best candidate.
+        entry["probe_landscape"] = [
+            {
+                "operation": item[2],
+                "layer_id": item[3],
+                "expert_id": item[4],
+                "probe_loss": item[0],
+            }
+            for item in evaluated
+        ]
+    if forced_here:
+        entry["forced_candidate"] = force_candidate
+    arm.mutation_history.append(entry)
 
 
 def _mutate_arm(
@@ -378,6 +419,9 @@ def _mutate_arm(
     adaptive_policy: str,
     probe_candidate_cap: int,
     probe_batch_count: int,
+    record_landscape: bool = False,
+    force_candidate: int | None = None,
+    force_events: int | None = None,
 ) -> None:
     if arm.mode == "guided":
         _mutate_by_probe(
@@ -387,6 +431,9 @@ def _mutate_arm(
             None,
             len(arm.probe_batches),
             "guided",
+            record_landscape,
+            force_candidate,
+            force_events,
         )
         return
     if arm.mode == "adaptive" and adaptive_policy == "probe_loss":
@@ -397,6 +444,9 @@ def _mutate_arm(
             probe_candidate_cap,
             probe_batch_count,
             "adaptive_probe_loss",
+            record_landscape,
+            force_candidate,
+            force_events,
         )
         return
     chooser = random.Random(seed)

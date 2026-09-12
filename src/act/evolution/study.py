@@ -118,6 +118,9 @@ def run_gate_study(
         raise ValueError("study seeds must be unique")
     if treatment not in {"adaptive", "guided"}:
         raise ValueError("unsupported treatment arm")
+    configured_arms = {mode.strip() for mode in config.arms.split(",") if mode.strip()}
+    if "random" not in configured_arms:
+        raise ValueError("gate studies require the 'random' arm as the baseline")
     experiments = tuple(
         run_experiment(replace(config, seed=seed))
         for seed in seeds

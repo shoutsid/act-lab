@@ -21,6 +21,18 @@ def main() -> None:
         help="comma-separated arm selection: fixed, random, adaptive, guided",
     )
     parser.add_argument(
+        "--mutation-interval",
+        type=int,
+        default=12,
+        help="steps between structural mutation events",
+    )
+    parser.add_argument(
+        "--mutation-budget",
+        type=int,
+        default=3,
+        help="maximum mutations per arm",
+    )
+    parser.add_argument(
         "--adaptive-policy",
         choices=("probe_loss", "signal"),
         default="probe_loss",
@@ -39,6 +51,23 @@ def main() -> None:
         help="probe batches used per candidate evaluation",
     )
     parser.add_argument(
+        "--probe-landscape",
+        action="store_true",
+        help="record every candidate's probe loss in mutation history",
+    )
+    parser.add_argument(
+        "--probe-force-candidate",
+        type=int,
+        default=None,
+        help="force applying the k-th best candidate at every mutation event",
+    )
+    parser.add_argument(
+        "--probe-force-events",
+        type=int,
+        default=None,
+        help="limit forced selection to the first N mutation events",
+    )
+    parser.add_argument(
         "--seeds",
         help="comma-separated seeds for a gate study instead of one experiment",
     )
@@ -54,9 +83,14 @@ def main() -> None:
         steps=args.steps,
         device=args.device,
         arms=args.arms,
+        mutation_interval=args.mutation_interval,
+        mutation_budget=args.mutation_budget,
         adaptive_policy=args.adaptive_policy,
         probe_candidate_cap=args.probe_candidate_cap,
         probe_batch_count=args.probe_batch_count,
+        probe_landscape=args.probe_landscape,
+        probe_force_candidate=args.probe_force_candidate,
+        probe_force_events=args.probe_force_events,
     )
     if args.seeds:
         seeds = tuple(int(value.strip()) for value in args.seeds.split(",") if value.strip())
