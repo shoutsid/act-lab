@@ -22,8 +22,9 @@ The project currently has two paths:
    checkpoint resume, topology genomes, safe prune/grow, and mutation-aware MoE rebuilds.
 
 The first real scientific result is partially demonstrated: Python adaptive topology
-beats Python random churn in 6/8 low-fidelity seeds under identical tokens, mutation
-schedule, and mutation budget, but the universal gate is intentionally still open.
+beats Python random churn in 10/16 low-fidelity seeds under identical tokens, mutation
+schedule, and mutation budget, with a negative mean adaptive-minus-random validation
+loss delta. The universal gate is intentionally still open.
 
 ## Milestone Comparison
 
@@ -35,9 +36,9 @@ schedule, and mutation budget, but the universal gate is intentionally still ope
 | 3. Topology graph and safety | PARTIAL | Python genome serialization, validation, hashing, prune/grow, expert-ID weight preservation, and accepted mutation fossils exist. Merge, split, rewire, and post-mutation NaN gates remain deferred. |
 | 4. Random topology control | DONE for the first gate | Python Experiment 0 provides reproducible random churn with matched cadence, mutation count, training/search accounting, and report metrics. Real data and scale remain deferred. |
 | 5. Importance instrumentation | DONE for the first gate | Python records routing/load, gradient norm, parameter norm, Fisher-style EMA, temporal stability, mutation count, and genome hash at structural windows. |
-| 6. Adaptive controller | PARTIAL | Python routing-led adaptive prune/grow mutates real static-MoE models and consumes persisted routing records. The validated default reaches 6/8 wins; routing, gradient, Fisher, and parameter-based expert pruning were probed and did not improve it. |
+| 6. Adaptive controller | PARTIAL | Python routing-led adaptive prune/grow mutates real static-MoE models and consumes persisted routing records. The validated default reaches 10/16 wins; routing, gradient, Fisher, and parameter-based expert pruning were probed and did not improve it. |
 | 7. Experiment ledger | DONE for the first gate | Browser ledger and Python append-only JSONL registry store config, dataset/tokenizer hashes, code revision, hardware, tokens, FLOPs, arm metrics, mutation fossils, and architecture hashes. |
-| 8. Final gate: adaptive > random | OPEN | The slower 48-step / 12-step schedule and simplified routing-led controller reproduce 3/4 adaptive wins across seeds 1, 2, 3, and 42. A universal or larger-seed pass is still required before scaling. |
+| 8. Final gate: adaptive > random | OPEN | The slower 48-step / 12-step schedule produces 10/16 adaptive wins with mean adaptive-minus-random validation loss delta `-0.032691`. A stronger or universal pass is still required before scaling. |
 
 ## Plan Sections 3-6: Compute and Kaggle Operations
 
@@ -130,7 +131,8 @@ These remain TODO or DEFERRED until the first gate passes:
 - Python registry/CLI round trip -> passed.
 - Initial Gate 3 trial -> adaptive lost to random on seeds 1, 2, 3, and 42.
 - Four-seed gate test -> adaptive won 3/4 seeds with equal three-mutation budgets.
-- Eight-seed generalization probe -> adaptive won 6/8 seeds; Gate 3 remains open pending a stronger pass.
+- Eight-seed generalization probe -> adaptive won 6/8 seeds; Gate 3 remained open pending a stronger pass.
+- Sixteen-seed baseline -> adaptive won 10/16 seeds, with matched budgets and mean loss delta `-0.032691`.
 - Expert-signal sweep -> random expert selection remained strongest at 6/8; routing, gradient,
   Fisher, and parameter-norm choices were retained as configurable probes but not selected by default.
 - Gate-study CLI -> `PYTHONPATH=src python -m act.evolution.cli --seeds 1,2,3,42 --steps 48`
