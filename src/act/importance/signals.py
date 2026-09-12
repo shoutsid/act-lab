@@ -23,6 +23,24 @@ class ExpertSignal:
         return asdict(self)
 
 
+def fisher_ema(
+    previous: float,
+    gradient_norm: float,
+    *,
+    decay: float = 0.9,
+) -> float:
+    if not 0.0 <= decay < 1.0:
+        raise ValueError("decay must be between 0 and 1")
+    if not math.isfinite(previous) or not math.isfinite(gradient_norm):
+        raise ValueError("importance values must be finite")
+    return decay * previous + (1.0 - decay) * gradient_norm**2
+
+
+def parameter_magnitude(model: torch.nn.Module) -> float:
+    total = sum(float(parameter.detach().pow(2).sum()) for parameter in model.parameters())
+    return math.sqrt(total)
+
+
 def cosine_similarity(left: Tensor, right: Tensor) -> float:
     """Return a bounded cosine similarity for flattened expert representations."""
     if left.shape != right.shape:
@@ -67,3 +85,44 @@ def measure_expert_signals(
                 )
             )
     return tuple(records)
+
+
+def expert_functional_sketches(
+    model: StaticMoECausalLM,
+    hidden: Tensor,
+) -> dict[str, Tensor]:
+    """Return detached output sketches for each expert on the same hidden batch."""
+    if hidden.ndim != 2 or hidden.shape[-1] != model.config.hidden_size:
+        raise ValueError("hidden must have shape [tokens, hidden_size]")
+    sketches: dict[str, Tensor] = {}
+    with torch.no_grad():
+        for block in model.blocks:
+            for expert_id, expert in zip(block.expert_ids, block.experts):
+                sketches[f"{expert_id}"] = expert(hidden).detach().flatten()
+    return sketches
+
+
+def expert_ablation_delta(
+    model: StaticMoECausalLM,
+    tokens: Tensor,
+    expert_id: str,
+) -> float:
+    """Measure validation-loss increase when one expert is temporarily zeroed."""
+    target = None
+    for block in model.blocks:
+        if expert_id in block.expert_ids:
+            target = block.experts[block.expert_ids.index(expert_id)]
+            break
+    if target is None:
+        raise ValueError(f"unknown expert: {expert_id}")
+    original = {name: parameter.detach().clone() for name, parameter in target.named_parameters()}
+    model.eval()
+    with torch.no_grad():
+        baseline = float(model.loss(tokens))
+        for parameter in target.parameters():
+            parameter.zero_()
+        ablated = float(model.loss(tokens))
+    with torch.no_grad():
+        for name, parameter in target.named_parameters():
+            parameter.copy_(original[name])
+    return ablated - baseline

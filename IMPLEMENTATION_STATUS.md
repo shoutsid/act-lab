@@ -62,8 +62,8 @@ a hold point before scaling.
 | Attention/GDN/hybrid model core | PARTIAL | TypeScript simulator represents these module types; Python runtime currently supports dense and static MoE only. |
 | Full genome contract | PARTIAL | Python genome now represents heads, modules, widths, residual paths, context, and compute ceilings and can reconstruct the V0 dense/hybrid model; MoE/shared-expert reconstruction remains. |
 | Weight/topology separation | DONE for the first gate | Model and optimizer remain separate from the Python genome, while versioned checkpoints and Experiment 0 fossils package genome and mutation metadata together. |
-| Importance levels and lifecycle | PARTIAL | Python now exposes reusable routing, gradient, parameter, and temporal-stability records; Fisher, ablation, and lifecycle aggregation remain. |
-| Expert ecology and similarity graph | PARTIAL | Device-safe expert signal extraction and cosine similarity primitives exist; functional sketches, graphs, and causal ablation remain. |
+| Importance levels and lifecycle | PARTIAL | Python exposes routing, gradient, parameter, Fisher-style EMA, magnitude, and temporal-stability records plus temporary ablation deltas; lifecycle aggregation remains. |
+| Expert ecology and similarity graph | PARTIAL | Device-safe expert signal extraction, functional sketches, and cosine similarity primitives exist; persistent graphs and lifecycle fossils remain. |
 
 ## Plan Sections 25-42: Data, Training, and Reproducibility
 
