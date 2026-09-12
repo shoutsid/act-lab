@@ -50,7 +50,7 @@ a hold point before scaling.
 |---|---|---|
 | T4x2 PyTorch/DDP | PARTIAL | Add device selection and DDP launch helpers now discover torchrun rank/world-size, initialize an appropriate process group, and wrap models only for multi-process runs; scheduler, accumulation, autocast, and activation checkpointing are available. T4x2 validation remains. |
 | TPU v5e/JAX | DEFERRED | Port only after a stable architecture wins the GPU gate. |
-| Kaggle artifact datasets | TODO | Add checkpoint, experiment, evaluation, and final-model publishing layouts. |
+| Kaggle artifact datasets | PARTIAL | Deterministic checkpoint, evaluation, report, and manifest layout contracts now exist; publishing automation remains. |
 | Session resume protocol | PARTIAL | Local checkpoint resume is deterministic. Kaggle dataset restore, checksums, shard position, and publish-on-exit are absent. |
 | Repository structure | PARTIAL | Core Python directories now exist; data, evaluation, evolution, and importance implementations are still empty. |
 
