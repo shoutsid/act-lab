@@ -69,13 +69,13 @@ schedule, and mutation budget, but the universal gate is intentionally still ope
 | Complete checkpoint format | DONE for the first gate | Versioned local checkpoints persist model/optimizer/training RNG state plus scheduler, genome, topology history, importance, dataset position, config, and revision metadata. |
 | Experiment registry | DONE for the first gate | Append-only JSONL records include experiment/config/dataset/tokenizer hashes, hardware, tokens, FLOPs, architecture hashes, and arm results. |
 | Reproducibility hashes | DONE for the first gate | Genome, config, dataset, tokenizer, and complete experiment hashes are recorded. |
-| Research notebooks/scripts | PARTIAL | Dense CLI exists; add baseline, random churn, measurement, adaptive, extraction, retrain, and compare entry points. |
+| Research notebooks/scripts | PARTIAL | Dense and Experiment 0 CLIs now support baseline runs, append-only records, and multi-seed gate studies; extraction, retrain, and compare entry points remain. |
 
 ## Plan Sections 43-66: Scientific Experiments
 
 | Experiment | Status |
 |---|---|
-| Experiment 0: fixed vs random vs adaptive | PARTIAL | Matched-budget Python runner, metrics, registry, and a reproducible 3/4 adaptive four-seed probe exist; universal Gate 3 is still open. |
+| Experiment 0: fixed vs random vs adaptive | PARTIAL | Matched-budget Python runner, metrics, registry, reproducible multi-seed CLI study, and a 6/8 probe exist; universal Gate 3 is still open. |
 | Conventional dense/static-MoE frontier | PARTIAL |
 | Dynamic sparse prune/grow | PARTIAL | Implemented in the Python Experiment 0 runner for safe expert prune/grow; richer topology operators remain. |
 | Expert ecology clone/split/merge/death | TODO |
@@ -122,7 +122,7 @@ These remain TODO or DEFERRED until the first gate passes:
 
 ## Verified Checks
 
-- `PYTHONPATH=src python -m pytest -q` -> 13 passed after the current milestone edits.
+- `PYTHONPATH=src python -m pytest -q` -> 14 passed after the current milestone edits.
 - `PYTHONPATH=src python -m compileall -q src/act tests` -> passed.
 - `npm run typecheck` -> passed.
 - `npm run build` -> passed.
@@ -133,11 +133,13 @@ These remain TODO or DEFERRED until the first gate passes:
 - Eight-seed generalization probe -> adaptive won 6/8 seeds; Gate 3 remains open pending a stronger pass.
 - Expert-signal sweep -> random expert selection remained strongest at 6/8; routing, gradient,
   Fisher, and parameter-norm choices were retained as configurable probes but not selected by default.
+- Gate-study CLI -> `PYTHONPATH=src python -m act.evolution.cli --seeds 1,2,3,42 --steps 48`
+   emits a deterministic multi-seed JSON summary.
 - Browser ACT console and research invariants -> passed with no console errors in the latest checks.
 
 ## Environment Notes
 
-- Git was initialized on 2026-09-12; no files were staged or committed.
+- Git was initialized on 2026-09-12; public project baseline committed as `90416f3`.
 - The app uses port `4173` because port `8080` is occupied by an unrelated local service.
 - The installed PyTorch CUDA build does not support the local GTX 1070, so Python validation
   currently runs on CPU with a warning.

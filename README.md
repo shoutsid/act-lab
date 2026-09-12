@@ -32,19 +32,34 @@ A training process that jointly optimizes weights and computational topology can
 ## Quick Start
 ```bash
 pip install -e .
-python scripts/train.py --config configs/adaptive_v0.yaml
-```
-
-## First baseline gate
-
-The first executable ACT gate is a small deterministic dense causal language
-model with checkpointable optimizer and synthetic-data state. Run it with:
-
-```bash
 PYTHONPATH=src python -m act.training.cli --steps 8
 ```
 
-The resume contract is covered by:
+The browser research console uses the existing npm toolchain:
+
+```bash
+npm install
+npm run dev
+```
+
+## Experiment 0 gate
+
+The first executable topology gate compares fixed, random-churn, and adaptive
+static-MoE arms under the same synthetic batches and mutation budget:
+
+```bash
+PYTHONPATH=src python -m act.evolution.cli --seeds 1,2,3,42 --steps 48
+```
+
+For a single append-only experiment record, omit `--seeds` and choose an output
+path with `--output`.
+
+The current low-fidelity study is reproducible and reports adaptive wins, loss
+delta, architecture hashes, mutation fossils, importance records, and compute
+accounting. The broader Gate 3 remains open until adaptive topology wins more
+consistently across seeds.
+
+The checkpoint resume contract is covered by:
 
 ```bash
 PYTHONPATH=src python -m pytest tests/test_dense_baseline.py -q

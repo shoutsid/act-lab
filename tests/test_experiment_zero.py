@@ -1,6 +1,6 @@
 import math
 
-from act.evolution import ExperimentConfig, run_experiment
+from act.evolution import ExperimentConfig, run_experiment, run_gate_study
 
 
 def test_experiment_zero_uses_matched_mutation_budget() -> None:
@@ -64,3 +64,18 @@ def test_experiment_zero_adaptive_gate_probe() -> None:
         assert arms["random"].mutation_count == arms["adaptive"].mutation_count == 3
         wins += arms["adaptive"].final_loss < arms["random"].final_loss
     assert wins >= 3
+
+
+def test_gate_study_serializes_reproducible_summary() -> None:
+    study = run_gate_study(
+        ExperimentConfig(steps=12, mutation_interval=6, mutation_budget=2),
+        seeds=(1, 2),
+    )
+    assert study.seeds == (1, 2)
+    assert study.adaptive_wins >= 0
+    assert len(study.experiments) == 2
+    assert study.to_dict()["win_rate"] == study.win_rate
+    assert study.to_dict() == run_gate_study(
+        ExperimentConfig(steps=12, mutation_interval=6, mutation_budget=2),
+        seeds=(1, 2),
+    ).to_dict()
