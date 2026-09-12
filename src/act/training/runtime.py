@@ -20,6 +20,9 @@ class TrainingConfig:
     learning_rate: float = 3e-4
     seed: int = 7
     device: str = "auto"
+    gradient_accumulation_steps: int = 1
+    warmup_steps: int = 0
+    total_steps: int = 0
 
 
 @dataclass
@@ -42,10 +45,15 @@ def train_steps(
     state: TrainingState,
     config: TrainingConfig,
     count: int,
+    scheduler: torch.optim.lr_scheduler.LRScheduler | None = None,
 ) -> list[float]:
     """Train for ``count`` synthetic batches and return their losses."""
     if count < 0:
         raise ValueError("count must be non-negative")
+    if config.gradient_accumulation_steps < 1:
+        raise ValueError("gradient_accumulation_steps must be positive")
+    if config.warmup_steps < 0 or config.total_steps < 0:
+        raise ValueError("scheduler steps must be non-negative")
     device = resolve_device(config.device)
     model.to(device)
     move_optimizer_state(optimizer, device)
@@ -56,18 +64,30 @@ def train_steps(
         generator.set_state(state.generator_state)
     model.train()
     losses: list[float] = []
-    for _ in range(count):
+    optimizer.zero_grad(set_to_none=True)
+    for batch_index in range(count):
         tokens = torch.randint(
             0,
             model.config.vocab_size,
             (config.batch_size, config.sequence_length),
             generator=generator,
         ).to(device)
-        optimizer.zero_grad(set_to_none=True)
         loss = model.loss(tokens)
-        loss.backward()
-        optimizer.step()
-        state.step += 1
+        (loss / config.gradient_accumulation_steps).backward()
+        should_step = (
+            (batch_index + 1) % config.gradient_accumulation_steps == 0
+            or batch_index == count - 1
+        )
+        if should_step:
+            optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
+            state.step += 1
+            if scheduler is not None:
+                scheduler.step()
+            state.scheduler_state = {
+                "step": state.step,
+                "learning_rate": optimizer.param_groups[0]["lr"],
+            }
         state.tokens += tokens.numel()
         losses.append(float(loss.detach()))
     state.generator_state = generator.get_state()
@@ -76,6 +96,28 @@ def train_steps(
 
 def make_optimizer(model: BaselineModel, config: TrainingConfig) -> torch.optim.Optimizer:
     return torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
+
+
+def make_scheduler(
+    optimizer: torch.optim.Optimizer,
+    config: TrainingConfig,
+) -> torch.optim.lr_scheduler.LambdaLR:
+    """Create a linear warmup/decay schedule; zero total steps keeps LR constant."""
+    if config.warmup_steps < 0 or config.total_steps < 0:
+        raise ValueError("scheduler steps must be non-negative")
+    total_steps = max(config.total_steps, config.warmup_steps, 1)
+
+    def scale(step: int) -> float:
+        if config.warmup_steps and step <= config.warmup_steps:
+            return step / config.warmup_steps
+        if config.total_steps <= config.warmup_steps:
+            return 1.0
+        return max(
+            0.0,
+            (config.total_steps - step) / (config.total_steps - config.warmup_steps),
+        )
+
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, scale, last_epoch=-1)
 
 
 def resolve_device(requested: str) -> torch.device:

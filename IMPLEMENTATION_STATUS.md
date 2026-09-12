@@ -48,7 +48,7 @@ a hold point before scaling.
 
 | Area | Status | Remaining work |
 |---|---|---|
-| T4x2 PyTorch/DDP | TODO | Add device selection, DDP launch, gradient accumulation, mixed precision, and activation checkpointing after the single-process gate. |
+| T4x2 PyTorch/DDP | TODO | Add device selection, DDP launch, mixed precision, and activation checkpointing after the single-process gate; single-process scheduler and gradient accumulation primitives now exist. |
 | TPU v5e/JAX | DEFERRED | Port only after a stable architecture wins the GPU gate. |
 | Kaggle artifact datasets | TODO | Add checkpoint, experiment, evaluation, and final-model publishing layouts. |
 | Session resume protocol | PARTIAL | Local checkpoint resume is deterministic. Kaggle dataset restore, checksums, shard position, and publish-on-exit are absent. |
