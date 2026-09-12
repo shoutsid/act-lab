@@ -75,7 +75,7 @@ schedule, and mutation budget, but the universal gate is intentionally still ope
 
 | Experiment | Status |
 |---|---|
-| Experiment 0: fixed vs random vs adaptive | PARTIAL | Matched-budget Python runner, metrics, registry, reproducible multi-seed CLI study, and a 6/8 probe exist; universal Gate 3 is still open. |
+| Experiment 0: fixed vs random vs adaptive | PARTIAL | Matched-budget Python runner, metrics, append-only single/study registry records, reproducible multi-seed CLI study, and a 6/8 probe exist; universal Gate 3 is still open. |
 | Conventional dense/static-MoE frontier | PARTIAL |
 | Dynamic sparse prune/grow | PARTIAL | Implemented in the Python Experiment 0 runner for safe expert prune/grow; richer topology operators remain. |
 | Expert ecology clone/split/merge/death | TODO |
@@ -122,7 +122,7 @@ These remain TODO or DEFERRED until the first gate passes:
 
 ## Verified Checks
 
-- `PYTHONPATH=src python -m pytest -q` -> 14 passed after the current milestone edits.
+- `PYTHONPATH=src python -m pytest -q` -> 15 passed after the current milestone edits.
 - `PYTHONPATH=src python -m compileall -q src/act tests` -> passed.
 - `npm run typecheck` -> passed.
 - `npm run build` -> passed.
@@ -135,6 +135,7 @@ These remain TODO or DEFERRED until the first gate passes:
   Fisher, and parameter-norm choices were retained as configurable probes but not selected by default.
 - Gate-study CLI -> `PYTHONPATH=src python -m act.evolution.cli --seeds 1,2,3,42 --steps 48`
    emits a deterministic multi-seed JSON summary.
+- Gate-study registry round trip -> the same CLI appends exactly one `gate_study` JSONL record.
 - Browser ACT console and research invariants -> passed with no console errors in the latest checks.
 
 ## Environment Notes

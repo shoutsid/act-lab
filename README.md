@@ -51,8 +51,9 @@ static-MoE arms under the same synthetic batches and mutation budget:
 PYTHONPATH=src python -m act.evolution.cli --seeds 1,2,3,42 --steps 48
 ```
 
-For a single append-only experiment record, omit `--seeds` and choose an output
-path with `--output`.
+The command prints and appends one `gate_study` record to
+`artifacts/experiments.jsonl`. For a single append-only experiment record, omit
+`--seeds` and choose an output path with `--output`.
 
 The current low-fidelity study is reproducible and reports adaptive wins, loss
 delta, architecture hashes, mutation fossils, importance records, and compute

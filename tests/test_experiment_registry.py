@@ -1,6 +1,14 @@
 import json
 
-from act.evolution import ExperimentConfig, append_result, experiment_hash, run_experiment
+from act.evolution import (
+    ExperimentConfig,
+    append_result,
+    append_study,
+    experiment_hash,
+    run_experiment,
+    run_gate_study,
+    study_hash,
+)
 
 
 def test_registry_is_reproducible_and_append_only(tmp_path) -> None:
@@ -17,4 +25,21 @@ def test_registry_is_reproducible_and_append_only(tmp_path) -> None:
     assert first["tokens"] == 72
     records = [json.loads(line) for line in path.read_text().splitlines()]
     assert len(records) == 2
+    assert records[0] == records[1]
+
+
+def test_registry_persists_reproducible_gate_studies(tmp_path) -> None:
+    study = run_gate_study(
+        ExperimentConfig(steps=3, mutation_interval=2, mutation_budget=1),
+        seeds=(1, 2),
+    )
+    path = tmp_path / "experiments.jsonl"
+    first = append_study(path, study)
+    second = append_study(path, study)
+
+    assert first["record_type"] == "gate_study"
+    assert first["study_hash"] == second["study_hash"] == study_hash(study)
+    assert first["seeds"] == [1, 2]
+    assert first["adaptive_wins"] == study.adaptive_wins
+    records = [json.loads(line) for line in path.read_text().splitlines()]
     assert records[0] == records[1]

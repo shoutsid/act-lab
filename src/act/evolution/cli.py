@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from .experiment import ExperimentConfig, run_experiment
-from .registry import append_result
+from .registry import append_result, append_study
 from .study import run_gate_study
 
 
@@ -23,7 +23,7 @@ def main() -> None:
     if args.seeds:
         seeds = tuple(int(value.strip()) for value in args.seeds.split(",") if value.strip())
         study = run_gate_study(config, seeds=seeds)
-        print(json.dumps(study.to_dict(), sort_keys=True))
+        print(json.dumps(append_study(args.output, study), sort_keys=True))
         return
     result = run_experiment(config)
     print(json.dumps(append_result(args.output, result), sort_keys=True))
