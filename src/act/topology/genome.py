@@ -21,6 +21,11 @@ class LayerGene:
     active_experts: int = 0
     enabled: bool = True
     inputs: list[str] = field(default_factory=list)
+    module: str = "attention"
+    heads: int = 4
+    kv_heads: int = 4
+    ffn_width: int = 0
+    residual_paths: int = 1
 
 
 @dataclass
@@ -32,6 +37,7 @@ class ArchitectureGenome:
     layers: list[LayerGene]
     max_params: int
     max_active_params: int
+    context_size: int = 32
 
     @property
     def depth(self) -> int:
@@ -61,6 +67,11 @@ class ArchitectureGenome:
                 active_experts=int(layer.get("active_experts", 0)),
                 enabled=bool(layer.get("enabled", True)),
                 inputs=[str(source) for source in layer.get("inputs", [])],
+                module=str(layer.get("module", "attention")),
+                heads=int(layer.get("heads", 4)),
+                kv_heads=int(layer.get("kv_heads", layer.get("heads", 4))),
+                ffn_width=int(layer.get("ffn_width", 0)),
+                residual_paths=int(layer.get("residual_paths", 1)),
             )
             for layer in value["layers"]
         ]
@@ -72,6 +83,7 @@ class ArchitectureGenome:
             layers=layers,
             max_params=int(value["max_params"]),
             max_active_params=int(value["max_active_params"]),
+            context_size=int(value.get("context_size", 32)),
         )
         validation = validate_genome(genome)
         if not validation.valid:
@@ -107,6 +119,9 @@ def create_genome(
                 ffn=ffn,
                 experts=experts,
                 active_experts=active_experts if ffn == "moe" else 0,
+                ffn_width=hidden_size * 4,
+                heads=4 if hidden_size % 4 == 0 else 1,
+                kv_heads=4 if hidden_size % 4 == 0 else 1,
             )
         )
     genome = ArchitectureGenome(
@@ -117,6 +132,7 @@ def create_genome(
         layers=layers,
         max_params=10**9,
         max_active_params=10**9,
+        context_size=32,
     )
     validation = validate_genome(genome)
     if not validation.valid:
@@ -134,7 +150,7 @@ def validate_genome(genome: ArchitectureGenome) -> GenomeValidation:
     errors: list[str] = []
     if genome.version != 1:
         errors.append(f"unsupported genome version {genome.version}")
-    if genome.hidden_size <= 0 or genome.vocab_size <= 0:
+    if genome.hidden_size <= 0 or genome.vocab_size <= 0 or genome.context_size < 2:
         errors.append("model dimensions must be positive")
     if not genome.layers:
         errors.append("genome has no layers")
@@ -146,6 +162,14 @@ def validate_genome(genome: ArchitectureGenome) -> GenomeValidation:
         if layer.id in layer_ids:
             errors.append(f"duplicate layer id {layer.id}")
         layer_ids.add(layer.id)
+        if layer.module not in {"attention", "gdn", "hybrid"}:
+            errors.append(f"unsupported module type for {layer.id}")
+        if layer.heads <= 0 or layer.kv_heads <= 0 or layer.heads % layer.kv_heads:
+            errors.append(f"invalid attention geometry for {layer.id}")
+        if genome.hidden_size % layer.heads:
+            errors.append(f"heads must divide hidden size for {layer.id}")
+        if layer.ffn_width <= 0 or layer.residual_paths <= 0:
+            errors.append(f"invalid width or residual paths for {layer.id}")
         enabled += int(layer.enabled)
         if layer.ffn == "dense" and layer.experts:
             errors.append(f"dense layer {layer.id} has experts")

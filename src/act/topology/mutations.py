@@ -84,6 +84,11 @@ def split_expert(genome: ArchitectureGenome, layer_id: str, expert_id: str, step
     return new_id
 
 
+def clone_expert(genome: ArchitectureGenome, layer_id: str, expert_id: str, step: int) -> str | None:
+    """Clone an expert gene with a fresh identity for weight-level transfer."""
+    return split_expert(genome, layer_id, expert_id, step)
+
+
 def rewire_layer(genome: ArchitectureGenome, layer_id: str, input_layer_id: str) -> bool:
     """Replace a layer's residual input edge, rejecting cycles and unknown nodes."""
     layer = next((item for item in genome.layers if item.id == layer_id), None)

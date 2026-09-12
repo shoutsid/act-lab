@@ -2,6 +2,7 @@
 
 from .dense import DenseBaselineConfig, DenseCausalLM
 from .moe import StaticMoECausalLM, StaticMoEConfig
+from .v0 import V0CausalLM, V0ModelConfig
 from act.topology.genome import ArchitectureGenome, validate_genome
 
 
@@ -90,3 +91,29 @@ def rebuild_model_from_genome(
             value.copy_(source_state[key])
     rebuilt.load_state_dict(target_state)
     return rebuilt
+
+
+def v0_model_from_genome(genome: ArchitectureGenome) -> V0CausalLM:
+    """Reconstruct a V0 dense/hybrid model from its complete genome."""
+    validation = validate_genome(genome)
+    if not validation.valid:
+        raise ValueError("cannot build V0 model from invalid genome: " + "; ".join(validation.errors))
+    if any(layer.ffn != "dense" for layer in genome.layers if layer.enabled):
+        raise ValueError("V0 reconstruction currently requires dense feed-forward layers")
+    enabled = [layer for layer in genome.layers if layer.enabled]
+    if not enabled:
+        raise ValueError("V0 genome has no enabled layers")
+    if len({layer.ffn_width for layer in enabled}) != 1:
+        raise ValueError("V0 reconstruction requires uniform feed-forward widths")
+    module_types = tuple(layer.module for layer in enabled)
+    return V0CausalLM(
+        V0ModelConfig(
+            vocab_size=genome.vocab_size,
+            context_size=genome.context_size,
+            hidden_size=genome.hidden_size,
+            depth=len(enabled),
+            attention_heads=enabled[0].heads,
+            ffn_width=enabled[0].ffn_width,
+            module_types=module_types,
+        )
+    )

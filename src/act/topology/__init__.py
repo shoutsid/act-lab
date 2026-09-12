@@ -3,6 +3,7 @@
 from .genome import ArchitectureGenome, create_genome, genome_hash, validate_genome
 from .mutations import (
     grow_expert,
+    clone_expert,
     merge_experts,
     prune_expert,
     rewire_layer,
@@ -14,6 +15,7 @@ __all__ = [
     "create_genome",
     "genome_hash",
     "grow_expert",
+    "clone_expert",
     "merge_experts",
     "prune_expert",
     "rewire_layer",

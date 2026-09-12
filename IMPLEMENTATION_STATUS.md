@@ -20,6 +20,8 @@ The project currently has two paths:
 1. A feature-rich TypeScript laboratory simulator with fixed, random, and adaptive arms.
 2. A small PyTorch foundation with dense and static-MoE models, deterministic training,
    checkpoint resume, topology genomes, safe prune/grow, and mutation-aware MoE rebuilds.
+   It now also has versioned configuration schemas, deterministic checksum-addressed
+   token shards, and explicit CPU/CUDA device contracts.
 
 The first real scientific result is partially demonstrated: with four deterministic
 held-out validation batches, Python adaptive topology beats Python random churn in
@@ -57,7 +59,7 @@ a hold point before scaling.
 |---|---|---|
 | V0 256M-350M model | TODO | Scale beyond the tiny deterministic test model only after the mechanism is proven. |
 | Attention/GDN/hybrid model core | PARTIAL | TypeScript simulator represents these module types; Python runtime currently supports dense and static MoE only. |
-| Full genome contract | PARTIAL | Python genome supports dense/MoE expert layouts; heads, modules, widths, residual paths, context, and compute ceilings need to be represented. |
+| Full genome contract | PARTIAL | Python genome now represents heads, modules, widths, residual paths, context, and compute ceilings and can reconstruct the V0 dense/hybrid model; MoE/shared-expert reconstruction remains. |
 | Weight/topology separation | DONE for the first gate | Model and optimizer remain separate from the Python genome, while versioned checkpoints and Experiment 0 fossils package genome and mutation metadata together. |
 | Importance levels and lifecycle | PARTIAL | Simulator implementation and Python running statistics/temporal stability exist; broader lifecycle analysis remains. |
 | Expert ecology and similarity graph | TODO | No Python routing metadata, functional sketches, graph, or causal ablation yet. |
@@ -66,7 +68,7 @@ a hold point before scaling.
 
 | Area | Status | Remaining work |
 |---|---|---|
-| Real tokenizer and shards | TODO | Add fixed tokenizer, binary shards, checksums, deterministic ordering, and dataset manifests. |
+| Real tokenizer and shards | PARTIAL | Versioned deterministic binary token shards, bounded reads, checksums, manifests, and synthetic fixtures exist; real tokenizer/corpus adapters remain. |
 | Real language-model validation | TODO | Add held-out batches, perplexity/validation loss, capability probes, and FLOPs accounting. |
 | Complete checkpoint format | DONE for the first gate | Versioned local checkpoints persist model/optimizer/training RNG state plus scheduler, genome, topology history, importance, dataset position, config, and revision metadata. |
 | Experiment registry | DONE for the first gate | Append-only JSONL records include experiment/config/dataset/tokenizer hashes, hardware, tokens, FLOPs, architecture hashes, and arm results. |

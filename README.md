@@ -88,3 +88,18 @@ PYTHONPATH=src python -m pytest tests/test_dense_baseline.py -q
 The test requires interrupted training followed by checkpoint restore to match
 continuous training parameter-for-parameter. This is the baseline contract
 before adding a static MoE or topology mutation to the real training runtime.
+
+## Deterministic token shards
+
+The shared data contract can generate checksum-addressed synthetic shards while
+the real tokenizer and corpus adapters are implemented:
+
+```python
+from act.data import build_synthetic_shards, read_tokens
+
+manifest = build_synthetic_shards("artifacts/synthetic-shards")
+batch = read_tokens(manifest.shards[0], start=0, count=2048)
+```
+
+The same manifest and bounded-read contract will be used for real binary
+training shards.
