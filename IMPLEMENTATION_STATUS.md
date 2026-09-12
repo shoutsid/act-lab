@@ -86,8 +86,8 @@ a hold point before scaling.
 | Expert ecology clone/split/merge/death | TODO |
 | Module-type evolution | DEFERRED |
 | Adaptive depth | PARTIAL | Python topology mutations can safely toggle effective layer depth and change attention/GDN/hybrid module metadata; full multi-generation training comparisons remain. |
-| Hierarchical search | DEFERRED |
-| Qwen-informed search | DEFERRED |
+| Hierarchical search | PARTIAL | Deterministic layer/module candidate ranking now supports explicit depth penalties and inspectable priors. |
+| Qwen-informed search | PARTIAL | Prior interface is available for imported architecture scores; no external Qwen artifacts are bundled or claimed. |
 | Teacher initialization | DEFERRED |
 | Architecture reusability and fresh initialization | DEFERRED |
 | Cross-seed stability and architecture equivalence | DEFERRED |
