@@ -11,6 +11,12 @@ from .runtime import (
     save_checkpoint,
     train_steps,
 )
+from .distributed import (
+    DistributedConfig,
+    distributed_config,
+    initialize_distributed,
+    wrap_distributed,
+)
 
 __all__ = [
 	"TrainingConfig",
@@ -22,4 +28,8 @@ __all__ = [
 	"resolve_device",
 	"save_checkpoint",
 	"train_steps",
+	"DistributedConfig",
+	"distributed_config",
+	"initialize_distributed",
+	"wrap_distributed",
 ]
