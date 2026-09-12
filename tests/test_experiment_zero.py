@@ -74,6 +74,7 @@ def test_gate_study_serializes_reproducible_summary() -> None:
     assert study.seeds == (1, 2)
     assert study.adaptive_wins >= 0
     assert len(study.experiments) == 2
+    assert study.matched_mutation_budget
     assert study.to_dict()["win_rate"] == study.win_rate
     assert study.to_dict() == run_gate_study(
         ExperimentConfig(steps=12, mutation_interval=6, mutation_budget=2),

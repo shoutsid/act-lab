@@ -136,6 +136,8 @@ These remain TODO or DEFERRED until the first gate passes:
 - Gate-study CLI -> `PYTHONPATH=src python -m act.evolution.cli --seeds 1,2,3,42 --steps 48`
    emits a deterministic multi-seed JSON summary.
 - Gate-study registry round trip -> the same CLI appends exactly one `gate_study` JSONL record.
+- Gate-study budget invariant -> study execution and registry records enforce equal random/adaptive
+   mutation counts for every seed.
 - Browser ACT console and research invariants -> passed with no console errors in the latest checks.
 
 ## Environment Notes
