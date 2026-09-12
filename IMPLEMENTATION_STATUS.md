@@ -70,7 +70,7 @@ a hold point before scaling.
 | Area | Status | Remaining work |
 |---|---|---|
 | Real tokenizer and shards | PARTIAL | Versioned deterministic binary token shards, bounded reads, checksums, manifests, and synthetic fixtures exist; real tokenizer/corpus adapters remain. |
-| Real language-model validation | TODO | Add held-out batches, perplexity/validation loss, capability probes, and FLOPs accounting. |
+| Real language-model validation | PARTIAL | Add held-out batches and capability probes; bounded perplexity evaluation now reports weighted loss, perplexity, batch count, and token count, while real corpora remain. |
 | Complete checkpoint format | PARTIAL | Versioned local checkpoints persist model/optimizer/training RNG state plus scheduler, genome, topology history, importance, dataset position, config, and revision metadata; compatibility validation and bounded session retention are implemented, while remote/session resume remains. |
 | Experiment registry | DONE for the first gate | Append-only JSONL records include experiment/config/dataset/tokenizer hashes, hardware, tokens, FLOPs, architecture hashes, and arm results. |
 | Reproducibility hashes | DONE for the first gate | Genome, config, dataset, tokenizer, and complete experiment hashes are recorded. |

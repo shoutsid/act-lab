@@ -4,6 +4,7 @@ from statistics import mean, pstdev
 
 from act.evolution.experiment import ExperimentResult
 from act.evolution.study import GateStudyResult
+from .perplexity import PerplexityResult, evaluate_perplexity
 
 
 def summarize_experiment(result: ExperimentResult) -> dict[str, object]:
@@ -45,3 +46,11 @@ def summarize_study(study: GateStudyResult) -> dict[str, object]:
         "matched_mutation_budget": study.matched_mutation_budget,
         "experiments": [summarize_experiment(experiment) for experiment in study.experiments],
     }
+
+
+__all__ = [
+    "PerplexityResult",
+    "evaluate_perplexity",
+    "summarize_experiment",
+    "summarize_study",
+]
