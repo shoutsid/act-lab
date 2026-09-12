@@ -3,6 +3,7 @@
 from .experiment import ExperimentConfig, ExperimentResult, run_experiment
 from .controller import AdaptiveController, ControllerDecision
 from .pareto import PopulationCandidate, dominates, pareto_frontier, select_population
+from .frontier import FrontierPoint, run_frontier
 from .registry import append_result, append_study, experiment_hash, study_hash
 from .study import GateStudyResult, run_gate_study
 
@@ -15,6 +16,8 @@ __all__ = [
 	"dominates",
 	"pareto_frontier",
 	"select_population",
+	"FrontierPoint",
+	"run_frontier",
 	"GateStudyResult",
 	"append_result",
 	"append_study",
