@@ -21,7 +21,8 @@ The project currently has two paths:
 2. A small PyTorch foundation with dense and static-MoE models, deterministic training,
    checkpoint resume, topology genomes, safe prune/grow, and mutation-aware MoE rebuilds.
    It now also has versioned configuration schemas, deterministic checksum-addressed
-   token shards, and explicit CPU/CUDA device contracts.
+   token shards, explicit CPU/CUDA device contracts, and reusable importance
+   signal extraction for static-MoE experts.
 
 The first real scientific result is partially demonstrated: with four deterministic
 held-out validation batches, Python adaptive topology beats Python random churn in
@@ -61,8 +62,8 @@ a hold point before scaling.
 | Attention/GDN/hybrid model core | PARTIAL | TypeScript simulator represents these module types; Python runtime currently supports dense and static MoE only. |
 | Full genome contract | PARTIAL | Python genome now represents heads, modules, widths, residual paths, context, and compute ceilings and can reconstruct the V0 dense/hybrid model; MoE/shared-expert reconstruction remains. |
 | Weight/topology separation | DONE for the first gate | Model and optimizer remain separate from the Python genome, while versioned checkpoints and Experiment 0 fossils package genome and mutation metadata together. |
-| Importance levels and lifecycle | PARTIAL | Simulator implementation and Python running statistics/temporal stability exist; broader lifecycle analysis remains. |
-| Expert ecology and similarity graph | TODO | No Python routing metadata, functional sketches, graph, or causal ablation yet. |
+| Importance levels and lifecycle | PARTIAL | Python now exposes reusable routing, gradient, parameter, and temporal-stability records; Fisher, ablation, and lifecycle aggregation remain. |
+| Expert ecology and similarity graph | PARTIAL | Device-safe expert signal extraction and cosine similarity primitives exist; functional sketches, graphs, and causal ablation remain. |
 
 ## Plan Sections 25-42: Data, Training, and Reproducibility
 
