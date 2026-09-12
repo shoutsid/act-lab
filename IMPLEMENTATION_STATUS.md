@@ -40,7 +40,7 @@ a hold point before scaling.
 | 3. Topology graph and safety | PARTIAL | Python genome serialization, validation, hashing, prune/grow, merge/split/rewire guards, expert-ID weight preservation, and accepted mutation fossils exist. Full graph-aware model execution and post-mutation causal checks remain deferred. |
 | 4. Random topology control | DONE for the first gate | Python Experiment 0 provides reproducible random churn with matched cadence, mutation count, training/search accounting, and report metrics. Real data and scale remain deferred. |
 | 5. Importance instrumentation | DONE for the first gate | Python records routing/load, gradient norm, parameter norm, Fisher-style EMA, temporal stability, mutation count, and genome hash at structural windows. |
-| 6. Adaptive controller | PARTIAL | Python now exposes a deterministic, validated budget-aware `AdaptiveController` over routing load and expert importance, integrated into static-MoE Experiment 0. The validated default reaches 10/16 wins; broader Pareto population search remains. |
+| 6. Adaptive controller | PARTIAL | Python exposes a deterministic, validated budget-aware `AdaptiveController` plus Pareto frontier/population selection over quality, active parameters, and search FLOPs. The validated default reaches 10/16 wins; broader multi-generation search remains. |
 | 7. Experiment ledger | DONE for the first gate | Browser ledger and Python append-only JSONL registry store config, dataset/tokenizer hashes, code revision, hardware, tokens, FLOPs, arm metrics, mutation fossils, and architecture hashes. Deterministic evaluation summaries are available for report generation. |
 | 8. Final gate: adaptive > random | OPEN | The stabilized 48-step / 12-step, 8-seed study produced 5/8 adaptive wins with mean paired delta `-0.003346`. A stronger or universal pass is still required before scaling. |
 
@@ -99,7 +99,7 @@ These remain TODO or DEFERRED until the first gate passes:
 
 - full metric and visualization report;
 - topology fossils and trajectory plots;
-- Pareto population search and diversity preservation;
+- Multi-generation Pareto population search and richer diversity preservation;
 - T4x2 scaling to 256M-350M;
 - Qwen analyzer and architecture priors;
 - fresh/rewound/teacher retraining;
