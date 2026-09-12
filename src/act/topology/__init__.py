@@ -8,6 +8,8 @@ from .mutations import (
     prune_expert,
     rewire_layer,
     split_expert,
+    MutationResult,
+    apply_transaction,
 )
 
 __all__ = [
@@ -16,6 +18,8 @@ __all__ = [
     "genome_hash",
     "grow_expert",
     "clone_expert",
+    "MutationResult",
+    "apply_transaction",
     "merge_experts",
     "prune_expert",
     "rewire_layer",

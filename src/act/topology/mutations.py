@@ -1,8 +1,49 @@
 """Safe, in-place topology operators for the Python genome."""
 
 from copy import deepcopy
+from dataclasses import dataclass
+from typing import Callable
 
 from .genome import ArchitectureGenome, ExpertGene, validate_genome
+
+
+@dataclass(frozen=True)
+class MutationResult:
+    applied: bool
+    operation: str
+    before_hash: str
+    after_hash: str
+    errors: tuple[str, ...] = ()
+
+
+def apply_transaction(
+    genome: ArchitectureGenome,
+    operation: str,
+    change: Callable[[ArchitectureGenome], bool],
+) -> MutationResult:
+    """Apply a topology change transactionally, restoring the prior genome on failure."""
+    from .genome import genome_hash
+
+    before = genome_hash(genome)
+    original = deepcopy(genome)
+    try:
+        changed = bool(change(genome))
+    except (TypeError, ValueError, IndexError) as error:
+        genome.layers = original.layers
+        return MutationResult(False, operation, before, before, (str(error),))
+    validation = validate_genome(genome)
+    if not changed or not validation.valid:
+        genome.version = original.version
+        genome.seed = original.seed
+        genome.hidden_size = original.hidden_size
+        genome.vocab_size = original.vocab_size
+        genome.layers = original.layers
+        genome.max_params = original.max_params
+        genome.max_active_params = original.max_active_params
+        genome.context_size = original.context_size
+        errors = tuple(validation.errors) if not validation.valid else ("operation made no change",)
+        return MutationResult(False, operation, before, before, errors)
+    return MutationResult(True, operation, before, genome_hash(genome))
 
 
 def prune_expert(genome: ArchitectureGenome, layer_id: str, expert_id: str) -> bool:
