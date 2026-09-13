@@ -86,7 +86,16 @@ binomial p `4.04e-05`, paired-t p `1.07e-08`, matched budgets, probe cost
 The pass is therefore NOT horizon-specific; with seven gate-style tests the
 study clears Bonferroni alpha/7 ~ 0.0071 on both statistics, and the contrast
 with the cap-2/1-batch failure at the same horizon pins the active axis on
-candidate richness + probe quality.
+candidate richness + probe quality. (10) The pre-registered richness study
+then isolated that axis at fixed nominal probe tokens (192/event): arm A
+cap-4/1-batch PASSED (228/384 wins, mean delta `-0.036982`, binomial p
+`1.4e-04`, t p `5.0e-05`) while same-seed arm B cap-2/2-batch FAILED
+(193/384, mean delta `+0.007156`, binomial p `0.47965`), and the paired
+A-vs-B comparison confirms A better in 225/384 pairs (sign z `3.37`,
+two-sided p `8e-04`). Candidate richness is the active axis; probe batches
+matter little within the rich-cap regime (A's delta `-0.037` vs the
+2-batch replication's `-0.052`, two-sample z ~ 1.1, n.s.). Gate-style quality
+tests now number nine, with three passes, all from the cap-4 family.
 
 ## Milestone Comparison
 
@@ -100,7 +109,7 @@ candidate richness + probe quality.
 | 5. Importance instrumentation | DONE for the first gate | Python records routing/load, gradient norm, parameter norm, Fisher-style EMA, temporal stability, mutation count, and genome hash at structural windows. |
 | 6. Adaptive controller | PARTIAL | Python exposes a deterministic, validated budget-aware `AdaptiveController` plus Pareto frontier/population selection over quality, active parameters, and search FLOPs. The validated default reaches 10/16 wins; broader multi-generation search remains. |
 | 7. Experiment ledger | DONE for the first gate | Browser ledger and Python append-only JSONL registry store config, dataset/tokenizer hashes, code revision, hardware, tokens, FLOPs, arm metrics, mutation fossils, and architecture hashes. Deterministic evaluation summaries are available for report generation. |
-| 8. Final gate: adaptive > random | PASSED twice (cap-4/2-batch at 48 and 144 steps, the second decisively); cheaper, higher-cadence, and variance-reduced variants FAILED | Factor map (all matched budgets, objective verdicts): cap-4/2-batch, 3 events, 48 steps -> PASS 213/384, p `0.0181`, at 41.9% search cost. Cap-2/1-batch, 3 events, 144 steps -> FAIL 181/380, p `0.8351`, at 4.13% cost. Placement (late, same seeds) -> no effect (p `0.0788`). Cap-2/1-batch, 6 events, 144 steps -> 137/384 (35.7%), significantly WORSE than random (z `-5.61`, p ~ `2e-08`). Cap-2/4-batch (variance reduction), 3 events, 144 steps -> 179/384, p `0.9159`. Horizon replication, cap-4/2-batch, 3 events, 144 steps -> PASS 231/384, p `4.04e-05`, t p `1.07e-08`, at 14.0% cost; clears Bonferroni alpha/7 on both statistics. Probe validity is real but weak (rho `0.11`); the active axis is candidate richness + probe quality, and probe cost amortizes with horizon as predicted. The remaining quality-vs-cost question is real-scale compute-efficiency (deferred milestone). |
+| 8. Final gate: adaptive > random | PASSED three times (cap-4 family at 48 and 144 steps); richness identified as the active axis; cheaper/cadence/narrow variants FAILED | Factor map (all matched budgets, objective verdicts): cap-4/2-batch, 48 steps -> PASS 213/384, p `0.0181`, at 41.9% cost. Cap-2/1-batch, 144 steps -> FAIL 181/380, p `0.8351`, at 4.13% cost. Placement (late, same seeds) -> no effect (p `0.0788`). Cap-2/1-batch, 6 events -> 137/384, significantly WORSE than random (z `-5.61`). Cap-2/4-batch -> 179/384, p `0.9159`. Horizon replication cap-4/2-batch, 144 steps -> PASS 231/384, p `4.04e-05`, t p `1.07e-08`, cost 14.0%. Richness A cap-4/1-batch, 144 steps -> PASS 228/384, p `1.4e-04`, t p `5.0e-05`, cost 7.3%; same-seed B cap-2/2-batch -> FAIL 193/384, p `0.47965`; paired A>B 225/384 (z `3.37`). Probe validity real but weak (rho `0.11`); richness is the active axis, probe batches secondary. Nine gate-style tests, three passes; Bonferroni alpha/9 ~ 0.0056 is cleared by the 144-step replication and richness-A on both statistics. |
 
 ## Plan Sections 3-6: Compute and Kaggle Operations
 
@@ -185,15 +194,13 @@ These remain TODO or DEFERRED until the first gate passes:
    search cost; a cheaper cap-2/1-batch variant at steps=144 then met the cost
    budget (4.13%) but failed quality (181/380, p `0.8351`) on fresh seeds
    4004-4383.
-8. NEXT: Gate 3 quality now replicates across horizons (two passes, the 144-step
-   one decisive under family-wise correction). The open question is no longer
-   quality but compute-efficiency: probe cost 14.0% at toy scale amortizes with
-   horizon and model size, which is exactly the plan's deferred
-   compute-efficiency milestone. Recommended order: (a) real-scale cost
-   measurement of the cap-4/2-batch controller, then (b) the pre-registered
-   richness study (cap-4/1-batch vs cap-2/2-batch, fresh seeds 7000-7383) as a
-   secondary factor analysis. Gate 4 (adaptive > static MoE) remains the next
-   universal gate once compute-efficiency is justified.
+8. NEXT: Gate 3 quality is established for the cap-4 controller family (three
+   passes across horizons and probe-batch counts; richness is the active axis).
+   The remaining blocker is compute-efficiency: cap-4/1-batch cuts probe cost to
+   7.3% at toy scale and amortizes with horizon, but real-scale measurement is
+   the plan's deferred compute-efficiency milestone and gates Gate 4 (adaptive >
+   static MoE). Controller default stays cap-4/2-batch; cap-4/1-batch is the
+   validated cost-saving option.
 
 ## Verified Checks
 
@@ -276,6 +283,15 @@ These remain TODO or DEFERRED until the first gate passes:
   clears Bonferroni alpha/7 ~ 0.0071 on both statistics
   (`study_id` `162362a15b1d6aee`, `artifacts/gate3-horizon-384.jsonl`, summary in
   `artifacts/study-summaries/`).
+- **384-seed richness study (seeds 7000-7383, fixed nominal probe tokens of
+  192/event, 3 events, steps=144, budgets matched)** -> arm A cap-4/1-batch
+  PASSED: 228/384 wins (59.4%), mean delta `-0.036982`, binomial p `1.4e-04`,
+  t p `5.0e-05`, cost 7.3% (`study_id` `994282a17955597e`); same-seed arm B
+  cap-2/2-batch FAILED: 193/384, mean delta `+0.007156`, binomial p `0.47965`,
+  cost 8.1% (`study_id` `de2f894d75eaedac`); paired A>B in 225/384 pairs
+  (sign z `3.37`, two-sided p `8e-04`). Candidate richness is the active axis
+  (`artifacts/gate3-rich-384.jsonl`, `artifacts/gate3-narrow-384.jsonl`,
+  summaries in `artifacts/study-summaries/`).
 - **384-seed cadence study (seeds 5000-5383, steps=144, interval=24, budget=6,
   cheap probe cap=2/1-batch, budgets matched)** -> 137/384 adaptive wins (35.7%,
   threshold 209), mean delta `+0.047014`, binomial p `1.0`; adaptive significantly
