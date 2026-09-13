@@ -29,6 +29,15 @@ from .session_plan import (
 	working_dir_headroom_gb,
 )
 from .retraining import InitializationReport, initialize_retraining
+from .v0_handoff import (
+	HANDOFF_DATASET,
+	latest_published_seed,
+	load_seed_summary,
+	publish_seed,
+	restore_seed,
+	seed_directory,
+	session_checkpoint_root,
+)
 from .v0_session import (
     V0ArmResult,
     V0SessionConfig,
@@ -64,6 +73,13 @@ __all__ = [
 	"working_dir_headroom_gb",
 	"InitializationReport",
 	"initialize_retraining",
+	"HANDOFF_DATASET",
+	"latest_published_seed",
+	"load_seed_summary",
+	"publish_seed",
+	"restore_seed",
+	"seed_directory",
+	"session_checkpoint_root",
 	"V0ArmResult",
 	"V0SessionConfig",
 	"V0SessionResult",

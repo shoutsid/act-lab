@@ -416,6 +416,20 @@ them on the day:
   arithmetic assumes; the self-check re-verified bit-identical mid-run
   resume with it enabled (blocks carry no dropout, so recompute is
   deterministic).
+- `act.training.v0_handoff` - the versioned-dataset checkpoint handoff.
+  `publish_seed` stages one completed seed's newest per-arm checkpoints,
+  arm metrics, and seed summary under a temporary directory, writes the
+  checksummed manifest last, and only then swaps the seed directory into
+  `act-checkpoints/v0-5-1/seed-NNNN/` - a partial publish is never
+  mistaken for a complete one. `restore_seed` verifies every checksum
+  before re-materializing the state into a session directory with the
+  original step-named checkpoint filenames, so `run_v0_session` resumes
+  exactly where the publish left off; `latest_published_seed` locates the
+  newest complete version (a directory without a manifest is not a
+  version), and `clean_working_dir=True` reclaims the working copy after a
+  publish per the 20 GB ledger rule. Tests cover the atomic re-publish,
+  checksum-corruption rejection, and the bit-identical resume of an
+  interrupted run through working-dir -> dataset -> working-dir.
 
 ## 6. Reproducibility
 

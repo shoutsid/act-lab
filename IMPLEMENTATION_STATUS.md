@@ -117,8 +117,8 @@ tests now number nine, with three passes, all from the cap-4 family.
 |---|---|---|
 | T4x2 PyTorch/DDP | PARTIAL | Add device selection and DDP launch helpers now discover torchrun rank/world-size, initialize an appropriate process group, and wrap models only for multi-process runs; scheduler, accumulation, autocast, and activation checkpointing are available. T4x2 validation remains. |
 | TPU v5e/JAX | DEFERRED | Port only after a stable architecture wins the GPU gate. |
-| Kaggle artifact datasets | PARTIAL | Deterministic checkpoint, evaluation, report, and manifest layout contracts now exist; publishing automation remains. |
-| Session resume protocol | PARTIAL | Local checkpoint resume is deterministic for baselines and bit-identical for V0 sessions (verified mid-run resume: losses, FLOPs counters, architecture hashes, and mutation histories all reproduce exactly); Kaggle-style local publish/restore now verifies manifest checksums, while remote dataset restore and publish-on-exit remain. |
+| Kaggle artifact datasets | PARTIAL | Deterministic checkpoint, evaluation, report, and manifest layout contracts now exist; the V0 5.2 per-seed handoff (`act.training.v0_handoff`: atomic publish, checksum-verified restore, bit-identical resume through the dataset round trip) is implemented, while the remote Kaggle dataset API wrapper and publish-on-exit automation remain. |
+| Session resume protocol | PARTIAL | Local checkpoint resume is deterministic for baselines and bit-identical for V0 sessions (verified mid-run resume: losses, FLOPs counters, architecture hashes, and mutation histories all reproduce exactly); Kaggle-style local publish/restore verifies manifest checksums, and the 5.2 versioned-dataset handoff now round-trips a seed working-dir -> dataset -> working-dir bit-identically, while remote dataset restore and publish-on-exit remain. |
 | Repository structure | PARTIAL | Core Python data, evaluation, evolution, importance, model, topology, training, and Kaggle-artifact implementations exist with focused tests; the planned notebooks and standalone research entry points remain. |
 
 ## Plan Sections 8-24: Model and Topology
@@ -216,9 +216,11 @@ These remain TODO or DEFERRED until the first gate passes:
 
 ## Verified Checks
 
-- `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (155, including the
-  26 report-figure data-assembly tests and 14 session-plan tests pinning the
-  section 5.2 schedule/dtype tables); session runs are deliberately excluded
+- `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (165, including the
+  26 report-figure data-assembly tests, 14 session-plan tests pinning the
+  section 5.2 schedule/dtype tables, and 10 handoff tests covering atomic
+  publish, checksum rejection, and bit-identical resume through the dataset
+  round trip); session runs are deliberately excluded
   from the suite (they are integration checks, too slow for per-commit runs) and
   live in `scripts/v0_session_selfcheck.py`, which verifies matched budgets,
   FLOPs booking, bit-identical mid-run resume, and the version-4 checkpoint
