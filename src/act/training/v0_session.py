@@ -81,7 +81,11 @@ class V0SessionConfig:
     probe_candidate_cap: int = 4
     probe_batch_count: int = 1
     validation_batches: int = 4
-    # Session mechanics.
+    # Session mechanics. The declared config trains with checkpointed
+    # activations (section 5.1); the T4 fit arithmetic in section 5.2 assumes
+    # it. Blocks carry no dropout, so the recompute is deterministic and the
+    # bit-identical resume contract is unaffected.
+    activation_checkpointing: bool = True
     checkpoint_interval: int = 500
     max_checkpoints: int = 3
     checkpoint_max_bytes: int | None = None
@@ -271,6 +275,13 @@ def _state_from_payload(
     )
 
 
+def _prepare_model(model: V0MoECausalLM, config: V0SessionConfig) -> V0MoECausalLM:
+    """Apply the declared session mode to a (fresh or rebuilt) model."""
+    model.activation_checkpointing = config.activation_checkpointing
+    model.train()
+    return model
+
+
 def _probe_loss(
     model: V0MoECausalLM,
     probe_batches: tuple[Tensor, ...],
@@ -332,7 +343,7 @@ def _adaptive_event(
     arm_state.mutations += 1
     winner = rebuild_v0_moe_from_genome(model, arm_state.genome).to(device)
     arm_state.search_flops += winner.parameter_count * 4
-    winner.train()
+    _prepare_model(winner, config)
     new_optimizer = torch.optim.AdamW(winner.parameters(), lr=config.learning_rate)
     arm_state.mutation_history.append(
         {
@@ -394,7 +405,7 @@ def _random_event(
     arm_state.mutations += 1
     rebuilt = rebuild_v0_moe_from_genome(model, arm_state.genome).to(device)
     arm_state.search_flops += rebuilt.parameter_count * 4
-    rebuilt.train()
+    _prepare_model(rebuilt, config)
     new_optimizer = torch.optim.AdamW(rebuilt.parameters(), lr=config.learning_rate)
     arm_state.mutation_history.append(
         {
@@ -441,7 +452,7 @@ def _train_arm(
         if not isinstance(payload, dict) or payload.get("version") != 4:
             raise ValueError(f"checkpoint {latest} is not a version-4 V0 session payload")
         genome = ArchitectureGenome.from_dict(payload["training"]["genome"])
-        model = v0_moe_model_from_genome(genome).to(device)
+        model = _prepare_model(v0_moe_model_from_genome(genome).to(device), config)
         optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
         arm_state = _state_from_payload(payload, model, optimizer, device)
         resumed_from = str(latest)
@@ -450,7 +461,7 @@ def _train_arm(
     else:
         torch.manual_seed(arm_seed)
         genome = _genome_from_config(config)
-        model = v0_moe_model_from_genome(genome).to(device)
+        model = _prepare_model(v0_moe_model_from_genome(genome).to(device), config)
         optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
         arm_state = _SessionState(genome=genome)
     if config.declared:
@@ -478,7 +489,7 @@ def _train_arm(
         for _ in range(config.probe_batch_count)
     )
 
-    model.train()
+    _prepare_model(model, config)
     wall_start = time.time()
     for step in range(arm_state.step + 1, config.total_steps + 1):
         tokens = torch.randint(

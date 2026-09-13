@@ -19,6 +19,15 @@ from .distributed import (
     wrap_distributed,
 )
 from .session import SessionCheckpointPolicy, retain_checkpoints
+from .session_plan import (
+	PairSchedule,
+	SessionDecision,
+	deadline_decision,
+	decide_dtype,
+	expected_probe_cost_percent,
+	tolerance_band,
+	working_dir_headroom_gb,
+)
 from .retraining import InitializationReport, initialize_retraining
 from .v0_session import (
     V0ArmResult,
@@ -46,6 +55,13 @@ __all__ = [
 	"wrap_distributed",
 	"SessionCheckpointPolicy",
 	"retain_checkpoints",
+	"PairSchedule",
+	"SessionDecision",
+	"deadline_decision",
+	"decide_dtype",
+	"expected_probe_cost_percent",
+	"tolerance_band",
+	"working_dir_headroom_gb",
 	"InitializationReport",
 	"initialize_retraining",
 	"V0ArmResult",

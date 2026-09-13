@@ -158,7 +158,7 @@ tests now number nine, with three passes, all from the cap-4 family.
 | Teacher initialization | PARTIAL | Explicit teacher and evolved shape-safe parameter transfer policies now exist; multi-seed retraining comparisons remain. |
 | Architecture reusability and fresh initialization | PARTIAL | Fresh, evolved, and rewound initialization policies report copied/skipped tensors; architecture-equivalence studies remain. |
 | Cross-seed stability and architecture equivalence | PARTIAL | Strict architecture-hash equivalence and cross-seed mean/stddev/min/max summaries now exist; full retraining studies remain. |
-| Compute-efficiency scaling | PRE-REGISTERED (execution path built) | Real-scale measurement protocol pre-registered in `RESEARCH_REPORT.md` section 5.1: declared 285M V0 config, predicted probe cost 0.094% (band 0.047-0.189%), 5% criterion + tolerance band + harm guard on 12 fresh seed pairs (9000-9011); PASS authorizes Gate 4. The V0 training path is implemented: declared `V0MoECausalLM` reproduces 285,336,576 / 134,341,632 parameters exactly, per-layer expert genomes rebuild weight-preserving after grow/prune, and `act.training.cli --mode v0` runs resumable sessions with version-4 checkpoints (FLOPs counters, genome, generator state persisted). Session integration checks live in `scripts/v0_session_selfcheck.py` (run on demand, NOT in the pytest suite). GPU execution plan pre-committed in section 5.2: per-GPU fp32 fit ~4.5 GB of 16 GB, 3.19 GB checkpoint payloads, `max_checkpoints=2` (pair steady state ~14.9 GB of the 20 GB working dir), throughput-gated dtype rule (fp32 floor 2,500 tokens/s, fp16 fallback), parameterized session schedule with atomic pairs and deadline/publish rules, and the versioned-dataset checkpoint handoff (~45 GB ledger). |
+| Compute-efficiency scaling | PRE-REGISTERED (execution path built; pre-launch tooling done) | Real-scale measurement protocol pre-registered in `RESEARCH_REPORT.md` section 5.1: declared 285M V0 config, predicted probe cost 0.094% (band 0.047-0.189%), 5% criterion + tolerance band + harm guard on 12 fresh seed pairs (9000-9011); PASS authorizes Gate 4. The V0 training path is implemented: declared `V0MoECausalLM` reproduces 285,336,576 / 134,341,632 parameters exactly, per-layer expert genomes rebuild weight-preserving after grow/prune, and `act.training.cli --mode v0` runs resumable sessions with version-4 checkpoints (FLOPs counters, genome, generator state persisted). Session integration checks live in `scripts/v0_session_selfcheck.py` (run on demand, NOT in the pytest suite). GPU execution plan pre-committed in section 5.2: per-GPU fp32 fit ~4.5 GB of 16 GB, 3.19 GB checkpoint payloads, `max_checkpoints=2` (pair steady state ~14.9 GB of the 20 GB working dir), throughput-gated dtype rule (fp32 floor 2,500 tokens/s, fp16 fallback), parameterized session schedule with atomic pairs and deadline/publish rules, and the versioned-dataset checkpoint handoff (~45 GB ledger). The 5.2 pre-launch tooling is now code: `scripts/v0_throughput_benchmark.py` (declared-model step-loop benchmark emitting the dtype decision and schedule artifact) and `act.training.session_plan` (registered schedule/deadline/working-dir arithmetic, unit-tested against the 5.2 tables); declared sessions now train with checkpointed activations as specified, with resume re-verified bit-identical. |
 
 ## Plan Sections 67-105: Scale and Final Deliverables
 
@@ -209,16 +209,29 @@ These remain TODO or DEFERRED until the first gate passes:
    0.094% of training FLOPs under the measured per-event identity, decision
    rules fixed (5% criterion + factor-2 tolerance band + anti-adaptivity harm
    guard), seeds 9000-9011 reserved. Running it as specified - without retuning
-   knobs against the result - is the entry condition for Gate 4.
+   knobs against the result - is the entry condition for Gate 4. The section 5.2
+   pre-launch tooling (throughput benchmark, session scheduler, deadline rules,
+   working-dir ledger) is now code and unit-tested; what remains before launch
+   is running the benchmark on the T4 to fix the measured dtype and schedule.
 
 ## Verified Checks
 
-- `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (141, including the
-  26 report-figure data-assembly tests); session runs are deliberately excluded
+- `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (155, including the
+  26 report-figure data-assembly tests and 14 session-plan tests pinning the
+  section 5.2 schedule/dtype tables); session runs are deliberately excluded
   from the suite (they are integration checks, too slow for per-commit runs) and
   live in `scripts/v0_session_selfcheck.py`, which verifies matched budgets,
   FLOPs booking, bit-identical mid-run resume, and the version-4 checkpoint
   contract on a tiny config.
+- `PYTHONPATH=src python scripts/v0_session_selfcheck.py` -> re-passed after the
+  declared sessions switched to checkpointed activations (resume stays
+  bit-identical; recompute is deterministic because blocks carry no dropout).
+- `PYTHONPATH=src python scripts/v0_throughput_benchmark.py` -> the declared-model
+  benchmark runs end-to-end on the local GPU (285,336,576 / 134,341,632 exact
+  parameters, ~1,736 tokens/s with activation checkpointing -> dtype rule
+  selects fp16 below the 2,500 floor) and writes `artifacts/v0-benchmark.json`;
+  `--profile` smoke-checks on tiny configs or CPU. The T4 decision comes from
+  the T4 run.
 - `PYTHONPATH=src python scripts/generate_figures.py` -> writes the four factor-map
   figures to `artifacts/study-summaries/figures/` (fig1 win-rate forest,
   fig2 quality-vs-cost, fig3 delta distributions, fig4 probe-rank heatmap),

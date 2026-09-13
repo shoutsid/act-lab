@@ -1,0 +1,203 @@
+"""Session scheduling and dtype policy for the pre-committed section 5.2 plan.
+
+Every constant and rule here is pre-committed in RESEARCH_REPORT.md section
+5.2 (the operational companion to the 5.1 compute-efficiency protocol); this
+module encodes them exactly so the Kaggle session runner executes the
+registered arithmetic rather than re-deriving it on the day. Standard
+library only: scheduling decisions must be checkable anywhere, without torch.
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
+
+# Declared protocol budget (section 5.1): batch 2 x context 2048 x 6000 steps.
+SEED_TOKENS_PER_ARM = 24_576_000
+
+# Session model (section 5.2). A Kaggle GPU session offers 12 hours; after
+# boot, restore, and the publish reserve, ~9.0 h of usable work remain.
+SESSION_HOURS = 12.0
+USABLE_HOURS = 9.0
+# Fixed per-pair overhead of event/rebuild work (section 5.2's "+ ~0.1 h").
+PAIR_OVERHEAD_HOURS = 0.1
+# Deadline-rule constants (section 5.2).
+PUBLISH_RESERVE_MINUTES = 45.0
+BOUNDARY_STOP_MINUTES = 60.0
+PUBLISH_ONLY_MINUTES = 15.0
+# Working-directory ledger (20 GB auto-saved): a checkpoint payload is
+# parameters + AdamW moments = 3.19 GB per arm, and pairs are atomic, so
+# an in-flight pair holds 2 checkpoints x 2 arms x payload + 2 finals.
+WORKING_DIR_GB = 20.0
+CHECKPOINT_PAYLOAD_GB = 3.19
+MAX_CHECKPOINTS = 2  # pinned: 3 would overflow the working dir with finals
+
+# Declared protocol footprint (fp32, section 5.2 "Fit and footprint"):
+# an in-flight pair holds max_checkpoints x 2 arms x payload, plus the
+# finished pair's two final states (2 x 1.06 GB) until publish.
+CHECKPOINT_STEADY_STATE_GB = MAX_CHECKPOINTS * 2 * CHECKPOINT_PAYLOAD_GB + 2 * 1.06
+
+# Throughput-gated dtype rule (pre-committed): below the fp32 floor the
+# primary config runs in fp16 with GradScaler (T4 has no bf16).
+FP32_FLOOR_TOKENS_PER_SECOND = 2_500.0
+FP16_FLOOR_TOKENS_PER_SECOND = 2_500.0
+
+
+def decide_dtype(tokens_per_second: float) -> str:
+    """Return ``"fp32"`` or ``"fp16"`` from the measured throughput.
+
+    The pre-committed rule: if measured fp32 throughput is below the 2,500
+    tokens/s floor, the primary config runs in fp16 with GradScaler. Dtype is
+    an execution detail touching no pre-registered criterion (FLOPs counters
+    book operations, not time); the measured dtype is recorded in the artifact.
+    """
+    if tokens_per_second < 0:
+        raise ValueError("tokens_per_second must be non-negative")
+    return "fp32" if tokens_per_second >= FP32_FLOOR_TOKENS_PER_SECOND else "fp16"
+
+
+@dataclass(frozen=True)
+class PairSchedule:
+    """Schedule arithmetic for one atomic two-arm pair."""
+
+    tokens_per_arm: int = SEED_TOKENS_PER_ARM
+    tokens_per_second: float = FP32_FLOOR_TOKENS_PER_SECOND
+    arms: int = 2
+
+    def __post_init__(self) -> None:
+        if self.tokens_per_arm < 1:
+            raise ValueError("tokens_per_arm must be positive")
+        if self.tokens_per_second <= 0:
+            raise ValueError("tokens_per_second must be positive")
+        if self.arms < 1:
+            raise ValueError("arms must be positive")
+
+    @property
+    def pair_time_hours(self) -> float:
+        """Wall time for both arms of one seed, running one per GPU in parallel.
+
+        Section 5.2: pair time = tokens / per-arm throughput + fixed
+        event/rebuild overhead. Both arms finish together, so the wall time
+        is one arm's training time plus the overhead.
+        """
+        return self.tokens_per_arm / self.tokens_per_second / 3600.0 + PAIR_OVERHEAD_HOURS
+
+    @property
+    def full_pairs_per_session(self) -> int:
+        """Floor(usable hours / pair time); a pair is never started unless it fits."""
+        if self.pair_time_hours > USABLE_HOURS:
+            return 0
+        return int(USABLE_HOURS / self.pair_time_hours)
+
+    @property
+    def sessions_for_primary(self) -> int:
+        """Sessions needed for the declared 12 seed pairs, primary config only."""
+        pairs = self.full_pairs_per_session
+        return math.ceil(12 / pairs) if pairs else 0
+
+    @property
+    def sessions_total(self) -> int:
+        """Sessions including the secondary cap-4/2-batch run.
+
+        The section 5.2 table schedules the secondary run (its own 12 pairs)
+        as its own sessions: total = 2 x primary sessions. This matches the
+        registered rows (10k tokens/s -> 2 primary, 4 total) even where a
+        greedy 24-pair packing would fit in fewer.
+        """
+        return 2 * self.sessions_for_primary
+
+    def steady_state_gb(self) -> float:
+        """Working-directory bytes for an in-flight pair plus finished finals.
+
+        Section 5.2: max_checkpoints x arms x 3.19 GB of resume state, plus
+        the finished pair's 2 x 1.06 GB finals until publish (~14.9 GB for
+        the declared two-arm pair with max_checkpoints=2).
+        """
+        return MAX_CHECKPOINTS * self.arms * CHECKPOINT_PAYLOAD_GB + 2 * 1.06
+
+
+def working_dir_headroom_gb() -> float:
+    """Headroom under the 20 GB auto-saved working directory at steady state."""
+    return WORKING_DIR_GB - CHECKPOINT_STEADY_STATE_GB
+
+
+@dataclass(frozen=True)
+class SessionDecision:
+    """What a session clock should do right now (deadline rules 1-3)."""
+
+    action: str  # "start_pair", "stop_at_boundary", "publish_only", "idle"
+    reason: str
+
+    @property
+    def starts_work(self) -> bool:
+        return self.action == "start_pair"
+
+
+def deadline_decision(
+    remaining_hours: float,
+    pair_time_hours: float,
+) -> SessionDecision:
+    """Apply the section 5.2 deadline rules to the remaining session clock.
+
+    Rules, in order:
+    1. Never start a new pair unless the measured pair time + 45 min publish
+       reserve fits the remaining clock.
+    2. Remaining time < 60 min mid-pair: stop at the next step boundary, save
+       both arms, publish immediately.
+    3. Remaining time < 15 min: publish only - event checkpoints are already
+       saved.
+    """
+    if pair_time_hours <= 0:
+        raise ValueError("pair_time_hours must be positive")
+    if remaining_hours < 0:
+        raise ValueError("remaining_hours must be non-negative")
+    if remaining_hours < PUBLISH_ONLY_MINUTES / 60.0:
+        return SessionDecision(
+            "publish_only",
+            f"remaining {remaining_hours:.2f} h < {PUBLISH_ONLY_MINUTES:.0f} min: "
+            "publish only (rule 3)",
+        )
+    if remaining_hours < BOUNDARY_STOP_MINUTES / 60.0:
+        return SessionDecision(
+            "stop_at_boundary",
+            f"remaining {remaining_hours:.2f} h < {BOUNDARY_STOP_MINUTES:.0f} min: "
+            "stop at next step boundary, save, publish (rule 2)",
+        )
+    needed = pair_time_hours + PUBLISH_RESERVE_MINUTES / 60.0
+    if remaining_hours >= needed:
+        return SessionDecision(
+            "start_pair",
+            f"remaining {remaining_hours:.2f} h fits pair {pair_time_hours:.2f} h "
+            f"+ {PUBLISH_RESERVE_MINUTES:.0f} min reserve (rule 1)",
+        )
+    return SessionDecision(
+        "stop_at_boundary",
+        f"remaining {remaining_hours:.2f} h does not fit pair {pair_time_hours:.2f} h "
+        f"+ {PUBLISH_RESERVE_MINUTES:.0f} min reserve (rule 1)",
+    )
+
+
+def expected_probe_cost_percent(probe_batch_count: int) -> float:
+    """Section 5.1's declared-scale prediction for the chosen probe budget.
+
+    cap-4/1-batch predicts 0.0942%, cap-4/2-batch 0.1883%; the tolerance band
+    is [0.5, 2] x prediction. Values follow from the identity with the
+    declared counts (P = 285,336,576; N_active = 134,341,632; D = 24,576,000
+    tokens/arm; E = 3 events; k = 4 candidates; probe tokens = 4,096 per
+    batch), not from a re-fit.
+    """
+    total = 285_336_576
+    active = 134_341_632
+    events = 3
+    candidates = 4
+    probe_tokens_per_batch = 4_096
+    training_tokens = SEED_TOKENS_PER_ARM
+    search = events * candidates * probe_batch_count * probe_tokens_per_batch * 2 * active
+    training = 2 * total * training_tokens
+    return 100.0 * search / training
+
+
+def tolerance_band(probe_batch_count: int) -> tuple[float, float]:
+    """Pre-committed [0.5, 2] x predicted-cost band for the primary config."""
+    prediction = expected_probe_cost_percent(probe_batch_count)
+    return 0.5 * prediction, 2.0 * prediction

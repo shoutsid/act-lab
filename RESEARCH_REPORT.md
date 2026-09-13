@@ -386,6 +386,37 @@ budgets cap-4/1-batch (primary) and cap-4/2-batch (secondary) exactly as
 pre-registered. (5) Per-session `--output` summary JSONs retained in the
 published artifact.
 
+**Pre-launch tooling (built).** Items (2) and (3)'s arithmetic are now code,
+so the session runner executes the registered numbers rather than re-deriving
+them on the day:
+
+- `scripts/v0_throughput_benchmark.py` - the session-1 benchmark. It times
+  the declared model's real step loop (loss forward + backward + AdamW, the
+  same op mix and FLOPs accounting as the session runner, activation
+  checkpointing on as declared), applies the pre-committed dtype rule, and
+  writes the artifact (`artifacts/v0-benchmark.json`) with the measured
+  tokens/s, the dtype decision, and the derived schedule. `--profile` runs a
+  tiny smoke config for local checks. Verified locally: the declared model
+  reproduces 285,336,576 / 134,341,632 parameters and measures
+  ~1,736 tokens/s on a GTX 1070 (below the 2,500 tokens/s fp32 floor, so the
+  dtype rule correctly selects fp16 there); the T4 decision comes from the
+  T4 run.
+- `act.training.session_plan` (stdlib-only, unit-tested) - the registered
+  schedule arithmetic: the dtype rule, pair time (tokens / throughput +
+  0.1 h event overhead), full pairs per session, primary/secondary session
+  counts, the 20 GB working-dir ledger (max_checkpoints=2 pinned, steady
+  state ~14.9 GB, headroom ~5.1 GB), the deadline decision ladder
+  (45 min publish reserve, 60 min boundary stop, 15 min publish-only), and
+  the 5.1 predicted probe cost with its [0.5, 2]x tolerance band. The tests
+  pin the section 5.2 table rows (10k -> 0.78 h / 11 pairs / 2+4 sessions;
+  5k -> 1.47 h / 6; 2.5k -> 2.83 h / 3 / 4+8), so any drift from the
+  registered plan fails before launch.
+- The declared session config now trains with checkpointed activations
+  (`activation_checkpointing=True`, section 5.1), which the 5.2 fit
+  arithmetic assumes; the self-check re-verified bit-identical mid-run
+  resume with it enabled (blocks carry no dropout, so recompute is
+  deterministic).
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
