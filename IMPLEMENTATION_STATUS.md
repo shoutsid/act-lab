@@ -78,6 +78,15 @@ direction (+0.0117 -> -0.0039) but not significantly (two-sample z ~ `-1.13`).
 Per the pre-registered interpretation contract, probe variance reduction alone
 does not restore the adaptive edge: candidate-set richness and/or the shorter
 horizon of the single passing configuration remain the differentiating axes.
+(9) The pre-registered horizon replication (the PASSING cap-4/2-batch config
+re-run at steps=144, fresh seeds 8000-8383) PASSED and strengthened the
+original: 231/384 wins (60.2%, threshold 209), mean delta `-0.052402`,
+binomial p `4.04e-05`, paired-t p `1.07e-08`, matched budgets, probe cost
+`14.0%` (amortization matches the fixed-per-event prediction of 41.9%/3).
+The pass is therefore NOT horizon-specific; with seven gate-style tests the
+study clears Bonferroni alpha/7 ~ 0.0071 on both statistics, and the contrast
+with the cap-2/1-batch failure at the same horizon pins the active axis on
+candidate richness + probe quality.
 
 ## Milestone Comparison
 
@@ -91,7 +100,7 @@ horizon of the single passing configuration remain the differentiating axes.
 | 5. Importance instrumentation | DONE for the first gate | Python records routing/load, gradient norm, parameter norm, Fisher-style EMA, temporal stability, mutation count, and genome hash at structural windows. |
 | 6. Adaptive controller | PARTIAL | Python exposes a deterministic, validated budget-aware `AdaptiveController` plus Pareto frontier/population selection over quality, active parameters, and search FLOPs. The validated default reaches 10/16 wins; broader multi-generation search remains. |
 | 7. Experiment ledger | DONE for the first gate | Browser ledger and Python append-only JSONL registry store config, dataset/tokenizer hashes, code revision, hardware, tokens, FLOPs, arm metrics, mutation fossils, and architecture hashes. Deterministic evaluation summaries are available for report generation. |
-| 8. Final gate: adaptive > random | PASSED once (cap-4/2-batch, 48 steps); every cheaper, higher-cadence, or higher-variance-reduction variant FAILED | Factor map (all matched budgets, objective verdicts): cap-4/2-batch, 3 events, 48 steps -> PASS 213/384, p `0.0181`, at 41.9% search cost. Cap-2/1-batch, 3 events, 144 steps -> FAIL 181/380, p `0.8351`, at 4.13% cost. Placement (late, same seeds) -> no effect (p `0.0788`). Cap-2/1-batch, 6 events, 144 steps -> 137/384 (35.7%), significantly WORSE than random (z `-5.61`, p ~ `2e-08`). Cap-2/4-batch (variance reduction), 3 events, 144 steps -> 179/384, p `0.9159`; mean delta direction favored the hypothesis but not significantly. Probe validity is real but weak (rho `0.11`); neither repeated greedy argmin nor variance reduction alone recovers the edge, leaving candidate richness and/or horizon as the remaining axes. Multiple-comparison caution applies across six pre-registered quality tests; the single pass (sign p `0.0181`, paired-t p `7.4e-05`) survives Bonferroni only via the paired-t. |
+| 8. Final gate: adaptive > random | PASSED twice (cap-4/2-batch at 48 and 144 steps, the second decisively); cheaper, higher-cadence, and variance-reduced variants FAILED | Factor map (all matched budgets, objective verdicts): cap-4/2-batch, 3 events, 48 steps -> PASS 213/384, p `0.0181`, at 41.9% search cost. Cap-2/1-batch, 3 events, 144 steps -> FAIL 181/380, p `0.8351`, at 4.13% cost. Placement (late, same seeds) -> no effect (p `0.0788`). Cap-2/1-batch, 6 events, 144 steps -> 137/384 (35.7%), significantly WORSE than random (z `-5.61`, p ~ `2e-08`). Cap-2/4-batch (variance reduction), 3 events, 144 steps -> 179/384, p `0.9159`. Horizon replication, cap-4/2-batch, 3 events, 144 steps -> PASS 231/384, p `4.04e-05`, t p `1.07e-08`, at 14.0% cost; clears Bonferroni alpha/7 on both statistics. Probe validity is real but weak (rho `0.11`); the active axis is candidate richness + probe quality, and probe cost amortizes with horizon as predicted. The remaining quality-vs-cost question is real-scale compute-efficiency (deferred milestone). |
 
 ## Plan Sections 3-6: Compute and Kaggle Operations
 
@@ -176,13 +185,15 @@ These remain TODO or DEFERRED until the first gate passes:
    search cost; a cheaper cap-2/1-batch variant at steps=144 then met the cost
    budget (4.13%) but failed quality (181/380, p `0.8351`) on fresh seeds
    4004-4383.
-8. NEXT: variance reduction alone failed to restore the edge, so the remaining
-   one-factor axes from the factor map are (a) candidate richness at fixed
-   probe-token cost (cap-4/1-batch vs cap-2/2-batch, fresh seeds) and (b) the
-   horizon of the passing configuration (cap-4/2-batch at steps=144). If neither
-   passes, accept that greedy probe-loss selection does not beat random churn at
-   toy fidelity, retain the documented negative results, and gate further
-   selection work on real-scale measurement (compute-efficiency milestone).
+8. NEXT: Gate 3 quality now replicates across horizons (two passes, the 144-step
+   one decisive under family-wise correction). The open question is no longer
+   quality but compute-efficiency: probe cost 14.0% at toy scale amortizes with
+   horizon and model size, which is exactly the plan's deferred
+   compute-efficiency milestone. Recommended order: (a) real-scale cost
+   measurement of the cap-4/2-batch controller, then (b) the pre-registered
+   richness study (cap-4/1-batch vs cap-2/2-batch, fresh seeds 7000-7383) as a
+   secondary factor analysis. Gate 4 (adaptive > static MoE) remains the next
+   universal gate once compute-efficiency is justified.
 
 ## Verified Checks
 
@@ -258,6 +269,13 @@ These remain TODO or DEFERRED until the first gate passes:
   probe cost 16.0% (descriptive). Probe variance reduction alone does not restore
   the adaptive edge (`study_id` `cdebaf2ed9f23f54`,
   `artifacts/gate3-variance-384.jsonl`, summary in `artifacts/study-summaries/`).
+- **384-seed horizon replication (seeds 8000-8383, the passing cap-4/2-batch
+  config at steps=144, budgets matched)** -> quality PASSED decisively: 231/384
+  wins (60.2%, threshold 209), mean delta `-0.052402`, binomial p `4.04e-05`,
+  t p `1.07e-08`; probe cost 14.0% (41.9%/3, matching the amortization model);
+  clears Bonferroni alpha/7 ~ 0.0071 on both statistics
+  (`study_id` `162362a15b1d6aee`, `artifacts/gate3-horizon-384.jsonl`, summary in
+  `artifacts/study-summaries/`).
 - **384-seed cadence study (seeds 5000-5383, steps=144, interval=24, budget=6,
   cheap probe cap=2/1-batch, budgets matched)** -> 137/384 adaptive wins (35.7%,
   threshold 209), mean delta `+0.047014`, binomial p `1.0`; adaptive significantly
