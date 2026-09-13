@@ -164,7 +164,10 @@ tests now number nine, with three passes, all from the cap-4 family.
 
 These remain TODO or DEFERRED until the first gate passes:
 
-- full metric and visualization report;
+- full metric and visualization report (PARTIAL: the four pre-registered
+  factor-map figures now exist under `artifacts/study-summaries/figures/`,
+  generated reproducibly from the versioned summaries; trajectory plots and
+  real-scale metric visualizations remain);
 - topology fossils and trajectory plots;
 - Multi-generation Pareto population search and richer diversity preservation;
 - T4x2 scaling to 256M-350M;
@@ -210,7 +213,16 @@ These remain TODO or DEFERRED until the first gate passes:
 
 ## Verified Checks
 
-- `PYTHONPATH=src python -m pytest -q` -> all unit tests pass; session runs are deliberately excluded from the suite (they are integration checks, too slow for per-commit runs) and live in `scripts/v0_session_selfcheck.py`, which verifies matched budgets, FLOPs booking, bit-identical mid-run resume, and the version-4 checkpoint contract on a tiny config.
+- `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (141, including the
+  26 report-figure data-assembly tests); session runs are deliberately excluded
+  from the suite (they are integration checks, too slow for per-commit runs) and
+  live in `scripts/v0_session_selfcheck.py`, which verifies matched budgets,
+  FLOPs booking, bit-identical mid-run resume, and the version-4 checkpoint
+  contract on a tiny config.
+- `PYTHONPATH=src python scripts/generate_figures.py` -> writes the four factor-map
+  figures to `artifacts/study-summaries/figures/` (fig1 win-rate forest,
+  fig2 quality-vs-cost, fig3 delta distributions, fig4 probe-rank heatmap),
+  byte-identical across re-runs.
 - `PYTHONPATH=src python -m compileall -q src/act tests` -> passed.
 - `npm run typecheck` -> passed.
 - `npm run build` -> passed.
@@ -311,6 +323,15 @@ These remain TODO or DEFERRED until the first gate passes:
   trajectory-identical to greedy selection. Probe-validity counterfactual study
   (384 seeds x 4 candidate branches at event 1) recorded in
   `artifacts/study-summaries/probe-validity-analysis.json`.
+- **Report figures generated** (deliverable 12): the four pre-registered figures
+  (`artifacts/study-summaries/figures/`) are produced by `scripts/generate_figures.py`
+  from the versioned summaries via `act.evolution.figures_data`; the script
+  recomputes every verdict (binomial p, pass flag, mean delta, probe-cost
+  identity, argmin concordance) from raw per-seed records before plotting and
+  fails on any mismatch. Re-runs are byte-identical. Data assembly is unit-tested
+  in `tests/test_report_figures.py` (26 tests; statistics helpers pinned to
+  scipy reference values); run `PYTHONPATH=src python scripts/generate_figures.py`
+  (requires matplotlib, not needed for the test suite).
 - Gate studies now fail fast with a clear error when the `random` baseline arm is
   missing from `--arms`.
 - Fixed: `injectGrokPwaHead` now prioritizes document title over site.json title for og:title.
