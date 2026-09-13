@@ -183,8 +183,10 @@ These remain TODO or DEFERRED until the first gate passes:
   deterministic builder `scripts/build_notebooks.py` (byte-identical
   re-runs, unit-tested in `tests/test_notebooks.py`, every cell executed
   end-to-end); the remote dataset publishing is now code as well
-  (`act.ops.kaggle_remote` + `--kaggle-dataset`, below) with the remaining
-  piece being a real T4-credentialed round trip);
+  (`act.ops.kaggle_remote` + `--kaggle-dataset`, below) with the remote
+  round trip now live-verified with real credentials); the §5.1 execution
+  is operator-scripted in `T4_RUNBOOK.md` with the verdict machine-checked
+  by `scripts/v0_verdict.py` - the only open piece is the T4 run itself;
 
 ## Immediate Execution Order
 
@@ -250,7 +252,14 @@ These remain TODO or DEFERRED until the first gate passes:
    fp16 sessions train under autocast with a GradScaler (checkpoint contract
    v5 carries the scaler state; fp16 resume verified bit-identical, version-4
    payloads still load in fp32). What remains before launch is running the
-   benchmark on the T4 to fix the measured dtype and schedule. The launch
+   benchmark on the T4 to fix the measured dtype and schedule; the whole
+   execution is now operator-scripted in `T4_RUNBOOK.md` (pre-flight,
+   benchmark, the one-line launch command, queue rules, machine-checked
+   verdict via `scripts/v0_verdict.py`, contingencies, artifact trail), and
+   `scripts/v0_verdict.py` computes the pre-registered §5.1 verdict
+   (aggregate cost vs 5% criterion, tolerance band from
+   `expected_probe_cost_percent`, harm-guard tally, `gate_4_authorized`) so
+   no verdict number is hand-computed. The launch
    path is now reproducible-notebook-ready: all ten plan section 39
    notebooks (`00_environment` through `09_compare`) exist under
    `notebooks/` (deliverable 2), so a session can verify the compute
@@ -260,14 +269,19 @@ These remain TODO or DEFERRED until the first gate passes:
 
 ## Verified Checks
 
-- `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (206, including the
+- `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (262, including the
   26 report-figure data-assembly tests, 14 session-plan tests pinning the
   section 5.2 schedule/dtype tables, 10 handoff tests covering atomic
   publish, checksum rejection, and bit-identical resume through the dataset
   round trip, 9 runner tests covering deadline gating, cooperative
   interrupt + in-progress snapshot, restart-from-scratch, and
   skip-completed idempotence, 22 notebook-builder tests pinning determinism,
-  nbformat validity, and the section 104 claims, and fp16/CLI tests covering
+  nbformat validity, and the section 104 claims, 17 verdict tests pinning
+  every branch of the section 5.1 decision rules (the 5% criterion, the
+  [0.5, 2]x tolerance band, the 10-of-12 harm guard, queue completeness
+  gating `gate_4_authorized`, stray-seed exclusion, unmatched-budget and
+  missing-arm aborts, and the verdict read through the real publish
+  pipeline), and fp16/CLI tests covering
   the fp16 session
   round trip, the version-4 compatibility path, and the pair-session launch
   command's artifact/dtype guards); session runs are deliberately excluded
@@ -315,6 +329,17 @@ These remain TODO or DEFERRED until the first gate passes:
   figures to `artifacts/study-summaries/figures/` (fig1 win-rate forest,
   fig2 quality-vs-cost, fig3 delta distributions, fig4 probe-rank heatmap),
   byte-identical across re-runs.
+- `PYTHONPATH=src python scripts/v0_verdict.py --dataset-root <root>` -> computes
+  the pre-registered §5.1 verdict from the published seed summaries (verified
+  against a live-published dataset and now unit-pinned in
+  `tests/test_v0_verdict.py`: correctly aggregates per-arm FLOPs under the
+  toy accounting, excludes stray complete seeds outside 9000-9011 with a
+  warning, refuses unmatched mutation budgets or missing arms, and returns
+  FAIL with the missing-seed list until the queue completes; the harm-guard
+  boundary (reject at >= 10 adaptive losses) is asserted on both sides).
+  Exit codes:
+  0 = PASS (Gate 4 authorized only with all 12 declared seeds complete),
+  1 = FAIL, 2 = PASS with qualification (band miss or harm-guard rejection).
 - `PYTHONPATH=src python -m compileall -q src/act tests` -> passed.
 - `npm run typecheck` -> passed.
 - `npm run build` -> passed.

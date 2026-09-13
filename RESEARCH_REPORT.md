@@ -299,6 +299,19 @@ on measured seeds; probe budgets may not change between this pre-registration
 and the measurement; all criteria (cost, band, harm guard) are reported
 whatever the outcome.
 
+**Execution.** The protocol runs from `T4_RUNBOOK.md` (pre-flight, session-1
+throughput benchmark, the one-line launch command, queue rules, contingencies).
+The verdict is machine-checked by `scripts/v0_verdict.py`, which reads the
+published seed summaries and applies exactly the rules above - aggregate
+adaptive cost vs the 5% criterion, the [0.5, 2]x tolerance band from
+`expected_probe_cost_percent`, and the 10-of-12 harm guard - over the declared
+queue 9000-9011 precisely (stray complete seeds are excluded with a warning,
+not aggregated); no verdict number is hand-computed. Every branch of that
+decision contract is unit-pinned in `tests/test_v0_verdict.py` (exit codes 0,
+1, and 2, the harm-guard boundary, queue-completeness gating of
+`gate_4_authorized`, stray-seed exclusion, and the abort conditions), so the
+registered rules cannot drift before the T4 run.
+
 ### 5.2 GPU execution plan: session budgeting and checkpoint handoff (12-hour Kaggle limit)
 
 Operational companion to section 5.1, pre-committed before launch. Kaggle
