@@ -1,10 +1,13 @@
 # ACT Implementation Status
 
-Updated: 2026-09-12
+Updated: 2026-09-13
 
 This document compares the current workspace against
 `Adaptive Computational Topology - Complete Kaggle Implementation Plan.md`.
 It is the implementation tracker for the narrowed first scientific milestone.
+The narrative companion covering the six-study factor map (six gate-style
+quality tests, one pass) is `RESEARCH_REPORT.md`; all quoted statistics there
+are machine-checked against `artifacts/study-summaries/`.
 
 ## Status Legend
 
