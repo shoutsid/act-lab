@@ -446,6 +446,26 @@ them on the day:
   re-running the same  command. The session summary JSON records the queue, the measured
   throughput, per-pair actions (completed / interrupted / skipped), and
   FLOPs counters for the artifact trail.
+- The throughput-gated dtype rule is fully executable: the session runner
+  trains fp16 sessions under autocast with a GradScaler over fp32 master
+  weights (`V0SessionConfig(dtype="fp16")`), and the checkpoint contract
+  bumped to version 5 to carry the scaler state so fp16 resume is
+  bit-identical (verified by the self-check and unit tests; version-4
+  payloads still load in fp32 sessions, and are rejected only under fp16,
+  where the missing scaler state would silently change the schedule).
+  Dtype books operations, not time: fp16 and fp32 sessions produce
+  identical FLOPs counters, so no pre-registered criterion is touched.
+- The launch command is one line. `python -m act.training.cli --mode
+  pair-session` reads the session-1 benchmark artifact (default
+  `artifacts/v0-benchmark.json`), re-derives the dtype decision from the
+  measured throughput and refuses a stale or hand-edited artifact (the
+  recorded decision must equal the derived one), applies the registered
+  `max_checkpoints=2` pin, runs `run_pair_session` over the declared queue
+  with the dataset handoff, and writes the session log
+  (`artifacts/v0-sessions/session-log.json`). `--tokens-per-second`
+  replaces the artifact, `--hours` sets the remaining clock, `--profile`
+  smoke-tests the whole path on a tiny config. Validated end-to-end:
+  benchmark artifact -> CLI -> 12/12 declared pairs published.
 
 ## 6. Reproducibility
 

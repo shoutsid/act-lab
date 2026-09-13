@@ -11,7 +11,10 @@ Checks, on a tiny non-declared config:
   2. deleting the final checkpoint and resuming from the step-15 snapshot
      reproduces the reference run bit-identically (losses, FLOPs counters,
      architecture hashes, mutation histories);
-  3. checkpoints carry the version-4 payload contract.
+  3. an fp16 session (autocast + GradScaler) also resumes bit-identically
+     with its scaler state restored, and books the same FLOPs counters as
+     fp32 (dtype books operations, not time);
+  4. checkpoints carry the version-5 payload contract.
 """
 
 import json
@@ -62,7 +65,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="v0-selfcheck-") as tmp:
         root = Path(tmp)
 
-        print("[1/3] reference session ...", flush=True)
+        print("[1/4] reference session ...", flush=True)
         reference = run_v0_session(_config(), checkpoint_dir=root / "ref")
         adaptive, random_arm = reference.arms[1], reference.arms[0]
         if adaptive.mutation_count != random_arm.mutation_count:
@@ -93,7 +96,7 @@ def main() -> int:
             if arm.parameter_count <= 0 or arm.tokens_per_second <= 0 or not arm.architecture_hash:
                 failures.append(f"arm {arm.mode} recorded degenerate metrics")
 
-        print("[2/3] resume equivalence ...", flush=True)
+        print("[2/4] resume equivalence ...", flush=True)
         run_v0_session(_config(), checkpoint_dir=root / "resume")
         for mode in ("random", "adaptive"):
             arm_dir = root / "resume" / "seed-11" / f"arm-{mode}"
@@ -117,7 +120,38 @@ def main() -> int:
             ):
                 failures.append(f"{before.mode}: resumed mutation history diverged")
 
-        print("[3/3] checkpoint contract ...", flush=True)
+        print("[3/4] fp16 resume equivalence ...", flush=True)
+        fp16_config = _config(dtype="fp16")
+        fp16_reference = run_v0_session(fp16_config, checkpoint_dir=root / "fp16-ref")
+        for mode in ("random", "adaptive"):
+            arm_dir = root / "fp16-resume" / "seed-11" / f"arm-{mode}"
+            run_v0_session(fp16_config, checkpoint_dir=root / "fp16-resume")
+            newest = _newest_checkpoint(arm_dir)
+            if not newest.stem.endswith("0020"):
+                failures.append(f"fp16 {mode}: newest checkpoint is {newest.name}")
+            newest.unlink()
+        fp16_resumed = run_v0_session(fp16_config, checkpoint_dir=root / "fp16-resume")
+        for before, after in zip(fp16_reference.arms, fp16_resumed.arms):
+            if after.final_loss != before.final_loss:
+                failures.append(f"fp16 {before.mode}: resumed final loss diverged")
+            if after.architecture_hash != before.architecture_hash:
+                failures.append(f"fp16 {before.mode}: resumed architecture diverged")
+            if (after.training_flops, after.search_flops) != (
+                before.training_flops,
+                before.search_flops,
+            ):
+                failures.append(f"fp16 {before.mode}: resumed FLOPs counters diverged")
+        for fp32_arm, fp16_arm in zip(reference.arms, fp16_reference.arms):
+            if (fp16_arm.training_flops, fp16_arm.search_flops) != (
+                fp32_arm.training_flops,
+                fp32_arm.search_flops,
+            ):
+                failures.append(
+                    f"{fp32_arm.mode}: fp16 changed the FLOPs counters "
+                    "(dtype must book operations, not time)"
+                )
+
+        print("[4/4] checkpoint contract ...", flush=True)
         run_v0_session(
             _config(
                 arms=("adaptive",),
@@ -135,8 +169,8 @@ def main() -> int:
             payload = torch.load(
                 arm_dir / retained[-1], map_location="cpu", weights_only=False
             )
-            if payload.get("version") != 4:
-                failures.append("checkpoint payload is not version 4")
+            if payload.get("version") != 5:
+                failures.append("checkpoint payload is not version 5")
             validate_checkpoint_payload(payload)
             if payload["v0_session"]["mutations"] != 1:
                 failures.append("checkpoint did not record the mutation count")

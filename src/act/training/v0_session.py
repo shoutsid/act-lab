@@ -86,6 +86,11 @@ class V0SessionConfig:
     # it. Blocks carry no dropout, so the recompute is deterministic and the
     # bit-identical resume contract is unaffected.
     activation_checkpointing: bool = True
+    # Execution dtype (section 5.2's throughput-gated rule): "fp32", or
+    # "fp16" = autocast forward/backward with a GradScaler over fp32 master
+    # weights. Dtype touches no pre-registered criterion: FLOPs counters
+    # book operations, not time, so both dtypes produce identical counters.
+    dtype: str = "fp32"
     checkpoint_interval: int = 500
     max_checkpoints: int = 3
     checkpoint_max_bytes: int | None = None
@@ -97,6 +102,8 @@ class V0SessionConfig:
             raise ValueError("mutation_interval and mutation_budget must be positive")
         if self.probe_candidate_cap < 1 or self.probe_batch_count < 1:
             raise ValueError("probe budgets must be positive")
+        if self.dtype not in {"fp32", "fp16"}:
+            raise ValueError(f"unsupported session dtype: {self.dtype}")
         if self.validation_batches < 1:
             raise ValueError("validation_batches must be positive")
         unknown = [arm for arm in self.arms if arm not in {"random", "adaptive"}]
@@ -232,16 +239,23 @@ def save_v0_checkpoint(
     model: V0MoECausalLM,
     optimizer: torch.optim.Optimizer,
     state: _SessionState,
+    scaler: torch.amp.GradScaler | None = None,
 ) -> None:
-    """Persist resumable session state in the version-4 checkpoint contract."""
+    """Persist resumable session state in the version-5 checkpoint contract.
+
+    Version 5 adds the GradScaler state for fp16 sessions (``scaler`` is
+    None in fp32 mode). Version-4 payloads remain loadable: they simply have
+    no scaler entry, which a resumed fp32 session never needs.
+    """
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
-            "version": 4,
+            "version": 5,
             "model": model.state_dict(),
             "optimizer": optimizer.state_dict(),
             "torch_rng_state": torch.get_rng_state(),
+            "scaler": scaler.state_dict() if scaler is not None else None,
             "training": {
                 "step": state.step,
                 "tokens": state.tokens,
@@ -264,13 +278,21 @@ def _state_from_payload(
     model: V0MoECausalLM,
     optimizer: torch.optim.Optimizer,
     device: torch.device,
+    scaler: torch.amp.GradScaler | None = None,
 ) -> _SessionState:
-    """Apply model/optimizer/RNG state from a loaded payload and build state."""
+    """Apply model/optimizer/RNG state from a loaded payload and build state.
+
+    With ``scaler`` given (fp16 resume), the payload's scaler state is
+    restored so loss-scale growth resumes exactly where the stop left it.
+    """
     model.load_state_dict(payload["model"])  # type: ignore[arg-type]
     optimizer.load_state_dict(payload["optimizer"])  # type: ignore[arg-type]
     move_optimizer_state(optimizer, device)
     if "torch_rng_state" in payload:
         torch.set_rng_state(payload["torch_rng_state"])  # type: ignore[arg-type]
+    scaler_payload = payload.get("scaler")
+    if scaler is not None and scaler_payload is not None:
+        scaler.load_state_dict(scaler_payload)
     training = payload["training"]
     session = payload.get("v0_session", {})
     genome_dict = training.get("genome")
@@ -460,14 +482,27 @@ def _train_arm(
     # weights regardless of execution order or process history. Python's
     # str hash is process-salted, so the offset is an explicit map.
     arm_seed = config.seed * 10 + {"random": 1, "adaptive": 2}[mode]
+    # fp16 sessions train under autocast with a GradScaler over fp32 master
+    # weights; fp32 sessions keep the plain path. Both are created here so a
+    # resume restores into the same object graph either way.
+    use_amp = config.dtype == "fp16"
+    scaler = torch.amp.GradScaler("cpu", enabled=use_amp) if use_amp else None
     if latest is not None:
         payload = torch.load(latest, map_location="cpu", weights_only=False)
-        if not isinstance(payload, dict) or payload.get("version") != 4:
-            raise ValueError(f"checkpoint {latest} is not a version-4 V0 session payload")
+        version = payload.get("version") if isinstance(payload, dict) else None
+        if version == 4 and use_amp:
+            raise ValueError(
+                f"checkpoint {latest} is a version-4 payload with no scaler state; "
+                "fp16 sessions require version-5 checkpoints - rerun this arm in fp32"
+            )
+        if version not in {4, 5}:
+            raise ValueError(
+                f"checkpoint {latest} is not a version-4/5 V0 session payload"
+            )
         genome = ArchitectureGenome.from_dict(payload["training"]["genome"])
         model = _prepare_model(v0_moe_model_from_genome(genome).to(device), config)
         optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
-        arm_state = _state_from_payload(payload, model, optimizer, device)
+        arm_state = _state_from_payload(payload, model, optimizer, device, scaler)
         resumed_from = str(latest)
         if log is not None:
             log(f"[{mode}] resumed from {latest} at step {arm_state.step}")
@@ -512,11 +547,17 @@ def _train_arm(
             generator=generator,
         ).to(device)
         optimizer.zero_grad(set_to_none=True)
-        loss = model.loss(tokens)
+        with torch.autocast(device.type, dtype=torch.float16, enabled=use_amp):
+            loss = model.loss(tokens)
         if not torch.isfinite(loss):
             raise RuntimeError(f"{mode} arm produced non-finite loss at step {step}")
-        loss.backward()
-        optimizer.step()
+        if scaler is not None:
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            loss.backward()
+            optimizer.step()
         arm_state.training_flops += model.parameter_count * tokens.numel() * 2
         arm_state.tokens += tokens.numel()
         arm_state.step = step
@@ -537,7 +578,7 @@ def _train_arm(
                 )
         if policy.should_save(step):
             path = _checkpoint_path(arm_dir, step)
-            save_v0_checkpoint(path, model, optimizer, arm_state)
+            save_v0_checkpoint(path, model, optimizer, arm_state, scaler)
             policy.accept(path)
             retain_checkpoints(arm_dir, max_checkpoints=config.max_checkpoints)
             # Cooperative deadline stop: only at a saved checkpoint boundary,
@@ -554,7 +595,7 @@ def _train_arm(
 
     # Final checkpoint so a completed arm never needs recomputation.
     final_path = _checkpoint_path(arm_dir, config.total_steps)
-    save_v0_checkpoint(final_path, model, optimizer, arm_state)
+    save_v0_checkpoint(final_path, model, optimizer, arm_state, scaler)
     policy.accept(final_path)
     retain_checkpoints(arm_dir, max_checkpoints=config.max_checkpoints)
     if resumed_from is not None and log is not None:

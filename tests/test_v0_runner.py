@@ -232,3 +232,198 @@ def test_interrupted_exception_carries_step() -> None:
     error = V0SessionInterrupted("stopped", 120)
     assert error.step == 120
     assert "stopped" in str(error)
+
+
+# --- CLI wrapper (--mode pair-session) --------------------------------------
+
+
+def _write_benchmark(path: Path, tokens_per_second: float, dtype: str) -> None:
+    """A minimal-but-honest benchmark artifact as the benchmark script writes it."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "benchmark": "v0-throughput-5.2",
+                "measured_tokens_per_second": tokens_per_second,
+                "dtype_decision": dtype,
+            }
+        )
+    )
+
+
+def _cli_argv(extra: list[str], benchmark: Path | None = None, profile: bool = True) -> list[str]:
+    argv = ["act.training.cli", "--mode", "pair-session", "--hours", "8"]
+    if profile:
+        argv.append("--profile")
+    if benchmark is not None:
+        argv += ["--benchmark", str(benchmark)]
+    return argv + extra
+
+
+def test_cli_pair_session_runs_the_loop(tmp_path: Path, monkeypatch) -> None:
+    import sys
+
+    from act.training import cli
+
+    output = tmp_path / "log.json"
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",
+                "--seeds", "9000",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+                "--output", str(output),
+            ]
+        ),
+    )
+    cli.main()
+    summary = json.loads(output.read_text())
+    assert summary["protocol"] == "v0-compute-efficiency-5.2"
+    assert summary["pairs_completed"] == 1
+    assert published_seed_status(tmp_path / "dataset", 9000) == "complete"
+
+
+def test_cli_reads_benchmark_artifact_and_dtype(tmp_path: Path, monkeypatch) -> None:
+    import sys
+
+    from act.training import cli
+
+    benchmark = tmp_path / "v0-benchmark.json"
+    _write_benchmark(benchmark, 2_000.0, "fp16")  # below the fp32 floor
+    output = tmp_path / "log.json"
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--benchmark", str(benchmark),
+                "--seeds", "9000",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+                "--output", str(output),
+            ]
+        ),
+    )
+    cli.main()
+    summary = json.loads(output.read_text())
+    assert summary["measured_tokens_per_second"] == 2_000.0
+    # The pair ran with the measured dtype decision applied to the session.
+    payload = json.loads(benchmark.read_text())
+    assert payload["dtype_decision"] == "fp16"
+
+
+def test_cli_rejects_stale_benchmark_artifact(tmp_path: Path, monkeypatch) -> None:
+    """A recorded dtype that contradicts the measured number must not launch."""
+    import sys
+
+    import pytest as pytest_module
+
+    from act.training import cli
+
+    benchmark = tmp_path / "v0-benchmark.json"
+    _write_benchmark(benchmark, 2_000.0, "fp32")  # recorded != derived (fp16)
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--benchmark", str(benchmark),
+                "--seeds", "9000",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+            ]
+        ),
+    )
+    with pytest_module.raises(SystemExit, match="stale or edited"):
+        cli.main()
+    assert not (tmp_path / "sessions").exists()
+
+
+def test_cli_rejects_dtype_override_contradicting_the_rule(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import sys
+
+    import pytest as pytest_module
+
+    from act.training import cli
+
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",  # measures fp32
+                "--dtype", "fp16",  # but the user forces fp16
+                "--seeds", "9000",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+            ]
+        ),
+    )
+    with pytest_module.raises(SystemExit, match="contradicts"):
+        cli.main()
+
+
+def test_cli_requires_benchmark_or_throughput(tmp_path: Path, monkeypatch) -> None:
+    import sys
+
+    import pytest as pytest_module
+
+    from act.training import cli
+
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+                "--benchmark", str(tmp_path / "missing.json"),
+            ]
+        ),
+    )
+    with pytest_module.raises(SystemExit, match="not found"):
+        cli.main()
+
+
+def test_cli_default_queue_is_the_declared_block(tmp_path: Path, monkeypatch) -> None:
+    """Without --seeds the launch command queues exactly 9000-9011."""
+    import sys
+
+    captured: dict = {}
+
+    from act.training import cli
+
+    def fake_run_pair_session(**kwargs):
+        captured.update(kwargs)
+        return {
+            "protocol": "v0-compute-efficiency-5.2",
+            "seeds_requested": list(kwargs["seeds"]),
+            "declared_seed_queue": [9000, 9001],
+            "remaining_hours_at_entry": kwargs["remaining_hours"],
+            "measured_tokens_per_second": kwargs["measured_tokens_per_second"],
+            "pair_time_hours": 0.1,
+            "pairs_completed": 0,
+            "latest_published_seed": None,
+            "pairs": [],
+        }
+
+    monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
+    output = tmp_path / "log.json"
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+                "--output", str(output),
+            ],
+            profile=False,  # the real launch command runs the declared config
+        )
+    )
+    cli.main()
+    assert captured["seeds"] == (9000, 9001, 9002, 9003, 9004, 9005, 9006, 9007, 9008, 9009, 9010, 9011)
+    assert captured["code_revision"]  # captured from git, not 'unknown'
+    assert captured["config"].dtype == "fp32"
+    assert captured["config"].max_checkpoints == 2  # registered pin
+    assert captured["config"].declared is True  # no --profile model overrides

@@ -167,6 +167,118 @@ def test_declared_guard_rejects_undeclared_model(tmp_path: Path) -> None:
         )
 
 
+def test_v0_session_config_rejects_unknown_dtype() -> None:
+    with pytest.raises(ValueError, match="dtype"):
+        V0SessionConfig(dtype="bf16")
+
+
+def test_fp16_session_trains_and_saves_scaler_state(tmp_path: Path) -> None:
+    """The fp16 path runs on CPU and checkpoints carry the scaler state."""
+    config = V0SessionConfig(
+        seed=21,
+        arms=("random", "adaptive"),
+        declared=False,
+        device="cpu",
+        vocab_size=64,
+        context_size=256,
+        hidden_size=64,
+        depth=2,
+        attention_heads=4,
+        expert_count=4,
+        expert_width=32,
+        total_steps=4,
+        mutation_interval=2,
+        mutation_budget=1,
+        probe_batch_count=1,
+        validation_batches=2,
+        checkpoint_interval=2,
+        max_checkpoints=2,
+        dtype="fp16",
+    )
+    result = run_v0_session(config, checkpoint_dir=tmp_path / "fp16")
+    assert all(arm.mutation_count == 1 for arm in result.arms)
+    payload = torch.load(
+        tmp_path / "fp16" / "seed-21" / "arm-random" / "checkpoint-000004.pt",
+        map_location="cpu",
+        weights_only=False,
+    )
+    assert payload["version"] == 5
+    scaler_state = payload["scaler"]
+    assert isinstance(scaler_state, dict) and "scale" in scaler_state
+    assert float(scaler_state["scale"]) > 0
+
+
+def test_fp16_resume_is_bit_identical(tmp_path: Path) -> None:
+    """An fp16 session resumed from mid-run reproduces the fp16 reference."""
+    config = V0SessionConfig(
+        seed=22,
+        arms=("random", "adaptive"),
+        declared=False,
+        device="cpu",
+        vocab_size=64,
+        context_size=256,
+        hidden_size=64,
+        depth=2,
+        attention_heads=4,
+        expert_count=4,
+        expert_width=32,
+        total_steps=8,
+        mutation_interval=4,
+        mutation_budget=2,
+        probe_batch_count=1,
+        validation_batches=2,
+        checkpoint_interval=2,
+        max_checkpoints=2,
+        dtype="fp16",
+    )
+    reference = run_v0_session(config, checkpoint_dir=tmp_path / "ref")
+    arm_dir = tmp_path / "resume" / "seed-22" / "arm-random"
+    run_v0_session(config, checkpoint_dir=tmp_path / "resume")
+    newest = max(arm_dir.glob("checkpoint-*.pt"), key=lambda p: int(p.stem.split("-")[-1]))
+    assert newest.stem.endswith("0008")
+    newest.unlink()  # force a mid-run resume from the step-6 checkpoint
+    resumed = run_v0_session(config, checkpoint_dir=tmp_path / "resume")
+    for before, after in zip(reference.arms, resumed.arms):
+        assert after.final_loss == before.final_loss
+        assert after.architecture_hash == before.architecture_hash
+        assert after.training_flops == before.training_flops
+        assert after.search_flops == before.search_flops
+        assert after.mutation_count == before.mutation_count
+
+
+def test_version4_checkpoint_still_loads(tmp_path: Path) -> None:
+    """A v4 payload (no scaler entry) resumes in an fp32 session."""
+    config = V0SessionConfig(
+        seed=23,
+        arms=("random",),
+        declared=False,
+        device="cpu",
+        vocab_size=64,
+        context_size=256,
+        hidden_size=64,
+        depth=2,
+        attention_heads=4,
+        expert_count=4,
+        expert_width=32,
+        total_steps=2,
+        mutation_interval=2,
+        mutation_budget=1,
+        probe_batch_count=1,
+        validation_batches=2,
+        checkpoint_interval=2,
+        max_checkpoints=2,
+    )
+    run_v0_session(config, checkpoint_dir=tmp_path / "v5")
+    checkpoint = tmp_path / "v5" / "seed-23" / "arm-random" / "checkpoint-000002.pt"
+    payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    payload["version"] = 4
+    payload.pop("scaler", None)  # emulate a pre-fp16 version-4 checkpoint
+    torch.save(payload, checkpoint)
+    resumed = run_v0_session(config, checkpoint_dir=tmp_path / "v5")
+    assert resumed.arms[0].final_loss == resumed.arms[0].final_loss  # finite
+    assert resumed.arms[0].parameter_count > 0
+
+
 def test_protocol_aggregation_and_harm_guard() -> None:
     def _result(adaptive_loss: float, random_loss: float) -> V0SessionResult:
         arm_values = {

@@ -316,6 +316,6 @@ def torch_load_summary(checkpoint: str | Path) -> dict:
     import torch
 
     payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
-    if not isinstance(payload, dict) or payload.get("version") != 4:
-        raise ValueError(f"{checkpoint} is not a version-4 V0 session payload")
+    if not isinstance(payload, dict) or payload.get("version") not in {4, 5}:
+        raise ValueError(f"{checkpoint} is not a version-4/5 V0 session payload")
     return payload
