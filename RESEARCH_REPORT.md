@@ -430,6 +430,22 @@ them on the day:
   publish per the 20 GB ledger rule. Tests cover the atomic re-publish,
   checksum-corruption rejection, and the bit-identical resume of an
   interrupted run through working-dir -> dataset -> working-dir.
+- `act.training.v0_runner.run_pair_session` - the session loop that ties the
+  three pieces together over the declared seed queue 9000-9011. Registered
+  semantics it enforces: a pair is **atomic** (never started unless pair
+  time + the 45-min reserve fits the remaining clock - rule 1 is the only
+  start gate - and never resumed across sessions; a pair split by the
+  boundary restarts from scratch, and any stale working-dir state is
+  discarded before a fresh start); the session runner's cooperative stop
+  raises at the next checkpoint boundary once the clock passes the reserve,
+  and the loop publishes the snapshot as an `in-progress` dataset version
+  (forensic only - the next session ignores it and restarts the pair);
+  completed pairs publish `complete` versions and reclaim the working dir;
+  seeds with a `complete` version are skipped before any gating, so
+  "further sessions are scheduled until seed 9011 completes" is literally
+  re-running the same  command. The session summary JSON records the queue, the measured
+  throughput, per-pair actions (completed / interrupted / skipped), and
+  FLOPs counters for the artifact trail.
 
 ## 6. Reproducibility
 

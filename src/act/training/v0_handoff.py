@@ -35,6 +35,13 @@ from act.training.v0_session import V0SessionResult
 
 HANDOFF_DATASET = "act-checkpoints/v0-5-1"
 SUMMARY_NAME = "seed-summary.json"
+# Status values in the published summary. "complete" = the pair finished its
+# declared horizon (resumable state AND result state are valid). "in-progress"
+# = a deadline stop's safety snapshot; the next session publishes it only as
+# a placeholder and deliberately restarts the pair from scratch (section 5.2:
+# pairs are never resumed across sessions).
+COMPLETE_STATUS = "complete"
+IN_PROGRESS_STATUS = "in-progress"
 
 
 def _sha256(path: Path) -> str:
@@ -55,10 +62,10 @@ def session_checkpoint_root(session_dir: str | Path, seed: int) -> Path:
     return Path(session_dir) / f"seed-{seed}"
 
 
-def _arm_checkpoint(arm_dir: Path) -> Path:
+def newest_arm_checkpoint(arm_dir: str | Path) -> Path:
     """Newest checkpoint in an arm directory (step-ordered by filename)."""
     candidates: list[tuple[int, Path]] = []
-    for path in arm_dir.glob("checkpoint-*.pt"):
+    for path in Path(arm_dir).glob("checkpoint-*.pt"):
         stem = path.stem.split("-")[-1]
         if stem.isdigit():
             candidates.append((int(stem), path))
@@ -67,28 +74,38 @@ def _arm_checkpoint(arm_dir: Path) -> Path:
     return max(candidates, key=lambda item: item[0])[1]
 
 
-def publish_seed(
+_arm_checkpoint = newest_arm_checkpoint  # backward-compatible alias
+
+
+def publish_seed_state(
     dataset_root: str | Path,
-    result: V0SessionResult,
     *,
+    seed: int,
     session_dir: str | Path,
+    checkpoint_paths: dict[str, str | Path],
+    arm_payloads: dict[str, dict[str, object]],
+    config: dict[str, object],
+    predicted_cost_ratio: float,
     code_revision: str,
+    status: str = COMPLETE_STATUS,
+    interrupted_step: int | None = None,
     clean_working_dir: bool = False,
 ) -> Path:
-    """Publish one completed seed's resumable state as an atomic dataset version.
+    """Publish one seed's resumable state as an atomic dataset version.
 
-    Stages the newest per-arm checkpoint plus arm metrics under a temporary
-    directory, writes the checksummed manifest last, then swaps the seed
-    directory into place. With ``clean_working_dir`` the session's working
-    copy of that seed is removed afterwards (the 20 GB ledger's rule), since
-    the dataset now holds everything a later session needs.
+    This is the shared staging-and-swap core: the caller supplies the newest
+    per-arm checkpoint paths and metric payloads directly. ``status`` records
+    whether the pair completed its horizon (``complete``) or the publish is a
+    deadline-stop safety snapshot (``in-progress``). Staged under a temporary
+    directory, manifest checksummed and written last, swapped into place only
+    then; with ``clean_working_dir`` the working copy is removed afterwards.
     """
-    seed = int(result.config["seed"])
-    if not result.arms:
-        raise ValueError("session result has no arms to publish")
-    if any(arm.mutation_count != result.arms[0].mutation_count for arm in result.arms):
-        raise ValueError("refusing to publish a seed with unmatched mutation budgets")
-
+    if status not in {COMPLETE_STATUS, IN_PROGRESS_STATUS}:
+        raise ValueError(f"unknown publish status: {status}")
+    if not arm_payloads:
+        raise ValueError("no arm payloads to publish")
+    if set(arm_payloads) != set(checkpoint_paths):
+        raise ValueError("arm payloads and checkpoint paths must cover the same arms")
     destination = seed_directory(dataset_root, seed)
     destination.parent.mkdir(parents=True, exist_ok=True)
     staging = destination.parent / f".staging-seed-{seed:04d}"
@@ -100,28 +117,27 @@ def publish_seed(
     for directory in layout.required_directories():
         directory.mkdir(parents=True, exist_ok=True)
 
-    sources: list[tuple[Path, Path]] = []  # (source file, staging target)
-    seed_root = Path(session_dir) / f"seed-{seed}"
-    arm_payloads: dict[str, dict[str, object]] = {}
-    for arm in result.arms:
-        arm_dir = seed_root / f"arm-{arm.mode}"
-        checkpoint = _arm_checkpoint(arm_dir)
+    sources: list[tuple[Path, Path]] = []
+    for mode in sorted(arm_payloads):
+        checkpoint = Path(checkpoint_paths[mode])
         # Keep the original step-named filename: the session runner's resume
         # lookup globs ``checkpoint-*.pt``, so the name is part of the
         # contract that a restored seed actually resumes.
-        target = layout.checkpoints / arm.mode / checkpoint.name
+        target = layout.checkpoints / mode / checkpoint.name
         sources.append((checkpoint, target))
-        arm_payloads[arm.mode] = {
-            **asdict(arm),
+        arm_payloads[mode] = {
+            **arm_payloads[mode],
             "checkpoint": str(target.relative_to(layout.root)),
         }
 
     summary = {
         "seed": seed,
+        "status": status,
         "protocol": "v0-compute-efficiency-5.1",
-        "predicted_cost_ratio": result.predicted_cost_ratio,
+        "interrupted_step": interrupted_step,
+        "predicted_cost_ratio": predicted_cost_ratio,
         "arms": arm_payloads,
-        "config": result.config,
+        "config": config,
     }
     summary_path = staging / SUMMARY_NAME
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
@@ -154,8 +170,40 @@ def publish_seed(
     os.replace(staging, destination)
 
     if clean_working_dir and Path(session_dir).exists():
-        shutil.rmtree(seed_root)
+        shutil.rmtree(Path(session_dir) / f"seed-{seed}")
     return destination
+
+
+def publish_seed(
+    dataset_root: str | Path,
+    result: V0SessionResult,
+    *,
+    session_dir: str | Path,
+    code_revision: str,
+    clean_working_dir: bool = False,
+) -> Path:
+    """Publish one completed seed's result state (status ``complete``)."""
+    seed = int(result.config["seed"])
+    if not result.arms:
+        raise ValueError("session result has no arms to publish")
+    if any(arm.mutation_count != result.arms[0].mutation_count for arm in result.arms):
+        raise ValueError("refusing to publish a seed with unmatched mutation budgets")
+    seed_root = Path(session_dir) / f"seed-{seed}"
+    return publish_seed_state(
+        dataset_root,
+        seed=seed,
+        session_dir=session_dir,
+        checkpoint_paths={
+            arm.mode: _arm_checkpoint(seed_root / f"arm-{arm.mode}")
+            for arm in result.arms
+        },
+        arm_payloads={arm.mode: dict(asdict(arm)) for arm in result.arms},
+        config=dict(result.config),
+        predicted_cost_ratio=result.predicted_cost_ratio,
+        code_revision=code_revision,
+        status=COMPLETE_STATUS,
+        clean_working_dir=clean_working_dir,
+    )
 
 
 def latest_published_seed(dataset_root: str | Path) -> tuple[int, Path] | None:
@@ -225,3 +273,13 @@ def load_seed_summary(dataset_root: str | Path, seed: int) -> dict:
     """Read (without verification) a published seed's summary for reporting."""
     path = seed_directory(dataset_root, seed) / "reports" / SUMMARY_NAME
     return json.loads(path.read_text())
+
+
+def published_seed_status(dataset_root: str | Path, seed: int) -> str | None:
+    """Return a seed's publish status, or None when it has no version."""
+    path = seed_directory(dataset_root, seed) / "reports" / SUMMARY_NAME
+    if not path.is_file():
+        return None
+    summary = json.loads(path.read_text())
+    status = summary.get("status")
+    return status if isinstance(status, str) else None

@@ -167,6 +167,18 @@ class V0SessionResult:
         }
 
 
+class V0SessionInterrupted(RuntimeError):
+    """Raised when a run stops cooperatively at a checkpoint boundary.
+
+    Carries the step it stopped at so the caller can distinguish a clean
+    deadline stop from a crash: state up to ``step`` is saved and valid.
+    """
+
+    def __init__(self, message: str, step: int) -> None:
+        super().__init__(message)
+        self.step = step
+
+
 @dataclass
 class _SessionState:
     step: int = 0
@@ -428,6 +440,7 @@ def _train_arm(
     session_root: Path,
     device: torch.device,
     log: Callable[[str], None] | None,
+    deadline_check: Callable[[], bool] | None = None,
 ) -> V0ArmResult:
     """Train one arm with checkpoint/resume, returning its final result."""
     arm_dir = session_root / f"arm-{mode}"
@@ -527,6 +540,15 @@ def _train_arm(
             save_v0_checkpoint(path, model, optimizer, arm_state)
             policy.accept(path)
             retain_checkpoints(arm_dir, max_checkpoints=config.max_checkpoints)
+            # Cooperative deadline stop: only at a saved checkpoint boundary,
+            # only when the caller's clock says stop. State up to here is on
+            # disk, so a snapshot publish loses nothing.
+            if deadline_check is not None and deadline_check():
+                if log is not None:
+                    log(f"[{mode}] deadline stop at step {step}")
+                raise V0SessionInterrupted(
+                    f"{mode} arm stopped at checkpoint boundary step {step}", step
+                )
     wall_time = time.time() - wall_start
     arm_state.generator_state = generator.get_state()
 
@@ -577,14 +599,23 @@ def run_v0_session(
     *,
     checkpoint_dir: str | Path = "artifacts/v0-sessions",
     log: Callable[[str], None] | None = None,
+    deadline_check: Callable[[], bool] | None = None,
 ) -> V0SessionResult:
-    """Run (or resume) the declared protocol session for one seed."""
+    """Run (or resume) the declared protocol session for one seed.
+
+    ``deadline_check`` is consulted only at checkpoint boundaries; when it
+    returns True the run stops cooperatively by raising
+    ``V0SessionInterrupted`` with every checkpoint up to the stop step saved.
+    """
     if config.declared:
         validate_declared_v0_config(config.model_config())
     device = resolve_device(config.device)
     root = Path(checkpoint_dir) / f"seed-{config.seed}"
     root.mkdir(parents=True, exist_ok=True)
-    arms = tuple(_train_arm(mode, config, root, device, log) for mode in config.arms)
+    arms = tuple(
+        _train_arm(mode, config, root, device, log, deadline_check)
+        for mode in config.arms
+    )
     return V0SessionResult(
         config=asdict(config),
         predicted_cost_ratio=predicted_cost_ratio(config),

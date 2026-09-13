@@ -1,0 +1,234 @@
+"""Tests for the section 5.2 per-seed pair runner.
+
+Tiny non-declared configs keep the whole file fast while exercising the real
+loop: deadline gating, cooperative interrupt with an in-progress snapshot,
+restart-from-scratch semantics, skip-completed idempotence, and the chained
+session story (session 1 interrupted -> session 2 finishes and resumes).
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from act.training import V0SessionConfig
+from act.training.v0_handoff import (
+    load_seed_summary,
+    published_seed_status,
+    seed_directory,
+)
+from act.training.v0_runner import DECLARED_SEEDS, run_pair_session
+from act.training.v0_session import V0SessionInterrupted
+
+
+def _config(**overrides) -> V0SessionConfig:
+    values = dict(
+        declared=False,
+        device="cpu",
+        batch_size=2,
+        vocab_size=64,
+        context_size=256,
+        hidden_size=64,
+        depth=2,
+        attention_heads=4,
+        expert_count=4,
+        expert_width=32,
+        total_steps=12,
+        mutation_interval=6,
+        mutation_budget=2,
+        probe_candidate_cap=4,
+        probe_batch_count=1,
+        validation_batches=2,
+        checkpoint_interval=4,
+        max_checkpoints=2,
+    )
+    values.update(overrides)
+    return V0SessionConfig(**values)
+
+
+def test_declared_seed_block_matches_pre_registration() -> None:
+    assert DECLARED_SEEDS == tuple(range(9000, 9012))
+
+
+def test_rejects_invalid_clock_and_throughput(tmp_path: Path) -> None:
+    config = _config()
+    with pytest.raises(ValueError, match="measured_tokens_per_second"):
+        run_pair_session(
+            config=config, session_dir=tmp_path / "s", dataset_root=tmp_path / "d",
+            code_revision="rev", remaining_hours=8.0, measured_tokens_per_second=0.0,
+        )
+    with pytest.raises(ValueError, match="remaining_hours"):
+        run_pair_session(
+            config=config, session_dir=tmp_path / "s", dataset_root=tmp_path / "d",
+            code_revision="rev", remaining_hours=0.0, measured_tokens_per_second=1e5,
+        )
+
+
+def test_publish_only_clock_runs_no_pairs(tmp_path: Path) -> None:
+    summary = run_pair_session(
+        config=_config(),
+        session_dir=tmp_path / "sessions",
+        dataset_root=tmp_path / "dataset",
+        code_revision="rev",
+        remaining_hours=0.2,  # under the 15-minute publish-only floor
+        measured_tokens_per_second=50_000.0,
+        output=tmp_path / "summary.json",
+    )
+    assert summary["pairs"] == []
+    assert summary["pairs_completed"] == 0
+    assert (tmp_path / "summary.json").is_file()
+
+
+def test_boundary_stop_clock_starts_no_pairs(tmp_path: Path) -> None:
+    # A 0.5 h clock cannot hold pair time + the 45-min publish reserve.
+    summary = run_pair_session(
+        config=_config(),
+        session_dir=tmp_path / "sessions",
+        dataset_root=tmp_path / "dataset",
+        code_revision="rev",
+        remaining_hours=0.5,
+        measured_tokens_per_second=2_000.0,  # pair time ~1.39 h > 0.5 h
+        output=tmp_path / "summary.json",
+    )
+    assert summary["pairs"] == []
+    assert summary["pair_time_hours"] + 0.75 > 0.5  # why rule 1 refused
+
+
+def test_first_session_interrupts_and_snapshots(tmp_path: Path) -> None:
+    """A clock that dies mid-pair publishes in-progress and completes nothing."""
+    consumed = {"seconds": 0.0}
+
+    def clock() -> float:
+        # Fake wall clock in SECONDS (the monotonic contract): 180 s = 0.05 h
+        # consumed per call. Entry at 1.0 h passes rule 1 for the tiny pair
+        # (0.10 h + 0.75 h reserve fits 0.95 h), then the burn-down crosses
+        # the 0.75 h intra-pair floor first at the step-10 checkpoint
+        # (checks at 0.90/0.85/0.80 h pass, 0.70 h < 0.75 h stops).
+        consumed["seconds"] += 180.0
+        return consumed["seconds"]
+
+    summary = run_pair_session(
+        config=_config(total_steps=24, checkpoint_interval=2),
+        session_dir=tmp_path / "sessions",
+        dataset_root=tmp_path / "dataset",
+        code_revision="rev",
+        remaining_hours=1.0,
+        measured_tokens_per_second=1e9,  # instantaneous tiny pair
+        clock=clock,
+        seeds=(9000,),
+        output=tmp_path / "summary.json",
+    )
+    actions = [entry["action"] for entry in summary["pairs"]]
+    assert actions == ["interrupted"]
+    interrupted = summary["pairs"][0]
+    assert 0 < interrupted["interrupted_step"] < 24
+    assert interrupted["interrupted_step"] == 10
+    status = published_seed_status(tmp_path / "dataset", 9000)
+    assert status == "in-progress"
+    summary_data = load_seed_summary(tmp_path / "dataset", 9000)
+    assert summary_data["status"] == "in-progress"
+    assert summary_data["interrupted_step"] == interrupted["interrupted_step"]
+
+
+def test_second_session_completes_and_next_seed_starts_fresh(tmp_path: Path) -> None:
+    """Session chain: interrupted seed is restarted (not resumed) and finishes."""
+    dataset_root = tmp_path / "dataset"
+    session_dir = tmp_path / "sessions"
+    config = _config(total_steps=24, checkpoint_interval=2)
+
+    # Session 1: die mid-pair with an in-progress snapshot. Same fake-clock
+    # shape as the single-session interrupt test (seconds, 180 s per call).
+    consumed = {"seconds": 0.0}
+
+    def clock() -> float:
+        consumed["seconds"] += 180.0
+        return consumed["seconds"]
+
+    run_pair_session(
+        config=config,
+        session_dir=session_dir,
+        dataset_root=dataset_root,
+        code_revision="rev",
+        remaining_hours=1.0,
+        measured_tokens_per_second=1e9,
+        clock=clock,
+        seeds=(9000,),
+    )
+    assert published_seed_status(dataset_root, 9000) == "in-progress"
+
+    # Session 2: plenty of clock, two queued seeds. The stale snapshot must
+    # be replaced by a complete version from an uninterrupted pair, and the
+    # runner must move on to the next queued seed.
+    summary = run_pair_session(
+        config=config,
+        session_dir=session_dir,
+        dataset_root=dataset_root,
+        code_revision="rev-2",
+        remaining_hours=8.0,
+        measured_tokens_per_second=50_000.0,
+        seeds=(9000, 9001),
+        output=tmp_path / "summary2.json",
+    )
+    actions = [entry["action"] for entry in summary["pairs"]]
+    assert actions == ["completed", "completed"]
+    assert published_seed_status(dataset_root, 9000) == "complete"
+    assert published_seed_status(dataset_root, 9001) == "complete"
+    assert summary["latest_published_seed"] == 9001
+
+
+def test_completed_seeds_are_skipped_idempotently(tmp_path: Path) -> None:
+    dataset_root = tmp_path / "dataset"
+    session_dir = tmp_path / "sessions"
+    config = _config()
+    first = run_pair_session(
+        config=config,
+        session_dir=session_dir,
+        dataset_root=dataset_root,
+        code_revision="rev",
+        remaining_hours=8.0,
+        measured_tokens_per_second=50_000.0,
+        seeds=(9000,),
+    )
+    assert first["pairs"][0]["action"] == "completed"
+
+    # Re-running reports the completed seed skipped and consumes no clock:
+    # the same command is literally the "schedule further sessions" rule.
+    second = run_pair_session(
+        config=config,
+        session_dir=session_dir,
+        dataset_root=dataset_root,
+        code_revision="rev",
+        remaining_hours=0.55,  # too small for a new pair, fine for skips
+        measured_tokens_per_second=50_000.0,
+        seeds=(9000,),
+    )
+    assert second["pairs"] == [{"seed": 9000, "action": "skipped_complete"}]
+
+
+def test_session_file_records_the_story(tmp_path: Path) -> None:
+    output = tmp_path / "artifacts" / "session-1.json"
+    summary = run_pair_session(
+        config=_config(),
+        session_dir=tmp_path / "sessions",
+        dataset_root=tmp_path / "dataset",
+        code_revision="rev",
+        remaining_hours=8.0,
+        measured_tokens_per_second=50_000.0,
+        seeds=(9000,),
+        output=output,
+    )
+    stored = json.loads(output.read_text())
+    assert stored["protocol"] == "v0-compute-efficiency-5.2"
+    assert stored["seeds_requested"] == [9000]
+    assert stored["declared_seed_queue"] == list(DECLARED_SEEDS)
+    assert stored["pairs_completed"] == summary["pairs_completed"]
+    assert stored["remaining_hours_at_entry"] == 8.0
+    assert stored["latest_published_seed"] == 9000
+
+
+def test_interrupted_exception_carries_step() -> None:
+    error = V0SessionInterrupted("stopped", 120)
+    assert error.step == 120
+    assert "stopped" in str(error)
