@@ -474,8 +474,15 @@ them on the day:
   with the dataset handoff, and writes the session log
   (`artifacts/v0-sessions/session-log.json`). `--tokens-per-second`
   replaces the artifact, `--hours` sets the remaining clock, `--profile`
-  smoke-tests the whole path on a tiny config. Validated end-to-end:
-  benchmark artifact -> CLI -> 12/12 declared pairs published.
+  smoke-tests the whole path on a tiny config. Adding
+  `--kaggle-dataset owner/slug` completes the remote leg of the section
+  5.2 handoff (`act.ops.kaggle_remote`): the newest dataset version is
+  restored at session start (fail-fast - an unreachable dataset stops the
+  launch before any training), and on exit the handoff directory is
+  pushed as a new version without ever raising (a failed push is recorded
+  in `remote-publish-log.json`; the local handoff stays intact and the
+  next session re-pushes). Validated end-to-end: benchmark artifact ->
+  CLI -> 12/12 declared pairs published.
 
 ## 6. Reproducibility
 

@@ -207,6 +207,26 @@ def _run_pair_session(args: argparse.Namespace) -> None:
             checkpoint_interval=4,
             max_checkpoints=2,
         )
+    if args.kaggle_dataset is not None:
+        # Session start: restore the newest remote version before training
+        # (fail-fast - a session that cannot get its requested remote state
+        # must stop here, not mid-pair). Skipped seeds with a complete local
+        # version stay skipped; remote seeds merge over matching locals.
+        from act.ops.kaggle_remote import default_client, restore_latest
+
+        try:
+            restore_latest(
+                args.dataset_root,
+                dataset=args.kaggle_dataset,
+                client=default_client(),
+                log=print,
+            )
+        except Exception as error:  # noqa: BLE001 - launch-blocking, but clean
+            raise SystemExit(
+                f"cannot restore remote dataset {args.kaggle_dataset!r}: "
+                f"{type(error).__name__}: {error}; session not started "
+                "(no training ran, nothing published)"
+            ) from error
     summary = run_pair_session(
         seeds=seeds,
         config=config,
@@ -218,6 +238,7 @@ def _run_pair_session(args: argparse.Namespace) -> None:
         output=args.output,
         log=print,
     )
+    _publish_remote(args, tokens_per_second=tokens_per_second)
     print(
         json.dumps(
             {
@@ -233,6 +254,37 @@ def _run_pair_session(args: argparse.Namespace) -> None:
                     "latest_published_seed",
                 )
             },
+            sort_keys=True,
+        )
+    )
+
+
+def _publish_remote(args: argparse.Namespace, *, tokens_per_second: float) -> None:
+    """Optional exit-path publish to a versioned Kaggle dataset (--kaggle-dataset).
+
+    The remote push is the last step of the launch command, after the local
+    handoff has run inside ``run_pair_session``. It never raises: a failed
+    remote push must not turn a completed session into a crashed one (the
+    local handoff stays intact and the next session can re-push it). The
+    outcome is recorded in the publish log beside the dataset root.
+    """
+    if args.kaggle_dataset is None:
+        return
+    from act.ops.kaggle_remote import default_client, publish_on_exit
+
+    result = publish_on_exit(
+        args.dataset_root,
+        dataset=args.kaggle_dataset,
+        client=default_client(),
+        version_notes=(
+            f"v0-5-1 session publish: {tokens_per_second:.0f} tokens/s, "
+            f"{args.dtype or 'measured'} dtype"
+        ),
+        log=print,
+    )
+    print(
+        json.dumps(
+            {"remote_publish": result.to_dict()},
             sort_keys=True,
         )
     )
@@ -290,6 +342,12 @@ def main() -> None:
     parser.add_argument(
         "--profile", action="store_true",
         help="run a tiny smoke config instead of the declared 285M model",
+    )
+    parser.add_argument(
+        "--kaggle-dataset", default=None,
+        help="owner/slug of the versioned Kaggle checkpoint dataset: restore "
+        "its latest version before the session and publish on exit "
+        "(requires the kaggle package)",
     )
     args = parser.parse_args()
     if args.mode == "v0":

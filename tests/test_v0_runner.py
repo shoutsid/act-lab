@@ -427,3 +427,194 @@ def test_cli_default_queue_is_the_declared_block(tmp_path: Path, monkeypatch) ->
     assert captured["config"].dtype == "fp32"
     assert captured["config"].max_checkpoints == 2  # registered pin
     assert captured["config"].declared is True  # no --profile model overrides
+
+
+# --- Remote dataset publish-on-exit (--kaggle-dataset) -----------------------
+
+
+def _fake_remote(monkeypatch, calls: dict, *, fail: bool = False) -> None:
+    """Stub the lazy remote imports inside cli._publish_remote/restore."""
+    import act.ops.kaggle_remote as remote
+
+    class StubClient:
+        def create_version(self, folder, version_notes):
+            if fail:
+                raise RuntimeError("409 conflict")
+            calls["versions"] = calls.get("versions", 0) + 1
+            return version_notes
+
+        def download_files(self, dataset, target):
+            calls["downloads"] = calls.get("downloads", 0) + 1
+
+    def fake_default_client():
+        calls["client_built"] = calls.get("client_built", 0) + 1
+        return StubClient()
+
+    monkeypatch.setattr(remote, "default_client", fake_default_client)
+
+
+def test_cli_restore_failure_blocks_the_session_before_training(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """Fail-fast: no remote state means no training and a clean error."""
+    import sys
+
+    from act.training import cli
+
+    calls: dict = {}
+    _fake_remote(monkeypatch, calls)
+
+    class Blocked(Exception):
+        pass
+
+    def failing_restore(*args, **kwargs):
+        raise RuntimeError("403 forbidden")
+
+    import act.ops.kaggle_remote as remote
+
+    monkeypatch.setattr(remote, "restore_latest", failing_restore)
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+                "--kaggle-dataset", "owner/act-checkpoints-v0-5-1",
+            ]
+        ),
+    )
+    with pytest.raises(SystemExit, match="session not started"):
+        cli.main()
+    assert not (tmp_path / "sessions").exists()  # nothing ran
+
+
+def test_cli_without_kaggle_flag_touches_no_remote(tmp_path: Path, monkeypatch) -> None:
+    """The default command must not build a client or publish remotely."""
+    import sys
+
+    from act.training import cli
+
+    calls: dict = {}
+    _fake_remote(monkeypatch, calls)
+
+    def fake_run_pair_session(**kwargs):
+        return {
+            "protocol": "v0-compute-efficiency-5.2",
+            "seeds_requested": [9000],
+            "declared_seed_queue": [9000],
+            "remaining_hours_at_entry": 8.0,
+            "measured_tokens_per_second": 50000.0,
+            "pair_time_hours": 0.1,
+            "pairs_completed": 0,
+            "latest_published_seed": None,
+            "pairs": [],
+        }
+
+    monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+                "--output", str(tmp_path / "log.json"),
+            ]
+        ),
+    )
+    cli.main()
+    assert calls == {}  # no client built, no download, no version push
+
+
+def test_cli_publishes_on_exit_with_kaggle_flag(tmp_path: Path, monkeypatch) -> None:
+    """--kaggle-dataset restores before the loop and publishes after it."""
+    import sys
+
+    from act.training import cli
+
+    calls: dict = {}
+    _fake_remote(monkeypatch, calls)
+
+    def fake_run_pair_session(**kwargs):
+        # The restore must already have happened when the loop starts.
+        assert calls.get("downloads") == 1
+        # Simulate a completed pair's local handoff publish.
+        seed_dir = Path(kwargs["dataset_root"]) / "act-checkpoints" / "v0-5-1" / "seed-9000"
+        (seed_dir / "manifests").mkdir(parents=True, exist_ok=True)
+        (seed_dir / "manifests" / "manifest.json").write_text("{}\n")
+        return {
+            "protocol": "v0-compute-efficiency-5.2",
+            "seeds_requested": [9000],
+            "declared_seed_queue": [9000],
+            "remaining_hours_at_entry": 8.0,
+            "measured_tokens_per_second": 50000.0,
+            "pair_time_hours": 0.1,
+            "pairs_completed": 1,
+            "latest_published_seed": 9000,
+            "pairs": [],
+        }
+
+    monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+                "--output", str(tmp_path / "log.json"),
+                "--kaggle-dataset", "owner/act-checkpoints-v0-5-1",
+            ]
+        ),
+    )
+    cli.main()
+    assert calls.get("downloads") == 1  # session-start restore
+    assert calls.get("versions") == 1  # exit-path publish
+
+
+def test_cli_exit_publish_failure_does_not_crash_the_session(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """A failed remote push records the outcome and exits zero-ish."""
+    import sys
+
+    from act.training import cli
+
+    calls: dict = {}
+    _fake_remote(monkeypatch, calls, fail=True)
+
+    def fake_run_pair_session(**kwargs):
+        # Simulate a completed pair's local handoff publish so the exit
+        # push has content and actually reaches the (failing) client.
+        seed_dir = Path(kwargs["dataset_root"]) / "act-checkpoints" / "v0-5-1" / "seed-9000"
+        (seed_dir / "manifests").mkdir(parents=True, exist_ok=True)
+        (seed_dir / "manifests" / "manifest.json").write_text("{}\n")
+        return {
+            "protocol": "v0-compute-efficiency-5.2",
+            "seeds_requested": [9000],
+            "declared_seed_queue": [9000],
+            "remaining_hours_at_entry": 8.0,
+            "measured_tokens_per_second": 50000.0,
+            "pair_time_hours": 0.1,
+            "pairs_completed": 1,
+            "latest_published_seed": 9000,
+            "pairs": [],
+        }
+
+    monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+                "--output", str(tmp_path / "log.json"),
+                "--kaggle-dataset", "owner/act-checkpoints-v0-5-1",
+            ]
+        ),
+    )
+    cli.main()  # must not raise
+    stderrish = capsys.readouterr().out
+    assert '"status": "failed"' in stderrish  # outcome recorded, not raised

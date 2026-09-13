@@ -117,8 +117,8 @@ tests now number nine, with three passes, all from the cap-4 family.
 |---|---|---|
 | T4x2 PyTorch/DDP | PARTIAL | Add device selection and DDP launch helpers now discover torchrun rank/world-size, initialize an appropriate process group, and wrap models only for multi-process runs; scheduler, accumulation, autocast, and activation checkpointing are available. T4x2 validation remains. |
 | TPU v5e/JAX | DEFERRED | Port only after a stable architecture wins the GPU gate. |
-| Kaggle artifact datasets | PARTIAL | Deterministic checkpoint, evaluation, report, and manifest layout contracts now exist; the V0 5.2 per-seed handoff (`act.training.v0_handoff`: atomic publish, checksum-verified restore, bit-identical resume through the dataset round trip) is implemented, while the remote Kaggle dataset API wrapper and publish-on-exit automation remain. |
-| Session resume protocol | PARTIAL | Local checkpoint resume is deterministic for baselines and bit-identical for V0 sessions (verified mid-run resume: losses, FLOPs counters, architecture hashes, and mutation histories all reproduce exactly); Kaggle-style local publish/restore verifies manifest checksums, and the 5.2 versioned-dataset handoff now round-trips a seed working-dir -> dataset -> working-dir bit-identically, while remote dataset restore and publish-on-exit remain. |
+| Kaggle artifact datasets | DONE for the 5.2 handoff | Deterministic checkpoint, evaluation, report, and manifest layout contracts exist; the V0 5.2 per-seed handoff (`act.training.v0_handoff`: atomic publish, checksum-verified restore, bit-identical resume through the dataset round trip) is implemented, and the remote half is now code: `act.ops.kaggle_remote` wraps the optional kaggle package (injectable client, zero-copy push of the handoff directory with generated metadata, restore merges manifest-complete seed versions over matching locals and keeps local-only ones) with `--kaggle-dataset owner/slug` on the launch command - restore at session start (fail-fast before any training), publish-on-exit that never raises (outcome recorded in `remote-publish-log.json`). |
+| Session resume protocol | DONE for the 5.2 handoff | Local checkpoint resume is deterministic for baselines and bit-identical for V0 sessions (verified mid-run resume: losses, FLOPs counters, architecture hashes, and mutation histories all reproduce exactly); the 5.2 versioned-dataset handoff round-trips a seed working-dir -> dataset -> working-dir bit-identically, and the remote leg now exists (`--kaggle-dataset` restore at session start, publish-on-exit; remote seed versions merge over matching locals, local-only seeds are kept, partial remote versions are ignored). |
 | Repository structure | PARTIAL | Core Python data, evaluation, evolution, importance, model, topology, training, and Kaggle-artifact implementations exist with focused tests; all ten plan section 39 notebooks (`00`-`09`) now exist under `notebooks/` (deterministic builder, tested), while standalone research entry points remain. |
 
 ## Plan Sections 8-24: Model and Topology
@@ -182,7 +182,9 @@ These remain TODO or DEFERRED until the first gate passes:
   `08_retrain`, `09_compare` - now exist under `notebooks/`, emitted by the
   deterministic builder `scripts/build_notebooks.py` (byte-identical
   re-runs, unit-tested in `tests/test_notebooks.py`, every cell executed
-  end-to-end); the remote Kaggle dataset publishing remains);
+  end-to-end); the remote dataset publishing is now code as well
+  (`act.ops.kaggle_remote` + `--kaggle-dataset`, below) with the remaining
+  piece being a real T4-credentialed round trip);
 
 ## Immediate Execution Order
 
@@ -203,6 +205,17 @@ These remain TODO or DEFERRED until the first gate passes:
    search cost; a cheaper cap-2/1-batch variant at steps=144 then met the cost
    budget (4.13%) but failed quality (181/380, p `0.8351`) on fresh seeds
    4004-4383.
+- `PYTHONPATH=src python -m act.training.cli --mode pair-session ...
+  --kaggle-dataset owner/slug` -> the remote publish-on-exit wrapper
+  (`act.ops.kaggle_remote`): restores the newest dataset version at
+  session start (fail-fast with a one-line error before any training when
+  unreachable, verified live: 403 without credentials -> exit 1, sessions
+  dir untouched), publishes the handoff directory as a new version on
+  exit without ever raising (a failed push records `failed` in
+  `artifacts/.../remote-publish-log.json` and leaves the local handoff
+  intact), keeps local-only seeds and ignores manifest-less partial
+  versions on restore; unit tests inject a fake client, so the kaggle
+  package is never needed by the suite.
 8. NEXT: Gate 3 quality is established for the cap-4 controller family (three
    passes across horizons and probe-batch counts; richness is the active axis).
    The remaining blocker is compute-efficiency: cap-4/1-batch cuts probe cost to

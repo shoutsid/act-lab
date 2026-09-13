@@ -7,6 +7,17 @@ from .kaggle import (
     publish_artifacts,
     restore_artifacts,
 )
+from .kaggle_remote import (
+    KAGGLE_AVAILABLE,
+    KaggleApiAdapter,
+    KaggleDatasetClient,
+    RemotePublishResult,
+    dataset_metadata,
+    default_client,
+    ensure_metadata,
+    publish_on_exit,
+    restore_latest,
+)
 
 __all__ = [
     "KaggleLayout",
@@ -14,4 +25,13 @@ __all__ = [
     "kaggle_layout",
     "publish_artifacts",
     "restore_artifacts",
+    "KAGGLE_AVAILABLE",
+    "KaggleApiAdapter",
+    "KaggleDatasetClient",
+    "RemotePublishResult",
+    "dataset_metadata",
+    "default_client",
+    "ensure_metadata",
+    "publish_on_exit",
+    "restore_latest",
 ]
