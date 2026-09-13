@@ -1,12 +1,22 @@
 # Adaptive Computational Topology — Research Report
 
 Status: skeleton covering the narrowed first scientific milestone (Gate 3,
-low-fidelity Experiment 0). Updated: 2026-09-13 (factor-map figures generated;
-see section 8).
+low-fidelity Experiment 0). Updated: 2026-09-13 (deliverable 2's reproducible
+notebooks built and verified; see section 7).
 
 This report is the narrative companion to `IMPLEMENTATION_STATUS.md` (the
 implementation tracker) and the append-only study records under
-`artifacts/study-summaries/`. Every number below is machine-checked against
+`artifacts/study-summaries/`.
+
+Reproducibility at notebook fidelity (plan sections 39 and 104) now ships with
+the report: all ten notebooks (`00_environment` through `09_compare`) live
+under `notebooks/`, are emitted byte-identically by
+`scripts/build_notebooks.py` (`--check` verifies the committed files), and
+were executed end-to-end during verification; each ends by writing a summary
+record under `artifacts/notebook-records/` per plan section 40's session
+contract. The gate-study notebooks (03, 09) run deliberately 4-seed demos of
+the machinery - the powered 384-seed verdicts remain the versioned studies of
+section 3. Every number below is machine-checked against
 those records; `study_id` values are reproducible via
 `PYTHONPATH=src python -m act.evolution.cli ...` from the stated config and
 seeds.
@@ -482,7 +492,7 @@ them on the day:
 | Plan deliverable | Status |
 |---|---|
 | 1. Source repository | DONE (this repository) |
-| 2. Reproducible Kaggle notebooks | TODO (deferred until a gate passes) |
+| 2. Reproducible Kaggle notebooks | DONE for the plan section 39 set (`00_environment` + section 104's `01`-`03` and `04`-`09` per section 39's role list; deterministic builder `scripts/build_notebooks.py`, byte-identical re-runs, all ten notebooks' cells executed and verified) |
 | 3. Dataset manifests | PARTIAL (synthetic-tokenizer manifests only) |
 | 4. Baseline checkpoints | PARTIAL (local checkpoint format; no published artifacts) |
 | 5. Adaptive checkpoints | TODO |

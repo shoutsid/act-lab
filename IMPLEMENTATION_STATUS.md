@@ -119,7 +119,7 @@ tests now number nine, with three passes, all from the cap-4 family.
 | TPU v5e/JAX | DEFERRED | Port only after a stable architecture wins the GPU gate. |
 | Kaggle artifact datasets | PARTIAL | Deterministic checkpoint, evaluation, report, and manifest layout contracts now exist; the V0 5.2 per-seed handoff (`act.training.v0_handoff`: atomic publish, checksum-verified restore, bit-identical resume through the dataset round trip) is implemented, while the remote Kaggle dataset API wrapper and publish-on-exit automation remain. |
 | Session resume protocol | PARTIAL | Local checkpoint resume is deterministic for baselines and bit-identical for V0 sessions (verified mid-run resume: losses, FLOPs counters, architecture hashes, and mutation histories all reproduce exactly); Kaggle-style local publish/restore verifies manifest checksums, and the 5.2 versioned-dataset handoff now round-trips a seed working-dir -> dataset -> working-dir bit-identically, while remote dataset restore and publish-on-exit remain. |
-| Repository structure | PARTIAL | Core Python data, evaluation, evolution, importance, model, topology, training, and Kaggle-artifact implementations exist with focused tests; the planned notebooks and standalone research entry points remain. |
+| Repository structure | PARTIAL | Core Python data, evaluation, evolution, importance, model, topology, training, and Kaggle-artifact implementations exist with focused tests; all ten plan section 39 notebooks (`00`-`09`) now exist under `notebooks/` (deterministic builder, tested), while standalone research entry points remain. |
 
 ## Plan Sections 8-24: Model and Topology
 
@@ -176,7 +176,13 @@ These remain TODO or DEFERRED until the first gate passes:
 - 500M-1B scaling;
 - TPU port;
 - paper-quality comparisons and final research report;
-- versioned Kaggle datasets and reproducible notebooks.
+- versioned Kaggle datasets and reproducible notebooks (PARTIAL: all ten
+  plan section 39 notebooks - `00_environment` plus `01`-`03` per section
+  104 and `04_importance`, `05_adaptive`, `06_search`, `07_extract`,
+  `08_retrain`, `09_compare` - now exist under `notebooks/`, emitted by the
+  deterministic builder `scripts/build_notebooks.py` (byte-identical
+  re-runs, unit-tested in `tests/test_notebooks.py`, every cell executed
+  end-to-end); the remote Kaggle dataset publishing remains);
 
 ## Immediate Execution Order
 
@@ -223,23 +229,49 @@ These remain TODO or DEFERRED until the first gate passes:
    fp16 sessions train under autocast with a GradScaler (checkpoint contract
    v5 carries the scaler state; fp16 resume verified bit-identical, version-4
    payloads still load in fp32). What remains before launch is running the
-   benchmark on the T4 to fix the measured dtype and schedule.
+   benchmark on the T4 to fix the measured dtype and schedule. The launch
+   path is now reproducible-notebook-ready: all ten plan section 39
+   notebooks (`00_environment` through `09_compare`) exist under
+   `notebooks/` (deliverable 2), so a session can verify the compute
+   contract before `--mode pair-session` and reproduce the baseline, churn,
+   gate-study, importance, search, extraction, retraining, and comparison
+   claims from the same committed revision.
 
 ## Verified Checks
 
-- `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (184, including the
+- `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (206, including the
   26 report-figure data-assembly tests, 14 session-plan tests pinning the
   section 5.2 schedule/dtype tables, 10 handoff tests covering atomic
   publish, checksum rejection, and bit-identical resume through the dataset
   round trip, 9 runner tests covering deadline gating, cooperative
   interrupt + in-progress snapshot, restart-from-scratch, and
-  skip-completed idempotence, and fp16/CLI tests covering the fp16 session
+  skip-completed idempotence, 22 notebook-builder tests pinning determinism,
+  nbformat validity, and the section 104 claims, and fp16/CLI tests covering
+  the fp16 session
   round trip, the version-4 compatibility path, and the pair-session launch
   command's artifact/dtype guards); session runs are deliberately excluded
   from the suite (they are integration checks, too slow for per-commit runs) and
   live in `scripts/v0_session_selfcheck.py`, which verifies matched budgets,
   FLOPs booking, bit-identical mid-run resume, and the version-4 checkpoint
   contract on a tiny config.
+- `PYTHONPATH=src python scripts/build_notebooks.py` -> writes the ten
+  notebooks (00-09) byte-identically; `--check` verifies the committed
+  `.ipynb` files never drift from the builder output; every code cell of
+  all ten notebooks was executed in order (cell-runner pattern, like the
+  self-check): 00 reproduced the declared parameter counts, 01 proved
+  train/resume/seed-reproducibility, 02 proved grow/rebuild/prune weight
+  and hash round trips plus the registry append, 03 and 09 ran 4-seed
+  gate studies to their recorded verdicts (demo-sized, not the powered
+  384-seed studies), 04 extracted signals after a real backward pass and
+  verified ablation restores parameters, 05 ran the three-arm matched-
+  budget experiment with inspectable mutation histories, 06 exercised
+  variants/prior ranking/frontier/Pareto selection, 07 froze and published
+  the evolved genome through the checksummed manifest, and 08 compared
+  fresh/rewound/teacher initializations with exact copied/skipped counts.
+- `PYTHONPATH=src python -W error::UserWarning -c ...` ablation check ->
+  the temporary-ablation helper now detaches losses before `float()`
+  conversion (no tensor-scalar warning); covered by the notebook cell
+  executions above.
 - `PYTHONPATH=src python scripts/v0_session_selfcheck.py` -> re-passed after the
   declared sessions switched to checkpointed activations (resume stays
   bit-identical; recompute is deterministic because blocks carry no dropout),

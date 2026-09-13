@@ -152,13 +152,16 @@ def expert_ablation_delta(
             break
     if target is None:
         raise ValueError(f"unknown expert: {expert_id}")
-    original = {name: parameter.detach().clone() for name, parameter in target.named_parameters()}
+    original = {
+        name: parameter.detach().clone()
+        for name, parameter in target.named_parameters()
+    }
     model.eval()
     with torch.no_grad():
-        baseline = float(model.loss(tokens))
+        baseline = float(model.loss(tokens).detach())
         for parameter in target.parameters():
             parameter.zero_()
-        ablated = float(model.loss(tokens))
+        ablated = float(model.loss(tokens).detach())
     with torch.no_grad():
         for name, parameter in target.named_parameters():
             parameter.copy_(original[name])
