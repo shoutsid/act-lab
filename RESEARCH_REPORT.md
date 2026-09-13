@@ -176,8 +176,10 @@ cuts probe search to 7.3% of toy-scale training FLOPs and amortizes with
 horizon exactly as the fixed-per-event model predicts, but scaling stays
 withheld until a real-scale measurement shows the cost becomes negligible -
 which is the plan's deferred compute-efficiency milestone - after which Gate 4
-(adaptive > static MoE) is the next universal gate. The controller default
-remains cap-4/2-batch; cap-4/1-batch is the validated cheaper option.
+(adaptive > static MoE) is the next universal gate. That measurement is no
+longer a vague milestone: it is pre-registered as a protocol with declared
+config, predicted cost, and decision rules (section 5.1). The controller
+default remains cap-4/2-batch; cap-4/1-batch is the validated cheaper option.
 
 ## 5. Pre-registered next studies
 
@@ -185,7 +187,106 @@ remains cap-4/2-batch; cap-4/1-batch is the validated cheaper option.
 |---|---|---|---|---|---|---|
 | Horizon replication | study 3 config at steps=144 | cap4/2-batch, 3 events, steps=144 | fresh 8000-8383 | binomial sign test, alpha=0.05 | PASS -> pass generalizes; FAIL -> pass was horizon-specific | **DONE: PASS** (231/384, p 4.04e-05, t p 1.07e-08, cost 14.0%) |
 | Richness | candidate set size at fixed probe tokens | cap4/1-batch (A) vs cap2/2-batch (B), 3 events, steps=144 | fresh 7000-7383 | binomial sign test, alpha=0.05; factor claim: paired A-vs-B, one-tailed "rich better" | PASS & A>B -> richness is the active axis; B passes & B>=A -> probe quality is; neither -> both jointly necessary | **DONE: PASS for richness** (A 228/384, p 1.4e-04, t p 5.0e-05, cost 7.3%; B 193/384, p 0.48, cost 8.1%; paired A better 225/384, z = 3.37, p 8e-04) |
-| Real-scale cost measurement | probe-cost amortization | cap4/2-batch controller at target scale | n/a (measurement) | probe cost as % of training FLOPs | < ~1% at research scale justifies Gate 4 progression | deferred (compute-efficiency milestone) |
+| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config (see 5.1) | fresh 9000-9011 (12 pairs) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] | PASS + in-band + harm guard clear -> Gate 4 authorized; outside band -> re-derive before Gate 4; FAIL -> Gate 4 stays blocked | **PRE-REGISTERED (section 5.1), not yet run** |
+
+### 5.1 Protocol: real-scale compute-efficiency measurement (pre-registered; gates Gate 4)
+
+**Role.** Plan section 56 (Experiment 13, "Compute-Efficiency Scaling") requires
+search FLOPs to be included in the adaptive total; this protocol pre-registers
+the minimal decisive version of that experiment. Gate 4 (adaptive > static
+MoE) is not entered until it passes. It is a measurement-plus-evidence
+protocol, not a quality gate.
+
+**Hypothesis.** Probe-selection cost is fixed per mutation event while training
+cost scales with tokens, so the cost ratio collapses as scale and horizon grow.
+The toy anchors are on-model: 41.91% at 48 steps (study 3), 14.03% at 144
+steps with 3x the training (study 7), 7.29% for the 1-batch variant (study 8).
+
+**Prediction (declared before measurement).** With the code's accounting
+convention (forward-equivalent FLOPs on both sides: `parameter_count x tokens
+x 2` per training step; probe forwards `active_parameter_count x
+probe_tokens x 2` booked into search; no backward term on either side),
+
+```text
+C_expected = S / T
+S = E * k * Bp * 2 * N_active      (E events, k candidates, Bp probe tokens)
+T = 2 * P * D                      (D = training tokens per arm)
+```
+
+Declared V0 configuration (plan section 8): L=12, d_model=1024, heads=16,
+context=2048, vocab=32768, E=8 experts/layer, k=2 active, ffn=1024 per expert
+(active FFN width 2048 = the plan's ~4096 dense-equivalent), AdamW,
+checkpointed activations. This gives P = 285,336,576 total parameters (inside
+the plan's 256-350M target) and N_active = 134,341,632. Declared budget: D =
+24,576,000 tokens per arm (batch 2 x context 2048 x 6,000 steps); probe batch
+= one training-batch shape (2 x 2048 = 4,096 tokens, semantics-preserving as
+at toy scale); E=3 events at steps 1500/3000/4500.
+
+```text
+cap4/1-batch (primary):   S = 1.32e13, T = 1.40e16, C = 0.0942%
+cap4/2-batch (secondary): S = 2.64e13, T = 1.40e16, C = 0.1883%
+```
+
+- **Tolerance band (pre-committed)**: C_measured in [0.5, 2] x C_expected =
+  [0.047%, 0.189%] for the primary. Rationale: every architectural deviation
+  between toy and V0 (per-layer expert share, parameter growth, batch shape)
+  enters the identity as a bounded multiplicative factor on N_active or D; a
+  factor-2 miss means the trained model is not the declared one, and the
+  config, not the hypothesis, is at fault.
+- **Margin**: the prediction sits ~53x (primary) and ~27x (secondary) under
+  the 5% bar, and ~11x/5x under a 1% milestone bar.
+
+**Primary criterion (cost).** Pre-registration 1's rule, adopted unchanged:
+total probe search FLOPs <= 5% of the adaptive arm's training FLOPs, measured
+by the same accounting that produced every toy number (aggregate per-arm
+search FLOPs over aggregate per-arm training FLOPs). The 5% bar is retained
+even though the prediction is far under it: loosening a criterion after
+seeing the measurement is the failure mode this project's protocol exists to
+prevent. If the measurement lands in the band, the pass is decisive at any
+bar >= 0.2%.
+
+**Secondary criteria.**
+
+1. *Harm guard (not a powered quality claim)*: on the same 12 seed pairs the
+   adaptive-vs-random sign direction must not be significantly anti-adaptive:
+   if adaptive loses in >= 10 of 12 pairs (exact one-tailed sign test p =
+   0.0193), cost-efficiency is recorded as passing but the Gate 4
+   recommendation is withheld - cheap-and-harmful is worse than
+   expensive-and-helpful (study 5's lesson).
+2. *Throughput log (descriptive)*: tokens/s per arm per session and wall-clock
+   overhead of probe rebuilds, reported per plan section 57's training metric
+   list, so scaling behavior is measured, not assumed.
+
+**Design.** 12 seed pairs, seeds 9000-9011 (fresh block), arms `random,adaptive`,
+primary config cap-4/1-batch, secondary run cap-4/2-batch on the same seeds,
+budget matched at E=3, steps=6000, batch 2, context 2048. Every quantity in
+plan section 57's Model and Training metric lists is reported per arm
+(parameters, active parameters, FLOPs/token, tokens, steps, wall time,
+GPU-hours, training/search/evaluation/total FLOPs). Checkpoints persist
+optimizer state, genome, and mutation history at every event (existing
+checkpoint contract), so runs resume across the 12-hour Kaggle session limit.
+Feasibility (declared): per-arm training ~= 0.7 h at 10k tokens/s on T4;
+12 pairs x 2 arms x ~1.5 h ~= 36 h ~= two Kaggle sessions; fp32 AdamW ~=
+4.6 GB plus activations within 16 GB.
+
+**Decision rules.**
+
+- **PASS (cost milestone)**: C_measured <= 5%, inside the tolerance band, and
+  the harm guard clear -> Gate 4 work (adaptive > static MoE) is authorized on
+  top of the measured configuration.
+- **PASS with qualification**: C_measured <= 5% but outside the band -> record
+  the discrepancy, identify which multiplicative assumption failed, and
+  re-derive the prediction before Gate 4. No knob may be re-tuned against the
+  measured C to pull it into the band (study 3's cost-criterion discipline).
+- **FAIL**: C_measured > 5% -> the amortization hypothesis is false at V0
+  scale; the factor map's cost axis gets a V0 row and Gate 4 stays blocked.
+- A hardware or session failure counts as infrastructure, not evidence;
+  resumed runs continue from checkpoints on the same seeds.
+
+**Honesty constraints.** Seeds and thresholds fixed before launch; no re-runs
+on measured seeds; probe budgets may not change between this pre-registration
+and the measurement; all criteria (cost, band, harm guard) are reported
+whatever the outcome.
 
 ## 6. Reproducibility
 

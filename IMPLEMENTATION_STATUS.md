@@ -158,7 +158,7 @@ tests now number nine, with three passes, all from the cap-4 family.
 | Teacher initialization | PARTIAL | Explicit teacher and evolved shape-safe parameter transfer policies now exist; multi-seed retraining comparisons remain. |
 | Architecture reusability and fresh initialization | PARTIAL | Fresh, evolved, and rewound initialization policies report copied/skipped tensors; architecture-equivalence studies remain. |
 | Cross-seed stability and architecture equivalence | PARTIAL | Strict architecture-hash equivalence and cross-seed mean/stddev/min/max summaries now exist; full retraining studies remain. |
-| Compute-efficiency scaling | DEFERRED |
+| Compute-efficiency scaling | PRE-REGISTERED | Real-scale measurement protocol pre-registered in `RESEARCH_REPORT.md` section 5.1: declared 285M V0 config, predicted probe cost 0.094% (band 0.047-0.189%), 5% criterion + tolerance band + harm guard on 12 fresh seed pairs (9000-9011); PASS authorizes Gate 4. |
 
 ## Plan Sections 67-105: Scale and Final Deliverables
 
@@ -200,7 +200,13 @@ These remain TODO or DEFERRED until the first gate passes:
    7.3% at toy scale and amortizes with horizon, but real-scale measurement is
    the plan's deferred compute-efficiency milestone and gates Gate 4 (adaptive >
    static MoE). Controller default stays cap-4/2-batch; cap-4/1-batch is the
-   validated cost-saving option.
+   validated cost-saving option. The real-scale measurement is now
+   **pre-registered** (`RESEARCH_REPORT.md` section 5.1): declared V0 config
+   (285,336,576 total / 134,341,632 active parameters), predicted probe cost
+   0.094% of training FLOPs under the measured per-event identity, decision
+   rules fixed (5% criterion + factor-2 tolerance band + anti-adaptivity harm
+   guard), seeds 9000-9011 reserved. Running it as specified - without retuning
+   knobs against the result - is the entry condition for Gate 4.
 
 ## Verified Checks
 
