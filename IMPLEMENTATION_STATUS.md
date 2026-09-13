@@ -334,6 +334,19 @@ These remain TODO or DEFERRED until the first gate passes:
   PASS_WITH_QUALIFICATION (cost 1.0044% <= 5%; declared band correctly not
   met by a reduced model; harm guard clear at 7/12). Re-runnable; `--dry-run`
   prints the plan without training.
+- `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
+  `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
+  deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer
+  (vocab 8192) trained on the corpus, 40,043,724 real tokens encoded, and the
+  project's own `V0MoECausalLM` (20,863,872 total / 10,247,040 active
+  parameters) trained on GPU for 6,000 steps / 49.2M tokens (~45 min on the
+  local 1070 at ~18k tokens/s). Final held-out validation loss 1.713
+  (perplexity 5.55) against the uniform floor 9.011 (ppl 8192) - the model
+  really learned the language. Inference produces fluent on-genre story text
+  (greedy decoding deterministic; out-of-domain text scores ppl ~4000, i.e.
+  the model knows its domain). Report and samples in
+  `artifacts/real-lm/report.json`; corpus/tokens/checkpoints are local
+  scratch (gitignored).
 - `PYTHONPATH=src python scripts/generate_figures.py` -> writes the four factor-map
   figures to `artifacts/study-summaries/figures/` (fig1 win-rate forest,
   fig2 quality-vs-cost, fig3 delta distributions, fig4 probe-rank heatmap),

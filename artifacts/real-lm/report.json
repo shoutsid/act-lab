@@ -1,0 +1,117 @@
+{
+  "corpus": "TinyStories",
+  "model": {
+    "active_experts": 2,
+    "active_parameters": 10247040,
+    "attention_heads": 6,
+    "class": "act.model.V0MoECausalLM",
+    "context_size": 512,
+    "depth": 6,
+    "expert_width": 384,
+    "experts_per_layer": 8,
+    "hidden_size": 384,
+    "total_parameters": 20863872,
+    "vocab_size": 8192
+  },
+  "samples": {
+    "Once upon a time, there was a little": "\u0120Once \u0120upon \u0120a \u0120time , \u0120there \u0120was \u0120a \u0120little \u0120girl \u0120named \u0120Lily . \u0120Lily \u0120loved \u0120to \u0120play \u0120in \u0120the \u0120forest , \u0120but \u0120one \u0120day \u0120she \u0120found \u0120a \u0120lost \u0120goat \u0120in \u0120the \u0120woods . \u0120She \u0120went \u0120to \u0120the \u0120farmer \u0120and \u0120asked \u0120for \u0120help . \u010a The \u0120farmer \u0120knew \u0120where \u0120the \u0120goat \u0120was \u0120and \u0120put \u0120some \u0120food . \u0120He \u0120said , \u0120\" We \u0120need \u0120to \u0120go \u0120to \u0120the \u0120cow \u0120seat \u0120to",
+    "One day, Mom said,": "\u0120One \u0120day , \u0120Mom \u0120said , \u0120\" Let 's \u0120go \u0120and \u0120see \u0120the \u0120fire !\" \u010a The \u0120two \u0120of \u0120them \u0120walked \u0120near \u0120the \u0120fire . \u0120They \u0120saw \u0120that \u0120it \u0120was \u0120big \u0120and \u0120red . \u0120They \u0120saw \u0120lions , \u0120monkeys , \u0120and \u0120a \u0120zebra . \u0120They \u0120heard \u0120a \u0120loud \u0120noise . \u0120They \u0120were \u0120scared . \u010a \" Run , \u0120go !\" \u0120Sara \u0120said . \u010a \" Be",
+    "The dog ran to the": "\u0120The \u0120dog \u0120ran \u0120to \u0120the \u0120house , \u0120but \u0120he \u0120did \u0120not \u0120find \u0120Tom . \u0120He \u0120was \u0120so \u0120big \u0120and \u0120strong . \u0120Sue \u0120said , \u0120\" Tom , \u0120come \u0120on \u0120my \u0120bike ! \u0120It \u0120makes \u0120it \u0120big !\" \u0120Tom \u0120did \u0120not \u0120want \u0120to \u0120get \u0120hurt , \u0120so \u0120he \u0120started \u0120to \u0120push \u0120the \u0120bike . \u0120The \u0120bike \u0120hit \u0120Tom , \u0120and \u0120he \u0120fell \u0120down . \u010a Sue",
+    "Tom and Lily were playing in the": "\u0120Tom \u0120and \u0120Lily \u0120were \u0120playing \u0120in \u0120the \u0120park . \u0120They \u0120saw \u0120a \u0120big \u0120statue \u0120of \u0120a \u0120dinosaur \u0120on \u0120the \u0120ground . \u0120The \u0120statue \u0120was \u0120brown \u0120and \u0120shiny \u0120and \u0120had \u0120a \u0120big \u0120hole \u0120in \u0120it . \u0120Tom \u0120and \u0120Lily \u0120wanted \u0120to \u0120see \u0120the \u0120statue \u0120too . \u010a \" Let 's \u0120follow \u0120the \u0120statue !\" \u0120Tom \u0120said . \u0120\" Maybe \u0120it \u0120is \u0120a \u0120treasure !\" \u010a \" No ,"
+  },
+  "tokenizer": "BPE vocab 8192 trained on corpus",
+  "training": {
+    "batch_tokens": 8192,
+    "device": "cuda",
+    "optimizer": "AdamW warmup+cosine",
+    "seed": 7,
+    "steps": 6000,
+    "tokens_seen": 49152000
+  },
+  "validation": {
+    "final_perplexity": 5.547909944478028,
+    "final_val_loss": 1.713421270251274,
+    "history": [
+      {
+        "perplexity": 24.64592199350754,
+        "step": 300,
+        "train_loss": 3.286027669906616,
+        "val_loss": 3.204611450433731
+      },
+      {
+        "perplexity": 17.210589233744958,
+        "step": 500,
+        "train_loss": 2.911233425140381,
+        "val_loss": 2.845524847507477
+      },
+      {
+        "perplexity": 11.575100290638773,
+        "step": 1000,
+        "train_loss": 2.4339864253997803,
+        "val_loss": 2.4488562643527985
+      },
+      {
+        "perplexity": 9.237177577463155,
+        "step": 1500,
+        "train_loss": 2.315927028656006,
+        "val_loss": 2.223236382007599
+      },
+      {
+        "perplexity": 8.172111245863935,
+        "step": 2000,
+        "train_loss": 2.0197062492370605,
+        "val_loss": 2.100727289915085
+      },
+      {
+        "perplexity": 7.4603403886092,
+        "step": 2500,
+        "train_loss": 1.9097447395324707,
+        "val_loss": 2.009601041674614
+      },
+      {
+        "perplexity": 6.915769947143406,
+        "step": 3000,
+        "train_loss": 1.826828956604004,
+        "val_loss": 1.933804303407669
+      },
+      {
+        "perplexity": 6.493423628806324,
+        "step": 3500,
+        "train_loss": 1.7852094173431396,
+        "val_loss": 1.8707899153232574
+      },
+      {
+        "perplexity": 6.083131668611724,
+        "step": 4000,
+        "train_loss": 1.947258472442627,
+        "val_loss": 1.8055196404457092
+      },
+      {
+        "perplexity": 5.953832863719888,
+        "step": 4500,
+        "train_loss": 1.8870539665222168,
+        "val_loss": 1.7840351909399033
+      },
+      {
+        "perplexity": 5.80204012297299,
+        "step": 5000,
+        "train_loss": 1.7205106019973755,
+        "val_loss": 1.7582096010446548
+      },
+      {
+        "perplexity": 5.633992773492311,
+        "step": 5500,
+        "train_loss": 1.6018792390823364,
+        "val_loss": 1.7288183867931366
+      },
+      {
+        "perplexity": 5.547909944478028,
+        "step": 6000,
+        "train_loss": 1.676516056060791,
+        "val_loss": 1.713421270251274
+      }
+    ],
+    "uniform_floor_loss": 9.010913347279288,
+    "uniform_floor_perplexity": 8192
+  }
+}
