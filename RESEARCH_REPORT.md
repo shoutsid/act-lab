@@ -187,7 +187,7 @@ default remains cap-4/2-batch; cap-4/1-batch is the validated cheaper option.
 |---|---|---|---|---|---|---|
 | Horizon replication | study 3 config at steps=144 | cap4/2-batch, 3 events, steps=144 | fresh 8000-8383 | binomial sign test, alpha=0.05 | PASS -> pass generalizes; FAIL -> pass was horizon-specific | **DONE: PASS** (231/384, p 4.04e-05, t p 1.07e-08, cost 14.0%) |
 | Richness | candidate set size at fixed probe tokens | cap4/1-batch (A) vs cap2/2-batch (B), 3 events, steps=144 | fresh 7000-7383 | binomial sign test, alpha=0.05; factor claim: paired A-vs-B, one-tailed "rich better" | PASS & A>B -> richness is the active axis; B passes & B>=A -> probe quality is; neither -> both jointly necessary | **DONE: PASS for richness** (A 228/384, p 1.4e-04, t p 5.0e-05, cost 7.3%; B 193/384, p 0.48, cost 8.1%; paired A better 225/384, z = 3.37, p 8e-04) |
-| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config (see 5.1) | fresh 9000-9011 (12 pairs) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] | PASS + in-band + harm guard clear -> Gate 4 authorized; outside band -> re-derive before Gate 4; FAIL -> Gate 4 stays blocked | **PRE-REGISTERED (section 5.1), not yet run** |
+| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config (see 5.1) | fresh 9000-9011 (12 pairs) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] | PASS + in-band + harm guard clear -> Gate 4 authorized; outside band -> re-derive before Gate 4; FAIL -> Gate 4 stays blocked | **PRE-REGISTERED (section 5.1), execution planned (section 5.2), not yet run** |
 
 ### 5.1 Protocol: real-scale compute-efficiency measurement (pre-registered; gates Gate 4)
 
@@ -287,6 +287,103 @@ Feasibility (declared): per-arm training ~= 0.7 h at 10k tokens/s on T4;
 on measured seeds; probe budgets may not change between this pre-registration
 and the measurement; all criteria (cost, band, harm guard) are reported
 whatever the outcome.
+
+### 5.2 GPU execution plan: session budgeting and checkpoint handoff (12-hour Kaggle limit)
+
+Operational companion to section 5.1, pre-committed before launch. Kaggle
+facts per plan sections 5 and 40: 12-hour GPU sessions, 20 GB auto-saved
+`/kaggle/working`, additional scratch that does not survive the session,
+notebook outputs publishable as versioned datasets, and the rule that a
+session must never contain irreplaceable state.
+
+**Fit and footprint (validated arithmetic, fp32).** Per GPU: parameters
+1.06 GB + gradients 1.06 GB + AdamW moments 2.13 GB = 4.25 GB resident;
+activation checkpointing keeps activations near 0.2 GB, so ~4.5 GB of 16 GB
+per T4 with 11+ GB headroom - one arm per GPU, no sharding, and all tensors
+persist on their own GPU between events (probe rebuilds run on the arm's
+GPU, never crossing devices). Checkpoint payload = parameters + AdamW
+moments = 3.19 GB; gradients are not saved, and RNG/genome/counters are
+negligible.
+
+**Throughput gate (pre-committed dtype rule).** 10k tokens/s needs 8.1
+TFLOPS at the ~6xN_active physical fwd+bwd estimate - 100% of the T4's 8.1
+TFLOPS fp32 peak, unrealistic in eager mode. Session 1 therefore opens with
+a 50-step benchmark of the declared model: if measured fp32 throughput is
+below 2,500 tokens/s, the primary config runs in fp16 with GradScaler (T4
+has no bf16; the 65 TFLOPS tensor-core peak makes 10k tokens/s comfortable).
+Dtype is an execution detail touching no pre-registered criterion (FLOPs
+counters book operations, not time), the tolerance band is the safety net,
+and the measured dtype is recorded in the published artifact.
+
+**Working-directory ledger (20 GB).** A checkpoint payload is parameters +
+AdamW moments = 3.19 GB per arm. Sessions run `max_checkpoints=2`, so an
+in-flight pair holds 2 checkpoints x 2 arms x 3.19 GB = 12.76 GB of resume
+state, plus the finished pair's final states 2 x 1.06 = 2.13 GB until
+publish: steady state ~14.9 GB of 20 GB (5+ GB headroom). `max_checkpoints=3`
+would put the pair's resume set at 19.1 GB and overflow with finals (21.3
+GB) - pinned at 2. Final states and metrics are wiped from the working
+directory after each publish.
+
+**Schedule (arms run in parallel, one per GPU; parameterized by measurement).**
+Pair time = 24,576,000 tokens / measured per-arm throughput + ~0.1 h of
+event/rebuild overhead, and a session offers ~9.0 h of usable work after
+boot, restore, and the publish reserve. A pair is atomic: it is never
+started unless it fits entirely, and pairs are never split across sessions
+(see deadline rules). Full pairs per session = floor(9.0 / pair time):
+
+| Measured per-arm throughput | Pair time | Pairs/session | Primary sessions | Total incl. secondary |
+|---|---|---|---|---|
+| 10,000 tokens/s (declared optimistic) | 0.78 h | 11 | 2 | 4 |
+| 5,000 tokens/s | 1.47 h | 6 | 2 | 4 |
+| 2,500 tokens/s (fp32 floor) | 2.83 h | 3 | 4 | 8 |
+
+The fp16 dtype rule exists to keep the measured point in the upper rows: at
+the T4's 65 TFLOPS fp16 tensor peak, 10k tokens/s is ~12% utilization. There
+is no fixed reserve session - the deadline rules guarantee every session
+ends in a publishable state, further sessions are scheduled until seed 9011
+completes, and the table bounds the worst case at 8 working sessions.
+
+**Deadline rules.** (1) Never start a new pair unless the *measured* pair
+time + 45 min publish reserve fits the remaining session clock. (2) Remaining
+time < 60 min mid-pair: stop at the next step boundary, save both arms,
+publish immediately. (3) Remaining time < 15 min: publish only - event
+checkpoints are already saved. A pair split across a session boundary leaves
+only event checkpoints behind and is restarted from scratch (never resumed)
+in the next session, so each seed's 24.576M training tokens come from one
+uninterrupted execution per arm.
+
+**Checkpoint handoff (working dir -> versioned dataset).** After each pair
+or deadline stop: save each arm's checkpoint at the latest event boundary,
+write per-arm metrics and the seed summary JSON, then publish one version
+per completed seed to `act-checkpoints/v0-5-1/seed-NNNN/` through the
+existing manifest contract (`publish_artifacts` checksums every payload).
+Publish is all-or-nothing per seed - the manifest is written last, after all
+checksums, so a partial publish is never mistaken for a complete one; per
+plan section 38 a restarted session is equivalent to an uninterrupted run,
+which the self-check verifies bit-identically on the resume path.
+
+**Dataset ledger and crash bounds.** Versioned datasets accumulate history:
+final states for 12 seeds x 2 arms = 25.5 GB, plus per-session safety
+snapshots of the latest in-progress event checkpoints (4 payloads = 2 per
+arm x 3.19 GB = 12.76 GB per interrupted session; <= 3 expected) -> ~64 GB
+worst case, reducible to the 25.5 GB of finals by pruning snapshots of
+completed pairs. Restore per plan section 40: locate the latest checkpoint dataset
+for the seed, validate checksums, restore, continue. Any crash loses at
+most one in-progress pair; an unpublished event interval costs <= 10
+minutes of retraining (1500 steps at 10k tokens/s); a crash before a
+session's first publish costs at most one pair. A hardware or session
+failure counts as infrastructure, not evidence; a lost seed is re-run on
+the same seed, never replaced.
+
+**Pre-launch checklist.** (1) `PYTHONPATH=src python
+scripts/v0_session_selfcheck.py` passes from the committed revision on the
+Kaggle machine. (2) The session 1 benchmark completes with measured
+tokens/s recorded and the dtype decision logged in the artifact. (3)
+`max_checkpoints=2` and `checkpoint_interval=500` confirmed in the session
+config. (4) Seed block 9000-9011 untouched; arms `random,adaptive`; probe
+budgets cap-4/1-batch (primary) and cap-4/2-batch (secondary) exactly as
+pre-registered. (5) Per-session `--output` summary JSONs retained in the
+published artifact.
 
 ## 6. Reproducibility
 
