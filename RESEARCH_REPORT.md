@@ -476,13 +476,16 @@ them on the day:
   replaces the artifact, `--hours` sets the remaining clock, `--profile`
   smoke-tests the whole path on a tiny config. Adding
   `--kaggle-dataset owner/slug` completes the remote leg of the section
-  5.2 handoff (`act.ops.kaggle_remote`): the newest dataset version is
-  restored at session start (fail-fast - an unreachable dataset stops the
-  launch before any training), and on exit the handoff directory is
-  pushed as a new version without ever raising (a failed push is recorded
-  in `remote-publish-log.json`; the local handoff stays intact and the
-  next session re-pushes). Validated end-to-end: benchmark artifact ->
-  CLI -> 12/12 declared pairs published.
+  5.2 handoff (`act.ops.kaggle_remote`), live-verified with real
+  credentials: publish -> download -> bit-identical seed round trip
+  through the real API (manifest checksums re-verified on return), and
+  the registered launch command runs restore -> skip-complete -> exit
+  publish with exit 0. Live probes fixed the upload layout (per-seed
+  tars with `seed-NNNN/...` internal paths, pushed flat - the service
+  auto-extracts archives server-side, and the package's default
+  directory handling either drops subdirectories or collides seeds).
+  Validated end-to-end: benchmark artifact -> CLI -> 12/12 declared
+  pairs published.
 
 ## 6. Reproducibility
 

@@ -207,15 +207,23 @@ These remain TODO or DEFERRED until the first gate passes:
    4004-4383.
 - `PYTHONPATH=src python -m act.training.cli --mode pair-session ...
   --kaggle-dataset owner/slug` -> the remote publish-on-exit wrapper
-  (`act.ops.kaggle_remote`): restores the newest dataset version at
-  session start (fail-fast with a one-line error before any training when
-  unreachable, verified live: 403 without credentials -> exit 1, sessions
-  dir untouched), publishes the handoff directory as a new version on
-  exit without ever raising (a failed push records `failed` in
-  `artifacts/.../remote-publish-log.json` and leaves the local handoff
-  intact), keeps local-only seeds and ignores manifest-less partial
-  versions on restore; unit tests inject a fake client, so the kaggle
-  package is never needed by the suite.
+  (`act.ops.kaggle_remote`), **live-verified against the real Kaggle API
+  with credentials**: publish -> download -> bit-identical seed handoff
+  round trip (all manifest checksums re-verified on the returned copy),
+  and the registered one-line launch command completes restore ->
+  skip-complete -> exit publish with exit 0. The live probes established
+  the upload layout the adapter implements: Kaggle datasets are flat, but
+  the service auto-extracts uploaded tar/zip blobs preserving internal
+  paths, and the package's default directory handling is unusable for
+  nested trees (`skip` drops them silently; `tar` archives contents
+  without a name prefix, so multiple seeds would collide) - the adapter
+  therefore stages one tar per seed with paths rooted at `seed-NNNN/...`
+  and pushes them flat. A nonexistent dataset (session 1) is the normal
+  bootstrap state on restore (warn and train from scratch; atomic pairs
+  make it safe) and falls back to `dataset_create_new` on publish; any
+  other error is fail-fast at launch and never-raising at exit. The test
+  dataset was deleted after the round trip; unit tests still inject a
+  fake client, so the kaggle package is never needed by the suite.
 8. NEXT: Gate 3 quality is established for the cap-4 controller family (three
    passes across horizons and probe-batch counts; richness is the active axis).
    The remaining blocker is compute-efficiency: cap-4/1-batch cuts probe cost to

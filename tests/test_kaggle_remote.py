@@ -236,16 +236,38 @@ def test_restore_latest_ignores_partial_versions(tmp_path: Path) -> None:
     assert restored == []  # a manifest-less seed is not a version
 
 
-def test_restore_latest_raises_on_client_error(tmp_path: Path) -> None:
-    """Restore is fail-fast: no remote state means no session."""
+def test_restore_latest_treats_missing_dataset_as_bootstrap(tmp_path: Path) -> None:
+    """Session 1 has nothing to restore: absence warns and continues."""
+    import requests
+
+    response = requests.models.Response()
+    response.status_code = 404
     client = FakeClient()
-    client.fail = RuntimeError("404 dataset missing")  # raised by download_files
+
+    def missing_download(dataset: str, target: Path) -> None:
+        raise requests.exceptions.HTTPError("404 not found", response=response)
+
+    client.download_files = missing_download  # type: ignore[method-assign]
+    messages: list[str] = []
+    restored = restore_latest(
+        tmp_path / "dataset",
+        dataset="owner/ds",
+        client=client,
+        log=messages.append,
+    )
+    assert restored == []
+    assert any("training from scratch" in message for message in messages)
+
+
+def test_restore_latest_raises_on_unexpected_client_error(tmp_path: Path) -> None:
+    """Fail-fast: errors other than 'no version yet' must stop the launch."""
+    client = FakeClient()
 
     def failing_download(dataset: str, target: Path) -> None:
-        raise client.fail
+        raise RuntimeError("507 insufficient storage")
 
     client.download_files = failing_download  # type: ignore[method-assign]
-    with pytest.raises(RuntimeError, match="404"):
+    with pytest.raises(RuntimeError, match="507"):
         restore_latest(
             tmp_path / "dataset",
             dataset="owner/ds",

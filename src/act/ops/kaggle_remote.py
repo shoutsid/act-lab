@@ -133,9 +133,24 @@ class KaggleApiAdapter:
     """Production client wrapping the optional ``kaggle`` package.
 
     Constructed lazily (see :func:`default_client`) so importing this module
-    never requires the package. The first-version bootstrap is best-effort:
-    ``dataset_create_version`` fails on a dataset that does not exist yet,
-    and the adapter falls back to ``dataset_create_new`` for that case only.
+    never requires the package.
+
+    Upload layout (established by live probes against the real API, 2026-09):
+    Kaggle datasets are flat, but the service auto-extracts uploaded
+    ``.tar``/``.zip`` blobs and keeps the archive's *internal* paths as
+    dataset files. The default ``upload_files(dir_mode=...)`` handling is
+    wrong for nested trees: ``"skip"`` silently drops every subdirectory
+    (an empty checkpoint dataset), and ``"tar"`` archives each
+    subdirectory's *contents* without a name prefix, so multiple seeds all
+    flatten to the archive root and collide. This adapter therefore stages
+    one tar per seed directory with internal paths rooted at
+    ``seed-NNNN/...``, pushes the archives as flat files, and lets the
+    service-side extraction rebuild the handoff tree verbatim (verified
+    checksum-identical through the round trip).
+
+    The first-version bootstrap is best-effort: ``dataset_create_version``
+    rejects a dataset that does not exist yet (observed as 403/404), and
+    the adapter falls back to ``dataset_create_new`` for that case only.
     """
 
     def __init__(self) -> None:
@@ -144,23 +159,71 @@ class KaggleApiAdapter:
                 "the kaggle package is required for remote dataset access; "
                 "it is preinstalled on Kaggle images (pip install kaggle elsewhere)"
             )
+        import tarfile
+
+        self._tarfile = tarfile
         from kaggle.api.kaggle_api_extended import KaggleApi
 
         self._api = KaggleApi()
         self._api.authenticate()
 
+    def _stage_push(self, folder: Path, staging: Path) -> None:
+        """Stage the pushed folder: one tar per seed dir, files copied flat."""
+        for entry in sorted(folder.iterdir()):
+            if entry.name == METADATA_NAME:
+                continue  # re-copied last, from its canonical source
+            if entry.is_dir():
+                archive = staging / f"{entry.name}.tar"
+                with self._tarfile.open(archive, "w") as tar:
+                    for path in sorted(entry.rglob("*")):
+                        if path.is_file():
+                            tar.add(path, arcname=str(Path(entry.name) / path.relative_to(entry)))
+            elif entry.is_file():
+                shutil.copy2(entry, staging / entry.name)
+        metadata = folder / METADATA_NAME
+        if metadata.is_file():
+            shutil.copy2(metadata, staging / METADATA_NAME)
+
     def create_version(self, folder: Path, version_notes: str) -> str:
-        try:
-            self._api.dataset_create_version(str(folder), version_notes)
-        except Exception as error:  # noqa: BLE001 - API error types vary by version
-            if "404" not in str(error):
-                raise
-            # First publish: the dataset does not exist yet.
-            self._api.dataset_create_new(str(folder))
+        folder = Path(folder)
+        with tempfile.TemporaryDirectory(prefix="act-kaggle-push-") as scratch:
+            staging = Path(scratch) / "push"
+            staging.mkdir()
+            self._stage_push(folder, staging)
+            try:
+                self._api.dataset_create_version(
+                    str(staging), version_notes, dir_mode="skip", quiet=True
+                )
+            except Exception as error:  # noqa: BLE001 - API error types vary
+                if not _is_missing_dataset_error(error):
+                    raise
+                # First publish: the dataset does not exist yet.
+                self._api.dataset_create_new(
+                    str(staging), dir_mode="skip", quiet=True
+                )
         return version_notes
 
     def download_files(self, dataset: str, target: Path) -> None:
         self._api.dataset_download_files(dataset, path=str(target), unzip=True)
+
+
+def _is_missing_dataset_error(error: Exception) -> bool:
+    """True when a request failed because no remote version exists.
+
+    Session 1 has nothing to restore (plan section 40: "locate the latest
+    checkpoint dataset" finds nothing and continues); a missing dataset is
+    that normal bootstrap state, not a failure. Any other error is real.
+    """
+    try:
+        import requests
+    except ImportError:  # pragma: no cover - requests ships with kaggle
+        return False
+    response = getattr(error, "response", None)
+    return (
+        isinstance(error, requests.exceptions.HTTPError)
+        and response is not None
+        and response.status_code in (403, 404)
+    )
 
 
 def default_client() -> KaggleDatasetClient:
@@ -267,8 +330,25 @@ def restore_latest(
     local = Path(dataset_root) / handoff_name
     with tempfile.TemporaryDirectory(prefix="act-kaggle-restore-") as scratch:
         extracted = Path(scratch) / "download"
-        client.download_files(dataset, extracted)
+        try:
+            client.download_files(dataset, extracted)
+        except Exception as error:
+            if not _is_missing_dataset_error(error):
+                raise
+            # No remote version yet (session 1, or a dataset not created):
+            # training from scratch is always safe under the atomic-pair
+            # rule, so absence warns instead of blocking the launch.
+            logger(
+                f"no remote version of {dataset} available yet; "
+                "training from scratch (atomic pairs make this safe)"
+            )
+            return []
         source = _locate_handoff_tree(extracted, handoff_name)
+        if source is None:
+            # Defense in depth: if the service ever stops auto-extracting
+            # uploaded archives, the blobs arrive as files - extract them
+            # ourselves into the expected tree.
+            source = _extract_archive_blobs(extracted)
         if source is None:
             logger(f"remote dataset {dataset} carries no seed versions; nothing restored")
             return []
@@ -287,6 +367,26 @@ def restore_latest(
         f"{restored if restored else 'none'}"
     )
     return restored
+
+
+def _extract_archive_blobs(extracted: Path) -> Path | None:
+    """Extract any tar/zip blobs at the archive root into ``extracted``.
+
+    Only used when no seed tree is found already-extracted (the service
+    currently unpacks archives server-side). Returns the located tree, or
+    None when no archives yield seed versions.
+    """
+    import tarfile
+    import zipfile
+
+    for blob in sorted(extracted.glob("*.tar")) + sorted(extracted.glob("*.zip")):
+        if blob.name.endswith(".zip"):
+            with zipfile.ZipFile(blob) as archive:
+                archive.extractall(extracted)
+        else:
+            with tarfile.open(blob) as archive:
+                archive.extractall(extracted, filter="data")
+    return _locate_handoff_tree(extracted, _handoff_dirname().split("/")[-1])
 
 
 def _locate_handoff_tree(extracted: Path, handoff_name: str) -> Path | None:
