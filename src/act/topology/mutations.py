@@ -46,6 +46,28 @@ def apply_transaction(
     return MutationResult(True, operation, before, genome_hash(genome))
 
 
+def feasible_expert_mutations(
+    genome: ArchitectureGenome,
+) -> tuple[tuple[str, str, str | None], ...]:
+    """Enumerate every feasible expert grow/prune candidate for a genome.
+
+    Yields ``("grow", layer_id, None)`` for every MoE layer below the 16-expert
+    ceiling and ``("prune", layer_id, expert_id)`` for every expert above the
+    two-expert floor, in layer-then-expert order. Shared by the toy evolution
+    experiments and the V0-scale session so candidate semantics cannot drift.
+    """
+    candidates: list[tuple[str, str, str | None]] = []
+    for layer in genome.layers:
+        if layer.ffn != "moe":
+            continue
+        if len(layer.experts) < 16:
+            candidates.append(("grow", layer.id, None))
+        if len(layer.experts) > 2:
+            for expert in layer.experts:
+                candidates.append(("prune", layer.id, expert.id))
+    return tuple(candidates)
+
+
 def prune_expert(genome: ArchitectureGenome, layer_id: str, expert_id: str) -> bool:
     layer = next((layer for layer in genome.layers if layer.id == layer_id), None)
     if layer is None or layer.ffn != "moe" or len(layer.experts) <= 2:

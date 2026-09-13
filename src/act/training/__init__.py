@@ -20,6 +20,14 @@ from .distributed import (
 )
 from .session import SessionCheckpointPolicy, retain_checkpoints
 from .retraining import InitializationReport, initialize_retraining
+from .v0_session import (
+    V0ArmResult,
+    V0SessionConfig,
+    V0SessionResult,
+    predicted_cost_ratio,
+    run_v0_session,
+)
+from .v0_protocol import aggregate_arm_cost_ratio, harm_guard_rejects, sign_pairs
 
 __all__ = [
 	"TrainingConfig",
@@ -40,4 +48,12 @@ __all__ = [
 	"retain_checkpoints",
 	"InitializationReport",
 	"initialize_retraining",
+	"V0ArmResult",
+	"V0SessionConfig",
+	"V0SessionResult",
+	"predicted_cost_ratio",
+	"run_v0_session",
+	"aggregate_arm_cost_ratio",
+	"harm_guard_rejects",
+	"sign_pairs",
 ]

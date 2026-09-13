@@ -9,7 +9,7 @@ import torch
 
 from act.model import StaticMoECausalLM, model_from_genome, rebuild_model_from_genome
 from act.evolution.controller import AdaptiveController
-from act.topology import ArchitectureGenome, create_genome, genome_hash, grow_expert, prune_expert
+from act.topology import ArchitectureGenome, create_genome, feasible_expert_mutations, genome_hash, grow_expert, prune_expert
 from act.training.runtime import resolve_device
 
 
@@ -277,17 +277,8 @@ def _record_importance(arm: _Arm, step: int) -> None:
 def _mutation_candidates(
     genome: ArchitectureGenome,
 ) -> tuple[tuple[str, str, str | None], ...]:
-    """Enumerate every feasible expert grow/prune candidate for a genome."""
-    candidates: list[tuple[str, str, str | None]] = []
-    for layer in genome.layers:
-        if layer.ffn != "moe":
-            continue
-        if len(layer.experts) < 16:
-            candidates.append(("grow", layer.id, None))
-        if len(layer.experts) > 2:
-            for expert in layer.experts:
-                candidates.append(("prune", layer.id, expert.id))
-    return tuple(candidates)
+    """Backward-compatible alias for the shared candidate enumeration."""
+    return feasible_expert_mutations(genome)
 
 
 def _mutate_by_probe(

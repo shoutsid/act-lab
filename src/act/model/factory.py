@@ -3,6 +3,7 @@
 from .dense import DenseBaselineConfig, DenseCausalLM
 from .moe import StaticMoECausalLM, StaticMoEConfig
 from .v0 import V0CausalLM, V0ModelConfig
+from .v0_moe import V0MoECausalLM, V0MoEConfig
 from act.topology.genome import ArchitectureGenome, validate_genome
 
 
@@ -84,6 +85,84 @@ def rebuild_model_from_genome(
                     source_key = source_prefix + suffix
                     target_state[target_key].copy_(source_state[source_key])
 
+    for key, value in target_state.items():
+        if any(key.startswith(prefix) for prefix in expert_prefixes):
+            continue
+        if key in source_state and source_state[key].shape == value.shape:
+            value.copy_(source_state[key])
+    rebuilt.load_state_dict(target_state)
+    return rebuilt
+
+
+def v0_moe_config_from_genome(genome: ArchitectureGenome) -> V0MoEConfig:
+    """Derive the declared-scale MoE config from a V0 MoE genome."""
+    validation = validate_genome(genome)
+    if not validation.valid:
+        raise ValueError("cannot build V0 MoE model from invalid genome: " + "; ".join(validation.errors))
+    enabled = [layer for layer in genome.layers if layer.enabled]
+    if not enabled:
+        raise ValueError("V0 MoE genome has no enabled layers")
+    if any(layer.ffn != "moe" for layer in enabled):
+        raise ValueError("V0 MoE reconstruction requires MoE feed-forward layers")
+    widths = {expert.width for layer in enabled for expert in layer.experts}
+    active_counts = {layer.active_experts for layer in enabled}
+    if len(widths) != 1:
+        raise ValueError("V0 MoE reconstruction requires uniform expert widths")
+    if len(active_counts) != 1:
+        raise ValueError("V0 MoE reconstruction requires uniform active expert counts")
+    return V0MoEConfig(
+        vocab_size=genome.vocab_size,
+        context_size=genome.context_size,
+        hidden_size=genome.hidden_size,
+        depth=len(enabled),
+        attention_heads=enabled[0].heads,
+        experts_per_layer=tuple(len(layer.experts) for layer in enabled),
+        active_experts=next(iter(active_counts)),
+        expert_width=next(iter(widths)),
+        expert_ids=tuple(
+            tuple(expert.id for expert in layer.experts) for layer in enabled
+        ),
+    )
+
+
+def v0_moe_model_from_genome(
+    genome: ArchitectureGenome,
+) -> V0MoECausalLM:
+    """Construct a fresh V0 sparse-MoE model matching a genome exactly."""
+    config = v0_moe_config_from_genome(genome)
+    return V0MoECausalLM(config)
+
+
+def rebuild_v0_moe_from_genome(
+    previous: V0MoECausalLM,
+    genome: ArchitectureGenome,
+) -> V0MoECausalLM:
+    """Rebuild a mutated V0 MoE model, copying every retained expert by id.
+
+    Expert parameters are transferred by expert identity (genome ids), not
+    slot order, so prune and grow events never shuffle trained weights between
+    different experts. Every other parameter copies when shape-compatible.
+    """
+    rebuilt = v0_moe_model_from_genome(genome)
+    source_state = previous.state_dict()
+    target_state = rebuilt.state_dict()
+    expert_prefixes: set[str] = set()
+    for layer_index, target_block in enumerate(rebuilt.blocks):
+        source_block = previous.blocks[layer_index]
+        source_ids = {
+            expert_id: index for index, expert_id in enumerate(source_block.moe.expert_ids)
+        }
+        for target_index, expert_id in enumerate(target_block.moe.expert_ids):
+            source_index = source_ids.get(expert_id)
+            if source_index is None:
+                continue
+            target_prefix = f"blocks.{layer_index}.moe.experts.{target_index}."
+            source_prefix = f"blocks.{layer_index}.moe.experts.{source_index}."
+            expert_prefixes.add(target_prefix)
+            for suffix in ("0.weight", "2.weight"):
+                target_state[target_prefix + suffix].copy_(
+                    source_state[source_prefix + suffix]
+                )
     for key, value in target_state.items():
         if any(key.startswith(prefix) for prefix in expert_prefixes):
             continue

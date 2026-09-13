@@ -223,7 +223,7 @@ def validate_checkpoint_payload(payload: object) -> None:
     if not isinstance(payload, dict):
         raise ValueError("checkpoint payload must be a mapping")
     version = payload.get("version")
-    if version not in {1, 2, 3}:
+    if version not in {1, 2, 3, 4}:
         raise ValueError(f"unsupported checkpoint version {version}")
     for key in ("model", "optimizer", "training"):
         if key not in payload:

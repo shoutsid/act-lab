@@ -118,7 +118,7 @@ tests now number nine, with three passes, all from the cap-4 family.
 | T4x2 PyTorch/DDP | PARTIAL | Add device selection and DDP launch helpers now discover torchrun rank/world-size, initialize an appropriate process group, and wrap models only for multi-process runs; scheduler, accumulation, autocast, and activation checkpointing are available. T4x2 validation remains. |
 | TPU v5e/JAX | DEFERRED | Port only after a stable architecture wins the GPU gate. |
 | Kaggle artifact datasets | PARTIAL | Deterministic checkpoint, evaluation, report, and manifest layout contracts now exist; publishing automation remains. |
-| Session resume protocol | PARTIAL | Local checkpoint resume is deterministic; Kaggle-style local publish/restore now verifies manifest checksums, while remote dataset restore and publish-on-exit remain. |
+| Session resume protocol | PARTIAL | Local checkpoint resume is deterministic for baselines and bit-identical for V0 sessions (verified mid-run resume: losses, FLOPs counters, architecture hashes, and mutation histories all reproduce exactly); Kaggle-style local publish/restore now verifies manifest checksums, while remote dataset restore and publish-on-exit remain. |
 | Repository structure | PARTIAL | Core Python data, evaluation, evolution, importance, model, topology, training, and Kaggle-artifact implementations exist with focused tests; the planned notebooks and standalone research entry points remain. |
 
 ## Plan Sections 8-24: Model and Topology
@@ -158,7 +158,7 @@ tests now number nine, with three passes, all from the cap-4 family.
 | Teacher initialization | PARTIAL | Explicit teacher and evolved shape-safe parameter transfer policies now exist; multi-seed retraining comparisons remain. |
 | Architecture reusability and fresh initialization | PARTIAL | Fresh, evolved, and rewound initialization policies report copied/skipped tensors; architecture-equivalence studies remain. |
 | Cross-seed stability and architecture equivalence | PARTIAL | Strict architecture-hash equivalence and cross-seed mean/stddev/min/max summaries now exist; full retraining studies remain. |
-| Compute-efficiency scaling | PRE-REGISTERED | Real-scale measurement protocol pre-registered in `RESEARCH_REPORT.md` section 5.1: declared 285M V0 config, predicted probe cost 0.094% (band 0.047-0.189%), 5% criterion + tolerance band + harm guard on 12 fresh seed pairs (9000-9011); PASS authorizes Gate 4. |
+| Compute-efficiency scaling | PRE-REGISTERED (execution path built) | Real-scale measurement protocol pre-registered in `RESEARCH_REPORT.md` section 5.1: declared 285M V0 config, predicted probe cost 0.094% (band 0.047-0.189%), 5% criterion + tolerance band + harm guard on 12 fresh seed pairs (9000-9011); PASS authorizes Gate 4. The V0 training path is implemented: declared `V0MoECausalLM` reproduces 285,336,576 / 134,341,632 parameters exactly, per-layer expert genomes rebuild weight-preserving after grow/prune, and `act.training.cli --mode v0` runs resumable sessions with version-4 checkpoints (FLOPs counters, genome, generator state persisted). Session integration checks live in `scripts/v0_session_selfcheck.py` (run on demand, NOT in the pytest suite). |
 
 ## Plan Sections 67-105: Scale and Final Deliverables
 
@@ -210,7 +210,7 @@ These remain TODO or DEFERRED until the first gate passes:
 
 ## Verified Checks
 
-- `PYTHONPATH=src python -m pytest -q` -> 86 passed, no failures.
+- `PYTHONPATH=src python -m pytest -q` -> all unit tests pass; session runs are deliberately excluded from the suite (they are integration checks, too slow for per-commit runs) and live in `scripts/v0_session_selfcheck.py`, which verifies matched budgets, FLOPs booking, bit-identical mid-run resume, and the version-4 checkpoint contract on a tiny config.
 - `PYTHONPATH=src python -m compileall -q src/act tests` -> passed.
 - `npm run typecheck` -> passed.
 - `npm run build` -> passed.
@@ -322,5 +322,12 @@ These remain TODO or DEFERRED until the first gate passes:
 - The app uses port `4173` because port `8080` is occupied by an unrelated local service.
 - The installed PyTorch CUDA build does not support the local GTX 1070, so Python validation
   currently runs on CPU with a warning.
+- Operational hazard (learned 2026-09-13): `V0SessionConfig` defaults are the DECLARED protocol
+  dimensions, so a partial config silently instantiates the full 285M-parameter model on CPU
+  (~1.1-3.4 GB checkpoints; a test run once accumulated 19 GB in /tmp before hitting the disk
+  quota and hanging). Any reduced-fidelity session - tests, self-check, smoke - must set
+  vocab/context/hidden/depth/expert dims explicitly; `scripts/v0_session_selfcheck.py` and the
+  test suite both do. The `declared=True` guard rejects undeclared dimensions before any
+  training work starts.
 - `startup.sh` has a separate preview-process exit-code issue to clean up; it is not part of
   the scientific implementation and should not be solved by killing the unrelated 8080 service.
