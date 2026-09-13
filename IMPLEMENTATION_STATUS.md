@@ -325,6 +325,15 @@ These remain TODO or DEFERRED until the first gate passes:
   selects fp16 below the 2,500 floor) and writes `artifacts/v0-benchmark.json`;
   `--profile` smoke-checks on tiny configs or CPU. The T4 decision comes from
   the T4 run.
+- `PYTHONPATH=src python scripts/local_proof_run.py` -> the local rehearsal of
+  the full protocol loop: benchmarks the reduced model (12.55M/6.26M params,
+  ~15.2k tokens/s on the local 1070, fp32 above the floor), then runs the
+  production `run_pair_session` over the declared queue 9000-9011 (atomic
+  pairs, skip-completed, deadline rules) into the local-proof dataset root and
+  closes with `scripts/v0_verdict.py`. Completed 2026-09-13: 12/12 pairs,
+  PASS_WITH_QUALIFICATION (cost 1.0044% <= 5%; declared band correctly not
+  met by a reduced model; harm guard clear at 7/12). Re-runnable; `--dry-run`
+  prints the plan without training.
 - `PYTHONPATH=src python scripts/generate_figures.py` -> writes the four factor-map
   figures to `artifacts/study-summaries/figures/` (fig1 win-rate forest,
   fig2 quality-vs-cost, fig3 delta distributions, fig4 probe-rank heatmap),
@@ -460,6 +469,10 @@ These remain TODO or DEFERRED until the first gate passes:
 - The app uses port `4173` because port `8080` is occupied by an unrelated local service.
 - The installed PyTorch CUDA build does not support the local GTX 1070, so Python validation
   currently runs on CPU with a warning.
+- The installed PyTorch CUDA build (2.14.0+cu126) runs kernels on the local GTX 1070
+  (sm_61): `torch.cuda.is_available()` is true, matmul launches succeed, and the local
+  proof run (below) trained on GPU at ~15k tokens/s. Earlier "CPU only" notes are stale
+  for the current environment.
 - Operational hazard (learned 2026-09-13): `V0SessionConfig` defaults are the DECLARED protocol
   dimensions, so a partial config silently instantiates the full 285M-parameter model on CPU
   (~1.1-3.4 GB checkpoints; a test run once accumulated 19 GB in /tmp before hitting the disk
@@ -467,5 +480,22 @@ These remain TODO or DEFERRED until the first gate passes:
   vocab/context/hidden/depth/expert dims explicitly; `scripts/v0_session_selfcheck.py` and the
   test suite both do. The `declared=True` guard rejects undeclared dimensions before any
   training work starts.
+- Operational note (learned 2026-09-13): background processes must be launched with
+  `setsid nohup ... < /dev/null &` from the terminal tool - a plain `nohup ... &` child is
+  killed when the tool call that spawned it returns.
+- Local proof run (2026-09-13): `scripts/local_proof_run.py` executed the section 5.1
+  protocol machinery end-to-end on the local GPU with the production runner at reduced
+  dims (12.55M total / 6.26M active parameters; vocab 8k, context 512, depth 8, 8 experts
+  of 2 active, cap-4/1-batch primary controller; E=3; steps=600; batch 8) over the declared
+  queue 9000-9011. All 12 pairs published complete; `scripts/v0_verdict.py` returned
+  PASS_WITH_QUALIFICATION: measured probe cost 1.0044% (primary <=5% PASS), the declared
+  285M band [0.0471%, 0.1883%] correctly not applied to a reduced model, harm guard clear
+  (7/12 adaptive wins - unpowered at this scale, as expected for the cost-only protocol).
+  The section 5.1 FLOPs identity S = E*k*Bp*2*N_active reproduced exactly (search FLOPs
+  bit-match the formula), measured cost within 0.4% relative of the reduced-dims identity
+  prediction (1.0014% vs 0.9977% on seed 9000) - the identity is dimension-independent,
+  which is precisely what the tolerance band is designed to test at declared scale.
+  Scratch roots: `artifacts/local-proof/{sessions,datasets}` (gitignored); verdict JSON at
+  `artifacts/local-proof/datasets/v0-5-1-verdict.json`.
 - `startup.sh` has a separate preview-process exit-code issue to clean up; it is not part of
   the scientific implementation and should not be solved by killing the unrelated 8080 service.

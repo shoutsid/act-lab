@@ -1,0 +1,114 @@
+{
+  "gate_4_authorized": false,
+  "harm_guard": {
+    "adaptive_losses": 5,
+    "adaptive_wins": 7,
+    "clear": true,
+    "loss_limit": 10,
+    "pairs": 12
+  },
+  "in_tolerance_band": false,
+  "measured_cost_percent": 1.004352586198527,
+  "notes": "Gate 4 authorization requires all 12 declared seeds complete, cost <= 5%, measured C inside the [0.5, 2]x band, and the harm guard clear. A band miss forces re-derivation before Gate 4 (no knob re-tuning against the measured C).",
+  "per_seed": [
+    {
+      "adaptive_loss": 8.993788719177246,
+      "adaptive_wins": false,
+      "random_loss": 8.993777751922607,
+      "seed": 9000
+    },
+    {
+      "adaptive_loss": 8.993181705474854,
+      "adaptive_wins": true,
+      "random_loss": 8.994552850723267,
+      "seed": 9001
+    },
+    {
+      "adaptive_loss": 8.993929624557495,
+      "adaptive_wins": true,
+      "random_loss": 8.994583368301392,
+      "seed": 9002
+    },
+    {
+      "adaptive_loss": 8.99604344367981,
+      "adaptive_wins": false,
+      "random_loss": 8.99470567703247,
+      "seed": 9003
+    },
+    {
+      "adaptive_loss": 8.994937419891357,
+      "adaptive_wins": false,
+      "random_loss": 8.994465112686157,
+      "seed": 9004
+    },
+    {
+      "adaptive_loss": 8.994951725006104,
+      "adaptive_wins": false,
+      "random_loss": 8.993711948394775,
+      "seed": 9005
+    },
+    {
+      "adaptive_loss": 8.993084192276001,
+      "adaptive_wins": true,
+      "random_loss": 8.993935585021973,
+      "seed": 9006
+    },
+    {
+      "adaptive_loss": 8.994261741638184,
+      "adaptive_wins": true,
+      "random_loss": 8.99464726448059,
+      "seed": 9007
+    },
+    {
+      "adaptive_loss": 8.99395227432251,
+      "adaptive_wins": true,
+      "random_loss": 8.994505167007446,
+      "seed": 9008
+    },
+    {
+      "adaptive_loss": 8.993377685546875,
+      "adaptive_wins": true,
+      "random_loss": 8.993378162384033,
+      "seed": 9009
+    },
+    {
+      "adaptive_loss": 8.995869874954224,
+      "adaptive_wins": false,
+      "random_loss": 8.994821786880493,
+      "seed": 9010
+    },
+    {
+      "adaptive_loss": 8.993994951248169,
+      "adaptive_wins": true,
+      "random_loss": 8.99452519416809,
+      "seed": 9011
+    }
+  ],
+  "predicted_cost_percent": 0.0941636252059042,
+  "primary_criterion_percent": 5.0,
+  "primary_pass": true,
+  "probe_batch_count": 1,
+  "protocol": "v0-compute-efficiency-5.1",
+  "queue_complete": true,
+  "seeds_complete": [
+    9000,
+    9001,
+    9002,
+    9003,
+    9004,
+    9005,
+    9006,
+    9007,
+    9008,
+    9009,
+    9010,
+    9011
+  ],
+  "seeds_missing": [],
+  "seeds_stray": [],
+  "tolerance_band_percent": [
+    0.0470818126029521,
+    0.1883272504118084
+  ],
+  "verdict": "PASS_WITH_QUALIFICATION"
+}

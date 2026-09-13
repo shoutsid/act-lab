@@ -14,6 +14,13 @@ __pycache__/
 .ruff_cache/
 artifacts/*
 !artifacts/study-summaries/
+# Local proof run (2026-09-13): the machine-checked rehearsal record - the
+# verdict and session summary are durable evidence; the heavy checkpoint and
+# dataset trees stay local scratch.
+!artifacts/local-proof/
+artifacts/local-proof/*
+!artifacts/local-proof/verdict.json
+!artifacts/local-proof/session-summary.json
 screenshots/*
 !screenshots/.gitkeep
 .DS_Store
