@@ -67,7 +67,14 @@ p `1.0`, and adaptive is significantly WORSE than random (worse-than-random
 sign test z `-5.61`, two-sided p ~ `2e-08`). Accumulated greedy argmin on a
 noisy single-batch probe is net harmful - consistent with a winner's-curse
 mechanism: selecting the probe-argmin over many events amplifies probe-batch
-noise instead of signal.
+noise instead of signal. (8) The pre-registered variance study (cap=2, FOUR
+probe batches, 3 events, steps=144, fresh seeds 6000-6383) then FAILED its
+quality gate: 179/384 wins (46.6%, threshold 209), mean delta `-0.003907`,
+binomial p `0.9159`, t p `0.3453`. The mean shifted in the variance-hypothesis
+direction (+0.0117 -> -0.0039) but not significantly (two-sample z ~ `-1.13`).
+Per the pre-registered interpretation contract, probe variance reduction alone
+does not restore the adaptive edge: candidate-set richness and/or the shorter
+horizon of the single passing configuration remain the differentiating axes.
 
 ## Milestone Comparison
 
@@ -81,7 +88,7 @@ noise instead of signal.
 | 5. Importance instrumentation | DONE for the first gate | Python records routing/load, gradient norm, parameter norm, Fisher-style EMA, temporal stability, mutation count, and genome hash at structural windows. |
 | 6. Adaptive controller | PARTIAL | Python exposes a deterministic, validated budget-aware `AdaptiveController` plus Pareto frontier/population selection over quality, active parameters, and search FLOPs. The validated default reaches 10/16 wins; broader multi-generation search remains. |
 | 7. Experiment ledger | DONE for the first gate | Browser ledger and Python append-only JSONL registry store config, dataset/tokenizer hashes, code revision, hardware, tokens, FLOPs, arm metrics, mutation fossils, and architecture hashes. Deterministic evaluation summaries are available for report generation. |
-| 8. Final gate: adaptive > random | PASSED once (cap-4/2-batch, 48 steps); every cheaper or higher-cadence variant FAILED, the cadence variant significantly WORSE than random | Factor map (all matched budgets, objective verdicts): cap-4/2-batch, 3 events, 48 steps -> PASS 213/384, p `0.0181`, at 41.9% search cost. Cap-2/1-batch, 3 events, 144 steps -> FAIL 181/380, p `0.8351`, at 4.13% cost. Placement (late, same seeds) -> no effect (p `0.0788`). Cap-2/1-batch, 6 events, 144 steps -> 137/384 (35.7%), significantly WORSE than random (z `-5.61`, p ~ `2e-08`). Probe validity is real but weak (rho `0.11`); greedy argmin repeated on a noisy probe compounds noise (winner's curse). Multiple-comparison caution applies across the five pre-registered quality tests; the single pass (sign p `0.0181`, paired-t p `7.4e-05`) survives Bonferroni only via the paired-t. |
+| 8. Final gate: adaptive > random | PASSED once (cap-4/2-batch, 48 steps); every cheaper, higher-cadence, or higher-variance-reduction variant FAILED | Factor map (all matched budgets, objective verdicts): cap-4/2-batch, 3 events, 48 steps -> PASS 213/384, p `0.0181`, at 41.9% search cost. Cap-2/1-batch, 3 events, 144 steps -> FAIL 181/380, p `0.8351`, at 4.13% cost. Placement (late, same seeds) -> no effect (p `0.0788`). Cap-2/1-batch, 6 events, 144 steps -> 137/384 (35.7%), significantly WORSE than random (z `-5.61`, p ~ `2e-08`). Cap-2/4-batch (variance reduction), 3 events, 144 steps -> 179/384, p `0.9159`; mean delta direction favored the hypothesis but not significantly. Probe validity is real but weak (rho `0.11`); neither repeated greedy argmin nor variance reduction alone recovers the edge, leaving candidate richness and/or horizon as the remaining axes. Multiple-comparison caution applies across six pre-registered quality tests; the single pass (sign p `0.0181`, paired-t p `7.4e-05`) survives Bonferroni only via the paired-t. |
 
 ## Plan Sections 3-6: Compute and Kaggle Operations
 
@@ -166,14 +173,13 @@ These remain TODO or DEFERRED until the first gate passes:
    search cost; a cheaper cap-2/1-batch variant at steps=144 then met the cost
    budget (4.13%) but failed quality (181/380, p `0.8351`) on fresh seeds
    4004-4383.
-8. NEXT: the cadence result reverses the accumulation hypothesis - more greedy
-   events on a noisy probe HURT. The one-factor follow-up that matches the
-   winner's-curse hypothesis is probe variance reduction: keep the passing
-   cap-4/2-batch config and its 3 events but on fresh seeds and a longer horizon,
-   or add probe batches at fixed cap. If probe variance is not the mechanism,
-   accept that greedy probe-loss selection does not beat random churn at toy
-   fidelity, retain the documented negative results, and gate further selection
-   work on real-scale measurement (compute-efficiency milestone).
+8. NEXT: variance reduction alone failed to restore the edge, so the remaining
+   one-factor axes from the factor map are (a) candidate richness at fixed
+   probe-token cost (cap-4/1-batch vs cap-2/2-batch, fresh seeds) and (b) the
+   horizon of the passing configuration (cap-4/2-batch at steps=144). If neither
+   passes, accept that greedy probe-loss selection does not beat random churn at
+   toy fidelity, retain the documented negative results, and gate further
+   selection work on real-scale measurement (compute-efficiency milestone).
 
 ## Verified Checks
 
@@ -243,6 +249,12 @@ These remain TODO or DEFERRED until the first gate passes:
   `artifacts/gate3-late-placement-380.jsonl`, summary in `artifacts/study-summaries/`).
 - Added `--mutation-interval` and `--mutation-budget` to the experiment CLI
   (were config-only).
+- **384-seed variance study (seeds 6000-6383, cap=2 candidates, 4 probe batches,
+  3 events, steps=144, budgets matched)** -> quality FAILED: 179/384 wins (46.6%,
+  threshold 209), mean delta `-0.003907`, binomial p `0.9159`, t p `0.3453`;
+  probe cost 16.0% (descriptive). Probe variance reduction alone does not restore
+  the adaptive edge (`study_id` `cdebaf2ed9f23f54`,
+  `artifacts/gate3-variance-384.jsonl`, summary in `artifacts/study-summaries/`).
 - **384-seed cadence study (seeds 5000-5383, steps=144, interval=24, budget=6,
   cheap probe cap=2/1-batch, budgets matched)** -> 137/384 adaptive wins (35.7%,
   threshold 209), mean delta `+0.047014`, binomial p `1.0`; adaptive significantly
