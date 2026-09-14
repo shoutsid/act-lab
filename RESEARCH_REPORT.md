@@ -26,8 +26,12 @@ seeds.
 - **Hypothesis**: adaptive topology improves capability per FLOP.
 - **Prediction (Gate 3)**: adaptive topology selection beats matched random
   churn on final held-out loss.
-- **Control**: identical training schedule, identical mutation count and
-  cadence, only the *selection policy* of mutations differs.
+- **Control**: identical training schedule and identical mutation count and
+  cadence. The original claim was that "only the *selection policy* of
+  mutations differs"; section 9.5 shows this is **not accurate** as implemented -
+  the arms also differ in their candidate distribution, and a loss-blind
+  choice from the same candidate pool reproduces most of the effect. The
+  corrected control is pool-matched.
 - **Decision if false**: stop and simplify the architecture controller; do not
   scale until a controller passes.
 
@@ -40,6 +44,15 @@ arms compared per seed — **random** (uniform mutation choice) versus a
 probe-guided diagnostic upper bound). Final loss is averaged over four
 deterministic held-out validation batches; mutation budgets must match exactly
 or the study aborts.
+
+**Substrate and control caveats (section 9.5).** Every study in section 3 ran
+at `depth=1` with 4 experts, i.e. a 5-candidate mutation space on a single
+layer — the toy path could not build depth > 1 until the fix recorded in
+section 9.1. The random control draws uniformly over layers and operations
+while a bounded treatment draws from a capped candidate list, so the two arms
+differ in candidate distribution as well as selection; the study below is
+interpreted with that in mind, and the pool-matched control (section 9.5)
+should be the baseline for any re-run.
 
 Gate-study verdicts are objective and machine-computed
 (`src/act/evolution/study.py`):
