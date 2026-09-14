@@ -173,6 +173,47 @@ def test_probe_selection_is_recorded_in_history() -> None:
     )
 
 
+def test_independent_arm_rng_decouples_the_random_baseline() -> None:
+    """The opt-in flag makes the random arm the same control under any rule.
+
+    With the shared global RNG (the default) a grow's fresh expert weights
+    shift the stream the random arm later draws from, so the baseline changes
+    with the treatment - report section 9.8. Seeding per (arm, event) removes
+    that dependency without disturbing the shared init identity.
+    """
+
+    def random_loss(seed: int, rule: str, independent: bool) -> float:
+        result = run_experiment(
+            ExperimentConfig(
+                seed=seed,
+                steps=12,
+                mutation_interval=3,
+                mutation_budget=3,
+                depth=4,
+                hidden_size=24,
+                expert_count=4,
+                probe_candidate_cap=4,
+                probe_batch_count=1,
+                arms="random,adaptive",
+                probe_candidate_policy="spread",
+                probe_selection=rule,
+                independent_arm_rng=independent,
+            )
+        )
+        return next(arm.final_loss for arm in result.arms if arm.mode == "random")
+
+    seeds = (1, 2, 3, 4)
+    assert all(
+        random_loss(seed, "argmin", True) == random_loss(seed, "random", True)
+        for seed in seeds
+    )
+    # The default path really is coupled (otherwise the flag would be inert).
+    assert any(
+        random_loss(seed, "argmin", False) != random_loss(seed, "random", False)
+        for seed in seeds
+    )
+
+
 def test_config_rejects_invalid_probe_budgets() -> None:
     import pytest
 

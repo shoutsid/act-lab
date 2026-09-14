@@ -52,6 +52,14 @@ class ExperimentConfig:
     # control that isolates selection quality from the candidate pool's shape.
     # Mirrors `V0SessionConfig.probe_selection` so both paths share semantics.
     probe_selection: str = "argmin"
+    # Give every arm its own rebuild-initialisation stream. The historical
+    # default (False) shares the global torch RNG across arms, and because a
+    # grow draws fresh expert weights while a prune draws nothing, two runs
+    # whose treatments choose differently perturb each other's *random* arm.
+    # True seeds the global RNG per (arm, event) before each mutation, so the
+    # random baseline is exactly the same control regardless of the treatment
+    # (report section 9.8). Off by default so published numbers reproduce.
+    independent_arm_rng: bool = False
     probe_landscape: bool = False
     probe_force_candidate: int | None = None
     probe_force_events: int | None = None
@@ -197,7 +205,7 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
             (config.batch_size, config.sequence_length),
             generator=data,
         ).to(device)
-        for arm in arms:
+        for arm_index, arm in enumerate(arms):
             arm.optimizer.zero_grad(set_to_none=True)
             loss = arm.model.loss(tokens)
             loss.backward()
@@ -208,6 +216,14 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
                 and step % config.mutation_interval == 0
                 and arm.mutations < config.mutation_budget
             ):
+                if config.independent_arm_rng:
+                    # Rebuild initialisation is the only consumer of the global
+                    # torch RNG here (data and validation use dedicated CPU
+                    # generators), so re-seeding per (arm, event) decouples the
+                    # arms without touching the shared init identity.
+                    torch.manual_seed(
+                        config.seed * 1_000_003 + arm_index * 7_919 + step
+                    )
                 _record_importance(arm, step)
                 _mutate_arm(
                     arm,

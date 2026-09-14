@@ -94,6 +94,13 @@ def main() -> int:
     parser.add_argument("--mutation-interval", type=int, default=8)
     parser.add_argument("--mutation-budget", type=int, default=3)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument(
+        "--independent-arm-rng",
+        action="store_true",
+        help="seed rebuild init per (arm, event) so the random baseline is the "
+        "same control under every rule (report section 9.8; changes the "
+        "historical shared-RNG numbers)",
+    )
     args = parser.parse_args()
 
     seeds = _parse_seeds(args.seeds)
@@ -108,6 +115,7 @@ def main() -> int:
         probe_batch_count=args.batch_count,
         device=args.device,
         arms="random,adaptive",
+        independent_arm_rng=args.independent_arm_rng,
     )
     print(
         f"toy policy ablation: depth {args.depth}, hidden {args.hidden_size}, "
