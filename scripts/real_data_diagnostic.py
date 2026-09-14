@@ -29,6 +29,18 @@ horizon, same protocol machinery:
   transfer to the arm's future). Only the probe windows' source stream
   differs from the baseline adaptive arm - same candidates, same probe
   batch count, same booked probe FLOPs.
+- ``long`` : cap-4 / 1 probe batch / argmin with ``probe_finetune_steps=1``
+  - the long-horizon probe as a one-step lookahead. Each probed candidate is
+  fine-tuned for 1 AdamW step on a freshly drawn training batch before its
+  probe loss is measured on the same probe batches, so selection scores
+  post-mutation trainability instead of the instantaneous loss dip (a fresh
+  expert looks bad before any adaptation, which plausibly biases argmin
+  against grows - the baseline's observed 4/20 prune bias). Cost adds ~2%
+  of training FLOPs at the proof configuration (total ~3.0%, under the 5%
+  criterion; R=2 would sit exactly at the 5% boundary with no margin, so
+  R=1 is the only criterion-clean setting); the decision rule, candidate
+  cap, and probe-batch yardstick are unchanged from the baseline adaptive
+  arm.
 
 Pre-registered outcome contract (fixed before running): under ``heldout``,
 the probe-rank instrumentation reports the mean selected rank (0 = probe-
@@ -40,6 +52,25 @@ uninformative under both sources - at which point the probe's information
 content, not its data, is the binding constraint (longer probe horizon is
 the remaining licensed lever, at 4x cost). Either outcome is decisive:
 mechanism claims are directly measurable via ``probe_landscape`` ranks.
+
+Pre-registered outcome contract for ``long`` (fixed before running): the
+mechanism claim under test is that the snapshot probe's anti-predictive
+ranking is an adaptation-blindness artifact (scoring instantaneous loss
+instead of post-mutation trainability), visible as argmin's prune bias.
+(a) ``long`` beating its random arm on the paired block would mean the
+snapshot probe's blindness is the mechanism and lookahead selection is a
+fix candidate worth pre-registering on a fresh seed block. (b) ``long``
+losing like the baseline (mean delta ~ +0.29) would mean one adaptation
+step does not restore ranking information - the probe's blindness is not
+(or not only) a missing-adaptation artifact, and the remaining licensed
+lever is probe token count at fixed fidelity. Secondary observable: the
+selected operation balance (``probe_landscape`` makes it native) - a
+long-run argmin that still picks ~5:1 prune:grow while winning would be
+evidence the prune bias itself was not the failure mode. Cost guardrail:
+each lookahead step adds ~2% of training FLOPs, so R=1 lands ~3.0% while
+R=2 sits exactly at the 5% criterion with no margin (measured ratios run
+slightly above predicted on real data) - the variant is run at R=1 or not
+at all.
 
 Per-event probe cost scales as candidates x batches, so ``var`` quadruples
 the baseline cost (~1% -> ~4% of training FLOPs, measured 3.99%) and
@@ -62,6 +93,7 @@ Usage:
   PYTHONPATH=src python scripts/real_data_diagnostic.py               # all variants
   PYTHONPATH=src python scripts/real_data_diagnostic.py --variants argmax
   PYTHONPATH=src python scripts/real_data_diagnostic.py --variants heldout --force
+  PYTHONPATH=src python scripts/real_data_diagnostic.py --variants long --force
 """
 
 from __future__ import annotations
@@ -89,6 +121,7 @@ VARIANTS: dict[str, dict[str, object]] = {
     "rich": {"probe_candidate_cap": 8, "probe_batch_count": 1},
     "argmax": {"probe_selection": "argmax"},
     "heldout": {"probe_data_source": "heldout"},
+    "long": {"probe_finetune_steps": 1},
 }
 
 
@@ -128,7 +161,8 @@ def _run_variant(
         f"variant {name}: cap={config.probe_candidate_cap} "
         f"batches={config.probe_batch_count} "
         f"selection={config.probe_selection} "
-        f"probe_data={config.probe_data_source} seeds={list(seeds)}"
+        f"probe_data={config.probe_data_source} "
+        f"lookahead={config.probe_finetune_steps} seeds={list(seeds)}"
     )
     run_pair_session(
         seeds=seeds,
@@ -266,8 +300,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--variants",
-        default="var,rich,argmax,heldout",
-        help="comma list from: var,rich,argmax,heldout",
+        default="var,rich,argmax,heldout,long",
+        help="comma list from: var,rich,argmax,heldout,long",
     )
     parser.add_argument("--seeds", default=",".join(str(s) for s in DEFAULT_SEEDS))
     parser.add_argument("--steps", type=int, default=600)

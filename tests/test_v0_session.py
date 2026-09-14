@@ -554,3 +554,149 @@ def test_probe_landscape_off_by_default(tmp_path: Path) -> None:
     for event in result.arms[0].mutation_history:
         assert "probe_landscape" not in event
         assert "probe_selected_index" not in event
+
+
+# --- long-horizon probe (section 5.3 contingency fix candidate) -------------
+
+
+def test_v0_session_config_rejects_negative_probe_finetune_steps() -> None:
+    with pytest.raises(ValueError, match="probe_finetune_steps"):
+        V0SessionConfig(probe_finetune_steps=-1)
+
+
+def test_predicted_cost_ratio_books_lookahead_steps() -> None:
+    """R > 0 books R full-model training steps per probed candidate."""
+    total, active = estimated_parameter_count(DECLARED_V0_CONFIG)
+    config = V0SessionConfig(probe_finetune_steps=1)
+    probe_tokens = config.batch_size * config.context_size * config.probe_batch_count
+    expected = (
+        3
+        * 4
+        * (probe_tokens * 2 * active + 1 * probe_tokens * 2 * total)
+        / (2 * total * config.training_tokens())
+    )
+    assert predicted_cost_ratio(config) == pytest.approx(expected)
+    assert predicted_cost_ratio(config) > predicted_cost_ratio(V0SessionConfig())
+    # Criterion guardrail at the proof configuration: each lookahead step
+    # adds exactly one full-model training step per candidate (3x the probe
+    # forward), so R=1 lands at ~3% (clean) and R=2 sits exactly at the 5%
+    # criterion with no margin - measured ratios run slightly above predicted
+    # on real data, so R=2 breaches in practice and R=1 is the only clean
+    # setting.
+    proof = dict(
+        vocab_size=8_000,
+        context_size=512,
+        hidden_size=256,
+        depth=8,
+        attention_heads=8,
+        expert_count=8,
+        active_experts=2,
+        expert_width=256,
+        batch_size=8,
+        total_steps=600,
+        mutation_interval=200,
+        declared=False,
+    )
+    assert 0.02 < predicted_cost_ratio(V0SessionConfig(**proof, probe_finetune_steps=1)) < 0.05
+    assert predicted_cost_ratio(
+        V0SessionConfig(**proof, probe_finetune_steps=2)
+    ) == pytest.approx(0.0499773, abs=1e-4)
+
+
+def test_lookahead_probe_records_steps_books_cost_and_reranks(tmp_path: Path) -> None:
+    """The long-horizon probe adapts each candidate before scoring it.
+
+    Both runs probe the same initial model at the first event, so bit-equal
+    first-event landscapes would mean the fine-tune step did nothing. The
+    lookahead run books strictly more search FLOPs (the adaptation steps on
+    the full probed model) and records R in every event.
+    """
+    common = dict(
+        seed=51,
+        arms=("adaptive",),
+        declared=False,
+        device="cpu",
+        vocab_size=64,
+        context_size=256,
+        hidden_size=64,
+        depth=2,
+        attention_heads=4,
+        expert_count=4,
+        expert_width=32,
+        total_steps=6,
+        mutation_interval=2,
+        mutation_budget=2,
+        probe_batch_count=1,
+        validation_batches=2,
+        checkpoint_interval=2,
+        max_checkpoints=2,
+        probe_landscape=True,
+    )
+    snapshot = run_v0_session(
+        V0SessionConfig(**common), checkpoint_dir=tmp_path / "snapshot"
+    )
+    lookahead = run_v0_session(
+        V0SessionConfig(**common, probe_finetune_steps=1),
+        checkpoint_dir=tmp_path / "lookahead",
+    )
+    snap_arm = snapshot.arms[0]
+    look_arm = lookahead.arms[0]
+    assert all(event["probe_finetune_steps"] == 0 for event in snap_arm.mutation_history)
+    assert all(event["probe_finetune_steps"] == 1 for event in look_arm.mutation_history)
+    assert look_arm.mutation_count == snap_arm.mutation_count == 2
+    assert look_arm.search_flops > snap_arm.search_flops
+    # The ranking is recomputed after adaptation, and the landscape contract
+    # (sorted ascending, selected index consistent) holds under lookahead.
+    assert (
+        look_arm.mutation_history[0]["probe_landscape"]
+        != snap_arm.mutation_history[0]["probe_landscape"]
+    )
+    for event in look_arm.mutation_history:
+        landscape = event["probe_landscape"]
+        losses = [item["probe_loss"] for item in landscape]
+        assert losses == sorted(losses)
+        selected = event["probe_selected_index"]
+        assert 0 <= selected < len(landscape)
+        assert event["probe_loss"] == landscape[selected]["probe_loss"]
+
+
+def test_lookahead_probe_resume_is_bit_identical(tmp_path: Path) -> None:
+    """Throwaway fine-tune batches re-derive exactly on mid-run resume."""
+    config = V0SessionConfig(
+        seed=52,
+        arms=("random", "adaptive"),
+        declared=False,
+        device="cpu",
+        vocab_size=64,
+        context_size=256,
+        hidden_size=64,
+        depth=2,
+        attention_heads=4,
+        expert_count=4,
+        expert_width=32,
+        total_steps=8,
+        mutation_interval=4,
+        mutation_budget=2,
+        probe_batch_count=1,
+        validation_batches=2,
+        checkpoint_interval=2,
+        max_checkpoints=2,
+        probe_finetune_steps=1,
+    )
+    reference = run_v0_session(config, checkpoint_dir=tmp_path / "ref")
+    arm_dir = tmp_path / "resume" / "seed-52" / "arm-random"
+    run_v0_session(config, checkpoint_dir=tmp_path / "resume")
+    newest = max(arm_dir.glob("checkpoint-*.pt"), key=lambda p: int(p.stem.split("-")[-1]))
+    assert newest.stem.endswith("0008")
+    newest.unlink()  # force a mid-run resume from the step-6 checkpoint
+    resumed = run_v0_session(config, checkpoint_dir=tmp_path / "resume")
+    for before, after in zip(reference.arms, resumed.arms):
+        assert after.final_loss == before.final_loss
+        assert after.architecture_hash == before.architecture_hash
+        assert (after.training_flops, after.search_flops) == (
+            before.training_flops,
+            before.search_flops,
+        )
+        assert json.dumps(after.mutation_history, sort_keys=True) == json.dumps(
+            before.mutation_history, sort_keys=True
+        )

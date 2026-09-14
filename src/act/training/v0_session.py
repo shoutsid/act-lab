@@ -123,6 +123,20 @@ class V0SessionConfig:
     # windows sitting in-corpus. Same candidates, same probe batch count, same
     # booked probe FLOPs - only the probe windows' source stream differs.
     probe_data_source: str = "train"
+    # Long-horizon probe (report section 5.3's contingency fix candidate):
+    # 0 (default) keeps the registered snapshot probe - probe loss on fresh
+    # batches, no adaptation. R > 0 turns the probe into an R-step lookahead:
+    # each probed candidate is fine-tuned for R AdamW steps (learning_rate,
+    # fresh optimizer, no momentum carried in) on R fresh training-stream
+    # batches before its probe loss is measured on the SAME probe batches, so
+    # selection scores post-mutation trainability instead of the instantaneous
+    # loss dip (a freshly initialized expert looks bad before any adaptation,
+    # which biases argmin against grows). Cost adds ~2R% of training FLOPs at
+    # the proof configuration (R=1 lands ~3%, under the 5% criterion); the
+    # decision rule, candidate cap, and probe-batch yardstick are unchanged.
+    # Fine-tune batches are event/candidate/step-addressed from a dedicated
+    # throwaway generator (never checkpointed), so resume stays bit-identical.
+    probe_finetune_steps: int = 0
 
     def __post_init__(self) -> None:
         if self.total_steps < 1 or self.batch_size < 1:
@@ -137,6 +151,8 @@ class V0SessionConfig:
             raise ValueError(f"unsupported probe_data_source: {self.probe_data_source}")
         if self.probe_data_source == "heldout" and self.val_data_path is None:
             raise ValueError("probe_data_source='heldout' requires val_data_path")
+        if self.probe_finetune_steps < 0:
+            raise ValueError("probe_finetune_steps must be non-negative")
         if self.dtype not in {"fp32", "fp16"}:
             raise ValueError(f"unsupported session dtype: {self.dtype}")
         if self.validation_batches < 1:
@@ -173,12 +189,23 @@ def predicted_cost_ratio(config: V0SessionConfig) -> float:
 
     ``S = E * k * Bp * 2 * N_active`` (probe forwards) and ``T = 2 * P * D``
     (training forwards), the same forward-equivalent convention the toy
-    studies and ``run_experiment`` book with.
+    studies and ``run_experiment`` book with. With the long-horizon probe
+    (``probe_finetune_steps = R > 0``) each candidate additionally books R
+    full training steps on the whole probed model (``R * Bp * 2 * P``).
     """
     total, active = estimated_parameter_count(config.model_config())
     events = min(config.mutation_budget, config.total_steps // config.mutation_interval)
     probe_tokens = config.batch_size * config.context_size * config.probe_batch_count
-    search = events * config.probe_candidate_cap * probe_tokens * 2 * active
+    per_candidate = probe_tokens * 2 * active
+    if config.probe_finetune_steps > 0:
+        per_candidate += (
+            config.probe_finetune_steps
+            * config.batch_size
+            * config.context_size
+            * 2
+            * total
+        )
+    search = events * config.probe_candidate_cap * per_candidate
     training = 2 * total * config.training_tokens()
     return search / training
 
@@ -365,6 +392,40 @@ def _probe_loss(
         return sum(float(model.loss(batch)) for batch in probe_batches) / len(probe_batches)
 
 
+def _probe_loss_lookahead(
+    model: V0MoECausalLM,
+    probe_batches: tuple[Tensor, ...],
+    config: V0SessionConfig,
+    next_finetune_batch: Callable[[], Tensor],
+) -> float:
+    """Score a candidate by its post-adaptation loss: the long-horizon probe.
+
+    Fine-tunes the probed model for ``config.probe_finetune_steps`` AdamW
+    steps (the session learning rate, a fresh optimizer - no momentum is
+    carried in or out) on freshly drawn training batches, then re-scores the
+    SAME probe batches the snapshot probe would use. The per-candidate
+    protocol is identical for every candidate of an event, so the ranking is
+    a trainability comparison rather than an instantaneous-loss comparison: a
+    freshly initialized expert (bad before adaptation, potentially good
+    after) is no longer structurally penalized. The caller discards the
+    probed model, so no adapted state can leak into the arm.
+    """
+    steps = config.probe_finetune_steps
+    if steps > 0:
+        finetune_optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
+        model.train()
+        for _ in range(steps):
+            batch = next_finetune_batch()
+            finetune_optimizer.zero_grad(set_to_none=True)
+            loss = model.loss(batch)
+            if not torch.isfinite(loss):
+                return float("inf")  # untrainable candidate: sorts last
+            loss.backward()
+            finetune_optimizer.step()
+        del finetune_optimizer
+    return _probe_loss(model, probe_batches)
+
+
 def _apply_candidate(
     genome: ArchitectureGenome,
     operation: str,
@@ -387,6 +448,7 @@ def _adaptive_event(
     step: int,
     device: torch.device,
     probe_batches: tuple[Tensor, ...],
+    next_finetune_batch: Callable[[], Tensor] | None = None,
 ) -> tuple[V0MoECausalLM, torch.optim.Optimizer]:
     """Probe candidate mutations and apply the probed-selection winner.
 
@@ -395,8 +457,12 @@ def _adaptive_event(
     winner is rebuilt once from the current model with by-id expert transfer.
     The decision rule is ``config.probe_selection``: "argmin" (the registered
     controller) takes the lowest probe loss; "argmax" (the diagnostic control)
-    takes the highest. A no-op event (no feasible candidates) preserves the
-    existing optimizer exactly as the toy path does.
+    takes the highest. With ``probe_finetune_steps = R > 0`` (the long-horizon
+    probe) each candidate is scored after R adaptation steps on freshly drawn
+    batches (``next_finetune_batch``), so the ranking measures post-mutation
+    trainability, and the FLOPs booking covers those steps on the full probed
+    model. A no-op event (no feasible candidates) preserves the existing
+    optimizer exactly as the toy path does.
     """
     candidates = feasible_expert_mutations(arm_state.genome)[: config.probe_candidate_cap]
     probe_tokens = sum(batch.numel() for batch in probe_batches)
@@ -406,8 +472,27 @@ def _adaptive_event(
         if not _apply_candidate(trial_genome, operation, layer_id, expert_id, step):
             continue
         probe_model = rebuild_v0_moe_from_genome(model, trial_genome).to(device)
-        loss = _probe_loss(probe_model, probe_batches)
+        if config.probe_finetune_steps > 0:
+            if next_finetune_batch is None:
+                raise RuntimeError(
+                    "probe_finetune_steps > 0 requires a fine-tune batch source"
+                )
+            loss = _probe_loss_lookahead(
+                probe_model, probe_batches, config, next_finetune_batch
+            )
+        else:
+            loss = _probe_loss(probe_model, probe_batches)
         arm_state.search_flops += probe_model.active_parameter_count * probe_tokens * 2
+        if config.probe_finetune_steps > 0:
+            # The adaptation steps run on the FULL probed model (forward +
+            # backward over its whole parameter count), not just the active
+            # routing - booked per candidate so the cost identity holds.
+            arm_state.search_flops += (
+                config.probe_finetune_steps
+                * probe_batches[0].numel()
+                * 2
+                * probe_model.parameter_count
+            )
         evaluated.append((loss, order, operation, layer_id, expert_id, trial_genome))
         del probe_model
     if not evaluated:
@@ -436,6 +521,7 @@ def _adaptive_event(
         "probe_loss": probe_loss,
         "probe_candidates": len(evaluated),
         "probe_batch_count": len(probe_batches),
+        "probe_finetune_steps": config.probe_finetune_steps,
     }
     if config.probe_landscape:
         # ``evaluated`` is sorted by (loss, order) ascending, so the landscape
@@ -619,20 +705,36 @@ def _train_arm(
             for _ in range(config.probe_batch_count)
         )
 
+    # Long-horizon probe (R > 0): fresh training batches for candidate
+    # adaptation, drawn from a dedicated throwaway generator seeded PER EVENT
+    # (step-addressed) so any launch re-executing an event - a fresh run or a
+    # mid-run resume - redraws that event's fine-tune batches exactly. The
+    # batches never touch checkpointed state, so the bit-identical resume
+    # contract holds; candidates consume their R batches in fixed enumeration
+    # order, keeping the per-event sequence deterministic.
+    def draw_training_batch(source: torch.Generator) -> Tensor:
+        if train_sampler is not None:
+            return train_sampler.draw(
+                source, config.batch_size, config.context_size
+            ).to(device)
+        return torch.randint(
+            0,
+            config.vocab_size,
+            (config.batch_size, config.context_size),
+            generator=source,
+        ).to(device)
+
+    def finetune_batches_for(event_step: int) -> Callable[[], Tensor] | None:
+        if config.probe_finetune_steps <= 0:
+            return None
+        generator = torch.Generator(device="cpu")
+        generator.manual_seed(config.seed ^ 0xF1A7 ^ (event_step * 0x9E3779B9))
+        return lambda: draw_training_batch(generator)
+
     _prepare_model(model, config)
     wall_start = time.time()
     for step in range(arm_state.step + 1, config.total_steps + 1):
-        if train_sampler is not None:
-            tokens = train_sampler.draw(
-                generator, config.batch_size, config.context_size
-            ).to(device)
-        else:
-            tokens = torch.randint(
-                0,
-                config.vocab_size,
-                (config.batch_size, config.context_size),
-                generator=generator,
-            ).to(device)
+        tokens = draw_training_batch(generator)
         optimizer.zero_grad(set_to_none=True)
         with torch.autocast(device.type, dtype=torch.float16, enabled=use_amp):
             loss = model.loss(tokens)
@@ -657,7 +759,14 @@ def _train_arm(
         ):
             if mode == "adaptive":
                 model, optimizer = _adaptive_event(
-                    arm_state, model, optimizer, config, step, device, probe_batches
+                    arm_state,
+                    model,
+                    optimizer,
+                    config,
+                    step,
+                    device,
+                    probe_batches,
+                    finetune_batches_for(step),
                 )
             else:
                 model, optimizer = _random_event(

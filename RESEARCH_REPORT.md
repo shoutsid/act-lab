@@ -621,6 +621,39 @@ text the arm never trains on). Unit-pinned in `tests/test_v0_real_data.py`
 (config validation, real stream-switch at the first event, cost parity,
 bit-identical resume).
 
+**Designed fix candidate - the long-horizon probe as a one-step lookahead
+(`long`), pre-registered before running.** Every snapshot-probe axis is by
+now exhausted: same-distribution probe batches (`var`, 0/8), candidate
+richness (`rich`, 1/8), decision rule (`argmax`, 0/8), and probe provenance
+(`heldout`, designed). They share one suspect: the probe measures the
+*instantaneous* post-mutation loss, while the arm's outcome depends on
+*post-mutation trainability* - a freshly initialized expert looks bad
+before any adaptation, which structurally biases argmin against grows (the
+observed 4/20 prune bias). The one probe-horizon reading that attacks this
+directly is extending the probe in time: `V0SessionConfig
+.probe_finetune_steps = R` fine-tunes each probed candidate for R AdamW
+steps (session learning rate, fresh optimizer, no momentum carried in) on
+freshly drawn training batches before re-scoring the SAME probe batches,
+so the ranking becomes a trainability comparison. The diagnostic runs it
+at R=1: each lookahead step adds ~2% of training FLOPs (R full-model
+steps per candidate under the section-5.1 identity), so R=1 lands ~3.0%
+while R=2 sits exactly at the 5% criterion with no margin - the variant
+runs at R=1 or not at all. Resume determinism holds: fine-tune batches
+come from a dedicated throwaway generator seeded per event
+(`seed ^ 0xF1A7 ^ step * 0x9E3779B9`), redrawn exactly whenever an event
+re-executes, never checkpointed. Pre-registered outcome contract: (a)
+`long` beating its random arm on the paired block would mean the snapshot
+probe's adaptation blindness is the mechanism and lookahead selection is a
+fix candidate worth pre-registering on a fresh seed block; (b) `long`
+losing like the baseline (mean delta ~ +0.29) would mean one adaptation
+step does not restore ranking information, leaving probe token count at
+fixed fidelity as the remaining licensed lever. Secondary observable: the
+selected operation balance - a `long` argmin that still picks ~5:1
+prune:grow while winning would show the prune bias itself was not the
+failure mode. Unit-pinned in `tests/test_v0_session.py` (config
+validation, lookahead cost identity, adaptation actually re-ranking the
+landscape, bit-identical resume).
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

@@ -145,7 +145,21 @@ booked probe FLOPs (~1%, baseline-matched), same paired seeds 9000-9007,
 resume determinism pinned by test. Outcome contract pre-registered in
 report section 5.3: heldout-argmin winning falsifies in-corpus probing as
 the mechanism; losing like train-argmin (~ +0.29) falsifies provenance and
-leaves a longer probe horizon as the remaining licensed lever.
+leaves a longer probe horizon as the remaining licensed lever. (16) That
+long-horizon lever is DESIGNED and pre-registered but NOT YET RUN, as the
+`long` variant (`V0SessionConfig.probe_finetune_steps=1`): the long-horizon
+probe as a one-step lookahead - each probed candidate is fine-tuned for 1
+AdamW step on a fresh training batch before its probe loss is re-scored on
+the same probe batches, so selection compares post-mutation trainability
+instead of the instantaneous loss dip that structurally biases argmin
+against freshly initialized experts (the observed 4/20 prune bias). Cost:
+~3.0% of training FLOPs at the proof configuration (R=2 would sit exactly
+at the 5% criterion, so R=1 is the only clean setting); resume determinism
+holds via per-event throwaway fine-tune generators. Outcome contract
+pre-registered in report section 5.3: winning implicates the snapshot
+probe's adaptation blindness as the mechanism; losing like the baseline
+(~ +0.29) leaves probe token count at fixed fidelity as the last licensed
+lever. Full suite: 285 passed (4 new lookahead tests).
 
 ## Milestone Comparison
 
@@ -473,6 +487,24 @@ These remain TODO or DEFERRED until the first gate passes:
   (full suite: 281 passed). Pre-registered outcome contract lives in report
   section 5.3; run it on the same paired seed block 9000-9007 before any
   mechanism claim is updated.
+- `PYTHONPATH=src python scripts/real_data_diagnostic.py --variants long
+  --force` -> DESIGNED, pre-registered, NOT YET RUN: the long-horizon probe
+  as a one-step lookahead. `V0SessionConfig` gained `probe_finetune_steps`
+  (0 default | R > 0), fine-tuning each probed candidate for R AdamW steps
+  on freshly drawn training batches (fresh optimizer, no momentum carried
+  in) before re-scoring the same probe batches - selection then compares
+  post-mutation trainability, attacking the adaptation blindness that
+  plausibly explains argmin's prune bias. Non-finite post-adaptation losses
+  sort last (untrainable candidates lose); events record
+  `probe_finetune_steps`, and search FLOPs book the adaptation steps on the
+  full probed model (cost identity updated and pinned by test). Fine-tune
+  batches come from per-event throwaway generators, so the bit-identical
+  resume contract holds (pinned by test). Four new tests: config validation,
+  the lookahead cost identity (R=1 ~3.0% / R=2 exactly at the 5% boundary at
+  proof scale), landscape re-ranking + contract consistency under lookahead,
+  and bit-identical resume (full suite: 285 passed). Outcome contract in
+  report section 5.3; run on seeds 9000-9007 before updating any mechanism
+  claim.
 - `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
   `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
   deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer
