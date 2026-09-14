@@ -204,12 +204,16 @@ section 9).
    each block derives its expert count from its own ids.
 2. **The candidate cap truncated a layer-major list.** The bounded probe took
    `feasible_expert_mutations(...)[:cap]`, so at depth > 1 a cap of 4 reached
-   only layer 0. `probe_candidate_policy` now selects `prefix` (historical
-   default) or `spread` (deterministic per-event subset of the whole feasible
-   set). FIXED (toy path); the V0 session still truncates and is the open item.
+   only layer 0.   `probe_candidate_policy` now selects `prefix` (historical default) or
+   `spread` (deterministic per-event subset of the whole feasible set), in
+   both the toy path and the V0 session (`V0SessionConfig`), so the declared
+   protocol can be run either way. The REGISTERED section 5.1/5.2 config is
+   unchanged at the `prefix` default, so the pre-registered protocol still
+   carries the confound until the policy is switched.
 3. **The arms differ in candidate distribution, not only selection.** Added
    `probe_selection=random` (choose uniformly among the SAME probed candidates
-   at the SAME probe cost), mirroring `V0SessionConfig.probe_selection`. At
+   at the SAME probe cost) in both paths, extending
+   `V0SessionConfig.probe_selection` from {argmin, argmax}. At
    depth 4, 128 seeds, steps=24, cap 4/1-batch, uniform baseline: argmin
    88/128 (p `1.3e-05`), random-within-pool 80/128 (p `0.0030`), argmax
    64/128 (p `0.535`). The ordering is real (monotone 88 > 80 > 64), but a
@@ -617,11 +621,13 @@ These remain TODO or DEFERRED until the first gate passes:
   Exit codes:
   0 = PASS (Gate 4 authorized only with all 12 declared seeds complete),
   1 = FAIL, 2 = PASS with qualification (band miss or harm-guard rejection).
-- `PYTHONPATH=src python -m pytest -q` -> 297 passed (adds 5 substrate-audit
-  tests: per-layer expert counts build and rebuild at depth > 1, prefix is
-  confined to the first layer while spread reaches past it, the three
-  `probe_selection` rules differ and are deterministic, and the rule is
-  recorded in the mutation history).
+- `PYTHONPATH=src python -m pytest -q` -> 301 passed (adds 9 substrate-audit
+  tests: per-layer expert counts build and rebuild at depth > 1; prefix is
+  confined to the first layer while spread reaches past it, in both the toy
+  path and the V0 session; the three `probe_selection` rules differ, are
+  deterministic, and are recorded in the mutation history; and a V0 resume
+  that re-executes probe events redraws the identical spread subset
+  bit-identically).
 - Substrate audit runs (exploratory, block 20000-20127): depth-4 cap-4 studies
   pass on both `prefix` and `spread` (47/64 and 48/64 at steps=24); the
   probe-rank gradient is 47/37/35 for best/middle/worst; and the pool-matched

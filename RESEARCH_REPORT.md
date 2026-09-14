@@ -910,9 +910,13 @@ part of the effect is a location policy shared by the pool, and the effect
 size, not the mechanism, is what needs correcting. (2) Any re-run must use a
 pool-matched random baseline, so the section 5.1 cost protocol should not
 proceed as though the quality edge were established at V0 scale. (3) The
-section 5.2/5.1 registered controller still truncates a layer-major list, so
-the same confound reaches the declared protocol - see
-`IMPLEMENTATION_STATUS.md`'s substrate-audit section for the V0 status.
+section 5.1/5.2 registered controller truncates the same layer-major list
+(108 candidates at the declared depth, so a cap of 4 reaches layer 0 only),
+and the V0 session now carries the same `probe_candidate_policy` and
+`probe_selection` knobs - but the REGISTERED config is unchanged at the
+`prefix`/`argmin` defaults, so the pre-registered protocol still carries the
+confound until the policy is deliberately switched and re-registered. See
+`IMPLEMENTATION_STATUS.md`'s substrate-audit section for the code status.
 
 **Caveats.** Exploratory and unregistered; 128 seeds at steps=24 (shorter than
 the registered 48); one fresh block; no significance claim beyond the binomial
