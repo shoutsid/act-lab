@@ -922,3 +922,37 @@ confound until the policy is deliberately switched and re-registered. See
 the registered 48); one fresh block; no significance claim beyond the binomial
 reported. The formal re-registration on a fresh block, with the pool-matched
 control as the baseline, is the planned next step.
+
+### 9.6 The same structure in the declared V0 path - and no edge at reduced scale
+
+`V0SessionConfig` now exposes the same `probe_candidate_policy` and
+`probe_selection` knobs (registered defaults unchanged at `prefix`/`argmin`).
+A reduced-dim session run (depth 6 x 4 experts = 30 candidates, cap 4,
+steps=120, 12 seeds 30000-30011, both arms per seed, no real data) confirms the
+structural difference in the declared code path: prefix probes only layers
+L0-L1 (the candidate list spills into L1 once L0's prune slots empty), while
+spread probes all six.
+
+It does **not** quantify the confound, because at this fidelity there is no
+adaptive edge to confound:
+
+| Rule | Wins | Mean delta |
+|---|---|---|
+| prefix / argmin (registered) | 3/12 | +0.0005 |
+| spread / argmin | 5/12 | +0.0009 |
+| prefix / random (pool-matched) | 5/12 | -0.0003 |
+
+All three sit at noise (mean deltas ~1e-03, no rule distinguishable from
+random). This is a 12-seed unregistered check at reduced dimensions: it
+establishes nothing about V0 behaviour, and it is consistent with the
+real-data harm-guard rejection (section 5.3) - the adaptive edge has never
+been observed outside the tiny toy substrate.
+
+**Consequence for the section 5.1 protocol.** The T4 run should not be launched
+on the current pre-registration as though the quality edge were established:
+(a) the registered prefix controller cannot reach past the first one or two
+layers at the declared depth, and (b) the only positive evidence for selection
+value comes from a substrate with a demonstrated pool confound. Deciding the
+candidate policy and adding a pool-matched control arm (same candidates, same
+probe cost, loss-blind choice) is a prerequisite, and that decision belongs in
+the pre-registration, not in the analysis.

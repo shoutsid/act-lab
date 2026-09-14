@@ -628,6 +628,14 @@ These remain TODO or DEFERRED until the first gate passes:
   deterministic, and are recorded in the mutation history; and a V0 resume
   that re-executes probe events redraws the identical spread subset
   bit-identically).
+- Reduced-dim V0 session check (exploratory, seeds 30000-30011, depth 6 x 4
+  experts, cap 4, steps=120): the declared code path's prefix policy probes
+  only layers L0-L1 while `spread` probes all six - the structural difference
+  confirmed outside the toy path. No adaptive edge appears at this fidelity
+  (3/12, 5/12, 5/12; mean deltas ~1e-03), so the confound is not quantified
+  there. Consequence recorded in `RESEARCH_REPORT.md` section 9.6: the
+  section 5.1 T4 run should not launch on the current pre-registration until
+  the candidate policy and a pool-matched control arm are decided.
 - Substrate audit runs (exploratory, block 20000-20127): depth-4 cap-4 studies
   pass on both `prefix` and `spread` (47/64 and 48/64 at steps=24); the
   probe-rank gradient is 47/37/35 for best/middle/worst; and the pool-matched
