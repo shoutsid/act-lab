@@ -167,7 +167,25 @@ would sharpen an anti-correlated signal and is not recommended without a
 new mechanism hypothesis. Next direction, outside the section-5.3
 contract and requiring its own pre-registration: change how the ranking
 is used (layer-level coarseness, or accept/reject gating of random draws).
-Full suite: 285 passed (4 lookahead tests).
+Full suite: 285 passed (4 lookahead tests). (17) That pre-registration is
+now written (report section 5.4) and implemented as the `gated` arm:
+`V0SessionConfig(arms=("gated",), gate_margin=theta)` draws a random
+mutation FIRST (so the chooser's load-fallback sees the same post-training
+routing statistics as the random arm), scores the two-point contrast - the
+no-op reference (current model) and the drawn mutation on the same probe
+batches - and accepts the draw unless it loses to the reference by more
+than theta nats; a rejected draw is rolled back and replaced by the
+draw's own load-based grow fallback so the mutation budget stays matched.
+The built-in control is exact: the gated arm shares the random arm's init
+identity and streams, and at `gate_margin=inf` reproduces the random arm
+BIT-FOR-BIT (pinned by test, 7 new tests, suite at 292), including the
+global-RNG contract (the accepted rebuild IS the probed model, one
+rebuild per accepted event) and routing-load discipline (loads captured
+before any probe forward). Gated sessions are single-arm and publish
+alongside the baseline block's stored random arms. Cost: two probe
+evaluations per live event, ~2% of training FLOPs. The diagnostic gained
+a `gated` variant (default `theta=0`) with accept/reject-rate and
+draw-minus-reference aggregation. NOT YET RUN.
 
 ## Milestone Comparison
 
@@ -516,6 +534,19 @@ These remain TODO or DEFERRED until the first gate passes:
   Both scorecards, the unified five-variant verdict, and the next-direction
   note (change how the ranking is used; own pre-registration required) are
   recorded in report section 5.3. Full suite: 285 passed.
+- `PYTHONPATH=src python scripts/real_data_diagnostic.py --variants gated`
+  -> DESIGNED, pre-registered (report section 5.4), NOT YET RUN:
+  accept/reject gating of random draws - the probe's ABSOLUTE signal
+  (does this single mutation hurt the current model?) as a per-event gate
+  on the random arm's draw, abandoning the anti-predictive ordering
+  entirely. `V0SessionConfig.arms=("gated",)` with `gate_margin` theta
+  (default 0); draw-first ordering, no-op draws and dead-end fallbacks
+  book nothing, the accepted rebuild doubles as the probed model, and the
+  theta=inf control reproduces the random arm bit-for-bit (tested).
+  Single-arm sessions compare against the baseline block's stored random
+  arms; per-event `gate_decision` records make accept rate and
+  draw-vs-reference contrast directly measurable. Full suite: 292
+  passed (7 gated tests).
 - `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
   `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
   deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer

@@ -705,6 +705,75 @@ and per-event landscapes are in `artifacts/real-diag/diagnostic.json`
 (run log `run-heldout-long.log` alongside); 8-seed power caveats apply
 throughout.
 
+### 5.4 Pre-registration: accept/reject gating of random draws (designed, not yet run)
+
+**Motivation.** Section 5.3's unified verdict locates the failure in the
+probe's candidate ORDERING, not in its measurements: the same probe
+readings that are anti-predictive when ranked are still real, reproducible
+measurements of post-mutation loss on the actual training stream. The
+`rich` variant adds the sharper hint - the only configuration that ever
+beat its random arm is the one that most dilutes the ranking's influence.
+So section 5.4 keeps the random arm's draw distribution (which is fine:
+random arms never lose to random) and adds exactly one binary decision per
+event: does the drawn mutation hurt the CURRENT model, measured by the
+probe's ABSOLUTE signal?
+
+**Semantics (implemented in `V0SessionConfig.arms=("gated",)` and
+`_gated_event`).** Each event: (1) draw one random mutation with the
+random arm's exact chooser semantics - first, so its internal load-fallback
+reads the same post-training routing statistics the random arm sees; (2) if
+the draw changed nothing, record a no-op (no probes booked, budget slot
+consumed, identical to the random arm's wall); (3) otherwise score the
+two-point contrast on the same probe batches - the no-op reference (current
+model) and the drawn mutation (one rebuild, which is also the accepted
+winner, so the global-RNG stream stays in lockstep with the random arm's
+one-rebuild-per-accepted-event pattern); (4) accept the draw unless
+`draw_probe_loss > reference_probe_loss + gate_margin` (theta), in which
+case roll back and apply the draw's own load-based grow fallback so the
+mutation budget stays matched (publish refuses unmatched budgets); a
+dead-end fallback is a recorded no-op. Gated sessions are single-arm by
+definition and publish alongside the baseline block's stored random arms.
+Every event records `gate_decision` (`accept` / `reject_fallback` /
+`reject_noop` / `noop`), both probe losses, and theta, so accept rate and
+draw-vs-reference contrast are directly measurable.
+
+**Built-in control.** The gated arm shares the random arm's init identity
+(offset 1), training stream, and chooser seeds; at `gate_margin = inf`
+every draw is accepted and the arm reproduces the random arm BIT-FOR-BIT
+(pinned by test, including FLOPs: two probe evaluations booked per live
+event, nothing on no-ops). Any finite theta therefore differs from random
+only where the gate intervenes - the cleanest possible budget-matched
+baseline.
+
+**Cost.** Two probe evaluations per live event at the baseline's ~1%
+per-event booking lands the gated arm at roughly 2% of training FLOPs -
+half the adaptive arm's cost, well under the 5% criterion.
+
+**theta justification.** `theta = 0` (accept only draws whose probe loss
+does not exceed the reference's) is the maximally conservative point of
+the axis and the cheapest falsification test: if even rejecting only
+strictly-harmful draws cannot beat random, the absolute signal is empty
+and the axis is dead; if it wins, intermediate theta (accepting small
+probe regressions for architecture gains the probe cannot see) is a
+follow-up sweep, pre-registered separately.
+
+**Pre-registered outcome contract (8 paired seeds 9000-9007, revision
+eaa1c45 protocol, ~1.2 h on the local GPU).**
+- **(a) `gated` (theta=0) beats its paired random arms** - mean delta < 0
+  or wins >= 5/8: absolute-harm gating carries real signal the ranking
+  lacks; pre-register an intermediate-theta sweep and a power block on a
+  fresh seed range.
+- **(b) `gated` loses or ties like the baseline argmin** (mean delta in
+  the +0.28..+0.31 band): the absolute signal is as empty as the ordering,
+  and the probe-on-real-text program is concluded as falsified in both of
+  its usable forms; the next direction moves away from probe-derived
+  selection entirely (e.g. routing-statistics heuristics).
+- Secondary observables: accept rate (a near-1 rate would make the arm an
+  expensive random replica and would itself falsify the gate's
+  discriminativeness), mean draw-minus-reference contrast, and operation
+  balance under rejection (rejections should skew prune-accepts and
+  grow-fallbacks if the snapshot bias shows up in absolute form).
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

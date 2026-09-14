@@ -85,6 +85,33 @@ helps; across seeds mean selected probe loss correlates positively with
 final harm (long +0.51, heldout +0.89; 8 points, indicative). Unified
 verdict and next direction live in report section 5.3.
 
+- ``gated`` : NOT a ranking variant at all - the section-5.4 pre-registered
+  fix candidate after all five ordering variants lost. A single-arm session
+  that draws one random mutation per event (the random arm's exact chooser
+  semantics, drawn first so its load-fallback sees post-training routing
+  statistics), scores the two-point contrast - the no-op reference (current
+  model) vs the drawn mutation on the same probe batches - and accepts the
+  draw unless ``draw_probe_loss > reference_probe_loss + gate_margin``
+  (theta, default 0); a rejected draw rolls back and applies the load-based
+  grow fallback so the mutation budget stays matched. Uses only the probe's
+  ABSOLUTE signal, abandoning the anti-predictive ordering entirely. The
+  arm shares the random arm's init identity and streams, so theta=inf is
+  bit-identical to random (the built-in control; pinned by test). Cost: two
+  probe evaluations per live event, ~2% of training FLOPs. Paired against
+  the baseline block's stored random arms for the same seeds.
+
+Pre-registered outcome contract for ``gated`` (fixed before running):
+(a) beating the paired random arms (mean delta < 0 or wins >= 5/8) means
+absolute-harm gating carries real signal the ranking lacks - pre-register
+an intermediate-theta sweep on a fresh block. (b) losing/tying like the
+baseline argmin (mean delta in the +0.28..+0.31 band) means the absolute
+signal is as empty as the ordering, concluding the probe-on-real-text
+program as falsified in both usable forms (ordering and threshold) - the
+next direction leaves probe-derived selection entirely (e.g.
+routing-statistics heuristics). Secondary observables: accept rate (a
+near-1 rate makes the arm an expensive random replica and falsifies the
+gate's discriminativeness) and the mean draw-minus-reference contrast.
+
 Per-event probe cost scales as candidates x batches, so ``var`` quadruples
 the baseline cost (~1% -> ~4% of training FLOPs, measured 3.99%) and
 ``rich`` doubles it (measured 1.98%); ``argmax`` matches the baseline's
@@ -107,6 +134,7 @@ Usage:
   PYTHONPATH=src python scripts/real_data_diagnostic.py --variants argmax
   PYTHONPATH=src python scripts/real_data_diagnostic.py --variants heldout --force
   PYTHONPATH=src python scripts/real_data_diagnostic.py --variants long --force
+  PYTHONPATH=src python scripts/real_data_diagnostic.py --variants gated
 """
 
 from __future__ import annotations
@@ -135,6 +163,12 @@ VARIANTS: dict[str, dict[str, object]] = {
     "argmax": {"probe_selection": "argmax"},
     "heldout": {"probe_data_source": "heldout"},
     "long": {"probe_finetune_steps": 1},
+    # Section 5.4's fix candidate: accept/reject gating of random draws by
+    # the probe's ABSOLUTE signal (draw vs no-op reference, margin theta).
+    # A single-arm session - the baseline comparison comes from the same
+    # seeds' published baseline random arms, and the arm is its own control
+    # at theta=inf (it reproduces the random arm exactly).
+    "gated": {"arms": ("gated",), "gate_margin": 0.0},
 }
 
 
@@ -175,7 +209,8 @@ def _run_variant(
         f"batches={config.probe_batch_count} "
         f"selection={config.probe_selection} "
         f"probe_data={config.probe_data_source} "
-        f"lookahead={config.probe_finetune_steps} seeds={list(seeds)}"
+        f"lookahead={config.probe_finetune_steps} "
+        f"gate_margin={config.gate_margin} arms={config.arms} seeds={list(seeds)}"
     )
     run_pair_session(
         seeds=seeds,
@@ -191,7 +226,11 @@ def _run_variant(
     return dataset_root
 
 
-def _seed_losses(dataset_root: Path, seeds: tuple[int, ...]) -> dict[int, dict[str, float]]:
+def _seed_losses(
+    dataset_root: Path,
+    seeds: tuple[int, ...],
+    arms: tuple[str, ...] = ("random", "adaptive"),
+) -> dict[int, dict[str, float]]:
     losses: dict[int, dict[str, float]] = {}
     for seed in seeds:
         path = (
@@ -203,11 +242,8 @@ def _seed_losses(dataset_root: Path, seeds: tuple[int, ...]) -> dict[int, dict[s
         summary = json.loads(path.read_text())
         if summary.get("status") != "complete":
             continue
-        arms = summary["arms"]
-        losses[seed] = {
-            "random": float(arms["random"]["final_loss"]),
-            "adaptive": float(arms["adaptive"]["final_loss"]),
-        }
+        summary_arms = summary["arms"]
+        losses[seed] = {name: float(summary_arms[name]["final_loss"]) for name in arms}
     return losses
 
 
@@ -259,6 +295,52 @@ def _landscape_stats(dataset_root: Path, seeds: tuple[int, ...]) -> dict:
     }
 
 
+def _gate_stats(dataset_root: Path, seeds: tuple[int, ...]) -> dict:
+    """Aggregate gate decisions from a gated variant's published summaries.
+
+    The gated arm's mechanism observables: how often the absolute-harm gate
+    accepted the draw, rejected it onto the load-based grow fallback, or hit
+    a no-op, plus the mean draw-vs-reference probe contrast on decided
+    events (negative = the accepted draws were on average probe-better than
+    the no-op).
+    """
+    decisions: dict[str, int] = {}
+    contrasts: list[float] = []
+    for seed in seeds:
+        path = (
+            dataset_root / "act-checkpoints" / "v0-5-1" / f"seed-{seed:04d}"
+            / "reports" / "seed-summary.json"
+        )
+        if not path.is_file():
+            continue
+        summary = json.loads(path.read_text())
+        if summary.get("status") != "complete":
+            continue
+        for event in summary["arms"].get("gated", {}).get("mutation_history", []):
+            decision = event.get("gate_decision")
+            if decision is None:
+                continue
+            decisions[decision] = decisions.get(decision, 0) + 1
+            if event.get("draw_probe_loss") is not None and event.get(
+                "reference_probe_loss"
+            ) is not None:
+                contrasts.append(
+                    float(event["draw_probe_loss"])
+                    - float(event["reference_probe_loss"])
+                )
+    total = sum(decisions.values())
+    return {
+        "events_with_decision": total,
+        "decision_counts": dict(sorted(decisions.items())),
+        "accept_rate": (
+            decisions.get("accept", 0) / total if total else None
+        ),
+        "mean_draw_minus_reference": (
+            sum(contrasts) / len(contrasts) if contrasts else None
+        ),
+    }
+
+
 def analyze(seeds: tuple[int, ...], steps: int) -> dict:
     baseline = _seed_losses(BASELINE_ROOT, seeds)
     report: dict[str, object] = {
@@ -270,16 +352,22 @@ def analyze(seeds: tuple[int, ...], steps: int) -> dict:
     }
     for name, overrides in VARIANTS.items():
         root = DIAG_ROOT / name / "datasets"
-        losses = _seed_losses(root, seeds)
+        arm_names = ("gated",) if overrides.get("arms") == ("gated",) else ("random", "adaptive")
+        losses = _seed_losses(root, seeds, arm_names)
+        treatment = "gated" if arm_names == ("gated",) else "adaptive"
         paired = []
         for seed in sorted(set(losses) & set(baseline)):
             paired.append(
                 {
                     "seed": seed,
-                    "adaptive": losses[seed]["adaptive"],
-                    "random": losses[seed]["random"],
-                    "adaptive_wins": losses[seed]["adaptive"] < losses[seed]["random"],
-                    "delta_vs_baseline_adaptive": losses[seed]["adaptive"]
+                    "treatment": treatment,
+                    treatment: losses[seed][treatment],
+                    "random": losses[seed].get(
+                        "random", baseline[seed]["random"]
+                    ),
+                    "adaptive_wins": losses[seed][treatment]
+                    < losses[seed].get("random", baseline[seed]["random"]),
+                    "delta_vs_baseline_adaptive": losses[seed][treatment]
                     - baseline[seed]["adaptive"],
                     "baseline_random": baseline[seed]["random"],
                     "baseline_adaptive": baseline[seed]["adaptive"],
@@ -287,7 +375,7 @@ def analyze(seeds: tuple[int, ...], steps: int) -> dict:
             )
         wins = sum(1 for p in paired if p["adaptive_wins"])
         mean_delta = (
-            sum(p["adaptive"] - p["random"] for p in paired) / len(paired) if paired else None
+            sum(p[treatment] - p["random"] for p in paired) / len(paired) if paired else None
         )
         mean_vs_baseline = (
             sum(p["delta_vs_baseline_adaptive"] for p in paired) / len(paired)
@@ -306,6 +394,8 @@ def analyze(seeds: tuple[int, ...], steps: int) -> dict:
             ),
             "probe_rank": _landscape_stats(root, seeds),
         }
+        if treatment == "gated":
+            report["variants"][name]["gate"] = _gate_stats(root, seeds)
     return report
 
 
@@ -313,8 +403,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--variants",
-        default="var,rich,argmax,heldout,long",
-        help="comma list from: var,rich,argmax,heldout,long",
+        default="var,rich,argmax,heldout,long,gated",
+        help="comma list from: var,rich,argmax,heldout,long,gated",
     )
     parser.add_argument("--seeds", default=",".join(str(s) for s in DEFAULT_SEEDS))
     parser.add_argument("--steps", type=int, default=600)
@@ -379,6 +469,13 @@ def main() -> int:
     for name in names:
         entry = report["variants"][name]
         ranks = entry["probe_rank"]
+        gate = entry.get("gate")
+        gate_text = (
+            f", gate accept {gate['accept_rate']}, decisions {gate['decision_counts']}, "
+            f"mean draw-minus-reference {gate['mean_draw_minus_reference']}"
+            if gate
+            else ""
+        )
         _log(
             f"{name}: adaptive wins {entry['adaptive_wins']}/{entry['pairs_scored']}, "
             f"mean delta vs own random {entry['mean_delta_vs_own_random']:.4f}, "
@@ -386,6 +483,7 @@ def main() -> int:
             f"random replicates baseline: {entry['random_replicates_baseline']}, "
             f"mean selected probe rank {ranks['mean_selected_rank']}, "
             f"ranks {ranks['selected_rank_counts']}"
+            f"{gate_text}"
         )
     return 0
 

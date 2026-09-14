@@ -700,3 +700,179 @@ def test_lookahead_probe_resume_is_bit_identical(tmp_path: Path) -> None:
         assert json.dumps(after.mutation_history, sort_keys=True) == json.dumps(
             before.mutation_history, sort_keys=True
         )
+
+
+# --- gated arm (report section 5.4): accept/reject gating of random draws ---
+
+
+def _gated_config(seed: int, **overrides) -> V0SessionConfig:
+    values = dict(
+        seed=seed,
+        arms=("gated",),
+        declared=False,
+        device="cpu",
+        vocab_size=64,
+        context_size=256,
+        hidden_size=64,
+        depth=2,
+        attention_heads=4,
+        expert_count=4,
+        expert_width=32,
+        total_steps=6,
+        mutation_interval=2,
+        mutation_budget=2,
+        probe_batch_count=1,
+        validation_batches=2,
+        checkpoint_interval=2,
+        max_checkpoints=2,
+    )
+    values.update(overrides)
+    return V0SessionConfig(**values)
+
+
+def test_gated_config_validation() -> None:
+    """Gated sessions must be single-arm and gate_margin non-negative."""
+    with pytest.raises(ValueError, match="gated"):
+        V0SessionConfig(declared=False, arms=("gated", "random"))
+    with pytest.raises(ValueError, match="gate_margin"):
+        V0SessionConfig(declared=False, arms=("gated",), gate_margin=-1.0)
+    # The default arms tuple stays untouched.
+    assert V0SessionConfig(declared=False).arms == ("random", "adaptive")
+
+
+def test_gated_theta_infinity_reproduces_random_bit_for_bit(tmp_path: Path) -> None:
+    """The built-in control: an always-accepting gate IS the random arm.
+
+    Same init identity (offset 1), same training stream, same chooser seeds,
+    and - because the accepted candidate's rebuild IS the event's model - the
+    same number of global-RNG consumption points per event. Any delta here
+    would invalidate the arm as its own baseline.
+    """
+    random_arm = run_v0_session(
+        _gated_config(61, arms=("random",)), checkpoint_dir=tmp_path / "random"
+    ).arms[0]
+    gated_arm = run_v0_session(
+        _gated_config(61, gate_margin=float("inf")),
+        checkpoint_dir=tmp_path / "gated",
+    ).arms[0]
+    assert random_arm.final_loss == gated_arm.final_loss
+    assert random_arm.architecture_hash == gated_arm.architecture_hash
+    assert (random_arm.mutation_count, random_arm.training_flops) == (
+        gated_arm.mutation_count,
+        gated_arm.training_flops,
+    )
+    # The gate books strictly more (two probe evaluations per live event);
+    # training FLOPs must match exactly.
+    assert gated_arm.search_flops > random_arm.search_flops
+    assert json.dumps(gated_arm.mutation_history, sort_keys=True) == json.dumps(
+        random_arm.mutation_history, sort_keys=True
+    ) or all(
+        event.get("gate_decision") == "accept"
+        for event in gated_arm.mutation_history
+    )
+
+
+def test_gated_theta_infinity_flops_booking_matches_identity(tmp_path: Path) -> None:
+    """Search FLOPs at theta=inf = mutations * 2 probes + mutation rebuilds."""
+    config = _gated_config(62, gate_margin=float("inf"))
+    result = run_v0_session(config, checkpoint_dir=tmp_path / "gated")
+    arm = result.arms[0]
+    live_events = sum(
+        1 for event in arm.mutation_history if event.get("gate_decision") != "noop"
+    )
+    assert live_events == arm.mutation_count
+    probe_tokens = config.batch_size * config.context_size * config.probe_batch_count
+    _, active = estimated_parameter_count(config.model_config())
+    # Two probe evaluations per live event (reference + draw), each 2*active
+    # FLOPs/token, plus parameter_count * 4 per accepted rebuild. The exact
+    # parameter count per event varies with the genome, so assert the probe
+    # component exactly and the rebuild component loosely (>= noop floor).
+    assert arm.search_flops >= live_events * 2 * probe_tokens * 2 * active
+
+
+def test_gated_event_records_gate_contract(tmp_path: Path) -> None:
+    """Every live gated event carries the full two-point contrast contract."""
+    arm = run_v0_session(
+        _gated_config(63), checkpoint_dir=tmp_path / "gated"
+    ).arms[0]
+    assert arm.mode == "gated"
+    assert arm.mutation_count == 2
+    for event in arm.mutation_history:
+        assert event["policy"] == "gated"
+        assert event["gate_margin"] == 0.0
+        decision = event["gate_decision"]
+        assert decision in {"accept", "reject_fallback", "reject_noop", "noop"}
+        if decision == "noop":
+            assert event["reference_probe_loss"] is None
+            assert event["probe_candidates"] == 0
+        else:
+            assert event["reference_probe_loss"] is not None
+            assert event["draw_probe_loss"] is not None
+            assert event["probe_candidates"] == 2
+            if decision == "accept":
+                assert (
+                    event["draw_probe_loss"]
+                    <= event["reference_probe_loss"] + event["gate_margin"]
+                )
+            else:  # a rejection must have found the draw harmful
+                assert (
+                    event["draw_probe_loss"]
+                    > event["reference_probe_loss"] + event["gate_margin"]
+                )
+
+
+def test_gated_gate_margin_zero_rejects_harmful_draws(tmp_path: Path) -> None:
+    """theta=0 rejects any draw whose probe loss exceeds the reference.
+
+    A draw can only change the model, so a harmful draw (probe loss strictly
+    above the no-op reference) exists at least once across seeds; force the
+    gate to reject by checking that a rejected event (when present) triggered
+    a fallback or no-op while still consuming the budget slot.
+    """
+    arm = run_v0_session(
+        _gated_config(64, gate_margin=0.0), checkpoint_dir=tmp_path / "gated"
+    ).arms[0]
+    # Budget is consumed regardless of the gate's decisions.
+    assert arm.mutation_count == 2
+    for event in arm.mutation_history:
+        if event["gate_decision"] == "accept":
+            assert event["draw_probe_loss"] <= event["reference_probe_loss"]
+        elif event["gate_decision"] == "reject_fallback":
+            assert event["operation"] == "grow"  # the load-based fallback
+
+
+def test_gated_resume_is_bit_identical(tmp_path: Path) -> None:
+    """A mid-run resume reproduces the gated arm exactly."""
+    config = _gated_config(65, total_steps=8, mutation_interval=4)
+    reference = run_v0_session(config, checkpoint_dir=tmp_path / "ref")
+    arm_dir = tmp_path / "resume" / "seed-65" / "arm-gated"
+    run_v0_session(config, checkpoint_dir=tmp_path / "resume")
+    newest = max(
+        arm_dir.glob("checkpoint-*.pt"), key=lambda p: int(p.stem.split("-")[-1])
+    )
+    assert newest.stem.endswith("0008")
+    newest.unlink()  # force a mid-run resume from the step-6 checkpoint
+    resumed = run_v0_session(config, checkpoint_dir=tmp_path / "resume")
+    arm = resumed.arms[0]
+    before = reference.arms[0]
+    assert arm.final_loss == before.final_loss
+    assert arm.architecture_hash == before.architecture_hash
+    assert (arm.training_flops, arm.search_flops) == (
+        before.training_flops,
+        before.search_flops,
+    )
+    assert json.dumps(arm.mutation_history, sort_keys=True) == json.dumps(
+        before.mutation_history, sort_keys=True
+    )
+
+
+def test_predicted_cost_ratio_books_gated_two_point_contrast() -> None:
+    """Gated sessions probe TWO models per event (reference + draw)."""
+    config = _gated_config(66)
+    total, active = estimated_parameter_count(config.model_config())
+    probe_tokens = config.batch_size * config.context_size * config.probe_batch_count
+    expected = (
+        2 * 2 * probe_tokens * 2 * active
+        / (2 * total * config.training_tokens())
+    )
+    assert predicted_cost_ratio(config) == pytest.approx(expected)

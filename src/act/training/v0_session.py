@@ -137,6 +137,24 @@ class V0SessionConfig:
     # Fine-tune batches are event/candidate/step-addressed from a dedicated
     # throwaway generator (never checkpointed), so resume stays bit-identical.
     probe_finetune_steps: int = 0
+    # Accept/reject gating (report section 5.4's pre-registered fix
+    # candidate): the diagnostic verdict showed the probe's candidate
+    # ORDERING is anti-correlated with downstream value, so the gated arm
+    # abandons ordering entirely and uses only the probe's ABSOLUTE signal -
+    # "does this single mutation hurt the current model on the probe
+    # batches?" - as an accept/reject gate on otherwise-random draws.
+    # Mechanics: draw a mutation exactly as the random arm does (same seeded
+    # chooser, same call order, same fallback), probe (i) the drawn mutation
+    # and (ii) the no-op reference (the current model itself, so the gate is
+    # a per-event two-point contrast, not a fixed absolute threshold), and
+    # accept when the drawn mutation does not lose to the reference by more
+    # than ``gate_margin`` nats; otherwise fall back to the draw's own
+    # load-based grow (the random arm's already-exercised fallback path), so
+    # the mutation budget stays matched (publish refuses unmatched budgets).
+    # Probe cost: 2 evaluations per event (draw + reference), ~2x baseline.
+    # ``gate_margin = inf`` reduces the arm to the random arm plus idle
+    # probe FLOPs - the built-in budget-matched random control.
+    gate_margin: float = 0.0
 
     def __post_init__(self) -> None:
         if self.total_steps < 1 or self.batch_size < 1:
@@ -153,11 +171,15 @@ class V0SessionConfig:
             raise ValueError("probe_data_source='heldout' requires val_data_path")
         if self.probe_finetune_steps < 0:
             raise ValueError("probe_finetune_steps must be non-negative")
+        if self.gate_margin < 0:
+            raise ValueError("gate_margin must be non-negative")
+        if "gated" in self.arms and self.arms != ("gated",):
+            raise ValueError("the gated arm runs as its own single-arm session (arms=('gated',))")
         if self.dtype not in {"fp32", "fp16"}:
             raise ValueError(f"unsupported session dtype: {self.dtype}")
         if self.validation_batches < 1:
             raise ValueError("validation_batches must be positive")
-        unknown = [arm for arm in self.arms if arm not in {"random", "adaptive"}]
+        unknown = [arm for arm in self.arms if arm not in {"random", "adaptive", "gated"}]
         if unknown:
             raise ValueError(f"unsupported V0 session arms: {unknown}")
         if len(set(self.arms)) != len(self.arms):
@@ -196,6 +218,13 @@ def predicted_cost_ratio(config: V0SessionConfig) -> float:
     total, active = estimated_parameter_count(config.model_config())
     events = min(config.mutation_budget, config.total_steps // config.mutation_interval)
     probe_tokens = config.batch_size * config.context_size * config.probe_batch_count
+    if config.arms == ("gated",):
+        # Accept/reject gating probes TWO things per event: the drawn
+        # mutation and the no-op reference (the current model). No candidate
+        # cap applies - the gate is a two-point contrast, not a ranking.
+        search = events * 2 * probe_tokens * 2 * active
+        training = 2 * total * config.training_tokens()
+        return search / training
     per_candidate = probe_tokens * 2 * active
     if config.probe_finetune_steps > 0:
         per_candidate += (
@@ -543,6 +572,242 @@ def _adaptive_event(
     return winner, new_optimizer
 
 
+def _random_draw(
+    arm_state: _SessionState,
+    config: V0SessionConfig,
+    step: int,
+    model: V0MoECausalLM,
+) -> tuple[str, str, str | None, bool]:
+    """Draw one random mutation with the random arm's exact semantics.
+
+    Reproduces ``_random_event``'s chooser call order (layer, operation,
+    expert), in-place genome mutation with the operators' internal rollback,
+    and the load-based fallback grow, but does NOT append to the mutation
+    history, count the mutation, or rebuild the model. Returns the applied
+    (operation, layer_id, expert_id) and whether anything changed. The
+    draw's changes, if any, are left IN ``arm_state.genome``; the caller
+    decides to keep them (accept path) or roll them back (reject path) via
+    its saved pre-draw genome. The chooser is freshly seeded
+    ``config.seed + step`` exactly as the random arm's, so an accepted
+    draw's chooser call history is bit-identical to the random arm's at the
+    same (seed, step) whenever the feasible sets agree.
+    """
+    chooser = random.Random(config.seed + step)
+    layer = arm_state.genome.layers[chooser.randrange(len(arm_state.genome.layers))]
+    operation = chooser.choice(("grow", "prune"))
+    event_layer_id = layer.id
+    applied_expert: str | None = None
+    changed = False
+    if operation == "grow":
+        changed = grow_expert(arm_state.genome, layer.id, step) is not None
+    elif len(layer.experts) > 2:
+        expert = chooser.choice(layer.experts)
+        applied_expert = expert.id
+        changed = prune_expert(arm_state.genome, layer.id, expert.id)
+    if not changed:
+        fallback = max(
+            arm_state.genome.layers,
+            key=lambda candidate: max(model.routing_load[candidate.index]),
+        )
+        if len(fallback.experts) < 8:
+            changed = grow_expert(arm_state.genome, fallback.id, step) is not None
+            if changed:
+                operation, event_layer_id, applied_expert = "grow", fallback.id, None
+    return operation, event_layer_id, applied_expert, changed
+
+
+def _gated_event(
+    arm_state: _SessionState,
+    model: V0MoECausalLM,
+    optimizer: torch.optim.Optimizer,
+    config: V0SessionConfig,
+    step: int,
+    device: torch.device,
+    probe_batches: tuple[Tensor, ...],
+) -> tuple[V0MoECausalLM, torch.optim.Optimizer]:
+    """Accept/reject gating of a random draw by its absolute probe harm.
+
+    Section 5.4's fix candidate: the diagnostic showed the probe's candidate
+    ORDERING is anti-correlated with downstream value on real text, so this
+    event abandons ordering and uses only the probe's ABSOLUTE signal as a
+    two-point contrast per event - (i) the drawn mutation probed on the
+    probe batches, (ii) the no-op reference (the current model itself) probed
+    on the same batches - accepting the draw unless it loses to the
+    reference by more than ``config.gate_margin`` nats. The draw happens
+    FIRST, while ``model.routing_load`` still reflects the latest training
+    forwards (what the random arm's load-fallback sees); a draw that changes
+    nothing is a recorded no-op with no probes booked. On rejection the
+    draw is rolled back and the draw's own load-based grow fallback is
+    applied instead (the random arm's already-exercised path, genome
+    permitting; when it cannot change anything the event is a recorded
+    no-op and the budget is consumed), so the mutation budget stays matched
+    with the random arm and publish's budget guard never trips. Both probe
+    evaluations book search FLOPs (draw: active parameters; reference: the
+    current model's), matching the adaptive arm's per-evaluation booking.
+    """
+    before_hash = genome_hash(arm_state.genome)
+    before_genome = deepcopy(arm_state.genome)
+    # Draw first: the chooser and its internal load-fallback then see exactly
+    # the routing statistics the random arm's draw sees (post-training-step
+    # loads). Probing first would taint the loads with eval forwards.
+    operation, layer_id, expert_id, changed = _random_draw(
+        arm_state, config, step, model
+    )
+    if not changed:
+        # The draw itself could not change anything; nothing to gate, and no
+        # probe cost (the random arm books nothing on its no-op events).
+        arm_state.mutation_history.append(
+            {
+                "step": step,
+                "policy": "gated",
+                "operation": operation,
+                "layer_id": layer_id,
+                "expert_id": expert_id,
+                "architecture_hash_before": before_hash,
+                "architecture_hash_after": genome_hash(arm_state.genome),
+                "mutation_count": arm_state.mutations,
+                "gate_decision": "noop",
+                "gate_margin": config.gate_margin,
+                "reference_probe_loss": None,
+                "draw_probe_loss": None,
+                "probe_candidates": 0,
+                "probe_batch_count": len(probe_batches),
+            }
+        )
+        return model, optimizer
+    # With a live draw in hand, score the two-point contrast: the no-op
+    # reference (the unmutated current model) and the drawn mutation, both on
+    # the same probe batches. Routing loads are captured before any probe
+    # forward so a rejection's fallback reads the same statistics the random
+    # arm's fallback would have.
+    loads_at_draw = model.routing_load
+    reference_loss = _probe_loss(model, probe_batches)
+    arm_state.search_flops += model.active_parameter_count * sum(
+        batch.numel() for batch in probe_batches
+    ) * 2
+    # Probe the DRAWN mutation: rebuild ONCE from the mutated genome (the
+    # in-place draw changed the genome, not the model) and score it on the
+    # same probe batches as the no-op reference. The rebuilt model IS the
+    # accepted winner: re-rebuilding on the accept path would consume global
+    # torch RNG a second time (fresh-expert init draws from the global
+    # stream), and at gate_margin=inf - where every draw is accepted - the
+    # gated arm would drift off the random arm's RNG stream and break the
+    # built-in control. One rebuild per accepted event keeps the streams in
+    # lockstep.
+    draw_model = rebuild_v0_moe_from_genome(model, arm_state.genome).to(device)
+    arm_state.search_flops += draw_model.active_parameter_count * sum(
+        batch.numel() for batch in probe_batches
+    ) * 2
+    draw_probe_loss = _probe_loss(draw_model, probe_batches)
+    accepted = draw_probe_loss <= reference_loss + config.gate_margin
+    if accepted:
+        # The draw stays in place on arm_state.genome; the rebuilt model is
+        # the event's winner (booked like every post-mutation rebuild).
+        arm_state.mutations += 1
+        arm_state.search_flops += draw_model.parameter_count * 4
+        _prepare_model(draw_model, config)
+        new_optimizer = torch.optim.AdamW(
+            draw_model.parameters(), lr=config.learning_rate
+        )
+        arm_state.mutation_history.append(
+            {
+                "step": step,
+                "policy": "gated",
+                "operation": operation,
+                "layer_id": layer_id,
+                "expert_id": expert_id,
+                "architecture_hash_before": before_hash,
+                "architecture_hash_after": genome_hash(arm_state.genome),
+                "mutation_count": arm_state.mutations,
+                "gate_decision": "accept",
+                "gate_margin": config.gate_margin,
+                "reference_probe_loss": reference_loss,
+                "draw_probe_loss": draw_probe_loss,
+                "probe_candidates": 2,
+                "probe_batch_count": len(probe_batches),
+            }
+        )
+        return draw_model, new_optimizer
+    # Rejected: roll the draw back and apply the draw's own load-based grow
+    # fallback so the mutation budget stays matched (publish refuses
+    # unmatched budgets). The fallback lives in _random_event's semantics;
+    # reproduce it here against the restored genome.
+    del draw_model  # the rejected candidate is discarded (memory hygiene)
+    arm_state.genome = before_genome
+    fallback = max(
+        arm_state.genome.layers,
+        key=lambda candidate: max(loads_at_draw[candidate.index]),
+    )
+    fallback_applied = False
+    fallback_operation, fallback_layer, fallback_expert = (
+        operation,
+        layer_id,
+        expert_id,
+    )
+    if len(fallback.experts) < 8:
+        fallback_applied = grow_expert(arm_state.genome, fallback.id, step) is not None
+        if fallback_applied:
+            fallback_operation, fallback_layer, fallback_expert = (
+                "grow",
+                fallback.id,
+                None,
+            )
+    if fallback_applied:
+        arm_state.mutations += 1
+        winner = rebuild_v0_moe_from_genome(model, arm_state.genome).to(device)
+        arm_state.search_flops += winner.parameter_count * 4
+        _prepare_model(winner, config)
+        new_optimizer = torch.optim.AdamW(winner.parameters(), lr=config.learning_rate)
+        arm_state.mutation_history.append(
+            {
+                "step": step,
+                "policy": "gated",
+                "operation": fallback_operation,
+                "layer_id": fallback_layer,
+                "expert_id": fallback_expert,
+                "architecture_hash_before": before_hash,
+                "architecture_hash_after": genome_hash(arm_state.genome),
+                "mutation_count": arm_state.mutations,
+                "gate_decision": "reject_fallback",
+                "gate_margin": config.gate_margin,
+                "reference_probe_loss": reference_loss,
+                "draw_probe_loss": draw_probe_loss,
+                "draw_operation": operation,
+                "draw_layer_id": layer_id,
+                "draw_expert_id": expert_id,
+                "probe_candidates": 2,
+                "probe_batch_count": len(probe_batches),
+            }
+        )
+        return winner, new_optimizer
+    # The fallback could not change anything either: record the no-op and
+    # consume the budget (the random arm's chooser path would have hit the
+    # same wall; its event would also be a no-op).
+    arm_state.mutation_history.append(
+        {
+            "step": step,
+            "policy": "gated",
+            "operation": operation,
+            "layer_id": layer_id,
+            "expert_id": expert_id,
+            "architecture_hash_before": before_hash,
+            "architecture_hash_after": genome_hash(arm_state.genome),
+            "mutation_count": arm_state.mutations,
+            "gate_decision": "reject_noop",
+            "gate_margin": config.gate_margin,
+            "reference_probe_loss": reference_loss,
+            "draw_probe_loss": draw_probe_loss,
+            "draw_operation": operation,
+            "draw_layer_id": layer_id,
+            "draw_expert_id": expert_id,
+            "probe_candidates": 2,
+            "probe_batch_count": len(probe_batches),
+        }
+    )
+    _prepare_model(model, config)  # undo _probe_loss's eval() switch
+    return model, optimizer
+
+
 def _random_event(
     arm_state: _SessionState,
     model: V0MoECausalLM,
@@ -627,7 +892,12 @@ def _train_arm(
     # per session): two fresh runs, or a resumed run, must rebuild identical
     # weights regardless of execution order or process history. Python's
     # str hash is process-salted, so the offset is an explicit map.
-    arm_seed = config.seed * 10 + {"random": 1, "adaptive": 2}[mode]
+    # The gated arm shares the random arm's init identity (offset 1) by
+    # design: same init seed, same training stream, same chooser seeds, so a
+    # gated session at gate_margin=inf reproduces the random arm EXACTLY -
+    # the built-in budget-matched random control - and at any finite margin
+    # the trajectory diverges only where the gate intervenes.
+    arm_seed = config.seed * 10 + {"random": 1, "adaptive": 2, "gated": 1}[mode]
     # fp16 sessions train under autocast with a GradScaler over fp32 master
     # weights; fp32 sessions keep the plain path. Both are created here so a
     # resume restores into the same object graph either way.
@@ -767,6 +1037,10 @@ def _train_arm(
                     device,
                     probe_batches,
                     finetune_batches_for(step),
+                )
+            elif mode == "gated":
+                model, optimizer = _gated_event(
+                    arm_state, model, optimizer, config, step, device, probe_batches
                 )
             else:
                 model, optimizer = _random_event(
