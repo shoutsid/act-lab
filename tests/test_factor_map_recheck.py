@@ -6,8 +6,10 @@ arm-RNG path with the published config, seed block and treatment arm, and
 **flips** otherwise. These tests pin the parts that decide that call - which
 studies are in the recheck set, that only the RNG regime is changed, that shard
 records merge into one seed list, that the threshold is recomputed from n (so a
-truncated shard set cannot be scored against the full block's bar), and that an
-incomplete seed set never reports agreement.
+truncated shard set cannot be scored against the full block's bar), that an
+incomplete seed set never reports agreement, and - the load-bearing one - that
+the legacy study's pre-``adaptive_policy`` record is reconstructed faithfully
+rather than defaulted.
 """
 
 from __future__ import annotations
@@ -77,9 +79,11 @@ def test_recheck_set_covers_the_reconstructible_studies() -> None:
     assert "gate3-probe-loss-384" in available
     assert "gate3-horizon-384" in available
     assert "guided-upper-bound-96" in available
-    # The signal-era study cannot be reconstructed from its recorded config.
-    assert "gate3-legacy-signal-384" not in available
-    assert "gate3-legacy-signal-384" in recheck.EXCLUDED
+    # The signal-era study is in the set, on a completed config.
+    assert "gate3-legacy-signal-384" in available
+    assert recheck.RECONSTRUCTION["gate3-legacy-signal-384"] == {
+        "adaptive_policy": "signal"
+    }
     # The analysis-only artifact carries no config and is not a study, and the
     # recheck's own comparison artifact (a list of rows) must not be read as one.
     assert "probe-validity-analysis" not in available
@@ -116,13 +120,37 @@ def test_build_config_changes_only_the_rng_regime() -> None:
     assert config.mutation_interval == 12
 
 
-def test_run_shard_rejects_a_non_reconstructible_study() -> None:
+def test_run_shard_rejects_a_non_study() -> None:
     import pytest
 
-    with pytest.raises(SystemExit, match="not in the recheck set"):
-        recheck.run_shard("gate3-legacy-signal-384", shard=0, shards=1)
+    # The analysis-only artifact is not a study and must not be runnable.
     with pytest.raises(SystemExit, match="not in the recheck set"):
         recheck.run_shard("probe-validity-analysis", shard=0, shards=1)
+
+
+def test_legacy_reconstruction_supplies_the_predated_field() -> None:
+    """The legacy record omits ``adaptive_policy``; the run must not default it.
+
+    Defaulting would silently run ``probe_loss`` - a different experiment.
+    """
+    legacy = recheck.published_summaries()["gate3-legacy-signal-384"]
+
+    # The record really does predate the field.
+    assert "adaptive_policy" not in legacy["config"]
+
+    without = recheck.build_config(legacy)
+    with_reconstruction = recheck.build_config(legacy, study="gate3-legacy-signal-384")
+
+    assert without.adaptive_policy == "probe_loss"  # today's default
+    assert with_reconstruction.adaptive_policy == "signal"
+    # Nothing else about the claim moved: the two configs differ in exactly
+    # the one field the record predates.
+    from dataclasses import asdict
+
+    left, right = asdict(with_reconstruction), asdict(without)
+    differing = {key for key in left if left[key] != right[key]}
+    assert differing == {"adaptive_policy"}
+    assert with_reconstruction.steps == legacy["config"]["steps"]
 
 
 def test_aggregate_merges_shards_in_seed_order() -> None:
@@ -236,3 +264,46 @@ def test_summaries_from_records_merges_shards_in_seed_order() -> None:
         3001,
     ]
     assert summaries["s"]["adaptive_wins"] == 2
+
+
+# --- the legacy reconstruction reproduces the published record ---------------
+
+
+def test_legacy_signal_policy_reproduces_the_published_seed() -> None:
+    """Reproduce one published legacy seed under the reconstructed config.
+
+    This is what makes the reconstruction faithful rather than a guess: on the
+    historical coupled path, ``signal`` lands within float drift of the
+    published record while the defaulted ``probe_loss`` does not. A single seed
+    is enough to separate them because the disagreement is order 1e-1 against
+    drift of order 1e-7.
+    """
+    import json
+
+    from act.evolution.experiment import ExperimentConfig, run_experiment
+
+    raw = json.loads((ROOT / "artifacts/gate3-384.jsonl").read_text().splitlines()[0])
+    experiment = raw["experiments"][0]
+    published = {arm["mode"]: arm["final_loss"] for arm in experiment["arms"]}
+    config = dict(raw["config"])
+    config["device"] = "cpu"
+    seed = experiment["config"]["seed"]
+
+    reconstructed = run_experiment(
+        ExperimentConfig(**config, seed=seed, adaptive_policy="signal", independent_arm_rng=False)
+    )
+    defaulted = run_experiment(
+        ExperimentConfig(**config, seed=seed, adaptive_policy="probe_loss", independent_arm_rng=False)
+    )
+
+    drift = {
+        arm.mode: abs(arm.final_loss - published[arm.mode])
+        for arm in reconstructed.arms
+        if arm.mode in published
+    }
+    assert max(drift.values()) < 1e-5, drift
+
+    # The default would have measured a different experiment, which is exactly
+    # why the field is supplied rather than left to the dataclass.
+    defaulted_adaptive = next(arm for arm in defaulted.arms if arm.mode == "adaptive")
+    assert abs(defaulted_adaptive.final_loss - published["adaptive"]) > 1e-2

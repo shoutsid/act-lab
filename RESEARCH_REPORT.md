@@ -1599,9 +1599,49 @@ characterised but not explained; the natural hypothesis - more probe draws give
 sharper picks, and grows draw weights where prunes do not, so sharper picking
 consumes more of the shared stream - is untested here. `gate3-legacy-signal-384`
 was excluded as not reconstructible, so the legacy controller's published FAIL
-still rests on the coupled path; that is a gap, not a pass.
+still rests on the coupled path; that is a gap, not a pass - a gap closed in
+section 9.12 (the exclusion was sound about the *default*, but wrong to
+conclude the study was unknowable).
 
 **Consequence for the project.** No published *verdict* in the factor map needs
 revising except variance, and no headline claim is overturned. Every published
 *effect size* does need the recheck number beside it, and the depth-1 factor map
 should from here on be quoted from the decoupled column.
+
+### 9.12 Declared: the legacy signal study is reconstructible, not unknowable
+
+Section 9.10 excluded `gate3-legacy-signal-384` on the grounds that its
+recorded config predates the probe fields, so `ExperimentConfig(**recorded)`
+would fill them with today's defaults and "silently reproduce a different
+experiment". Inspecting the record rather than the summary shows that half of
+this is right and half is a mistake.
+
+The record does predate exactly one decision-bearing field: `adaptive_policy`
+(added by `d972d4c`, which replaced the cheap-signal controller with bounded
+probe-loss selection). Defaulting it yields `probe_loss` - a different
+experiment. But the value is *recoverable*, on three independent grounds:
+
+1. `d972d4c`'s diff inserts the probe branch **above** the legacy
+   `random.Random(seed)` chooser and does not touch the fallback body, so
+   `adaptive_policy="signal"` *is* the pre-transition controller rather than a
+   reconstruction of its behaviour.
+2. The raw record `artifacts/gate3-384.jsonl` corroborates it directly: its
+   per-arm `mutation_history` entries carry no probe fields at all, so the
+   probe controller never ran in it.
+3. It reproduces the published coupled record. One published seed
+   (1000) lands within **4.8e-7** under `signal`, against **1.1e-1** under the
+   defaulted `probe_loss` - float drift versus a different experiment. This is
+   pinned as a test (`tests/test_factor_map_recheck.py`), not left as prose.
+
+**Declared before running.** The legacy study joins the section 9.10 recheck
+set with `adaptive_policy="signal"` supplied (`RECONSTRUCTION` in
+`scripts/factor_map_recheck.py`), and its decoupled re-run is then judged by
+section 9.10's *unchanged* rule: the label reproduces when it is unchanged at
+alpha=0.05 on the same n, and flips otherwise. The validation criterion above
+is deliberately outcome-independent - it compares against the **published**
+coupled record, so the reconstruction cannot be accepted or rejected on the
+strength of what the decoupled run turns out to say. What this does *not* fix:
+the record is still missing `adaptive_policy` as a stored field, so a future
+reader who does not apply the reconstruction will still get the probe_loss
+experiment; the field is supplied at run time, not written back into the
+artifact.

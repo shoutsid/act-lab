@@ -19,11 +19,12 @@ revision to the published claim, not a new result to be preferred. Win counts
 and mean deltas are reported either way, so "reproduces" cannot hide a large
 effect-size move.
 
-Excluded study: ``gate3-legacy-signal-384``. Its recorded config predates the
-probe fields and its treatment is the pre-probe signal controller, so
-``ExperimentConfig(**recorded)`` would silently reproduce a *different*
-experiment (probe_loss with cap 4 / 2-batch). Re-running it would measure the
-wrong thing, so it is reported as not reconstructible rather than re-run.
+Reconstruction: ``gate3-legacy-signal-384`` records a config that predates the
+``adaptive_policy`` field, so ``ExperimentConfig(**recorded)`` would default to
+``probe_loss`` and silently reproduce a *different* experiment. The value is
+recoverable rather than unknowable, so the study is re-run with it supplied
+explicitly (see ``RECONSTRUCTION``), which restores the missing row to the
+corrected factor map.
 
 Device note: the published summaries record ``device: auto``. The recheck pins
 ``cpu`` because 16 shards contending for one GPU is far slower for this
@@ -62,12 +63,24 @@ from act.evolution.study import (  # noqa: E402
 SUMMARIES = ROOT / "artifacts" / "study-summaries"
 GATE_ALPHA = 0.05
 
-EXCLUDED = {
-    "gate3-legacy-signal-384": (
-        "recorded config predates the probe fields and its treatment is the "
-        "pre-probe signal controller, so ExperimentConfig(**recorded) would "
-        "silently reproduce a different experiment (probe_loss, cap 4/2-batch)"
-    ),
+# Fields an older record predates, supplied explicitly so the run reproduces
+# the *recorded* experiment rather than today's defaults.
+#
+# ``gate3-legacy-signal-384`` predates ``adaptive_policy`` (commit d972d4c
+# replaced the cheap-signal controller with bounded probe-loss selection and
+# added the field). Its value is recoverable, not guessed:
+#
+#   * "signal" is the *untouched* pre-transition controller - that commit's
+#     diff inserts the probe branch above the legacy ``random.Random(seed)``
+#     chooser, leaving the fallback path byte-identical.
+#   * The raw record ``artifacts/gate3-384.jsonl`` corroborates it: its per-arm
+#     ``mutation_history`` entries carry no probe fields, so the probe
+#     controller never ran in it.
+#   * Run coupled, it reproduces the published per-seed record to float drift
+#     (max |delta| 4.8e-7), whereas ``probe_loss`` does not (|delta| ~1e-1).
+#     ``tests/test_factor_map_recheck.py`` pins both directions.
+RECONSTRUCTION: dict[str, dict[str, object]] = {
+    "gate3-legacy-signal-384": {"adaptive_policy": "signal"},
 }
 
 
@@ -90,17 +103,22 @@ def published_summaries() -> dict[str, dict]:
 
 
 def recheck_set() -> dict[str, dict]:
-    """Studies this script re-runs (i.e. everything reconstructible)."""
-    return {
-        name: data
-        for name, data in published_summaries().items()
-        if name not in EXCLUDED
-    }
+    """Studies this script re-runs.
+
+    Everything with a recorded config and seed block, including the legacy
+    study, whose pre-``adaptive_policy`` config is completed from
+    ``RECONSTRUCTION`` rather than defaulted.
+    """
+    return published_summaries()
 
 
-def build_config(published: dict) -> ExperimentConfig:
+def build_config(published: dict, *, study: str | None = None) -> ExperimentConfig:
     """Reconstruct the published run's config, decoupling the arms only."""
     config = dict(published["config"])
+    if study is not None:
+        # A record that predates a field needs its value restored before the
+        # dataclass can fill it in with today's default.
+        config.update(RECONSTRUCTION.get(study, {}))
     config["independent_arm_rng"] = True
     # Device is not part of the claim (see the module docstring); CPU keeps the
     # sharded recheck fast without changing the numbers on this substrate.
@@ -122,12 +140,9 @@ def run_shard(
         raise SystemExit("--shard must be in [0, --shards)")
     available = recheck_set()
     if study not in available:
-        why = EXCLUDED.get(study)
-        raise SystemExit(
-            f"{study} is not in the recheck set" + (f": {why}" if why else "")
-        )
+        raise SystemExit(f"{study} is not in the recheck set")
     published = available[study]
-    config = build_config(published)
+    config = build_config(published, study=study)
     config = replace(config, independent_arm_rng=independent_arm_rng)
     treatment = published.get("treatment", "adaptive")
     seeds = tuple(published["seeds"])[shard::shards]
@@ -306,12 +321,14 @@ def _print_list() -> None:
     print(f"recheck set: {len(available)} study(ies)\n")
     for name, data in sorted(available.items()):
         label = "PASS" if data["gate_passed"] else "FAIL"
+        note = " (reconstructed)" if name in RECONSTRUCTION else ""
         print(
             f"  {name:28s} n={len(data['seeds']):3d} wins={data['adaptive_wins']:3d} "
-            f"({label})  seeds {data['seeds'][0]}-{data['seeds'][-1]}"
+            f"({label})  seeds {data['seeds'][0]}-{data['seeds'][-1]}{note}"
         )
-    for name, why in EXCLUDED.items():
-        print(f"\nexcluded: {name}\n  {why}")
+    for name, fields in RECONSTRUCTION.items():
+        supplied = ", ".join(f"{key}={value!r}" for key, value in sorted(fields.items()))
+        print(f"\nreconstructed: {name}\n  supplies {supplied} (record predates the field)")
 
 
 def _print_compare(rows: list[dict]) -> None:
