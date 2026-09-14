@@ -112,6 +112,20 @@ routing-statistics heuristics). Secondary observables: accept rate (a
 near-1 rate makes the arm an expensive random replica and falsifies the
 gate's discriminativeness) and the mean draw-minus-reference contrast.
 
+OUTCOME (run 2026-09-14, revision ``ef4bacd``): outcome (a)'s letter fired,
+its content never exercised - gated 8/8 wins, mean delta ``-0.1217`` (the
+first negative real-text delta of any treatment), BUT accept rate 0/24: all
+draws probed harmful (mean draw-minus-reference ``+0.1065``), every
+fallback dead at ``expert_count=8`` (``reject_noop`` x24), so the arm
+counted 0 mutations in 8/8 seeds and won as the NULL arm - matched-budget
+churn vs no churn, not gate discrimination. Draws were bit-identical to the
+random arms' own operations (24/24; the built-in control held). First
+direct measurement of real-text churn harm; partial explanation of every
+earlier variant's loss (all spent the full budget). Follow-ups (own
+pre-registrations): a do-nothing control arm on a fresh block; an
+intermediate-theta sweep (theta 0.05/0.1 would have accepted 11/24 and
+21/24 of the observed draws). Full write-up: report section 5.7.
+
 Per-event probe cost scales as candidates x batches, so ``var`` quadruples
 the baseline cost (~1% -> ~4% of training FLOPs, measured 3.99%) and
 ``rich`` doubles it (measured 1.98%); ``argmax`` matches the baseline's

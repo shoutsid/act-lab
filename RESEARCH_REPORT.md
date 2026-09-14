@@ -102,8 +102,8 @@ failure.
 **Every number in the table above is from the coupled arm-RNG path** (section
 9.8). The factor map was re-run with the coupling fixed, on the same configs and
 seed blocks, in the declared reproduction check of section 9.10; the decoupled
-table is section 9.11. Headline: **8 of 9 verdict labels reproduce**, every
-effect size moves toward the treatment (all nine win shifts positive), the
+table is section 9.11. Headline: **9 of 10 verdict labels reproduce**, every
+effect size moves toward the treatment (all ten win shifts positive), the
 number of studies clearing family-wise correction rises from 2 to 4, and the one
 label flip is the variance study - a threshold pass (209/384, p 0.046) that
 fails alpha/9 and is therefore a null in both directions rather than a new
@@ -859,6 +859,9 @@ eaa1c45 protocol, ~1.2 h on the local GPU).**
   balance under rejection (rejections should skew prune-accepts and
   grow-fallbacks if the snapshot bias shows up in absolute form).
 
+**Outcome (run 2026-09-14, revision `ef4bacd`): outcome (a)'s letter fired
+but its content was never exercised - full write-up in section 5.7.**
+
 ### 5.5 Revision to the 5.1 protocol (ADOPTED - the operative protocol)
 
 The substrate audit (section 9) invalidated a premise of section 5.1, so the
@@ -1073,6 +1076,51 @@ p `4.1e-06`) both clear alpha/3, the pool-matched control clears only alpha
 (209/384, p `0.046`), and the validity control does not pass. Full write-up in
 section 9.9.
 
+### 5.7 Gated outcome: the first real-text win, won by the null arm (2026-09-14)
+
+The section-5.4 gated arm (theta = 0) ran once on the paired block (seeds
+9000-9007, steps 600, revision `ef4bacd`; run log
+`artifacts/real-diag/run-gated.log`, aggregates in
+`artifacts/real-diag/diagnostic.json`). The headline: **8/8 wins, mean delta
+vs own random `-0.1217`** (per-seed deltas `-0.23` to `-0.70`), the adaptive
+arm `-0.3972` from the baseline adaptive arm - the first negative real-text
+delta of any treatment - at 0.50% probe cost. Every secondary observable,
+however, says the mechanism is degenerate: **accept rate 0/24** (100%
+reject), mean draw-minus-reference `+0.1065` (min `+0.0097`, max `+0.9154`,
+harmful in 24/24), and `mutation_count = 0` in 8/8 seeds with a constant
+architecture hash. The gate vetoed every draw, and at the real-data config's
+`expert_count = 8` the load-based fallback's `< 8` guard cannot fire, so all
+24 decisions are `reject_noop`: the gated arm trained its initial
+architecture for 600 steps while the random arm performed its three
+mutations.
+
+The comparison is therefore budget-matched churn versus NO churn, and the
+built-in control proves it: the draws were bit-identical to the random
+arms' own operations (24/24 - on seed 9000 the gate vetoed exactly grow L7 /
+prune L2 / prune L7), so the only treatment difference was suppression.
+The honest reading has three parts. (i) This is the first direct measurement
+of churn harm on real text: at this fidelity, doing nothing beats random
+churn by `-0.12` nats. (ii) It retroactively explains part of every earlier
+variant's loss - argmin, argmax, `var`, `rich`, `heldout`, and `long` all
+spent the full mutation budget by design, while a controller that mutates
+less (including "never") beats the random arms. (iii) It does NOT validate
+the gate: nothing was ever accepted, so the accept path was never exercised
+by the data, and a controller that always rejects would have produced the
+same 8/8. Outcome (a)'s pre-registered letter ("mean delta < 0 or wins
+>= 5/8") fired; its content ("absolute-harm gating carries real signal the
+ranking lacks") did not.
+
+Follow-ups, each requiring its own pre-registration: (1) a do-nothing
+control arm (zero mutations, budget matched as no-ops) on a fresh seed
+block, to confirm the `-0.12` is pure churn harm rather than seed luck;
+(2) an intermediate-theta sweep - the recorded contrasts make the acceptance
+windows concrete (theta `0.05` would have accepted 11/24 of the observed
+draws, theta `0.1` would have accepted 21/24) - whose real question is not
+"gated beats random" (the null arm already does that) but "accepted draws
+beat doing nothing"; with draw-minus-reference >= 0 in 24/24, large theta
+approaches the random arm and the informative window is narrow. Eight-seed
+power caveats apply throughout.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
@@ -1098,7 +1146,7 @@ section 9.9.
 | 9. Benchmark results | PARTIAL (this report's factor map; no real-corpus benchmarks) |
 | 10. Fresh-initialization results | TODO (policies exist; studies deferred) |
 | 11. Qwen architecture analysis | TODO (deferred) |
-| 12. Paper-quality figures | DONE for the factor map, in **two sets** (section 8): the registered coupled-path figures, and the corrected decoupled set (`--set decoupled`) plotted from summaries emitted by `scripts/factor_map_recheck.py --summaries` and re-checked by `check_summary` at plot time. Both regenerate byte-identically. Study 1 is absent from the corrected set (not reconstructible; figure 4's counterfactual analysis is re-run separately by `scripts/probe_validity_analysis.py`). |
+| 12. Paper-quality figures | DONE for the factor map, in **two sets** (section 8): the registered coupled-path figures, and the corrected decoupled set (`--set decoupled`) plotted from summaries emitted by `scripts/factor_map_recheck.py --summaries` and re-checked by `check_summary` at plot time. Both regenerate byte-identically. Both sets carry all nine rows (section 9.12 recovered study 1's predated config field), and figure 4's counterfactual analysis is re-run separately by `scripts/probe_validity_analysis.py`. |
 
 ## 8. Figures
 
@@ -1126,13 +1174,14 @@ The decoupled set is written to `artifacts/study-summaries/decoupled/figures/`
 and plotted from summaries in the committed schema produced by
 `scripts/factor_map_recheck.py --compare ... --summaries` - each one validated by
 `check_summary` before it is written and again at plot time, so the corrected
-figures carry the same machine check as the registered ones. Three differences
-from the coupled set, all deliberate:
+figures carry the same machine check as the registered ones. The two sets plot
+the same factor map - both carry all nine rows, and section 9.12 recovered the
+field that once left study 1 out of the corrected one - so the difference is in
+what the arms' RNG regime does to the numbers, not in which studies appear. Two
+points about the corrected set are worth stating:
 
-- **Study 1 is absent** (eight rows, not nine): its recorded config predates the
-  probe fields, so it cannot be reconstructed on this path (section 9.10). The
-  figure titles say so rather than dropping or substituting the row silently.
-- **Figure 3** therefore shows studies 3, 4, 5 and 6 instead of 1, 3, 4, 5, 6.
+- **Figure 3 shows studies 1, 3, 4, 5 and 6** - the per-seed delta
+  distributions - in both sets.
 - **Figure 4 is set-specific.** The counterfactual probe-rank analysis behind
   it is not an arm comparison, so it is re-run separately
   (`scripts/probe_validity_analysis.py`) and the decoupled set plots its own
@@ -1482,11 +1531,11 @@ experiment exactly from its recorded config: the eight probe-loss gate studies
 `cadence`, `late-placement`) plus `guided-upper-bound-96`. Each is re-run with
 its **published config, published seed block and treatment arm**, with
 `independent_arm_rng=True` as the only change, at the same probe budgets.
-- **Excluded: `gate3-legacy-signal-384`.** Its recorded config predates the
-probe fields and its treatment is the pre-probe signal controller, so
-reconstructing it would silently run a different experiment (`probe_loss`,
-cap 4/2-batch). It is reported as not reconstructible, not re-run, and its
-published FAIL is left standing with that caveat.
+- **Reconstruction: `gate3-legacy-signal-384`.** Its recorded config predates
+  the `adaptive_policy` field, so running it as recorded would silently default
+  to `probe_loss` and measure a different experiment. The recorded value is
+  recoverable (`"signal"` - see section 9.12), so the study is re-run on its
+  completed config rather than excluded.
 - **Decision rule.** A study **reproduces** if its verdict label at alpha=0.05
   is unchanged (`gate_passed` recomputed on the same n); it **flips** otherwise.
   A flip revises the published claim; it is not a new result to be preferred,
@@ -1520,15 +1569,16 @@ PYTHONPATH=src python scripts/factor_map_recheck.py \
 the coupled/decoupled difference is measurable per study rather than inferred.
 **Result recorded in section 9.11.**
 
-### 9.11 Result: eight of nine labels reproduce, and every effect moves toward the treatment
+### 9.11 Result: nine of ten labels reproduce, and every effect moves toward the treatment
 
 Ran as declared (144 shards over 9 studies, ~6 min wall on 16 single-threaded
 cores; comparison artifact
-`artifacts/study-summaries/factor-map-recheck.json`).
+`artifacts/study-summaries/factor-map-recheck.json`). Study 1 was added
+separately by section 9.12, which recovered the field its record predates.
 
 | # | Study | Published | Recheck (decoupled) | Win shift | Verdict |
 |---|---|---|---|---|---|
-| 1 | Legacy controller | 195/384 FAIL (p 0.399) | *excluded - not reconstructible* | - | - |
+| 1 | Legacy controller | 195/384 FAIL (p 0.399) | 201/384 FAIL (p 0.193) | +6 | reproduces |
 | 2 | Guided upper bound | 59/96 PASS (p 0.0158) | 62/96 PASS (p 0.00279) | +3 | reproduces |
 | 3 | Probe-loss controller | 213/384 PASS (p 0.0181) | 222/384 PASS (p 0.00128) | +9 | reproduces |
 | 4 | Cheap probe | 181/380 FAIL (p 0.835) | 188/380 FAIL (p 0.601) | +7 | reproduces |
@@ -1540,12 +1590,12 @@ cores; comparison artifact
 
 **What this changes.**
 
-- **The section 3 narrative survives.** Eight of nine labels reproduce, so
+- **The section 3 narrative survives.** Nine of ten labels reproduce, so
   "richness is the active axis", "probe quality is secondary", "the pass is not
   horizon-specific" and "the legacy signal controller is a coin flip" are all
   unchanged in verdict.
 - **But every single study moved toward the treatment** (win shifts +1 to +30,
-  mean +9.6 wins ~ +2.5 points, all nine positive). The coupling was therefore
+  mean +9.2 wins ~ +2.6 points, all ten positive). The coupling was therefore
   a *directional* bias, not symmetric noise: on the shared-RNG path every
   published number - passes and nulls alike - understated the adaptive arm.
   That is the strongest statement this recheck licenses, and it is a statement
@@ -1597,11 +1647,10 @@ neither probe cost nor event count cleanly (richness A moves +1 while variance
 moves +30), so the coupling's dependence on the treatment's choices is
 characterised but not explained; the natural hypothesis - more probe draws give
 sharper picks, and grows draw weights where prunes do not, so sharper picking
-consumes more of the shared stream - is untested here. `gate3-legacy-signal-384`
-was excluded as not reconstructible, so the legacy controller's published FAIL
-still rests on the coupled path; that is a gap, not a pass - a gap closed in
-section 9.12 (the exclusion was sound about the *default*, but wrong to
-conclude the study was unknowable).
+consumes more of the shared stream - is untested here. The
+legacy controller was initially excluded as not reconstructible; section 9.12
+recovered the predated field and its row is the first in the table above, so no
+study in the factor map now rests on the coupled path alone.
 
 **Consequence for the project.** No published *verdict* in the factor map needs
 revising except variance, and no headline claim is overturned. Every published
