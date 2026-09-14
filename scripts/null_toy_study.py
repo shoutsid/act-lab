@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from act.evolution.experiment import ExperimentConfig, run_experiment  # noqa: E402
+from act.evolution.registry import _stable_hash  # noqa: E402
 from act.evolution.study import _binomial_survival, _gate_min_wins  # noqa: E402
 
 SHARD_DIR = ROOT / "artifacts" / "toy-null-study"
@@ -42,10 +43,19 @@ SHARD_DIR = ROOT / "artifacts" / "toy-null-study"
 # defaults with depth 4 and the spread candidate policy), fresh block
 # 71000-71383.
 PROFILES: dict[str, dict] = {
-    "depth1": {"seeds": tuple(range(70000, 70384)), "overrides": {}},
+    "depth1": {
+        "seeds": tuple(range(70000, 70384)),
+        "overrides": {},
+        "run_revision": "78186e4",
+        "report_section": "5.9",
+        "summary": "artifacts/study-summaries/null-control-depth1-384.json",
+    },
     "depth4": {
         "seeds": tuple(range(71000, 71384)),
         "overrides": {"depth": 4, "probe_candidate_policy": "spread"},
+        "run_revision": "a9632a6",
+        "report_section": "5.10",
+        "summary": "artifacts/study-summaries/null-control-depth4-384.json",
     },
 }
 REGISTERED = dict(
@@ -165,6 +175,126 @@ def verdict(shards: int, profile: str) -> int:
     return 0
 
 
+def _comparison(deltas: list[float], alpha: float) -> dict:
+    """One pre-registered primary: sign-test statistics at the Bonferroni bar."""
+    wins = sum(delta < 0 for delta in deltas)
+    n = len(deltas)
+    mean = sum(deltas) / n
+    stddev = (
+        (sum((value - mean) ** 2 for value in deltas) / n) ** 0.5 if n > 1 else 0.0
+    )
+    p = _binomial_survival(wins, n)
+    return {
+        "wins": wins,
+        "n": n,
+        "mean_delta": mean,
+        "delta_stddev": stddev,
+        "binomial_p": p,
+        "min_wins_bonferroni": _gate_min_wins(n, alpha / 2),
+        "passes_bonferroni": p <= alpha / 2,
+    }
+
+
+def summarize(profile: str, alpha: float) -> dict:
+    """Build the committed study summary from this profile's shard payloads.
+
+    The summary is self-contained: the per-seed loss triples let every
+    quoted statistic be recomputed exactly, so the report numbers stay
+    machine-checked against ``artifacts/study-summaries/`` without
+    committing the (large, gitignored) shard payloads.
+    """
+    spec = PROFILES[profile]
+    experiments = load_shards(20 if profile == "depth1" else 20, profile)
+    n = len(experiments)
+    per_seed = [
+        {"seed": exp["seed"], "losses": exp["losses"]} for exp in experiments
+    ]
+    comparisons = {
+        "null_vs_random": _comparison(
+            [exp["losses"]["null"] - exp["losses"]["random"] for exp in experiments],
+            alpha,
+        ),
+        "adaptive_vs_null": _comparison(
+            [exp["losses"]["adaptive"] - exp["losses"]["null"] for exp in experiments],
+            alpha,
+        ),
+        "adaptive_vs_random": _comparison(
+            [
+                exp["losses"]["adaptive"] - exp["losses"]["random"]
+                for exp in experiments
+            ],
+            alpha,
+        ),
+    }
+    arm_means = {
+        arm: sum(exp["losses"][arm] for exp in experiments) / n
+        for arm in ("random", "adaptive", "null")
+    }
+    built_in = {
+        "mutations_random_3": all(exp["mutations"]["random"] == 3 for exp in experiments),
+        "mutations_adaptive_3": all(
+            exp["mutations"]["adaptive"] == 3 for exp in experiments
+        ),
+        "mutations_null_0": all(exp["mutations"]["null"] == 0 for exp in experiments),
+        "null_search_flops_zero": all(
+            exp["search_flops"]["null"] == 0 for exp in experiments
+        ),
+    }
+    config = {**REGISTERED, **spec["overrides"], "arms": "random,adaptive,null"}
+    if not all(built_in.values()):
+        raise SystemExit(f"built-in checks failed: {built_in}")
+    p1 = comparisons["null_vs_random"]["passes_bonferroni"]
+    p2 = comparisons["adaptive_vs_null"]["passes_bonferroni"]
+    if p1 and p2:
+        outcome = (
+            "branch 1 (1+2 PASS): the edge is real beyond the pool effect and "
+            "churn suppression"
+        )
+    elif p1:
+        outcome = (
+            "branch 2 (1 PASS / 2 FAIL): the pass is substantially churn suppression"
+        )
+    elif p2:
+        outcome = "branch 3 (1 FAIL / 2 PASS): no churn harm on this substrate"
+    else:
+        outcome = "branch 4 (both FAIL): the adaptive arm does not clear the do-nothing bar"
+    payload = {
+        "record_type": "null_control_study",
+        "protocol": "three-arm-null-control",
+        "profile": profile,
+        "report_section": spec["report_section"],
+        "code_revision": spec["run_revision"],
+        "alpha": alpha,
+        "bonferroni_alpha": alpha / 2,
+        "arms": ["random", "adaptive", "null"],
+        "independent_arm_rng": True,
+        "seeds": list(spec["seeds"]),
+        "config": config,
+        "per_seed": per_seed,
+        "comparisons": comparisons,
+        "arm_means": arm_means,
+        "built_in_checks": built_in,
+        "outcome": outcome,
+        "summary_note": (
+            "Do-nothing control at matched budget (report sections 5.9-5.10): "
+            "null books zero search FLOPs and performs zero mutations; all three "
+            "comparisons are paired on the same fresh run. Statistics recompute "
+            "exactly from per_seed; p-values are exact one-tailed binomial."
+        ),
+    }
+    payload["study_hash"] = _stable_hash(
+        {
+            "config": payload["config"],
+            "seeds": payload["seeds"],
+            "per_seed": per_seed,
+            "alpha": alpha,
+        }
+    )
+    payload["study_id"] = f"study_{payload['study_hash']}"
+    payload["config_hash"] = _stable_hash(payload["config"])
+    return payload
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -175,9 +305,19 @@ def main() -> int:
     verdict_p = sub.add_parser("verdict", help="aggregate shards and score the contract")
     verdict_p.add_argument("--shards", type=int, required=True)
     verdict_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
+    sum_p = sub.add_parser("summary", help="write the committed study summary")
+    sum_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
+    sum_p.add_argument("--alpha", type=float, default=ALPHA)
     args = parser.parse_args()
     if args.command == "run":
         run_shard(args.shard, args.shards, args.profile)
+        return 0
+    if args.command == "summary":
+        payload = summarize(args.profile, args.alpha)
+        out = ROOT / PROFILES[args.profile]["summary"]
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n")
+        print(f"summary written: {out} ({payload['study_id']})")
         return 0
     return verdict(args.shards, args.profile)
 

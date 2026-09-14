@@ -1254,7 +1254,9 @@ note).
 
 **Outcome (run 2026-09-14, revision `78186e4`): interpretation branch 2 -
 1 PASS / 2 FAIL.** Verdict machine-checked (`scripts/null_toy_study.py
-verdict`; shards under `artifacts/toy-null-study/`, not committed):
+verdict`; committed record
+`artifacts/study-summaries/null-control-depth1-384.json`, recomputable
+from its per-seed triples and pinned by test):
 built-in checks held in 384/384 seeds (mutations 3/3/0, zero null search
 FLOPs). **Primary 1 PASS**: null-vs-random 280/384, mean `-0.0795`, p
 `4.69e-20` - churn harm replicates on the toy substrate. **Primary 2 FAIL
@@ -1310,8 +1312,9 @@ fails).
 
 **Outcome (run 2026-09-14, revision `a9632a6`): interpretation branch 1 -
 both primaries PASS.** Verdict machine-checked (the `depth4` profile;
-shards under `artifacts/toy-null-study/depth4/`, not committed); built-in
-checks held in 384/384 seeds. **Primary 1 PASS**: null-vs-random 254/384,
+committed record
+`artifacts/study-summaries/null-control-depth4-384.json`, pinned by test
+like the depth-1 record); built-in checks held in 384/384 seeds. **Primary 1 PASS**: null-vs-random 254/384,
 mean `-0.0833`, p `1.22e-10` - churn harm exists at depth 4 as well.
 **Primary 2 PASS**: adaptive-vs-null 218/384, mean `-0.0297`, p
 `4.58e-03` - the depth-4 controller beats doing nothing, out-of-sample,
