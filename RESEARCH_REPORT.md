@@ -1073,4 +1073,38 @@ registered comparison fails.
 substrate - the V0 path has not been measured this way. It is reported because
 it is the first controlled measurement of the mechanism and it inverts the
 project's headline claim; it should be re-run pre-registered before it drives a
-decision.
+decision. Reproduce with `PYTHONPATH=src python scripts/toy_policy_ablation.py
+--policies spread`, which recomputes these three rows from the committed code.
+
+### 9.8 The toy arms are coupled through the global torch RNG
+
+`run_experiment` trains the arms interleaved in one step loop against a shared
+global torch RNG. A `grow` mutation constructs a new expert and draws its
+weights from that stream; a `prune` draws nothing. Two runs whose treatments
+choose a different mix of grow and prune therefore consume different numbers of
+global draws, which perturbs the *random* arm's later rebuilds. The random arm
+is consequently only approximately the same baseline across treatments.
+
+Measured on the section 9.7 block (128 seeds, spread policy): the random arm's
+final loss is bit-identical between the argmin run and the pool-random run in
+only **70/128** seeds - in 58 of 128 seeds the "uniform baseline" is a
+different control in the two runs. `scripts/toy_policy_ablation.py` prints this
+as a `[coupling]` line rather than asserting independence.
+
+Consequences:
+
+- The "identical training schedule, matched random churn" baseline (sections 1
+  and 2) is only *approximately* fixed across treatments in the toy path. This
+  is a second reason the toy arm comparison is weaker than the report claimed,
+  independent of the pool confound. The V0 path does not share it: arms are
+  trained sequentially with per-arm seeding, which is why the real-data
+  diagnostic checked and found every random arm replicating its baseline
+  counterpart exactly.
+- The treatment-vs-treatment comparison (argmin vs pool-random, section 9.7)
+  is unaffected, because both sides are treatments trained the same way.
+- The `vs uniform` rows in 9.4, 9.5 and 9.7 are approximate for this reason and
+  should not be the basis of a claim; the paired rows should.
+
+Fixing the coupling would mean giving each arm its own generator for rebuild
+initialisation (as the V0 session does), which changes every historical toy
+number and would need to be re-registered rather than slipped in.

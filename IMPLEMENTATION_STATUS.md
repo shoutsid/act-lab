@@ -230,7 +230,17 @@ section 9).
    (mean `-0.0243`, p `0.0208`). So the registered Gate 3 claim rests on the
    layer-concentrated prefix pool, and the genuine, controlled result for the
    mechanism is "probe ordering beats a pool-matched loss-blind control by
-   ~0.02 nats". Full write-up and caveats: report section 9.7.
+   ~0.02 nats". Full write-up and caveats: report section 9.7. Reproducible:
+   `PYTHONPATH=src python scripts/toy_policy_ablation.py --policies spread`
+   (~145 s, 128 seeds).
+5. **The toy arms are coupled through the global torch RNG.** A grow draws
+   fresh expert weights from the stream a prune does not, so runs whose
+   treatments choose differently perturb the random arm's later rebuilds: on
+   the block above the random arm is bit-identical across the two rules in
+   only 70/128 seeds. The toy "matched random churn" baseline is therefore
+   only approximately fixed across treatments; the paired treatment-vs-
+   treatment rows are unaffected. The V0 path is not affected (arms train
+   sequentially with per-arm seeding). Report section 9.8.
 
 Iteration cost for these checks: ~1.5 s/seed on CPU at depth 4 (GPU measured
 slower at 2.21 s/seed for a hidden-24 model); a 128-seed study is ~85 s.
