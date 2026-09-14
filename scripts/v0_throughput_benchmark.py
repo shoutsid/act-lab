@@ -9,7 +9,7 @@ then applies the pre-committed dtype rule and prints the derived schedule:
 Pre-launch checklist (section 5.2):
   2. benchmark completes, measured tokens/s recorded, dtype decision logged;
   3. max_checkpoints=2 and checkpoint_interval=500 confirmed;
-  4. seed block 9000-9011 untouched, probe budgets as pre-registered.
+  4. declared seed block untouched, probe budgets as pre-registered.
 
 The measured JSON is the artifact; the dtype decision rides on it.
 """
@@ -45,7 +45,7 @@ def build_declared_model(device: torch.device) -> tuple[V0MoECausalLM, int, int]
     """Construct the declared 285M model and return it with (total, active) counts."""
     config = V0SessionConfig().model_config()
     total, active = estimated_parameter_count(config)
-    torch.manual_seed(9012)  # outside the reserved 9000-9011 seed block
+    torch.manual_seed(15012)  # outside the reserved 15000-15011 seed block
     model = V0MoECausalLM(config).to(device)
     return model, total, active
 
@@ -62,7 +62,7 @@ def measure_tokens_per_second(
     Returns (tokens/s over the timed steps, timing detail dict).
     """
     generator = torch.Generator(device="cpu")
-    generator.manual_seed(9012)  # benchmark data, not a protocol seed stream
+    generator.manual_seed(15012)  # benchmark data, not a protocol seed stream
     batch_shape = (config.batch_size, config.context_size)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
     # The declared config trains with checkpointed activations (section 5.1);
@@ -198,7 +198,7 @@ def main() -> int:
         },
         "tolerance_band_primary": tolerance_band(1),
         "example_deadline_check": deadline_decision(2.0, schedule.pair_time_hours).reason,
-        "seed_block": "9000-9011 (reserved, untouched by this benchmark)",
+        "seed_block": "15000-15011 (reserved, untouched by this benchmark)",
     }
     output = args.output or Path("artifacts/v0-benchmark.json")
     output.parent.mkdir(parents=True, exist_ok=True)

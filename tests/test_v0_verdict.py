@@ -110,8 +110,14 @@ def _populate(
     *,
     search_flops: int,
     adaptive_wins: int | None = None,
+    control_root: Path | None = None,
+    control_wins: int = 0,
 ) -> None:
-    """Write all 12 declared seeds; ``adaptive_wins`` caps the win count."""
+    """Write all 12 declared seeds; ``adaptive_wins`` caps the win count.
+
+    With ``control_root`` the same pairs are also written as the adopted
+    section 5.5 pool-matched loss-blind arm, ``control_wins`` of them won.
+    """
     for index, seed in enumerate(DECLARED):
         adaptive_won = adaptive_wins is None or index < adaptive_wins
         _write_seed(
@@ -121,6 +127,16 @@ def _populate(
             random_loss=1.5 if adaptive_won else 1.0,
             search_flops=search_flops,
         )
+    if control_root is not None:
+        for index, seed in enumerate(DECLARED):
+            control_won = index < control_wins
+            _write_seed(
+                control_root,
+                seed,
+                adaptive_loss=1.0 if control_won else 1.5,
+                random_loss=1.5 if control_won else 1.0,
+                search_flops=search_flops,
+            )
 
 
 def _run_main(
@@ -129,6 +145,7 @@ def _run_main(
     *,
     probe_batch_count: int = 1,
     output: Path | None = None,
+    control_root: Path | None = None,
 ) -> int:
     argv = [
         "v0-verdict",
@@ -139,6 +156,8 @@ def _run_main(
     ]
     if output is not None:
         argv += ["--output", str(output)]
+    if control_root is not None:
+        argv += ["--control-root", str(control_root)]
     monkeypatch.setattr(sys, "argv", argv)
     return v0_verdict.main()
 
@@ -159,8 +178,11 @@ def _rewrite_summary(dataset_root: Path, seed: int, summary: dict) -> None:
 def test_full_in_band_queue_passes_and_authorizes_gate_4(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _populate(tmp_path, search_flops=_in_band_search_flops())
-    exit_code = _run_main(monkeypatch, tmp_path)  # default output beside the root
+    control = tmp_path / "control"
+    _populate(tmp_path, search_flops=_in_band_search_flops(), control_root=control)
+    exit_code = _run_main(  # default output beside the root
+        monkeypatch, tmp_path, control_root=control
+    )
 
     assert exit_code == 0
     verdict = json.loads((tmp_path / "v0-5-1-verdict.json").read_text())
@@ -185,6 +207,11 @@ def test_full_in_band_queue_passes_and_authorizes_gate_4(
         "clear": True,
     }
     assert [pair["seed"] for pair in verdict["per_seed"]] == DECLARED
+    # The adopted section 5.5 clause was evaluated and did not fire: the
+    # loss-blind arm lost its own pairs, so the win demonstrates selection.
+    assert verdict["pool_matched_control"]["evaluated"] is True
+    assert verdict["pool_matched_control"]["adaptive_wins"] == 0
+    assert verdict["pool_matched_control"]["control_passes_gate"] is False
 
 
 def test_aggregate_cost_matches_the_toy_accounting_over_summaries(tmp_path: Path) -> None:
@@ -213,10 +240,17 @@ def test_probe_batch_count_two_rebases_the_band_without_retuning(tmp_path: Path)
     # A measurement at 0.7x the primary prediction: in the primary band, out
     # of the secondary's. The runbook's --probe-batch-count 2 re-bases the
     # band on the declared prediction; it never re-tunes the measurement.
-    _populate(tmp_path, search_flops=_in_band_search_flops(factor=0.7))
+    control = tmp_path / "control"
+    _populate(
+        tmp_path, search_flops=_in_band_search_flops(factor=0.7), control_root=control
+    )
 
-    primary = v0_verdict.compute_verdict(tmp_path, probe_batch_count=1)
-    secondary = v0_verdict.compute_verdict(tmp_path, probe_batch_count=2)
+    primary = v0_verdict.compute_verdict(
+        tmp_path, probe_batch_count=1, control_root=control
+    )
+    secondary = v0_verdict.compute_verdict(
+        tmp_path, probe_batch_count=2, control_root=control
+    )
 
     assert primary["verdict"] == "PASS"
     assert secondary["verdict"] == "PASS_WITH_QUALIFICATION"
@@ -229,12 +263,16 @@ def test_probe_batch_count_two_rebases_the_band_without_retuning(tmp_path: Path)
 def test_exactly_five_percent_still_passes_the_primary_criterion(tmp_path: Path) -> None:
     # The registered rule is "cost <= 5%": the boundary itself passes the
     # primary criterion (then qualifies on the band, as it must).
+    control = tmp_path / "control"
     _populate(
         tmp_path,
         search_flops=_in_band_search_flops(factor=5.0 / expected_probe_cost_percent(1)),
+        control_root=control,
     )
 
-    verdict = v0_verdict.compute_verdict(tmp_path, probe_batch_count=1)
+    verdict = v0_verdict.compute_verdict(
+        tmp_path, probe_batch_count=1, control_root=control
+    )
 
     assert verdict["measured_cost_percent"] == pytest.approx(5.0, rel=1e-9)
     assert verdict["primary_pass"] is True
@@ -247,20 +285,22 @@ def test_exactly_five_percent_still_passes_the_primary_criterion(tmp_path: Path)
 def test_incomplete_queue_withholds_gate_4_but_still_passes_cost(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    _populate(tmp_path, search_flops=_in_band_search_flops())
-    # Seed 9011 has only its deadline-stop snapshot: forensic, never judged.
-    summary = _summary_at(tmp_path, 9011)
+    last = DECLARED[-1]
+    control = tmp_path / "control"
+    _populate(tmp_path, search_flops=_in_band_search_flops(), control_root=control)
+    # The final seed has only its deadline-stop snapshot: forensic, never judged.
+    summary = _summary_at(tmp_path, last)
     summary["status"] = "in-progress"
-    _rewrite_summary(tmp_path, 9011, summary)
+    _rewrite_summary(tmp_path, last, summary)
 
-    exit_code = _run_main(monkeypatch, tmp_path)
+    exit_code = _run_main(monkeypatch, tmp_path, control_root=control)
 
     assert exit_code == 0
     out = capsys.readouterr().out
-    assert "WARNING: 1 declared seed(s) missing: [9011]" in out
+    assert f"WARNING: 1 declared seed(s) missing: [{last}]" in out
     verdict = json.loads((tmp_path / "v0-5-1-verdict.json").read_text())
     assert verdict["queue_complete"] is False
-    assert verdict["seeds_missing"] == [9011]
+    assert verdict["seeds_missing"] == [last]
     assert verdict["verdict"] == "PASS"
     assert verdict["gate_4_authorized"] is False
 
@@ -268,7 +308,8 @@ def test_incomplete_queue_withholds_gate_4_but_still_passes_cost(
 def test_stray_complete_seeds_are_excluded_from_the_aggregate(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    _populate(tmp_path, search_flops=_in_band_search_flops())
+    control = tmp_path / "control"
+    _populate(tmp_path, search_flops=_in_band_search_flops(), control_root=control)
     # A smoke-test leftover whose cost would explode the aggregate if it were
     # (wrongly) pooled, plus a non-numeric directory ignored outright.
     _write_seed(tmp_path, 20, adaptive_loss=0.5, random_loss=2.0, search_flops=10**15)
@@ -278,7 +319,7 @@ def test_stray_complete_seeds_are_excluded_from_the_aggregate(
         json.dumps({"seed": 1, "status": "complete"}) + "\n"
     )
 
-    exit_code = _run_main(monkeypatch, tmp_path)
+    exit_code = _run_main(monkeypatch, tmp_path, control_root=control)
 
     assert exit_code == 0
     out = capsys.readouterr().out
@@ -313,9 +354,14 @@ def test_primary_cost_over_criterion_fails(tmp_path: Path, monkeypatch: pytest.M
 
 @pytest.mark.parametrize("factor", [3.0, 0.3])
 def test_band_miss_qualifies_the_pass_in_both_directions(factor: float, tmp_path: Path) -> None:
-    _populate(tmp_path, search_flops=_in_band_search_flops(factor=factor))
+    control = tmp_path / "control"
+    _populate(
+        tmp_path, search_flops=_in_band_search_flops(factor=factor), control_root=control
+    )
 
-    verdict = v0_verdict.compute_verdict(tmp_path, probe_batch_count=1)
+    verdict = v0_verdict.compute_verdict(
+        tmp_path, probe_batch_count=1, control_root=control
+    )
 
     assert verdict["primary_pass"] is True
     assert verdict["in_tolerance_band"] is False
@@ -353,9 +399,17 @@ def test_harm_guard_rejects_at_ten_losses(
 ) -> None:
     # The registered guard: adaptive must not lose in >= 10 of 12 pairs
     # (exact one-tailed sign test p = 0.0193), i.e. fewer than 3 wins rejects.
-    _populate(tmp_path, search_flops=_in_band_search_flops(), adaptive_wins=adaptive_wins)
+    control = tmp_path / "control"
+    _populate(
+        tmp_path,
+        search_flops=_in_band_search_flops(),
+        adaptive_wins=adaptive_wins,
+        control_root=control,
+    )
 
-    verdict = v0_verdict.compute_verdict(tmp_path, probe_batch_count=1)
+    verdict = v0_verdict.compute_verdict(
+        tmp_path, probe_batch_count=1, control_root=control
+    )
 
     assert verdict["verdict"] == expected_verdict
     assert verdict["harm_guard"]["adaptive_wins"] == adaptive_wins
@@ -375,7 +429,7 @@ def test_absent_handoff_dataset_aborts(tmp_path: Path) -> None:
 
 def test_dataset_without_complete_versions_aborts(tmp_path: Path) -> None:
     _write_seed(
-        tmp_path, 9000, adaptive_loss=1.0, random_loss=1.0, search_flops=1,
+        tmp_path, DECLARED[0], adaptive_loss=1.0, random_loss=1.0, search_flops=1,
         status="in-progress",
     )
     with pytest.raises(SystemExit, match="no complete seed versions"):
@@ -384,7 +438,7 @@ def test_dataset_without_complete_versions_aborts(tmp_path: Path) -> None:
 
 def test_unmatched_mutation_budgets_abort(tmp_path: Path) -> None:
     _write_seed(
-        tmp_path, 9000, adaptive_loss=1.0, random_loss=1.0, search_flops=1,
+        tmp_path, DECLARED[0], adaptive_loss=1.0, random_loss=1.0, search_flops=1,
         adaptive_mutation_count=4,
     )
     with pytest.raises(SystemExit, match="unmatched mutation budgets"):
@@ -392,10 +446,10 @@ def test_unmatched_mutation_budgets_abort(tmp_path: Path) -> None:
 
 
 def test_seed_missing_an_arm_aborts(tmp_path: Path) -> None:
-    _write_seed(tmp_path, 9000, adaptive_loss=1.0, random_loss=1.0, search_flops=1)
-    summary = _summary_at(tmp_path, 9000)
+    _write_seed(tmp_path, DECLARED[0], adaptive_loss=1.0, random_loss=1.0, search_flops=1)
+    summary = _summary_at(tmp_path, DECLARED[0])
     del summary["arms"]["adaptive"]
-    _rewrite_summary(tmp_path, 9000, summary)
+    _rewrite_summary(tmp_path, DECLARED[0], summary)
 
     with pytest.raises(SystemExit, match="random/adaptive pair"):
         v0_verdict.compute_verdict(tmp_path, probe_batch_count=1)
@@ -432,7 +486,8 @@ def _session_config(seed: int) -> V0SessionConfig:
 def test_verdict_reads_the_real_publish_pipeline(tmp_path: Path) -> None:
     session_dir = tmp_path / "sessions"
     dataset_root = tmp_path / "dataset"
-    result = run_v0_session(_session_config(9000), checkpoint_dir=session_dir)
+    first = DECLARED[0]
+    result = run_v0_session(_session_config(first), checkpoint_dir=session_dir)
     publish_seed(
         dataset_root, result, session_dir=session_dir,
         code_revision="test-rev", clean_working_dir=True,
@@ -440,11 +495,11 @@ def test_verdict_reads_the_real_publish_pipeline(tmp_path: Path) -> None:
 
     verdict = v0_verdict.compute_verdict(dataset_root, probe_batch_count=1)
 
-    assert verdict["seeds_complete"] == [9000]
-    assert verdict["seeds_missing"] == list(range(9001, 9012))
+    assert verdict["seeds_complete"] == [first]
+    assert verdict["seeds_missing"] == list(range(first + 1, DECLARED[-1] + 1))
     assert verdict["queue_complete"] is False
     assert verdict["gate_4_authorized"] is False
-    summary = load_seed_summary(dataset_root, 9000)
+    summary = load_seed_summary(dataset_root, first)
     pair = verdict["per_seed"][0]
     assert pair["adaptive_loss"] == summary["arms"]["adaptive"]["final_loss"]
     assert pair["random_loss"] == summary["arms"]["random"]["final_loss"]
@@ -512,15 +567,17 @@ def test_declared_block_can_be_re_reserved_without_loosening_a_rule(
     passed.
     """
     fresh = tuple(range(12000, 12012))
+    control = tmp_path / "control"
     for index, seed in enumerate(fresh):
         won = index < 6
-        _write_seed(
-            tmp_path,
-            seed,
-            adaptive_loss=1.0 if won else 1.5,
-            random_loss=1.5 if won else 1.0,
-            search_flops=_in_band_search_flops(),
-        )
+        for root in (tmp_path, control):
+            _write_seed(
+                root,
+                seed,
+                adaptive_loss=1.0 if won else 1.5,
+                random_loss=1.5 if won else 1.0,
+                search_flops=_in_band_search_flops(),
+            )
 
     # Default: the registered queue is still the analysis block, so the fresh
     # block reads as strays and the registered seeds as missing.
@@ -532,7 +589,7 @@ def test_declared_block_can_be_re_reserved_without_loosening_a_rule(
 
     # Overridden: the block is judged on exactly the same rules.
     re_declared = v0_verdict.compute_verdict(
-        tmp_path, probe_batch_count=1, declared_seeds=fresh
+        tmp_path, probe_batch_count=1, declared_seeds=fresh, control_root=control
     )
     assert re_declared["declared_seeds"] == list(fresh)
     assert re_declared["seeds_complete"] == list(fresh)
@@ -545,3 +602,94 @@ def test_declared_block_can_be_re_reserved_without_loosening_a_rule(
     assert re_declared["harm_guard"]["adaptive_losses"] == 6
     assert re_declared["verdict"] == "PASS"
     assert re_declared["gate_4_authorized"] is True
+
+
+# --- the adopted pool-matched control clause (section 5.5 changes 2 and 3) --
+
+
+def test_pool_matched_control_that_also_passes_withholds_gate_4(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A loss-blind arm clearing the same bar means the pool alone suffices.
+
+    Section 5.5 change 3: the cost PASS stands (exit 2, not 1), but Gate 4 is
+    withheld because the adaptive win no longer demonstrates selection value
+    over a candidate-placement effect.
+    """
+    control = tmp_path / "control"
+    _populate(
+        tmp_path,
+        search_flops=_in_band_search_flops(),
+        control_root=control,
+        control_wins=v0_verdict.POOL_CONTROL_WIN_LIMIT,
+    )
+
+    exit_code = _run_main(monkeypatch, tmp_path, control_root=control)
+
+    assert exit_code == 2
+    out = capsys.readouterr().out
+    assert "does not demonstrate selection value" in out
+    verdict = json.loads((tmp_path / "v0-5-1-verdict.json").read_text())
+    assert verdict["primary_pass"] is True
+    assert verdict["in_tolerance_band"] is True
+    assert verdict["harm_guard"]["clear"] is True
+    assert verdict["verdict"] == "PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES"
+    assert verdict["gate_4_authorized"] is False
+    assert verdict["pool_matched_control"]["control_passes_gate"] is True
+    assert verdict["pool_matched_control"]["adaptive_wins"] == (
+        v0_verdict.POOL_CONTROL_WIN_LIMIT
+    )
+
+
+def test_control_just_under_the_limit_keeps_gate_4_authorized(tmp_path: Path) -> None:
+    # The clause is a threshold, not a gradient: one win below the limit the
+    # loss-blind arm does not pass its own gate and authorization stands.
+    control = tmp_path / "control"
+    _populate(
+        tmp_path,
+        search_flops=_in_band_search_flops(),
+        control_root=control,
+        control_wins=v0_verdict.POOL_CONTROL_WIN_LIMIT - 1,
+    )
+
+    verdict = v0_verdict.compute_verdict(
+        tmp_path, probe_batch_count=1, control_root=control
+    )
+
+    assert verdict["verdict"] == "PASS"
+    assert verdict["gate_4_authorized"] is True
+
+
+def test_missing_control_withholds_gate_4_rather_than_skipping_the_clause(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The adopted protocol requires the control; absence is disqualifying.
+
+    Not running the control must never read as "no pool effect found".
+    """
+    _populate(tmp_path, search_flops=_in_band_search_flops())
+
+    exit_code = _run_main(monkeypatch, tmp_path)
+
+    assert exit_code == 2
+    out = capsys.readouterr().out
+    assert "no pool-matched control supplied" in out
+    verdict = json.loads((tmp_path / "v0-5-1-verdict.json").read_text())
+    assert verdict["primary_pass"] is True
+    assert verdict["in_tolerance_band"] is True
+    assert verdict["verdict"] == "PASS_COST_ONLY_CONTROL_MISSING"
+    assert verdict["pool_matched_control"]["evaluated"] is False
+    assert verdict["gate_4_authorized"] is False
+
+
+def test_control_missing_an_arm_aborts(tmp_path: Path) -> None:
+    control = tmp_path / "control"
+    _populate(tmp_path, search_flops=_in_band_search_flops(), control_root=control)
+    summary = _summary_at(control, DECLARED[0])
+    del summary["arms"]["adaptive"]
+    _rewrite_summary(control, DECLARED[0], summary)
+
+    with pytest.raises(SystemExit, match="random/adaptive pair"):
+        v0_verdict.compute_verdict(
+            tmp_path, probe_batch_count=1, control_root=control
+        )

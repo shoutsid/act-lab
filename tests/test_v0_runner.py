@@ -48,8 +48,12 @@ def _config(**overrides) -> V0SessionConfig:
     return V0SessionConfig(**values)
 
 
-def test_declared_seed_block_matches_pre_registration() -> None:
-    assert DECLARED_SEEDS == tuple(range(9000, 9012))
+def test_declared_seed_block_matches_the_adopted_revision() -> None:
+    # Re-reserved from 9000-9011 by the adopted section 5.5 change 4: the
+    # original block was spent by the section 5.3 diagnostic, so the harm
+    # guard was no longer blind. See RESEARCH_REPORT.md section 5.5 point 3.
+    assert DECLARED_SEEDS == tuple(range(15000, 15012))
+    assert 9000 not in DECLARED_SEEDS
 
 
 def test_rejects_invalid_clock_and_throughput(tmp_path: Path) -> None:
@@ -386,7 +390,7 @@ def test_cli_requires_benchmark_or_throughput(tmp_path: Path, monkeypatch) -> No
 
 
 def test_cli_default_queue_is_the_declared_block(tmp_path: Path, monkeypatch) -> None:
-    """Without --seeds the launch command queues exactly 9000-9011."""
+    """Without --seeds the launch command queues exactly the declared block."""
     import sys
 
     captured: dict = {}
@@ -422,11 +426,106 @@ def test_cli_default_queue_is_the_declared_block(tmp_path: Path, monkeypatch) ->
         )
     )
     cli.main()
-    assert captured["seeds"] == (9000, 9001, 9002, 9003, 9004, 9005, 9006, 9007, 9008, 9009, 9010, 9011)
+    assert captured["seeds"] == tuple(range(15000, 15012))
     assert captured["code_revision"]  # captured from git, not 'unknown'
     assert captured["config"].dtype == "fp32"
     assert captured["config"].max_checkpoints == 2  # registered pin
     assert captured["config"].declared is True  # no --profile model overrides
+
+
+def test_cli_defaults_to_the_registered_probe_knobs(tmp_path: Path, monkeypatch) -> None:
+    """An unflagged launch still reproduces the original registration."""
+    import sys
+
+    captured: dict = {}
+
+    from act.training import cli
+
+    def fake_run_pair_session(**kwargs):
+        captured.update(kwargs)
+        return {
+            "protocol": "v0-compute-efficiency-5.2",
+            "seeds_requested": list(kwargs["seeds"]),
+            "declared_seed_queue": [],
+            "remaining_hours_at_entry": kwargs["remaining_hours"],
+            "measured_tokens_per_second": kwargs["measured_tokens_per_second"],
+            "pair_time_hours": 0.1,
+            "pairs_completed": 0,
+            "latest_published_seed": None,
+            "pairs": [],
+        }
+
+    monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",
+                "--seeds", "15000",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+                "--output", str(tmp_path / "log.json"),
+            ],
+            profile=False,
+        )
+    )
+    cli.main()
+
+    assert captured["config"].probe_candidate_policy == "prefix"
+    assert captured["config"].probe_selection == "argmin"
+
+
+def test_cli_passes_the_adopted_probe_knobs_into_the_session(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Adopted section 5.5: the launch command can select the primary and control.
+
+    The primary run passes `--probe-candidate-policy spread`; the pool-matched
+    control is the same command over the same seeds with
+    `--probe-selection random` and its own dataset root, so the regime is
+    recorded in every seed summary rather than left implicit.
+    """
+    import sys
+
+    captured: dict = {}
+
+    from act.training import cli
+
+    def fake_run_pair_session(**kwargs):
+        captured.update(kwargs)
+        return {
+            "protocol": "v0-compute-efficiency-5.2",
+            "seeds_requested": list(kwargs["seeds"]),
+            "declared_seed_queue": [],
+            "remaining_hours_at_entry": kwargs["remaining_hours"],
+            "measured_tokens_per_second": kwargs["measured_tokens_per_second"],
+            "pair_time_hours": 0.1,
+            "pairs_completed": 0,
+            "latest_published_seed": None,
+            "pairs": [],
+        }
+
+    monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",
+                "--seeds", "15000,15001",
+                "--probe-candidate-policy", "spread",
+                "--probe-selection", "random",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset-control"),
+                "--output", str(tmp_path / "log.json"),
+            ],
+            profile=False,
+        )
+    )
+    cli.main()
+
+    assert captured["config"].probe_candidate_policy == "spread"
+    assert captured["config"].probe_selection == "random"
+    assert captured["seeds"] == (15000, 15001)
 
 
 # --- Remote dataset publish-on-exit (--kaggle-dataset) -----------------------

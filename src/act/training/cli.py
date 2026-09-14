@@ -66,6 +66,8 @@ def _run_v0(args: argparse.Namespace) -> None:
             arms=("random", "adaptive"),
             seed=seed,
             probe_batch_count=args.probe_batch_count,
+            probe_candidate_policy=args.probe_candidate_policy,
+            probe_selection=args.probe_selection,
             device=args.device,
             total_steps=args.steps,
         )
@@ -180,6 +182,8 @@ def _run_pair_session(args: argparse.Namespace) -> None:
     config = V0SessionConfig(
         arms=("random", "adaptive"),
         probe_batch_count=args.probe_batch_count,
+        probe_candidate_policy=args.probe_candidate_policy,
+        probe_selection=args.probe_selection,
         device=args.device,
         dtype=dtype,
         max_checkpoints=MAX_CHECKPOINTS,  # the registered section 5.2 pin (2)
@@ -203,6 +207,8 @@ def _run_pair_session(args: argparse.Namespace) -> None:
             mutation_interval=6,
             mutation_budget=2,
             probe_batch_count=args.probe_batch_count,
+            probe_candidate_policy=args.probe_candidate_policy,
+            probe_selection=args.probe_selection,
             validation_batches=2,
             checkpoint_interval=4,
             max_checkpoints=2,
@@ -306,10 +312,26 @@ def main() -> None:
     # V0 protocol options.
     parser.add_argument(
         "--seeds", default=None,
-        help="comma-separated seeds (v0 default 9000; pair-session default "
-        "the declared queue 9000-9011)",
+        help="comma-separated seeds (v0 default 15000; pair-session default "
+        "the declared queue 15000-15011)",
     )
     parser.add_argument("--probe-batch-count", type=int, default=1)
+    # Adopted section 5.5 protocol knobs. Defaults are the registered ones, so
+    # an unflagged launch reproduces the original registration; the adopted
+    # primary run passes --probe-candidate-policy spread, and the pool-matched
+    # control run passes --probe-selection random (same seeds, same cost).
+    parser.add_argument(
+        "--probe-candidate-policy", choices=("prefix", "spread"), default="prefix",
+        help="how a cap-bounded probe picks candidates: 'prefix' (registered "
+        "default, confined to the earliest layer(s)) or 'spread' (the adopted "
+        "section 5.5 primary, a deterministic subset of the whole feasible set)",
+    )
+    parser.add_argument(
+        "--probe-selection", choices=("argmin", "argmax", "random"), default="argmin",
+        help="decision rule over probed candidates: 'argmin' (registered "
+        "default), 'argmax' (inverted control) or 'random' (the adopted "
+        "pool-matched loss-blind control arm)",
+    )
     parser.add_argument("--checkpoint-dir", default="artifacts/v0-sessions")
     parser.add_argument("--output", type=Path, default=None)
     # Pair-session options (section 5.2 launch command).
@@ -354,7 +376,7 @@ def main() -> None:
         if args.steps is None:
             args.steps = 6_000
         if args.seeds is None:
-            args.seeds = "9000"
+            args.seeds = "15000"
         _run_v0(args)
     elif args.mode == "pair-session":
         if args.output is None:

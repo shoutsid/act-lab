@@ -21,7 +21,7 @@ Registered semantics (section 5.2, pre-committed):
   publishes an ``in-progress`` safety snapshot (replacing any stale
   in-progress version, never a complete one) purely for crash forensics.
 - The loop is idempotent: seeds with a ``complete`` version are skipped, so
-  "further sessions are scheduled until seed 9011 completes" is literally
+  "further sessions are scheduled until seed 15011 completes" is literally
   re-running the same command.
 
 The runner never trains here; it decides, delegates, publishes, and reports.
@@ -57,7 +57,13 @@ from act.training.v0_session import (
     run_v0_session,
 )
 
-DECLARED_SEEDS = tuple(range(9000, 9012))
+# The declared section 5.1 queue. Re-reserved to 15000-15011 by the adopted
+# section 5.5 revision (change 4): the original block 9000-9011 was spent by
+# the section 5.3 real-data diagnostic, which ran the whole queue through this
+# same runner at reduced fidelity, and a section 5.1 verdict already exists
+# over it - so the harm guard, one of the three verdict branches, was no
+# longer blind. See RESEARCH_REPORT.md sections 5.5 and 9.9.
+DECLARED_SEEDS = tuple(range(15000, 15012))
 
 
 def _make_log(log: Callable[[str], None] | None) -> Callable[[str], None]:

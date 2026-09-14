@@ -9,7 +9,7 @@ Everything about the *machinery* is the production path; everything about the
   2 active, checkpointed activations, AdamW) at reduced dims;
 - the declared controller (cap-4 candidates, 1 probe batch - the validated
   cost-saving primary) and mutation budget (E=3);
-- the declared queue discipline: the 12-seed queue 9000-9011, atomic pairs,
+- the declared queue discipline: the 12-seed queue 15000-15011, atomic pairs,
   skip-completed idempotence, deadline gating, publish-to-dataset;
 - the machine-checked verdict from ``scripts/v0_verdict.py``.
 
@@ -61,7 +61,7 @@ from act.training.runtime import resolve_device  # noqa: E402
 # marks this as a non-protocol config everywhere it is recorded.
 PROOF_CONFIG = V0SessionConfig(
     arms=("random", "adaptive"),
-    seed=9000,  # placeholder; the runner substitutes each queue seed
+    seed=15000,  # placeholder; the runner substitutes each queue seed
     declared=False,
     device="auto",
     vocab_size=8_000,
@@ -101,7 +101,7 @@ def _measure_tokens_per_second(config: V0SessionConfig, steps: int = 20) -> floa
     device = resolve_device(config.device)
     model_config = config.model_config()
     total, active = estimated_parameter_count(model_config)
-    torch.manual_seed(9012)  # benchmark data seed, outside the 9000-9011 queue
+    torch.manual_seed(15012)  # benchmark data seed, outside the 15000-15011 queue
     model = V0MoECausalLM(model_config).to(device)
     rate, _detail = measure_tokens_per_second(model, config, device, steps=steps)
     del model

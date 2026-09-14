@@ -7,7 +7,16 @@ only the exact commands, expected outputs, and decision points.
 
 **Pre-registration discipline: no knob is tuned at any point in this runbook.**
 The dtype rule, schedule constants, seed block, probe budget, criteria, and
-tolerance band are fixed in code and in §5.1/§5.2. The verdict is machine-checked.
+tolerance band are fixed in code and in §5.1/§5.2, as amended by the **adopted
+§5.5 revision** (signed off 2026-09-14). The verdict is machine-checked.
+
+**What §5.5 changed, and only this:** the primary controller uses the `spread`
+candidate policy; the declared queue is **15000-15011** (the registered
+9000-9011 was spent by the §5.3 diagnostic); a **pool-matched loss-blind control
+session** runs over the same seeds; and the verdict withholds Gate 4 if that
+control clears its own gate, or if it was never run. The 5% criterion, the
+tolerance band, the harm guard, the declared model, the budget and the
+no-re-tuning rule are all untouched.
 
 ---
 
@@ -43,22 +52,19 @@ tolerance band are fixed in code and in §5.1/§5.2. The verdict is machine-chec
      parameters (the §5.1 tolerance band derives from these counts);
    - schedule/dtype constants printed for eyeball confirmation.
 
-5. **STOP — decide §5.5 before launching anything.** The registered seed
-   block **9000–9011 is spent**: the §5.3 real-data diagnostic ran that whole
-   queue through the same `run_pair_session` at reduced fidelity and a §5.1
-   verdict already exists over it (`artifacts/real-proof/datasets/
-   v0-5-1-verdict.json` — measured cost 1.0077%, `PASS_COST_ONLY_HARM_GUARD_
-   REJECTS`, `gate_4_authorized: false`, adaptive losing 11 of 12 pairs). The
-   harm guard is one of the three branches that decide this verdict, so a run
-   on that queue is no longer blind. `RESEARCH_REPORT.md` §5.5 change 4
-   re-reserves the unused block **15000–15011**; if that revision is adopted,
-   pass `--seeds 15000-15011` to the launch command in §2 and to
-   `scripts/v0_verdict.py` in §4 (the verdict script's flag was added for this
-   and loosens no criterion). Do **not** launch on 9000–9011 in either case.
-   Publish the runs under a **fresh** dataset root (`artifacts/datasets`, the
-   §2 default) — never point a session at `artifacts/real-proof/datasets`,
-   whose completed reduced-fidelity seed versions would be treated as
-   finished work by the skip-completed idempotence rule.
+5. **Never launch on 9000–9011.** That registered block **is spent**: the §5.3
+   real-data diagnostic ran the whole queue through the same `run_pair_session`
+   at reduced fidelity and a §5.1 verdict already exists over it
+   (`artifacts/real-proof/datasets/v0-5-1-verdict.json` — measured cost
+   1.0077%, `PASS_COST_ONLY_HARM_GUARD_REJECTS`, `gate_4_authorized: false`,
+   adaptive losing 11 of 12 pairs). The harm guard is one of the branches that
+   decide this verdict, so a run on that queue would not be blind. The adopted
+   §5.5 change 4 re-reserves the queue to the unused block **15000–15011**,
+   which is now the code default (`v0_runner.DECLARED_SEEDS`), so the §2
+   command passes `--seeds 15000-15011` explicitly and never the old block.
+   Likewise, publish under **fresh** roots — never point a session at
+   `artifacts/real-proof/datasets`, whose completed reduced-fidelity seed
+   versions the skip-completed idempotence rule would treat as finished work.
 
 ---
 
@@ -98,27 +104,30 @@ is part of the trail; the launch command refuses a stale or hand-edited one.
 
 ---
 
-## 2. The launch command (one line, registered)
+## 2. The launch command (one line, registered as revised)
 
 ```bash
 PYTHONPATH=src python -m act.training.cli --mode pair-session \
   --device cuda \
   --hours <remaining-clock-hours> \
+  --seeds 15000-15011 \
+  --probe-candidate-policy spread \
   --kaggle-dataset <owner>/<slug>
 ```
 
 - `--hours`: the remaining session clock at entry — Kaggle's 12-hour GPU limit
   minus boot and restore time. The deadline rules only start pairs that fit
   `pair_time + 45-min publish reserve`.
+- `--seeds 15000-15011` and `--probe-candidate-policy spread` are **not
+  optional**: they are the adopted §5.5 protocol. The code defaults remain the
+  registered `15000-15011`/`prefix` pair, so the `--seeds` flag is a
+  restatement rather than a change, and the policy flag is the adopted one.
 - Everything else defaults correctly: benchmark artifact
-  `artifacts/v0-benchmark.json`, declared seed queue **9000–9011**,
-  `--probe-batch-count 1` (the primary config), dataset root
-  `artifacts/datasets`, session dir `artifacts/v0-sessions`.
+  `artifacts/v0-benchmark.json`, `--probe-batch-count 1` (the primary config),
+  dataset root `artifacts/datasets`, session dir `artifacts/v0-sessions`.
 - Do **not** pass `--dtype` (it must equal the measured decision and is only
-  there to catch operator error) or `--tokens-per-second` (overrides the
-  artifact). `--seeds` is registered too — but see pre-flight item 5: if the
-  §5.5 revision is adopted, `--seeds 15000-15011` is what "registered" means,
-  and the same flag must go to the verdict script.
+  there to catch operator error), `--tokens-per-second` (overrides the
+  artifact), or `--probe-selection` (that is the control session in §2b).
 
 **Session 1 expected behavior:**
 
@@ -146,9 +155,39 @@ command until the queue completes; no scheduling decisions are made by hand.
 
 ---
 
+## 2b. The pool-matched control session (adopted §5.5 change 2)
+
+The same seeds, the same substrate, the same probe cost and the same `spread`
+pool — the only difference is that the cap-bounded probe chooses *uniformly
+among the candidates it evaluated* instead of taking the probe-best one. Run it
+as a **second** queue with its own roots, so it can never be mistaken for the
+primary measurement:
+
+```bash
+PYTHONPATH=src python -m act.training.cli --mode pair-session \
+  --device cuda \
+  --hours <remaining-clock-hours> \
+  --seeds 15000-15011 \
+  --probe-candidate-policy spread \
+  --probe-selection random \
+  --dataset-root artifacts/datasets-control \
+  --session-dir artifacts/v0-sessions-control \
+  --kaggle-dataset <owner>/<slug>-control
+```
+
+- `spread` is required here too. The clause isolates the *decision rule*; if
+the control ran a different candidate pool, a null result would be
+uninterpretable.
+- The control is descriptive evidence for the clause, not a second gate: its
+own random arm is its paired baseline, exactly as in the primary run.
+- Never point the control at `artifacts/datasets` (or the primary at the control
+root): both queues hold the same seeds, and the two runs must not mix.
+
+---
+
 ## 3. Running the queue to completion
 
-The queue is 12 declared seeds (9000–9011), one atomic pair each. Schedule
+The queue is 12 declared seeds (15000–15011), one atomic pair each. Schedule
 expectations come from the benchmark artifact (`sessions_for_primary`,
 `sessions_total`); the plan's own arithmetic already includes the 45-minute
 publish reserve and the 20 GB working-dir ledger.
@@ -163,8 +202,9 @@ Rules the runbook operator must not work around (all enforced in code):
 - Stale working-dir state is discarded before a fresh pair start; do not hand
   curate `artifacts/v0-sessions`.
 - Smoke tests (`--profile`) must use a **different** `--dataset-root` (or be
-  cleaned up): the verdict step ignores complete seeds outside 9000–9011 and
-  warns about them, but the dataset stays cleanest when strays never land.
+  cleaned up): the verdict step ignores complete seeds outside the declared
+  block and warns about them, but the dataset stays cleanest when strays never
+  land.
 
 ---
 
@@ -175,23 +215,29 @@ When all 12 seeds publish `complete` versions:
 ```bash
 PYTHONPATH=src python scripts/v0_verdict.py \
   --dataset-root artifacts/datasets \
+  --control-root artifacts/datasets-control \
   --probe-batch-count 1
-  # + `--seeds 15000-15011` if the §5.5 revision was adopted (pre-flight item 5)
 ```
 
-Exit codes and meanings:
+Exit codes and meanings (the two control rows are the adopted §5.5 clause):
 
 | Exit | Verdict | Pre-registered consequence |
 |---|---|---|
-| 0 | `PASS` | cost ≤ 5%, inside the [0.5, 2]× band, harm guard clear → **Gate 4 authorized** (`gate_4_authorized: true` requires 12/12 seeds) |
+| 0 | `PASS` | cost ≤ 5%, inside the [0.5, 2]× band, harm guard clear, **and the loss-blind control did not clear its own gate** → **Gate 4 authorized** (`gate_4_authorized: true` requires 12/12 seeds) |
 | 1 | `FAIL` | primary cost > 5% → stop; §5.1 fails as registered |
 | 2 | `PASS_WITH_QUALIFICATION` | cost ≤ 5% but outside the band → re-derive the predicted C **before** Gate 4; no knob re-tuning against the measured C |
 | 2 | `PASS_COST_ONLY_HARM_GUARD_REJECTS` | harm guard hit (adaptive worse in ≥ 10 of 12 pairs) → do not proceed to Gate 4 |
+| 2 | `PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES` | the loss-blind arm won ≥ 10 of its 12 pairs, i.e. the pool alone clears the gate → the cost PASS stands but the quality inference does not; **never** treat this as "the controller wins" |
+| 2 | `PASS_COST_ONLY_CONTROL_MISSING` | no `--control-root` given → the clause could not be evaluated; running the control is part of the protocol, so Gate 4 is withheld |
 
 The verdict JSON is written to `<dataset-root>/v0-5-1-verdict.json` and prints
-the aggregate cost, predicted value, band, harm-guard tally, and per-seed
-win/loss pairs. Missing seeds are listed (`queue_complete: false`) — keep
-running the launch command until the queue completes before judging.
+the aggregate cost, predicted value, band, harm-guard tally, the
+`pool_matched_control` block, and per-seed win/loss pairs. Missing seeds are
+listed (`queue_complete: false`) — keep running the launch command until the
+queue completes before judging.
+
+`--seeds "A-B"` (or a comma list) re-declares the block and loosens no
+criterion; it is only for a future re-reservation, not for this run.
 
 Secondary config (if pre-registered): same command with
 `--probe-batch-count 2` (predicted 0.1883%, band 0.0942–0.3767%).
@@ -209,6 +255,8 @@ Secondary config (if pre-registered): same command with
 | Kaggle auto-extracted archives | Expected and handled: the wrapper stages per-seed tars with `seed-NNNN/...` internal paths (live-verified bit-identical round trip). Restore also extracts blobs itself as defense-in-depth. |
 | Verdict reports stray complete seeds | They are excluded from the aggregate automatically. For cleanliness, delete stray seed directories from the dataset root or use a dedicated root for smoke tests. |
 | Benchmark artifact missing/stale | Re-run step 1. The launch command refuses a hand-edited or stale artifact by design. |
+| Verdict says `PASS_COST_ONLY_CONTROL_MISSING` | The §2b control session has not run (or `--control-root` was omitted). Run §2b, then re-judge. Do not authorize Gate 4 on the strength of the primary run alone. |
+| Verdict says `PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES` | Record the cost PASS **and** the withheld Gate 4 as the result. This is a finding about the search design, not a failed run: do not tune the probe, the cap or the pool and re-run, and do not add a new seed block to try for a different answer. |
 
 ---
 
@@ -217,6 +265,11 @@ Secondary config (if pre-registered): same command with
 - `artifacts/v0-benchmark.json` — the measured throughput and dtype decision.
 - `artifacts/v0-sessions/session-log.json` — queue, per-pair actions
   (completed / interrupted / skipped), FLOPs counters, `code_revision`.
+- `artifacts/datasets-control/` + `artifacts/v0-sessions-control/` — the §2b
+  pool-matched arm (same seeds, `probe_selection=random`), and its own
+  `session-log.json`. Keep both roots: the verdict's clause reads them, and
+  every seed summary records its `probe_candidate_policy`/`probe_selection`, so
+  which regime produced each number is auditable without this document.
 - Dataset versions — every `complete` (and forensic `in-progress`) version of
   `<owner>/<slug>`, each with a checksummed manifest.
 - `v0-5-1-verdict.json` — the final machine-checked §5.1 verdict.

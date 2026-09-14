@@ -229,7 +229,7 @@ default remains cap-4/2-batch; cap-4/1-batch is the validated cheaper option.
 |---|---|---|---|---|---|---|
 | Horizon replication | study 3 config at steps=144 | cap4/2-batch, 3 events, steps=144 | fresh 8000-8383 | binomial sign test, alpha=0.05 | PASS -> pass generalizes; FAIL -> pass was horizon-specific | **DONE: PASS** (231/384, p 4.04e-05, t p 1.07e-08, cost 14.0%) |
 | Richness | candidate set size at fixed probe tokens | cap4/1-batch (A) vs cap2/2-batch (B), 3 events, steps=144 | fresh 7000-7383 | binomial sign test, alpha=0.05; factor claim: paired A-vs-B, one-tailed "rich better" | PASS & A>B -> richness is the active axis; B passes & B>=A -> probe quality is; neither -> both jointly necessary | **DONE: PASS for richness** (A 228/384, p 1.4e-04, t p 5.0e-05, cost 7.3%; B 193/384, p 0.48, cost 8.1%; paired A better 225/384, z = 3.37, p 8e-04) |
-| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config (see 5.1) | 9000-9011 declared; **SPENT** - re-reserve to 15000-15011 (5.5 change 4) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] | PASS + in-band + harm guard clear -> Gate 4 authorized; outside band -> re-derive before Gate 4; FAIL -> Gate 4 stays blocked | **PRE-REGISTERED (section 5.1), execution planned (section 5.2), not yet run at declared fidelity; blocked on the 5.5 decision (its declared seed block is already spent - see 5.5 point 3)** |
+| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config, **`probe_candidate_policy=spread`** (see 5.1/5.5) | **15000-15011** (adopted 5.5 change 4; the declared 9000-9011 was spent by the 5.3 diagnostic) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] + **pool-matched control clause** | cost + band + harm guard clear **and the loss-blind control arm must not clear its own gate** -> Gate 4 authorized; control passes, control missing, band miss or harm guard -> Gate 4 withheld at exit 2 | **REGISTERED as revised (section 5.5, adopted); execution planned (section 5.2); not yet run** |
 | Depth-4 Gate 3 confirmation | substrate expressiveness + selection value, with the arm-RNG fix | cap4/2-batch, `spread`, `independent_arm_rng`, 3 events, steps=48, depth 4 | fresh 60000-60383 (384 pairs) | argmin vs uniform churn, alpha/3 = 0.01667 (>= 214/384); paired argmin vs pool-matched control | PASS -> Gate 3 established on a non-degenerate substrate, 5.5 adopted; POOL-DRIVEN -> withdraw the selection claim; NOT REPRODUCED -> Gate 3 open, 5.1 must not launch | **DONE: PASS** (argmin vs uniform 255/384, p `6.1e-11`; paired increment 236/384, p `4.1e-06`; pool-matched control 209/384, p `0.046`; validity control does not pass). Section 9.9 |
 
 ### 5.1 Protocol: real-scale compute-efficiency measurement (pre-registered; gates Gate 4)
@@ -301,9 +301,9 @@ bar >= 0.2%.
    list, so scaling behavior is measured, not assumed.
 
 **Design.** 12 seed pairs, seeds 9000-9011 (fresh block), arms `random,adaptive`,
-  <!-- AUDIT (2026-09-14): this block is spent - see section 5.5 point 3. The
-  registered text is left as written; the pre-launch revision moves the queue
-  to 15000-15011. -->
+  <!-- SUPERSEDED (2026-09-14): this block is spent - see section 5.5 point 3.
+  The registered text is left as written for the audit trail; the ADOPTED
+  section 5.5 revision moves the queue to 15000-15011. -->
 primary config cap-4/1-batch, secondary run cap-4/2-batch on the same seeds,
 budget matched at E=3, steps=6000, batch 2, context 2048. Every quantity in
 plan section 57's Model and Training metric lists is reported per arm
@@ -340,8 +340,9 @@ The verdict is machine-checked by `scripts/v0_verdict.py`, which reads the
 published seed summaries and applies exactly the rules above - aggregate
 adaptive cost vs the 5% criterion, the [0.5, 2]x tolerance band from
 `expected_probe_cost_percent`, and the 10-of-12 harm guard - over the declared
-queue 9000-9011 precisely (stray complete seeds are excluded with a warning,
-not aggregated); no verdict number is hand-computed. Every branch of that
+queue precisely (stray complete seeds are excluded with a warning, not
+aggregated); no verdict number is hand-computed. As adopted, the declared queue
+is 15000-15011 and the control clause below also applies (section 5.5). Every branch of that
 decision contract is unit-pinned in `tests/test_v0_verdict.py` (exit codes 0,
 1, and 2, the harm-guard boundary, queue-completeness gating of
 `gate_4_authorized`, stray-seed exclusion, and the abort conditions), so the
@@ -439,9 +440,11 @@ scripts/v0_session_selfcheck.py` passes from the committed revision on the
 Kaggle machine. (2) The session 1 benchmark completes with measured
 tokens/s recorded and the dtype decision logged in the artifact. (3)
 `max_checkpoints=2` and `checkpoint_interval=500` confirmed in the session
-config. (4) Seed block 9000-9011 untouched; arms `random,adaptive`; probe
-budgets cap-4/1-batch (primary) and cap-4/2-batch (secondary) exactly as
-pre-registered. (5) Per-session `--output` summary JSONs retained in the
+config. (4) Seed block untouched (SUPERSEDED: adopted section 5.5 change 4
+moves the declared block from 9000-9011 to 15000-15011, with the primary
+controller on `spread` and a pool-matched control session); arms
+`random,adaptive`; probe budgets cap-4/1-batch (primary) and cap-4/2-batch
+(secondary) exactly as pre-registered. (5) Per-session `--output` summary JSONs retained in the
 published artifact.
 
 **Pre-launch tooling (built).** Items (2) and (3)'s arithmetic are now code,
@@ -809,12 +812,14 @@ eaa1c45 protocol, ~1.2 h on the local GPU).**
   balance under rejection (rejections should skew prune-accepts and
   grow-fallbacks if the snapshot bias shows up in absolute form).
 
-### 5.5 Proposed revision to the 5.1 protocol (pre-launch, REQUIRES SIGN-OFF)
+### 5.5 Revision to the 5.1 protocol (ADOPTED - the operative protocol)
 
 The substrate audit (section 9) invalidated a premise of section 5.1, so the
-protocol should not launch as written. The original text above is left intact
-for the audit trail; this subsection is the proposed revision, and it takes
-effect only if adopted before the T4 run.
+protocol could not launch as written. The original text above is left intact
+for the audit trail; **this subsection is the adopted revision and supersedes
+it**: section 5.1's cost criteria, budget, model and decision rules stand
+exactly as registered, and only the four changes below apply. Where the two
+readings of section 5.1 differ, this one governs.
 
 **Why a revision is needed.** Section 5.1 is a *cost* protocol whose value
 depends on the controller under measurement being the validated one. Two
@@ -887,15 +892,37 @@ the harm guard, and the rule that no knob is re-tuned against the measured C.
 The one registered value that does move is the seed block, for the reason in
 point 3 above.
 
-**Status.** Proposed, not adopted. Two of its three parts are now backed by
-registered evidence: the section 5.6 depth-4 confirmation passed out-of-sample
-on a fresh block, including the pool-matched control (which clears only alpha
-while the selection increment clears alpha/3 - section 9.9), and point 3's spent
-block is a fact about the repository rather than an inference. Only the sign-off
-is outstanding. Adopting it is a pre-registration and config decision, **not a
-code change**: the seed-block move is a `--seeds` flag on `scripts/v0_verdict.py`
-(added, default unchanged) plus the runbook's declared queue, and the section 5.2
-launch command already takes `--seeds`. The registered defaults remain
+**Status: ADOPTED** (signed off 2026-09-14) and implemented, so it now requires
+execution rather than a decision.
+
+Adoption turned out to need a small code change after all, all of it additive:
+
+- `v0_runner.DECLARED_SEEDS` and `v0_verdict.DECLARED_SEEDS` moved to
+  **15000-15011** (change 4), taking the benchmark's reserved data seed to
+  15012 and the lone-session default seed with them.
+- `act.training.cli --mode pair-session` gained `--probe-candidate-policy` and
+  `--probe-selection` (changes 1 and 2), both defaulting to the registered
+  values, so an unflagged launch still reproduces the original registration.
+- `scripts/v0_verdict.py` gained the pool-matched control block and the
+  interpretation clause (change 3), plus `--control-root` and the `--seeds`
+  override. It also gained `POOL_CONTROL_WIN_LIMIT = 10`: the clause fires when
+  the loss-blind arm clears the **same** 10-of-12 bar the harm guard uses, so
+  "indistinguishable" is a pre-committed rule rather than a judgement call, and
+the failure modes are distinguished by label (`PASS_COST_ONLY_POOL_MATCHED_
+CONTROL_PASSES` vs `PASS_COST_ONLY_CONTROL_MISSING`, both withholding Gate 4 at
+exit 2 while the cost PASS stands). A missing control is disqualifying rather
+than silently skipped.
+
+Its two evidentiary premises are now registered results: the section 5.6
+depth-4 confirmation passed out-of-sample including the pool-matched control
+(section 9.9), and point 3's spent block is a fact about the repository rather
+than an inference.
+
+**Launch (adopted).** The primary run is
+`--probe-candidate-policy spread --seeds 15000-15011`; the pool-matched control
+is the same command with `--probe-selection random` over the same seeds into its
+own dataset root; the verdict is `scripts/v0_verdict.py --dataset-root <primary>
+--control-root <control>`. `T4_RUNBOOK.md` carries the exact commands. The registered defaults remain
 `prefix`/`argmin`, so the original protocol stays runnable; the revised one is
 reached by setting `probe_candidate_policy="spread"`. The pool-matched control
 needs no new arm: a session's decision rule is session-level config, so the

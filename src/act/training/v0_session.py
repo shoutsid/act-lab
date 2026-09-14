@@ -58,7 +58,10 @@ from act.training.v0_span import WindowSampler
 class V0SessionConfig:
     """Declared protocol configuration by default (section 5.1)."""
 
-    seed: int = 9000
+    # Default seed for a lone session. 15000 is the start of the declared
+    # section 5.1 queue (re-reserved from 9000 by the adopted section 5.5
+    # change 4, since 9000-9011 was spent by the section 5.3 diagnostic).
+    seed: int = 15000
     arms: tuple[str, ...] = ("random", "adaptive")
     device: str = "auto"
     # Declared V0 model (plan section 8).
