@@ -40,7 +40,9 @@ from act.evolution.study import _binomial_survival  # noqa: E402
 
 # The audit's block. Disjoint from 1000-8000 (the depth-1 factor map), 9000-9011
 # (the section 5.1 queue), 20000-20127 (the depth-4 policy matrix), 30000-30011
-# (the reduced-dim V0 check) and 5000-6000 (cadence/variance studies).
+# (the reduced-dim V0 check), 5000-6000 (cadence/variance studies), 50000-50383
+# (section 9.7) and 60000-60383 (the section 5.6 registered confirmation - do
+# NOT reuse: it is the out-of-sample block behind the project's Gate 3 result).
 DEFAULT_SEEDS = (40000, 40127)
 
 

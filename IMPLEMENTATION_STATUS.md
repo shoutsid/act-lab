@@ -242,7 +242,10 @@ section 9).
    block; 384/384 once fixed). The V0 path is not affected (arms train
    sequentially with per-arm seeding). Fix implemented as the opt-in
    `ExperimentConfig.independent_arm_rng` (default `False`, so published numbers
-   reproduce unchanged). Re-run of study 3's own block 3000-3383: the shared
+   reproduce unchanged). Convention: every new study pins it explicitly (as
+   5.6 does) rather than relying on a flipped default, because the CLI is also
+   the reproduction surface for the pre-audit studies, whose records do not
+   carry the field. See report section 9.8. Re-run of study 3's own block 3000-3383: the shared
    path reproduces the committed artifact exactly (213/384, mean `-0.025955`,
    p `0.01814`) and the fix gives a slightly stronger 222/384 (mean `-0.034406`,
    p `0.00128`), so the depth-1 pass survives the fix. Report section 9.8.

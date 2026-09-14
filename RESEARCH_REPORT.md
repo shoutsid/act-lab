@@ -1254,6 +1254,16 @@ shared init identity that the pairing relies on is untouched. The default stays
 `False` so existing numbers reproduce unchanged, which is also why the historical
 studies still need an explicit re-run rather than being silently reinterpreted.
 
+**Convention for new studies (decided here, rather than by flipping a
+default).** Every new study must pin the flag explicitly and appears in the
+record with it set, as section 5.6 does. The defaults are deliberately *not*
+flipped: the CLI and `ExperimentConfig` together are the reproduction surface
+for history, and the pre-audit study summaries do not carry the field at all,
+so a flipped default would silently change the numbers a reader gets when
+reproducing a committed artifact - the exact failure this report avoids
+everywhere else. Pinning per study makes the regime visible in each record and
+leaves old reproductions honest.
+
 ### 9.9 Result: the depth-4 confirmation PASSES out-of-sample
 
 The section 5.6 pre-registration was committed as `b876ac1`, *before* the run,
