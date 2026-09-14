@@ -15,6 +15,7 @@ import math
 import pytest
 
 from act.evolution.figures_data import (
+    DECOUPLED_STUDIES,
     PASS_THRESHOLDS,
     STUDIES,
     arm_totals,
@@ -44,6 +45,61 @@ def test_load_summaries_returns_all_nine_studies() -> None:
 def test_missing_summary_file_raises_helpful_error(tmp_path) -> None:
     with pytest.raises(FileNotFoundError, match="missing study summary"):
         load_summaries(tmp_path)
+
+
+def test_decoupled_summaries_load_and_recompute() -> None:
+    """The corrected figure set must be machine-checked like the registered one.
+
+    These summaries come from the section 9.10 recheck (`factor_map_recheck.py
+    --summaries`); each is validated by ``check_summary`` on the way out, and
+    this pins that the committed set still recomputes.
+    """
+    directory = summaries_dir() / "decoupled"
+    summaries = load_summaries(directory, studies=DECOUPLED_STUDIES)
+
+    assert len(DECOUPLED_STUDIES) == len(STUDIES) - 1
+    assert set(summaries) == {key for key, _, _ in DECOUPLED_STUDIES}
+    # Study 1 is not reconstructible on the decoupled path (section 9.10).
+    assert "legacy" not in summaries
+    for key, _, filename in DECOUPLED_STUDIES:
+        summary = summaries[key]
+        assert summary["provenance"] == "decoupled-independent-arm-rng"
+        assert summary["record_type"] == "gate_study"
+        check_summary(summary, filename)
+
+
+def test_decoupled_recheck_matches_the_report_section_9_11_table() -> None:
+    """Pin the committed numbers section 3 and 9.11 quote.
+
+    The report tells the reader to quote the depth-1 factor map from the
+    decoupled column, so the corrected win counts and the one label flip are
+    pinned here rather than left as prose.
+    """
+    summaries = load_summaries(summaries_dir() / "decoupled", studies=DECOUPLED_STUDIES)
+
+    expected_wins = {
+        "guided": 62,
+        "probe-loss": 222,
+        "cheap-probe": 188,
+        "cadence": 148,
+        "variance": 209,
+        "horizon": 250,
+        "rich-a": 229,
+        "rich-b": 198,
+    }
+    for key, wins in expected_wins.items():
+        assert summaries[key]["adaptive_wins"] == wins, key
+
+    # The single label flip: variance was a FAIL on the coupled path and is a
+    # threshold-level PASS here (209/384 is exactly the alpha=0.05 minimum).
+    assert summaries["variance"]["gate_min_wins"] == 209
+    assert summaries["variance"]["gate_passed"] is True
+    assert load_summaries()["variance"]["gate_passed"] is False
+
+    # Every recheckable study moved toward the treatment.
+    coupled = load_summaries()
+    for key in expected_wins:
+        assert expected_wins[key] > coupled[key]["adaptive_wins"], key
 
 
 def test_paired_deltas_reproduce_report_means() -> None:

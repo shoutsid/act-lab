@@ -52,7 +52,12 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from act.evolution.experiment import ExperimentConfig, run_experiment  # noqa: E402
-from act.evolution.study import _binomial_survival, _gate_min_wins  # noqa: E402
+from act.evolution.figures_data import check_summary  # noqa: E402
+from act.evolution.study import (  # noqa: E402
+    _binomial_survival,
+    _gate_min_wins,
+    _population_stddev,
+)
 
 SUMMARIES = ROOT / "artifacts" / "study-summaries"
 GATE_ALPHA = 0.05
@@ -126,29 +131,128 @@ def run_shard(
     config = replace(config, independent_arm_rng=independent_arm_rng)
     treatment = published.get("treatment", "adaptive")
     seeds = tuple(published["seeds"])[shard::shards]
-    per_seed: list[list[object]] = []
+    experiments: list[dict] = []
     for seed in seeds:
         result = run_experiment(replace(config, seed=seed))
-        arms = {arm.mode: arm.final_loss for arm in result.arms}
+        arms = {arm.mode: arm for arm in result.arms}
         if treatment not in arms or "random" not in arms:
             raise SystemExit(f"{study}: seed {seed} is missing the arm pair")
-        per_seed.append([seed, arms[treatment], arms["random"]])
+        # The full per-arm payload is kept (not just final losses) so decoupled
+        # study summaries can be emitted in the committed schema and drive the
+        # report figures - including the probe-cost identity, which needs the
+        # per-seed FLOPs counters.
+        experiments.append(
+            {
+                "config": {"seed": seed},
+                "arms": [
+                    {
+                        "mode": arm.mode,
+                        "final_loss": arm.final_loss,
+                        "validation_loss": arm.validation_loss,
+                        "quality": arm.quality,
+                        "mutation_count": arm.mutation_count,
+                        "parameter_count": arm.parameter_count,
+                        "active_parameter_count": arm.active_parameter_count,
+                        "training_flops": arm.training_flops,
+                        "validation_flops": arm.validation_flops,
+                        "search_flops": arm.search_flops,
+                        "architecture_distance": arm.architecture_distance,
+                        "architecture_hash": arm.architecture_hash,
+                    }
+                    for arm in (arms[treatment], arms["random"])
+                ],
+            }
+        )
     return {
         "study": study,
         "shard": shard,
         "shards": shards,
         "independent_arm_rng": independent_arm_rng,
         "treatment": treatment,
-        "per_seed": per_seed,
+        "experiments": experiments,
     }
 
 
 def aggregate(records: list[dict]) -> dict[str, list[list[object]]]:
-    """Merge shard records into one seed list per study."""
+    """Merge shard records into one (seed, treatment, random) row list per study."""
     merged: dict[str, list[list[object]]] = {}
     for record in records:
-        merged.setdefault(record["study"], []).extend(record["per_seed"])
+        treatment = record["treatment"]
+        for experiment in record["experiments"]:
+            losses = {arm["mode"]: arm["final_loss"] for arm in experiment["arms"]}
+            merged.setdefault(record["study"], []).append(
+                [experiment["config"]["seed"], losses[treatment], losses["random"]]
+            )
     return {study: sorted(rows, key=lambda row: row[0]) for study, rows in merged.items()}
+
+
+def _merge_experiments(records: list[dict]) -> dict[str, list[dict]]:
+    """Merge shard records into one ordered experiment list per study."""
+    merged: dict[str, list[dict]] = {}
+    for record in records:
+        merged.setdefault(record["study"], []).extend(record["experiments"])
+    return {
+        study: sorted(experiments, key=lambda item: item["config"]["seed"])
+        for study, experiments in merged.items()
+    }
+
+
+def summaries_from_records(
+    records: list[dict],
+    *,
+    provenance: str = "decoupled-independent-arm-rng",
+) -> dict[str, dict]:
+    """Emit decoupled study summaries in the committed schema.
+
+    The figures are driven by these, so each one is put through
+    ``figures_data.check_summary`` before it is returned: a summary that does
+    not recompute will never reach a figure.
+    """
+    summaries: dict[str, dict] = {}
+    for study, experiments in _merge_experiments(records).items():
+        treatment = next(
+            record["treatment"] for record in records if record["study"] == study
+        )
+        seeds = [experiment["config"]["seed"] for experiment in experiments]
+        deltas = [
+            {arm["mode"]: arm["final_loss"] for arm in experiment["arms"]}[treatment]
+            - {arm["mode"]: arm["final_loss"] for arm in experiment["arms"]}["random"]
+            for experiment in experiments
+        ]
+        trials = len(seeds)
+        wins = sum(1 for delta in deltas if delta < 0.0)
+        min_wins = _gate_min_wins(trials, GATE_ALPHA)
+        search = {}
+        training = {}
+        for experiment in experiments:
+            for arm in experiment["arms"]:
+                search[arm["mode"]] = search.get(arm["mode"], 0) + int(arm["search_flops"])
+                training[arm["mode"]] = training.get(arm["mode"], 0) + int(
+                    arm["training_flops"]
+                )
+        summary = {
+            "record_type": "gate_study",
+            "protocol": "factor-map-recheck-9.10",
+            "provenance": provenance,
+            "config": {"arms": f"random,{treatment}", "independent_arm_rng": True},
+            "seeds": seeds,
+            "treatment": treatment,
+            "experiments": experiments,
+            "adaptive_wins": wins,
+            "win_rate": wins / trials if trials else 0.0,
+            "mean_adaptive_delta": sum(deltas) / trials if trials else 0.0,
+            "delta_stddev": _population_stddev(tuple(deltas)),
+            "matched_mutation_budget": True,
+            "search_flops_by_arm": dict(sorted(search.items())),
+            "training_flops_by_arm": dict(sorted(training.items())),
+            "gate_alpha": GATE_ALPHA,
+            "gate_p_value": _binomial_survival(wins, trials) if trials else 1.0,
+            "gate_min_wins": min_wins,
+            "gate_passed": bool(trials) and wins >= min_wins,
+        }
+        check_summary(summary, study)
+        summaries[study] = summary
+    return summaries
 
 
 def compare(records: list[dict], published: dict[str, dict]) -> list[dict]:
@@ -255,6 +359,12 @@ def main() -> int:
         help="write the aggregated comparison JSON here",
     )
     parser.add_argument(
+        "--summaries", type=Path, default=None,
+        help="with --compare: write decoupled study summaries in the committed "
+        "schema here (each validated by figures_data.check_summary) so the "
+        "figures can be regenerated from the decoupled record",
+    )
+    parser.add_argument(
         "--coupled", action="store_true",
         help="run with the historical shared-RNG path (for a control comparison)",
     )
@@ -274,6 +384,16 @@ def main() -> int:
         if args.compare_out is not None:
             args.compare_out.parent.mkdir(parents=True, exist_ok=True)
             args.compare_out.write_text(json.dumps(rows, indent=2, sort_keys=True) + "\n")
+        if args.summaries is not None:
+            summaries = summaries_from_records(records)
+            args.summaries.mkdir(parents=True, exist_ok=True)
+            for study, summary in summaries.items():
+                target = args.summaries / f"{study}.json"
+                target.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+            print(
+                f"\nwrote {len(summaries)} decoupled summary(ies) to {args.summaries} "
+                "(each re-verified by figures_data.check_summary)"
+            )
         return 0
 
     if not args.study:

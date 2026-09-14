@@ -37,11 +37,23 @@ def summaries_dir(root: Path | None = None) -> Path:
     return base / "artifacts" / "study-summaries"
 
 
-def load_summaries(directory: Path | None = None) -> dict[str, dict]:
-    """Load the nine study summaries keyed by figure key."""
+# The decoupled (independent arm RNG) set: the studies that reconstruct from
+# their recorded config, so the corrected numbers can be plotted beside the
+# registered ones (report sections 9.10-9.11). Study 1 is absent because its
+# recorded config predates the probe fields - see EXCLUDED there.
+DECOUPLED_STUDIES: tuple[tuple[str, str, str], ...] = tuple(
+    entry for entry in STUDIES if entry[0] != "legacy"
+)
+
+
+def load_summaries(
+    directory: Path | None = None,
+    studies: tuple[tuple[str, str, str], ...] = STUDIES,
+) -> dict[str, dict]:
+    """Load study summaries keyed by figure key."""
     directory = directory if directory is not None else summaries_dir()
     loaded: dict[str, dict] = {}
-    for key, _, filename in STUDIES:
+    for key, _, filename in studies:
         path = directory / filename
         if not path.exists():
             raise FileNotFoundError(f"missing study summary: {path}")

@@ -1,0 +1,3487 @@
+{
+  "adaptive_wins": 62,
+  "config": {
+    "arms": "random,guided",
+    "independent_arm_rng": true
+  },
+  "delta_stddev": 0.11429254302105413,
+  "experiments": [
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "72ff61980b47c69e",
+          "final_loss": 15.28748893737793,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.28748893737793,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.28748893737793
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "46d5437ae727cd66",
+          "final_loss": 15.406448602676392,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.406448602676392,
+          "search_flops": 92160,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 15.406448602676392
+        }
+      ],
+      "config": {
+        "seed": 2000
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "dba3fd7de10da073",
+          "final_loss": 14.389647960662842,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.389647960662842,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.389647960662842
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "b4752e19822ffa8d",
+          "final_loss": 14.332646369934082,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -14.332646369934082,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 14.332646369934082
+        }
+      ],
+      "config": {
+        "seed": 2001
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "315c2d6a34ad1e82",
+          "final_loss": 15.345240831375122,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.345240831375122,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.345240831375122
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "7164fee3647ace51",
+          "final_loss": 15.392467737197876,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.392467737197876,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.392467737197876
+        }
+      ],
+      "config": {
+        "seed": 2002
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "071332d6cd3522c4",
+          "final_loss": 15.472250938415527,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.472250938415527,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.472250938415527
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "033661f0f795bd69",
+          "final_loss": 15.544785976409912,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -15.544785976409912,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 15.544785976409912
+        }
+      ],
+      "config": {
+        "seed": 2003
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "b9b9685761e40ce7",
+          "final_loss": 15.280398607254028,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.280398607254028,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.280398607254028
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "d32f54eafbc454db",
+          "final_loss": 15.238838195800781,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.238838195800781,
+          "search_flops": 92160,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 15.238838195800781
+        }
+      ],
+      "config": {
+        "seed": 2004
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "69fc09e6b813db50",
+          "final_loss": 14.02067255973816,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.02067255973816,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.02067255973816
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "c17b98fee8b081b2",
+          "final_loss": 14.113868474960327,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.113868474960327,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.113868474960327
+        }
+      ],
+      "config": {
+        "seed": 2005
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "7dc2c17047bc385c",
+          "final_loss": 14.654749155044556,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.654749155044556,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.654749155044556
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "94bb72e1afbb1a99",
+          "final_loss": 14.71431040763855,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -14.71431040763855,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 14.71431040763855
+        }
+      ],
+      "config": {
+        "seed": 2006
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "54952cfd1529d2b7",
+          "final_loss": 14.357503652572632,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.357503652572632,
+          "search_flops": 25261632,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 14.357503652572632
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "b50637319ae58d08",
+          "final_loss": 14.488398790359497,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -14.488398790359497,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 14.488398790359497
+        }
+      ],
+      "config": {
+        "seed": 2007
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "b84cd91225ed9409",
+          "final_loss": 15.125494718551636,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.125494718551636,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.125494718551636
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "9394a5dd1ee70af1",
+          "final_loss": 15.040440082550049,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.040440082550049,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.040440082550049
+        }
+      ],
+      "config": {
+        "seed": 2008
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "5c5deaab3835fc9e",
+          "final_loss": 14.715133428573608,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.715133428573608,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.715133428573608
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "62f269be08d27184",
+          "final_loss": 14.767290115356445,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.767290115356445,
+          "search_flops": 92160,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 14.767290115356445
+        }
+      ],
+      "config": {
+        "seed": 2009
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "57b2e8de0e5f4198",
+          "final_loss": 14.395387649536133,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.395387649536133,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.395387649536133
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "040c7272933fc147",
+          "final_loss": 14.4364333152771,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.4364333152771,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.4364333152771
+        }
+      ],
+      "config": {
+        "seed": 2010
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "80c4e6c045daae70",
+          "final_loss": 14.905630350112915,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.905630350112915,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.905630350112915
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "6f3ad2bbd8dea359",
+          "final_loss": 15.10276746749878,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.10276746749878,
+          "search_flops": 92160,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 15.10276746749878
+        }
+      ],
+      "config": {
+        "seed": 2011
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "5cb9afae9cde1063",
+          "final_loss": 16.01449418067932,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.01449418067932,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 16.01449418067932
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "9cd14c1963ee785b",
+          "final_loss": 16.03548812866211,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.03548812866211,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 16.03548812866211
+        }
+      ],
+      "config": {
+        "seed": 2012
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "c09d87a57d770234",
+          "final_loss": 16.327500104904175,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.327500104904175,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 16.327500104904175
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "17274232a0dd7d8f",
+          "final_loss": 16.648897886276245,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -16.648897886276245,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1866240,
+          "validation_loss": 16.648897886276245
+        }
+      ],
+      "config": {
+        "seed": 2013
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "54fd2ff443863c15",
+          "final_loss": 15.031973361968994,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.031973361968994,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.031973361968994
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "54fd2ff443863c15",
+          "final_loss": 14.903005599975586,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.903005599975586,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.903005599975586
+        }
+      ],
+      "config": {
+        "seed": 2014
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "f288c2b670de90f6",
+          "final_loss": 16.3165066242218,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.3165066242218,
+          "search_flops": 25261632,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 16.3165066242218
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "292031afd5eeb6e8",
+          "final_loss": 16.159701108932495,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.159701108932495,
+          "search_flops": 92160,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 16.159701108932495
+        }
+      ],
+      "config": {
+        "seed": 2015
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "8303fddaec9ca72f",
+          "final_loss": 15.372070074081421,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.372070074081421,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.372070074081421
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "a34acbd3194baede",
+          "final_loss": 15.617455959320068,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.617455959320068,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 15.617455959320068
+        }
+      ],
+      "config": {
+        "seed": 2016
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "40187a0c09fcaa4b",
+          "final_loss": 14.836676836013794,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.836676836013794,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.836676836013794
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "c1b542c496d50e73",
+          "final_loss": 14.931938648223877,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.931938648223877,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.931938648223877
+        }
+      ],
+      "config": {
+        "seed": 2017
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "bf55a20f52140134",
+          "final_loss": 15.151739835739136,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.151739835739136,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.151739835739136
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "9ac141bcd53ff831",
+          "final_loss": 15.08557653427124,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -15.08557653427124,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1866240,
+          "validation_loss": 15.08557653427124
+        }
+      ],
+      "config": {
+        "seed": 2018
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "1e807d02da934c90",
+          "final_loss": 17.242671489715576,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -17.242671489715576,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 17.242671489715576
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "c3b01fe6b3f4e3b8",
+          "final_loss": 17.135576486587524,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -17.135576486587524,
+          "search_flops": 92160,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 17.135576486587524
+        }
+      ],
+      "config": {
+        "seed": 2019
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "66a8b9ed4d62a129",
+          "final_loss": 13.381410837173462,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -13.381410837173462,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 13.381410837173462
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "9dece546802388a3",
+          "final_loss": 13.54461932182312,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -13.54461932182312,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 13.54461932182312
+        }
+      ],
+      "config": {
+        "seed": 2020
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "da96dd922d3cbeeb",
+          "final_loss": 15.816587448120117,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.816587448120117,
+          "search_flops": 20109312,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 15.816587448120117
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "b6905ddbe1c77d4a",
+          "final_loss": 16.008214950561523,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.008214950561523,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 16.008214950561523
+        }
+      ],
+      "config": {
+        "seed": 2021
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "d56d8605462d0fab",
+          "final_loss": 15.388745784759521,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.388745784759521,
+          "search_flops": 25261632,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 15.388745784759521
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "637efeb00539b27d",
+          "final_loss": 15.481325149536133,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.481325149536133,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.481325149536133
+        }
+      ],
+      "config": {
+        "seed": 2022
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "d2db0f7d521f64ff",
+          "final_loss": 16.841911792755127,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.841911792755127,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 16.841911792755127
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "5bb015328656dfb1",
+          "final_loss": 16.979173183441162,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -16.979173183441162,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 16.979173183441162
+        }
+      ],
+      "config": {
+        "seed": 2023
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "17d6a2fa4733b83a",
+          "final_loss": 13.953213691711426,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -13.953213691711426,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 13.953213691711426
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "4a5c820fd5ed8e00",
+          "final_loss": 13.969585180282593,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -13.969585180282593,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 13.969585180282593
+        }
+      ],
+      "config": {
+        "seed": 2024
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "1e8782b431350f83",
+          "final_loss": 14.855509757995605,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.855509757995605,
+          "search_flops": 25261632,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 14.855509757995605
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "ad80a29a10a77f93",
+          "final_loss": 14.820734739303589,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -14.820734739303589,
+          "search_flops": 121536,
+          "training_flops": 22394880,
+          "validation_flops": 1866240,
+          "validation_loss": 14.820734739303589
+        }
+      ],
+      "config": {
+        "seed": 2025
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "64ab52ce178d1732",
+          "final_loss": 15.788156032562256,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.788156032562256,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.788156032562256
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "690df8b2712e10f9",
+          "final_loss": 15.55784273147583,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.55784273147583,
+          "search_flops": 92160,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 15.55784273147583
+        }
+      ],
+      "config": {
+        "seed": 2026
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "7402e2e0224e7fa0",
+          "final_loss": 16.04181480407715,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -16.04181480407715,
+          "search_flops": 20119104,
+          "training_flops": 19574784,
+          "validation_flops": 1866240,
+          "validation_loss": 16.04181480407715
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 1,
+          "architecture_hash": "fc758f6ee7c52abc",
+          "final_loss": 16.13272976875305,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -16.13272976875305,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 16.13272976875305
+        }
+      ],
+      "config": {
+        "seed": 2027
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "0dabaf4b0fa62d3b",
+          "final_loss": 14.584489583969116,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.584489583969116,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.584489583969116
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "51ba1a75a98ae0ed",
+          "final_loss": 14.777313947677612,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.777313947677612,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.777313947677612
+        }
+      ],
+      "config": {
+        "seed": 2028
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "cd41cd0372f694a0",
+          "final_loss": 15.627677202224731,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.627677202224731,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.627677202224731
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "067711a7b5aecf8a",
+          "final_loss": 15.582126140594482,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.582126140594482,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.582126140594482
+        }
+      ],
+      "config": {
+        "seed": 2029
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "0dc7ead3cfeafbaf",
+          "final_loss": 14.530177354812622,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.530177354812622,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.530177354812622
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "30e8c615f2acd08e",
+          "final_loss": 14.707385063171387,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -14.707385063171387,
+          "search_flops": 121536,
+          "training_flops": 22394880,
+          "validation_flops": 1866240,
+          "validation_loss": 14.707385063171387
+        }
+      ],
+      "config": {
+        "seed": 2030
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "08597df257631b55",
+          "final_loss": 16.315093755722046,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.315093755722046,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 16.315093755722046
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "7ce7b071c8ef13b5",
+          "final_loss": 16.313928365707397,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -16.313928365707397,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 16.313928365707397
+        }
+      ],
+      "config": {
+        "seed": 2031
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "ced5d033539e5fe8",
+          "final_loss": 14.961955547332764,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.961955547332764,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.961955547332764
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "a3de9557cc9f8a28",
+          "final_loss": 14.993783950805664,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.993783950805664,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.993783950805664
+        }
+      ],
+      "config": {
+        "seed": 2032
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "ccb235e3f0684f75",
+          "final_loss": 15.517850399017334,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.517850399017334,
+          "search_flops": 20109312,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 15.517850399017334
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "22052977d5692f0c",
+          "final_loss": 15.589931964874268,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.589931964874268,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.589931964874268
+        }
+      ],
+      "config": {
+        "seed": 2033
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "58b459f724d93998",
+          "final_loss": 15.740858554840088,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.740858554840088,
+          "search_flops": 20109312,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 15.740858554840088
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 1,
+          "architecture_hash": "842c4d8c6e7a33bb",
+          "final_loss": 15.848166227340698,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -15.848166227340698,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1866240,
+          "validation_loss": 15.848166227340698
+        }
+      ],
+      "config": {
+        "seed": 2034
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "3df720b1245bf459",
+          "final_loss": 14.614733219146729,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.614733219146729,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.614733219146729
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "2407b935cbab1dac",
+          "final_loss": 14.678945779800415,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -14.678945779800415,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1866240,
+          "validation_loss": 14.678945779800415
+        }
+      ],
+      "config": {
+        "seed": 2035
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "0b3e0dcc53acbaa7",
+          "final_loss": 14.504695415496826,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.504695415496826,
+          "search_flops": 25261632,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 14.504695415496826
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "219cdd78280454e6",
+          "final_loss": 14.284909963607788,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.284909963607788,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.284909963607788
+        }
+      ],
+      "config": {
+        "seed": 2036
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "cd3848779443d69b",
+          "final_loss": 18.183234214782715,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -18.183234214782715,
+          "search_flops": 20109312,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 18.183234214782715
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "57118d9db853dd24",
+          "final_loss": 18.267128229141235,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -18.267128229141235,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 18.267128229141235
+        }
+      ],
+      "config": {
+        "seed": 2037
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "c2d6bd06f59b3145",
+          "final_loss": 16.080528020858765,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.080528020858765,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 16.080528020858765
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 1,
+          "architecture_hash": "e009ce85c24e4e07",
+          "final_loss": 16.132954359054565,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -16.132954359054565,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 16.132954359054565
+        }
+      ],
+      "config": {
+        "seed": 2038
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "d358a7e085ff525d",
+          "final_loss": 13.60990595817566,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -13.60990595817566,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 13.60990595817566
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "8f4152d298fef1ec",
+          "final_loss": 13.553142547607422,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -13.553142547607422,
+          "search_flops": 92160,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 13.553142547607422
+        }
+      ],
+      "config": {
+        "seed": 2039
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "aafdab61b58c9094",
+          "final_loss": 14.754509210586548,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.754509210586548,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.754509210586548
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "4df36b950fdd4602",
+          "final_loss": 14.85497760772705,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -14.85497760772705,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1866240,
+          "validation_loss": 14.85497760772705
+        }
+      ],
+      "config": {
+        "seed": 2040
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "83744e7019a3510b",
+          "final_loss": 15.2716383934021,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -15.2716383934021,
+          "search_flops": 31363776,
+          "training_flops": 22394880,
+          "validation_flops": 1866240,
+          "validation_loss": 15.2716383934021
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "11488955c3134570",
+          "final_loss": 15.35160779953003,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.35160779953003,
+          "search_flops": 92160,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 15.35160779953003
+        }
+      ],
+      "config": {
+        "seed": 2041
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "38072c2be398731c",
+          "final_loss": 15.672256708145142,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.672256708145142,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.672256708145142
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "e179e8432a1c3651",
+          "final_loss": 15.7504403591156,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -15.7504403591156,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 15.7504403591156
+        }
+      ],
+      "config": {
+        "seed": 2042
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "06b5b7b7910d65b0",
+          "final_loss": 16.02137565612793,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.02137565612793,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 16.02137565612793
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "7f8a9ed8ee451d2b",
+          "final_loss": 16.088368892669678,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -16.088368892669678,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1866240,
+          "validation_loss": 16.088368892669678
+        }
+      ],
+      "config": {
+        "seed": 2043
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "685bcf68acb6fd2e",
+          "final_loss": 15.026403903961182,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.026403903961182,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.026403903961182
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "f5a2824149da6cfe",
+          "final_loss": 15.217291355133057,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.217291355133057,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.217291355133057
+        }
+      ],
+      "config": {
+        "seed": 2044
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "6aa4f9b605fe021f",
+          "final_loss": 13.910867929458618,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -13.910867929458618,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 13.910867929458618
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "e3e4338af420330e",
+          "final_loss": 13.961088180541992,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -13.961088180541992,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 13.961088180541992
+        }
+      ],
+      "config": {
+        "seed": 2045
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "1ce4463d11befa77",
+          "final_loss": 14.00566816329956,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.00566816329956,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.00566816329956
+        },
+        {
+          "active_parameter_count": 12168,
+          "architecture_distance": 3,
+          "architecture_hash": "d0734b3b9c9d904b",
+          "final_loss": 14.082510232925415,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 12168,
+          "quality": -14.082510232925415,
+          "search_flops": 131328,
+          "training_flops": 23804928,
+          "validation_flops": 2336256,
+          "validation_loss": 14.082510232925415
+        }
+      ],
+      "config": {
+        "seed": 2046
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "bde491bb69e95d35",
+          "final_loss": 15.28316593170166,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.28316593170166,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.28316593170166
+        },
+        {
+          "active_parameter_count": 12168,
+          "architecture_distance": 3,
+          "architecture_hash": "25ebad2f69a291c1",
+          "final_loss": 15.242061614990234,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 12168,
+          "quality": -15.242061614990234,
+          "search_flops": 131328,
+          "training_flops": 23804928,
+          "validation_flops": 2336256,
+          "validation_loss": 15.242061614990234
+        }
+      ],
+      "config": {
+        "seed": 2047
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "fa954d3341ba6b8b",
+          "final_loss": 15.211898803710938,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.211898803710938,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.211898803710938
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "8fd76e2e2bbdbb96",
+          "final_loss": 15.169846057891846,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.169846057891846,
+          "search_flops": 92160,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 15.169846057891846
+        }
+      ],
+      "config": {
+        "seed": 2048
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "38ea50bc803f0915",
+          "final_loss": 15.390875816345215,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.390875816345215,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.390875816345215
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 1,
+          "architecture_hash": "ec3d2a73e8de5f61",
+          "final_loss": 15.264254808425903,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -15.264254808425903,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1866240,
+          "validation_loss": 15.264254808425903
+        }
+      ],
+      "config": {
+        "seed": 2049
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "ec79f8474ea679b3",
+          "final_loss": 13.289039373397827,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -13.289039373397827,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 13.289039373397827
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "e609e53bc2bc6fb0",
+          "final_loss": 13.408506870269775,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -13.408506870269775,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1866240,
+          "validation_loss": 13.408506870269775
+        }
+      ],
+      "config": {
+        "seed": 2050
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "c753a7e3de943735",
+          "final_loss": 15.132994174957275,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.132994174957275,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.132994174957275
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "d90f9f5566160174",
+          "final_loss": 15.071279764175415,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -15.071279764175415,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 15.071279764175415
+        }
+      ],
+      "config": {
+        "seed": 2051
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "abc54f03e376e4b3",
+          "final_loss": 16.15609908103943,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.15609908103943,
+          "search_flops": 20109312,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 16.15609908103943
+        },
+        {
+          "active_parameter_count": 12168,
+          "architecture_distance": 3,
+          "architecture_hash": "9d3121424f259fff",
+          "final_loss": 16.179644107818604,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 12168,
+          "quality": -16.179644107818604,
+          "search_flops": 131328,
+          "training_flops": 23804928,
+          "validation_flops": 2336256,
+          "validation_loss": 16.179644107818604
+        }
+      ],
+      "config": {
+        "seed": 2052
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "2250e06df2a6314e",
+          "final_loss": 14.619272708892822,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.619272708892822,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.619272708892822
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "1236b1b9fe909702",
+          "final_loss": 14.647255897521973,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -14.647255897521973,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 14.647255897521973
+        }
+      ],
+      "config": {
+        "seed": 2053
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "b873288497871f61",
+          "final_loss": 15.465631484985352,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.465631484985352,
+          "search_flops": 25261632,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 15.465631484985352
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "9eff5350a20d409f",
+          "final_loss": 15.684985876083374,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.684985876083374,
+          "search_flops": 92160,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 15.684985876083374
+        }
+      ],
+      "config": {
+        "seed": 2054
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "eb804b810e8a3345",
+          "final_loss": 15.793538570404053,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.793538570404053,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.793538570404053
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "0c1a262aa4ca57d1",
+          "final_loss": 15.824473142623901,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -15.824473142623901,
+          "search_flops": 121536,
+          "training_flops": 22394880,
+          "validation_flops": 1866240,
+          "validation_loss": 15.824473142623901
+        }
+      ],
+      "config": {
+        "seed": 2055
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "a4874118d346a26e",
+          "final_loss": 16.033591747283936,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.033591747283936,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 16.033591747283936
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "f4c625f94584132f",
+          "final_loss": 16.025919198989868,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.025919198989868,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 16.025919198989868
+        }
+      ],
+      "config": {
+        "seed": 2056
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "e9913d897bcd0c77",
+          "final_loss": 16.107508420944214,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.107508420944214,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 16.107508420944214
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "ffd1e07da87b00fd",
+          "final_loss": 16.18757152557373,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.18757152557373,
+          "search_flops": 92160,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 16.18757152557373
+        }
+      ],
+      "config": {
+        "seed": 2057
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "e7edd79b57b72b6b",
+          "final_loss": 15.09286093711853,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.09286093711853,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.09286093711853
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "9fb959648ffed8ca",
+          "final_loss": 15.151137113571167,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -15.151137113571167,
+          "search_flops": 121536,
+          "training_flops": 22394880,
+          "validation_flops": 1866240,
+          "validation_loss": 15.151137113571167
+        }
+      ],
+      "config": {
+        "seed": 2058
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "0ca0511515b0e529",
+          "final_loss": 15.278720140457153,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.278720140457153,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.278720140457153
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "d29894b9569fc8f9",
+          "final_loss": 15.508788108825684,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -15.508788108825684,
+          "search_flops": 121536,
+          "training_flops": 22394880,
+          "validation_flops": 1866240,
+          "validation_loss": 15.508788108825684
+        }
+      ],
+      "config": {
+        "seed": 2059
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "2c9eb67c7b3e9f41",
+          "final_loss": 12.968957901000977,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -12.968957901000977,
+          "search_flops": 25261632,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 12.968957901000977
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 1,
+          "architecture_hash": "f569ebc2c6029f14",
+          "final_loss": 13.023083448410034,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -13.023083448410034,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 13.023083448410034
+        }
+      ],
+      "config": {
+        "seed": 2060
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "89c4adfdf7cbc982",
+          "final_loss": 15.192107439041138,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.192107439041138,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.192107439041138
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "49e3ae616b272e42",
+          "final_loss": 15.271390914916992,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -15.271390914916992,
+          "search_flops": 121536,
+          "training_flops": 22394880,
+          "validation_flops": 1866240,
+          "validation_loss": 15.271390914916992
+        }
+      ],
+      "config": {
+        "seed": 2061
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "9e8317c6940f6240",
+          "final_loss": 14.129196405410767,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.129196405410767,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.129196405410767
+        },
+        {
+          "active_parameter_count": 12168,
+          "architecture_distance": 3,
+          "architecture_hash": "f7502c7b93d001a0",
+          "final_loss": 14.247211217880249,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 12168,
+          "quality": -14.247211217880249,
+          "search_flops": 131328,
+          "training_flops": 23804928,
+          "validation_flops": 2336256,
+          "validation_loss": 14.247211217880249
+        }
+      ],
+      "config": {
+        "seed": 2062
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "ad5659f47b097116",
+          "final_loss": 15.809789657592773,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.809789657592773,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.809789657592773
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 1,
+          "architecture_hash": "d2f00f11658fc677",
+          "final_loss": 16.01410222053528,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -16.01410222053528,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1866240,
+          "validation_loss": 16.01410222053528
+        }
+      ],
+      "config": {
+        "seed": 2063
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "22ceff201df6f6b7",
+          "final_loss": 16.35179829597473,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -16.35179829597473,
+          "search_flops": 31363776,
+          "training_flops": 22394880,
+          "validation_flops": 1866240,
+          "validation_loss": 16.35179829597473
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "22ceff201df6f6b7",
+          "final_loss": 16.268884658813477,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -16.268884658813477,
+          "search_flops": 121536,
+          "training_flops": 22394880,
+          "validation_flops": 1866240,
+          "validation_loss": 16.268884658813477
+        }
+      ],
+      "config": {
+        "seed": 2064
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "1cce5bc750dca2f3",
+          "final_loss": 14.202316522598267,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.202316522598267,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.202316522598267
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "7360c641f263a919",
+          "final_loss": 14.366965055465698,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -14.366965055465698,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1866240,
+          "validation_loss": 14.366965055465698
+        }
+      ],
+      "config": {
+        "seed": 2065
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "fc2348de268a578b",
+          "final_loss": 14.944681167602539,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -14.944681167602539,
+          "search_flops": 25271424,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 14.944681167602539
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "fc2348de268a578b",
+          "final_loss": 14.954996109008789,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -14.954996109008789,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 14.954996109008789
+        }
+      ],
+      "config": {
+        "seed": 2066
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "5ee37c107c0ccc1d",
+          "final_loss": 16.42503571510315,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.42503571510315,
+          "search_flops": 25261632,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 16.42503571510315
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "23a170df0b5dd987",
+          "final_loss": 16.389716863632202,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.389716863632202,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 16.389716863632202
+        }
+      ],
+      "config": {
+        "seed": 2067
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "b1d5821b6f550294",
+          "final_loss": 15.808510065078735,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.808510065078735,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.808510065078735
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "6858d425e3401778",
+          "final_loss": 15.664681673049927,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.664681673049927,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.664681673049927
+        }
+      ],
+      "config": {
+        "seed": 2068
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "6be4cf356cf4b2c4",
+          "final_loss": 15.434869050979614,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.434869050979614,
+          "search_flops": 25261632,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 15.434869050979614
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "71a8ca07c782a564",
+          "final_loss": 15.398255825042725,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.398255825042725,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 15.398255825042725
+        }
+      ],
+      "config": {
+        "seed": 2069
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "bbba4196d79619ed",
+          "final_loss": 13.68945050239563,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -13.68945050239563,
+          "search_flops": 20109312,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 13.68945050239563
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "dfed95175d99ffa0",
+          "final_loss": 13.726794958114624,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -13.726794958114624,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 13.726794958114624
+        }
+      ],
+      "config": {
+        "seed": 2070
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "fb28820bd2b3737c",
+          "final_loss": 14.2830069065094,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.2830069065094,
+          "search_flops": 25261632,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 14.2830069065094
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "137f259d9204f4da",
+          "final_loss": 14.561782598495483,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -14.561782598495483,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 14.561782598495483
+        }
+      ],
+      "config": {
+        "seed": 2071
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "75d9db7c39335e9a",
+          "final_loss": 13.873162031173706,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -13.873162031173706,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 13.873162031173706
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "d4d0d6775624934b",
+          "final_loss": 14.022887229919434,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -14.022887229919434,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1866240,
+          "validation_loss": 14.022887229919434
+        }
+      ],
+      "config": {
+        "seed": 2072
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "2e11fcb59fade88c",
+          "final_loss": 15.898297786712646,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.898297786712646,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.898297786712646
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "ffd949f37b369b28",
+          "final_loss": 15.831065654754639,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.831065654754639,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 15.831065654754639
+        }
+      ],
+      "config": {
+        "seed": 2073
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "509fd99237a5e6ac",
+          "final_loss": 17.987170219421387,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -17.987170219421387,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 17.987170219421387
+        },
+        {
+          "active_parameter_count": 12168,
+          "architecture_distance": 3,
+          "architecture_hash": "86d0271a6c63dfab",
+          "final_loss": 18.08076810836792,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 12168,
+          "quality": -18.08076810836792,
+          "search_flops": 131328,
+          "training_flops": 23804928,
+          "validation_flops": 2336256,
+          "validation_loss": 18.08076810836792
+        }
+      ],
+      "config": {
+        "seed": 2074
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "ec5562f359383907",
+          "final_loss": 13.80882215499878,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -13.80882215499878,
+          "search_flops": 25261632,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 13.80882215499878
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "9a2c75fc53557b3a",
+          "final_loss": 13.805585861206055,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -13.805585861206055,
+          "search_flops": 121536,
+          "training_flops": 22394880,
+          "validation_flops": 1866240,
+          "validation_loss": 13.805585861206055
+        }
+      ],
+      "config": {
+        "seed": 2075
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "eb2ae2809ef4a48a",
+          "final_loss": 14.936135530471802,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.936135530471802,
+          "search_flops": 20109312,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 14.936135530471802
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "19582c0e31179c71",
+          "final_loss": 14.97976016998291,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.97976016998291,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 14.97976016998291
+        }
+      ],
+      "config": {
+        "seed": 2076
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "01e153119a736b6f",
+          "final_loss": 14.505415439605713,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.505415439605713,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.505415439605713
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "22c21993e4a44a6b",
+          "final_loss": 14.63615894317627,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -14.63615894317627,
+          "search_flops": 121536,
+          "training_flops": 22394880,
+          "validation_flops": 1866240,
+          "validation_loss": 14.63615894317627
+        }
+      ],
+      "config": {
+        "seed": 2077
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "7d8f3ecfc094a12a",
+          "final_loss": 17.183073043823242,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -17.183073043823242,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 17.183073043823242
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 1,
+          "architecture_hash": "b78d68291d0b02b1",
+          "final_loss": 17.40108895301819,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -17.40108895301819,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1866240,
+          "validation_loss": 17.40108895301819
+        }
+      ],
+      "config": {
+        "seed": 2078
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "c2fb0b9b779b3ee9",
+          "final_loss": 16.022501945495605,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.022501945495605,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 16.022501945495605
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "c2fb0b9b779b3ee9",
+          "final_loss": 15.95134949684143,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.95134949684143,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.95134949684143
+        }
+      ],
+      "config": {
+        "seed": 2079
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "b0509bd928ed5e57",
+          "final_loss": 15.393738269805908,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.393738269805908,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.393738269805908
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "f417a08bc8d7f16d",
+          "final_loss": 15.500891923904419,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -15.500891923904419,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1866240,
+          "validation_loss": 15.500891923904419
+        }
+      ],
+      "config": {
+        "seed": 2080
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "aeccd2e1164df41d",
+          "final_loss": 16.76109528541565,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.76109528541565,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 16.76109528541565
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "c72507914b3b6877",
+          "final_loss": 16.61341643333435,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.61341643333435,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 16.61341643333435
+        }
+      ],
+      "config": {
+        "seed": 2081
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "9ef563f21ce1ac7d",
+          "final_loss": 14.25134015083313,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.25134015083313,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.25134015083313
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "4346ad5554b2e893",
+          "final_loss": 14.124233484268188,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.124233484268188,
+          "search_flops": 92160,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 14.124233484268188
+        }
+      ],
+      "config": {
+        "seed": 2082
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "4d9ca7311790aab1",
+          "final_loss": 15.495383977890015,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.495383977890015,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.495383977890015
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "7443c7cb2485712e",
+          "final_loss": 15.367123126983643,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.367123126983643,
+          "search_flops": 92160,
+          "training_flops": 18164736,
+          "validation_flops": 1396224,
+          "validation_loss": 15.367123126983643
+        }
+      ],
+      "config": {
+        "seed": 2083
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "e4b4193b2afc3392",
+          "final_loss": 15.723358154296875,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.723358154296875,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.723358154296875
+        },
+        {
+          "active_parameter_count": 12168,
+          "architecture_distance": 3,
+          "architecture_hash": "0324431a5c71575f",
+          "final_loss": 15.874649047851562,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 12168,
+          "quality": -15.874649047851562,
+          "search_flops": 131328,
+          "training_flops": 23804928,
+          "validation_flops": 2336256,
+          "validation_loss": 15.874649047851562
+        }
+      ],
+      "config": {
+        "seed": 2084
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "d32b83869c6a0cd1",
+          "final_loss": 17.078845500946045,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -17.078845500946045,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 17.078845500946045
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "3123d9997bea829e",
+          "final_loss": 16.91489028930664,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.91489028930664,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 16.91489028930664
+        }
+      ],
+      "config": {
+        "seed": 2085
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "30998eda0c650263",
+          "final_loss": 14.87905764579773,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.87905764579773,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.87905764579773
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "3a3c39d1732827a9",
+          "final_loss": 15.000014781951904,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -15.000014781951904,
+          "search_flops": 121536,
+          "training_flops": 22394880,
+          "validation_flops": 1866240,
+          "validation_loss": 15.000014781951904
+        }
+      ],
+      "config": {
+        "seed": 2086
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "c73e0c453d9a152e",
+          "final_loss": 12.774123668670654,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -12.774123668670654,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 12.774123668670654
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "2cc6ea95ddeaaeb5",
+          "final_loss": 12.677714586257935,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -12.677714586257935,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 12.677714586257935
+        }
+      ],
+      "config": {
+        "seed": 2087
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "2d6f3133ec97e469",
+          "final_loss": 15.040619373321533,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.040619373321533,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.040619373321533
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "3799957c93e65efb",
+          "final_loss": 15.021021366119385,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.021021366119385,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.021021366119385
+        }
+      ],
+      "config": {
+        "seed": 2088
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "a430e0642337aa1e",
+          "final_loss": 14.899838209152222,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.899838209152222,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.899838209152222
+        },
+        {
+          "active_parameter_count": 9720,
+          "architecture_distance": 3,
+          "architecture_hash": "2e5ecbc8c65d1a38",
+          "final_loss": 15.106992721557617,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 9720,
+          "quality": -15.106992721557617,
+          "search_flops": 111744,
+          "training_flops": 20984832,
+          "validation_flops": 1866240,
+          "validation_loss": 15.106992721557617
+        }
+      ],
+      "config": {
+        "seed": 2089
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "ba4db167971dd19a",
+          "final_loss": 14.943383932113647,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -14.943383932113647,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 14.943383932113647
+        },
+        {
+          "active_parameter_count": 12168,
+          "architecture_distance": 3,
+          "architecture_hash": "fe9379c6018163f5",
+          "final_loss": 15.059312105178833,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 12168,
+          "quality": -15.059312105178833,
+          "search_flops": 131328,
+          "training_flops": 23804928,
+          "validation_flops": 2336256,
+          "validation_loss": 15.059312105178833
+        }
+      ],
+      "config": {
+        "seed": 2090
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "d207972edda3a36c",
+          "final_loss": 17.220723390579224,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -17.220723390579224,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 17.220723390579224
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "45cb8c26faa8b2d1",
+          "final_loss": 17.21332311630249,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -17.21332311630249,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 17.21332311630249
+        }
+      ],
+      "config": {
+        "seed": 2091
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "006287ef42347349",
+          "final_loss": 13.420494079589844,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -13.420494079589844,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 13.420494079589844
+        },
+        {
+          "active_parameter_count": 12168,
+          "architecture_distance": 3,
+          "architecture_hash": "5aee38c805e9b684",
+          "final_loss": 13.58035135269165,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 12168,
+          "quality": -13.58035135269165,
+          "search_flops": 131328,
+          "training_flops": 23804928,
+          "validation_flops": 2336256,
+          "validation_loss": 13.58035135269165
+        }
+      ],
+      "config": {
+        "seed": 2092
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "e72a543183fb0e8c",
+          "final_loss": 15.723170042037964,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.723170042037964,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.723170042037964
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "fed603c8aa0edbdd",
+          "final_loss": 15.586203575134277,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.586203575134277,
+          "search_flops": 82368,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.586203575134277
+        }
+      ],
+      "config": {
+        "seed": 2093
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "c311c5b2e79ed127",
+          "final_loss": 15.389633417129517,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.389633417129517,
+          "search_flops": 14044608,
+          "training_flops": 16754688,
+          "validation_flops": 1396224,
+          "validation_loss": 15.389633417129517
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "c3f957be5c802a34",
+          "final_loss": 15.313246726989746,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.313246726989746,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 15.313246726989746
+        }
+      ],
+      "config": {
+        "seed": 2094
+      }
+    },
+    {
+      "arms": [
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 3,
+          "architecture_hash": "9bd5d7e0d490c637",
+          "final_loss": 15.962512016296387,
+          "mode": "guided",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -15.962512016296387,
+          "search_flops": 25261632,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 15.962512016296387
+        },
+        {
+          "active_parameter_count": 7272,
+          "architecture_distance": 1,
+          "architecture_hash": "8506409192c941b2",
+          "final_loss": 16.00261664390564,
+          "mode": "random",
+          "mutation_count": 3,
+          "parameter_count": 7272,
+          "quality": -16.00261664390564,
+          "search_flops": 101952,
+          "training_flops": 19574784,
+          "validation_flops": 1396224,
+          "validation_loss": 16.00261664390564
+        }
+      ],
+      "config": {
+        "seed": 2095
+      }
+    }
+  ],
+  "gate_alpha": 0.05,
+  "gate_min_wins": 57,
+  "gate_p_value": 0.002786498881082294,
+  "gate_passed": true,
+  "matched_mutation_budget": true,
+  "mean_adaptive_delta": -0.042015671730041504,
+  "protocol": "factor-map-recheck-9.10",
+  "provenance": "decoupled-independent-arm-rng",
+  "record_type": "gate_study",
+  "search_flops_by_arm": {
+    "guided": 1577279232,
+    "random": 9787392
+  },
+  "seeds": [
+    2000,
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007,
+    2008,
+    2009,
+    2010,
+    2011,
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026,
+    2027,
+    2028,
+    2029,
+    2030,
+    2031,
+    2032,
+    2033,
+    2034,
+    2035,
+    2036,
+    2037,
+    2038,
+    2039,
+    2040,
+    2041,
+    2042,
+    2043,
+    2044,
+    2045,
+    2046,
+    2047,
+    2048,
+    2049,
+    2050,
+    2051,
+    2052,
+    2053,
+    2054,
+    2055,
+    2056,
+    2057,
+    2058,
+    2059,
+    2060,
+    2061,
+    2062,
+    2063,
+    2064,
+    2065,
+    2066,
+    2067,
+    2068,
+    2069,
+    2070,
+    2071,
+    2072,
+    2073,
+    2074,
+    2075,
+    2076,
+    2077,
+    2078,
+    2079,
+    2080,
+    2081,
+    2082,
+    2083,
+    2084,
+    2085,
+    2086,
+    2087,
+    2088,
+    2089,
+    2090,
+    2091,
+    2092,
+    2093,
+    2094,
+    2095
+  ],
+  "training_flops_by_arm": {
+    "guided": 1670492160,
+    "random": 1879179264
+  },
+  "treatment": "guided",
+  "win_rate": 0.6458333333333334
+}

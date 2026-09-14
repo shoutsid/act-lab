@@ -703,18 +703,25 @@ These remain TODO or DEFERRED until the first gate passes:
   /len, /show, /save, /quit) manage the loop; `--once` reads one seed line
   from stdin for piped use. Reuses `real_lm_infer.load_model` so chat and
   one-shot inference always agree on config, checkpoint, and decode.
-- `PYTHONPATH=src python scripts/generate_figures.py` -> writes the four factor-map
-  figures to `artifacts/study-summaries/figures/` (fig1 win-rate forest,
-  fig2 quality-vs-cost, fig3 delta distributions, fig4 probe-rank heatmap),
-  byte-identical across re-runs.
+- `PYTHONPATH=src python scripts/generate_figures.py [--set decoupled]` -> writes
+  the four factor-map figures (fig1 win-rate forest, fig2 quality-vs-cost, fig3
+  delta distributions, fig4 probe-rank heatmap), byte-identical across re-runs.
+  `--set decoupled` plots the corrected section 9.11 record into
+  `artifacts/study-summaries/decoupled/figures/` from summaries emitted by
+  `factor_map_recheck.py --summaries` (each re-verified by `check_summary` at
+  plot time); that set has eight rows (study 1 is not reconstructible) and
+  shares figure 4, whose counterfactual analysis was not re-run.
 - `PYTHONPATH=src python scripts/factor_map_recheck.py --list` -> prints the
   recheck set (8 probe-loss gate studies + the guided bound) and the one
   excluded study; `--study NAME --shard i --shards n --out DIR` re-runs a
   shard's slice with the published config and only `independent_arm_rng`
   changed, and `--compare '<DIR>/*.json'>` applies the declared label-agreement
-  rule and can write the result artifact. Ran as declared: 144 shards,
-  ~6 min wall, `artifacts/study-summaries/factor-map-recheck.json` (section
-  9.11). Unit-pinned in `tests/test_factor_map_recheck.py` (recheck set and
+  rule and can write  the result artifact, plus `--summaries DIR` to emit the corrected study
+  summaries in the committed schema (validated by `check_summary`, so a summary
+  that does not recompute cannot reach a figure). Ran as declared: 144 shards,
+  ~6 min wall, `artifacts/study-summaries/factor-map-recheck.json` and
+  `artifacts/study-summaries/decoupled/` (section 9.11). Unit-pinned in
+  `tests/test_factor_map_recheck.py` (recheck set and
   exclusion, only-the-RNG-changes reconstruction, shard merge order, label
   agreement and flip detection, threshold recomputation from n, and incomplete
   seed sets never reporting agreement).

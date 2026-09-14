@@ -48,7 +48,26 @@ def _record(study: str, rows: list[tuple[int, float, float]]) -> dict:
         "shards": 1,
         "independent_arm_rng": True,
         "treatment": "adaptive",
-        "per_seed": [list(row) for row in rows],
+        "experiments": [
+            {
+                "config": {"seed": seed},
+                "arms": [
+                    {
+                        "mode": "adaptive",
+                        "final_loss": treatment_loss,
+                        "search_flops": 11,
+                        "training_flops": 100,
+                    },
+                    {
+                        "mode": "random",
+                        "final_loss": random_loss,
+                        "search_flops": 0,
+                        "training_flops": 100,
+                    },
+                ],
+            }
+            for seed, treatment_loss, random_loss in rows
+        ],
     }
 
 
@@ -172,3 +191,48 @@ def test_compare_marks_an_incomplete_seed_set() -> None:
     rows = recheck.compare([_record("s", [(1, 1.0, 1.1), (2, 1.0, 1.1)])], published)
     assert rows[0]["seeds_complete"] is False
     assert rows[0]["trials"] == 2
+
+
+# --- emitting decoupled summaries for the figures ---------------------------
+
+
+def test_summaries_from_records_emits_the_committed_schema() -> None:
+    """The figures need full summaries, not just win counts.
+
+    Each emitted summary is put through ``figures_data.check_summary`` inside
+    ``summaries_from_records``, so a summary that does not recompute cannot
+    reach a figure; this pins the schema and the FLOPs aggregation that the
+    probe-cost figure depends on.
+    """
+    from act.evolution.figures_data import check_summary
+
+    rows = [(seed, 1.0 if seed < 15 else 1.2, 1.1) for seed in range(20)]
+
+    summary = recheck.summaries_from_records([_record("s", rows)])["s"]
+
+    assert summary["adaptive_wins"] == 15
+    assert summary["gate_min_wins"] == recheck._gate_min_wins(20, 0.05)
+    assert summary["gate_passed"] is True
+    assert summary["provenance"] == "decoupled-independent-arm-rng"
+    assert summary["treatment"] == "adaptive"
+    assert [item["config"]["seed"] for item in summary["experiments"]] == list(
+        range(20)
+    )
+    assert summary["search_flops_by_arm"] == {"adaptive": 220, "random": 0}
+    assert summary["training_flops_by_arm"] == {"adaptive": 2000, "random": 2000}
+    # The stored verdict must recompute - this is the figure pipeline's own check.
+    check_summary(summary, "s")
+
+
+def test_summaries_from_records_merges_shards_in_seed_order() -> None:
+    summaries = recheck.summaries_from_records(
+        [
+            _record("s", [(3001, 1.0, 1.1)]),
+            _record("s", [(3000, 1.0, 1.1)]),
+        ]
+    )
+    assert [item["config"]["seed"] for item in summaries["s"]["experiments"]] == [
+        3000,
+        3001,
+    ]
+    assert summaries["s"]["adaptive_wins"] == 2
