@@ -229,7 +229,7 @@ default remains cap-4/2-batch; cap-4/1-batch is the validated cheaper option.
 |---|---|---|---|---|---|---|
 | Horizon replication | study 3 config at steps=144 | cap4/2-batch, 3 events, steps=144 | fresh 8000-8383 | binomial sign test, alpha=0.05 | PASS -> pass generalizes; FAIL -> pass was horizon-specific | **DONE: PASS** (231/384, p 4.04e-05, t p 1.07e-08, cost 14.0%) |
 | Richness | candidate set size at fixed probe tokens | cap4/1-batch (A) vs cap2/2-batch (B), 3 events, steps=144 | fresh 7000-7383 | binomial sign test, alpha=0.05; factor claim: paired A-vs-B, one-tailed "rich better" | PASS & A>B -> richness is the active axis; B passes & B>=A -> probe quality is; neither -> both jointly necessary | **DONE: PASS for richness** (A 228/384, p 1.4e-04, t p 5.0e-05, cost 7.3%; B 193/384, p 0.48, cost 8.1%; paired A better 225/384, z = 3.37, p 8e-04) |
-| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config (see 5.1) | fresh 9000-9011 (12 pairs) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] | PASS + in-band + harm guard clear -> Gate 4 authorized; outside band -> re-derive before Gate 4; FAIL -> Gate 4 stays blocked | **PRE-REGISTERED (section 5.1), execution planned (section 5.2), not yet run; blocked on the 5.6 decision** |
+| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config (see 5.1) | 9000-9011 declared; **SPENT** - re-reserve to 15000-15011 (5.5 change 4) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] | PASS + in-band + harm guard clear -> Gate 4 authorized; outside band -> re-derive before Gate 4; FAIL -> Gate 4 stays blocked | **PRE-REGISTERED (section 5.1), execution planned (section 5.2), not yet run at declared fidelity; blocked on the 5.5 decision (its declared seed block is already spent - see 5.5 point 3)** |
 | Depth-4 Gate 3 confirmation | substrate expressiveness + selection value, with the arm-RNG fix | cap4/2-batch, `spread`, `independent_arm_rng`, 3 events, steps=48, depth 4 | fresh 60000-60383 (384 pairs) | argmin vs uniform churn, alpha/3 = 0.01667 (>= 214/384); paired argmin vs pool-matched control | PASS -> Gate 3 established on a non-degenerate substrate, 5.5 adopted; POOL-DRIVEN -> withdraw the selection claim; NOT REPRODUCED -> Gate 3 open, 5.1 must not launch | **DONE: PASS** (argmin vs uniform 255/384, p `6.1e-11`; paired increment 236/384, p `4.1e-06`; pool-matched control 209/384, p `0.046`; validity control does not pass). Section 9.9 |
 
 ### 5.1 Protocol: real-scale compute-efficiency measurement (pre-registered; gates Gate 4)
@@ -301,6 +301,9 @@ bar >= 0.2%.
    list, so scaling behavior is measured, not assumed.
 
 **Design.** 12 seed pairs, seeds 9000-9011 (fresh block), arms `random,adaptive`,
+  <!-- AUDIT (2026-09-14): this block is spent - see section 5.5 point 3. The
+  registered text is left as written; the pre-launch revision moves the queue
+  to 15000-15011. -->
 primary config cap-4/1-batch, secondary run cap-4/2-batch on the same seeds,
 budget matched at E=3, steps=6000, batch 2, context 2048. Every quantity in
 plan section 57's Model and Training metric lists is reported per arm
@@ -824,13 +827,31 @@ findings break that:
    one layer out of twelve. The V0 session now exposes `spread` for exactly
    this reason.
 2. The quality evidence is a toy-substrate result carrying a real pool
-   component. The clean, powered depth-4 measurement (section 9.7) gives the
-   registered comparison 246/384 against uniform churn while a loss-blind
-   same-pool control gets 217/384, so the pool accounts for ~29% of the mean
-   gain, and the probe ordering adds a decisive increment on top (222/384,
-   p `0.0013`). The mechanism is real; the effect size measured against uniform
-   churn is nonetheless inflated by the pool, so the protocol should price the
-   controller against a pool-matched control.
+   component. The registered depth-4 confirmation (section 9.9) gives the
+   registered comparison 255/384 against uniform churn while a loss-blind
+   same-pool control gets only 209/384 (p `0.046`, failing alpha/3), so the pool
+   accounts for ~32% of the mean gain, and the probe ordering adds a decisive
+   increment on top (236/384, p `4.1e-06`). The mechanism is real; the effect
+   size measured against uniform churn is nonetheless inflated by the pool, so
+   the protocol should price the controller against a pool-matched control.
+3. **The declared seed block is spent, so the protocol can no longer be a blind
+   measurement.** Section 5.1 reserves "fresh seed pairs (9000-9011)". They are
+   not fresh: the section 5.3 real-data diagnostic executed the section 5.1
+   machinery over the *entire* queue at reduced fidelity (steps=600, TinyStories)
+   through the same `run_pair_session`, and a section 5.1 verdict has already
+   been computed over those seeds - `artifacts/real-proof/datasets/
+   v0-5-1-verdict.json` reads `PASS_COST_ONLY_HARM_GUARD_REJECTS`, measured cost
+   `1.0077%`, `gate_4_authorized: false`, with the adaptive arm losing 11 of 12
+   pairs. Seed 9000 is additionally the single-seed default of `act.training.cli
+   --mode v0`, so it is the smoke seed. The consequence is specific and
+   disqualifying: the harm guard is one of the three branches that decide the
+   verdict, and its outcome on this block is already known. Re-running the same
+   declared queue at full fidelity after observing a harm-guard rejection is
+   exactly the "measure again until it passes" pattern the rest of this
+   protocol is built to prevent, and the seed-level pair difficulties are also
+   no longer novel. The prescribed remedy is not to reinterpret the old run: it
+   is to move the declared block to genuinely unused seeds and keep the reduced-
+   fidelity diagnostic labelled as a diagnostic (which it already is).
 
 **Proposed changes (design only; every registered threshold is unchanged).**
 
@@ -848,18 +869,33 @@ findings break that:
    arm's, record the cost PASS but withhold the Gate 4 recommendation, since
    the quality premise would then be unsupported. This is a reporting rule,
    not a new threshold.
+4. **Re-reserve the declared seed block to 15000-15011** (12 pairs, verified
+   unused across `src/`, `scripts/`, `tests/` and every documented block:
+   1000-8000 factor map, 5000-6000 cadence/variance, 9000-9011 spent above,
+   20000-20127, 30000-30011, 40000-40127, 50000-50383, 60000-60383). Nothing
+   else about the queue changes: 12 pairs, the same per-pair protocol, the same
+   5% criterion, band, harm guard and no-re-tuning rule, all now genuinely
+   blind. `scripts/v0_verdict.py` gained a `--seeds "A-B"` flag for exactly
+   this case (`compute_verdict`'s `declared_seeds`, default the registered
+   queue, so the registered behaviour is untouched until the flag is used and
+   no criterion is loosened by it - unit-pinned in `tests/test_v0_verdict.py`).
 
-**Explicitly unchanged.** The seed block 9000-9011, the declared V0 model
+**Explicitly unchanged.** The declared V0 model
 (285,336,576 / 134,341,632), the budget D = 24,576,000 tokens per arm, E = 3
 events, the planned/measured test sizes, the 5% criterion, the tolerance band,
 the harm guard, and the rule that no knob is re-tuned against the measured C.
+The one registered value that does move is the seed block, for the reason in
+point 3 above.
 
-**Status.** Proposed, not adopted. Its justification is now **confirmed by
-registered evidence**: the section 5.6 depth-4 confirmation passed out-of-sample
-on a fresh block (including the pool-matched control, which clears only alpha
-while the selection increment clears alpha/3 - section 9.9), so the revision no
-longer rests on exploratory numbers and only the sign-off is outstanding.
-Adopting it is a pre-registration and config decision, **not a code change**. The registered defaults remain
+**Status.** Proposed, not adopted. Two of its three parts are now backed by
+registered evidence: the section 5.6 depth-4 confirmation passed out-of-sample
+on a fresh block, including the pool-matched control (which clears only alpha
+while the selection increment clears alpha/3 - section 9.9), and point 3's spent
+block is a fact about the repository rather than an inference. Only the sign-off
+is outstanding. Adopting it is a pre-registration and config decision, **not a
+code change**: the seed-block move is a `--seeds` flag on `scripts/v0_verdict.py`
+(added, default unchanged) plus the runbook's declared queue, and the section 5.2
+launch command already takes `--seeds`. The registered defaults remain
 `prefix`/`argmin`, so the original protocol stays runnable; the revised one is
 reached by setting `probe_candidate_policy="spread"`. The pool-matched control
 needs no new arm: a session's decision rule is session-level config, so the

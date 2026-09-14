@@ -330,7 +330,7 @@ slower at 2.21 s/seed for a hidden-24 model); a 128-seed study is ~85 s.
 | Teacher initialization | PARTIAL | Explicit teacher and evolved shape-safe parameter transfer policies now exist; multi-seed retraining comparisons remain. |
 | Architecture reusability and fresh initialization | PARTIAL | Fresh, evolved, and rewound initialization policies report copied/skipped tensors; architecture-equivalence studies remain. |
 | Cross-seed stability and architecture equivalence | PARTIAL | Strict architecture-hash equivalence and cross-seed mean/stddev/min/max summaries now exist; full retraining studies remain. |
-| Compute-efficiency scaling | PRE-REGISTERED (execution path built; pre-launch tooling done) | Real-scale measurement protocol pre-registered in `RESEARCH_REPORT.md` section 5.1: declared 285M V0 config, predicted probe cost 0.094% (band 0.047-0.189%), 5% criterion + tolerance band + harm guard on 12 fresh seed pairs (9000-9011); PASS authorizes Gate 4. The V0 training path is implemented: declared `V0MoECausalLM` reproduces 285,336,576 / 134,341,632 parameters exactly, per-layer expert genomes rebuild weight-preserving after grow/prune, and `act.training.cli --mode v0` runs resumable sessions with version-4 checkpoints (FLOPs counters, genome, generator state persisted). Session integration checks live in `scripts/v0_session_selfcheck.py` (run on demand, NOT in the pytest suite). GPU execution plan pre-committed in section 5.2: per-GPU fp32 fit ~4.5 GB of 16 GB, 3.19 GB checkpoint payloads, `max_checkpoints=2` (pair steady state ~14.9 GB of the 20 GB working dir), throughput-gated dtype rule (fp32 floor 2,500 tokens/s, fp16 fallback), parameterized session schedule with atomic pairs and deadline/publish rules, and the versioned-dataset checkpoint handoff (~45 GB ledger). The 5.2 pre-launch tooling is now code: `scripts/v0_throughput_benchmark.py` (declared-model step-loop benchmark emitting the dtype decision and schedule artifact) and `act.training.session_plan` (registered schedule/deadline/working-dir arithmetic, unit-tested against the 5.2 tables); declared sessions now train with checkpointed activations as specified, with resume re-verified bit-identical; `act.training.v0_runner.run_pair_session` ties benchmark numbers, deadline rules, session training, and the dataset handoff into the per-seed session loop (atomic pairs, in-progress snapshots on deadline stops, restart-from-scratch, skip-completed idempotence), and `--mode pair-session` exposes it as the single launch command with the dtype rule enforced against the benchmark artifact; the fp16 contingency trains under autocast + GradScaler with scaler state in the version-5 checkpoint contract. |
+| Compute-efficiency scaling | PRE-REGISTERED (execution path built; pre-launch tooling done) | Real-scale measurement protocol pre-registered in `RESEARCH_REPORT.md` section 5.1: declared 285M V0 config, predicted probe cost  0.094% (band 0.047-0.189%), 5% criterion + tolerance band + harm guard on 12 seed pairs - declared as 9000-9011, but that block is SPENT (the section 5.3 diagnostic ran it at reduced fidelity and a 5.1 verdict already exists over it), so section 5.5 change 4 re-reserves 15000-15011 pending sign-off; PASS authorizes Gate 4. The V0 training path is implemented: declared `V0MoECausalLM` reproduces 285,336,576 / 134,341,632 parameters exactly, per-layer expert genomes rebuild weight-preserving after grow/prune, and `act.training.cli --mode v0` runs resumable sessions with version-4 checkpoints (FLOPs counters, genome, generator state persisted). Session integration checks live in `scripts/v0_session_selfcheck.py` (run on demand, NOT in the pytest suite). GPU execution plan pre-committed in section 5.2: per-GPU fp32 fit ~4.5 GB of 16 GB, 3.19 GB checkpoint payloads, `max_checkpoints=2` (pair steady state ~14.9 GB of the 20 GB working dir), throughput-gated dtype rule (fp32 floor 2,500 tokens/s, fp16 fallback), parameterized session schedule with atomic pairs and deadline/publish rules, and the versioned-dataset checkpoint handoff (~45 GB ledger). The 5.2 pre-launch tooling is now code: `scripts/v0_throughput_benchmark.py` (declared-model step-loop benchmark emitting the dtype decision and schedule artifact) and `act.training.session_plan` (registered schedule/deadline/working-dir arithmetic, unit-tested against the 5.2 tables); declared sessions now train with checkpointed activations as specified, with resume re-verified bit-identical; `act.training.v0_runner.run_pair_session` ties benchmark numbers, deadline rules, session training, and the dataset handoff into the per-seed session loop (atomic pairs, in-progress snapshots on deadline stops, restart-from-scratch, skip-completed idempotence), and `--mode pair-session` exposes it as the single launch command with the dtype rule enforced against the benchmark artifact; the fp16 contingency trains under autocast + GradScaler with scaler state in the version-5 checkpoint contract. |
 
 ## Plan Sections 67-105: Scale and Final Deliverables
 
@@ -418,14 +418,25 @@ These remain TODO or DEFERRED until the first gate passes:
    (285,336,576 total / 134,341,632 active parameters), predicted probe cost
    0.094% of training FLOPs under the measured per-event identity, decision
    rules fixed (5% criterion + factor-2 tolerance band + anti-adaptivity harm
-   guard), seeds 9000-9011 reserved. Running it as specified - without retuning
-   knobs against the result - is the entry condition for Gate 4. **Do not
-   launch on the current pre-registration**: the audit's proposed revision
-   (`RESEARCH_REPORT.md` section 5.5) must be decided first, because the
-   registered prefix controller reaches only layer 0 at the declared depth and
-   the pool-matched control arm is the missing quality check (the revision's
-   quality premise is now backed by the registered section 5.6 PASS, so only
-   the sign-off is outstanding). Both designs are executable from the committed
+   guard). Running it as specified - without retuning knobs against the result
+   - is the entry condition for Gate 4. **Do not launch on the current
+   pre-registration**: the audit's proposed revision (`RESEARCH_REPORT.md`
+   section 5.5) must be decided first, for three reasons. The registered
+   prefix controller reaches only layer 0 at the declared depth; the
+   pool-matched control arm is the missing quality check (its premise is now
+   backed by the registered section 5.6 PASS); and **the declared seed block
+   9000-9011 is already spent**, so the protocol can no longer be a blind
+   measurement - the section 5.3 diagnostic ran the full queue through the same
+   `run_pair_session` at reduced fidelity and a 5.1 verdict was computed over
+   it (`artifacts/real-proof/datasets/v0-5-1-verdict.json`: measured cost
+   `1.0077%`, `PASS_COST_ONLY_HARM_GUARD_REJECTS`, `gate_4_authorized: false`,
+   adaptive losing 11 of 12 pairs), which means the harm guard is one of the
+   three verdict branches whose outcome is already known. Re-running that queue
+   at full fidelity after seeing a harm-guard rejection is the "measure again
+   until it passes" pattern the protocol exists to prevent. Change 4 in section
+   5.5 re-reserves the queue to the unused block 15000-15011; the verdict
+   script now takes `--seeds "A-B"` for it (default unchanged), so adopting the
+   revision is still a config/flag decision rather than a code change. Both designs are executable from the committed
    code; only the decision is outstanding. The section 5.2
    pre-launch tooling (throughput benchmark, session scheduler, deadline rules,
    working-dir ledger, versioned-dataset handoff) is now code and unit-tested,
@@ -674,10 +685,13 @@ These remain TODO or DEFERRED until the first gate passes:
   the pre-registered §5.1 verdict from the published seed summaries (verified
   against a live-published dataset and now unit-pinned in
   `tests/test_v0_verdict.py`: correctly aggregates per-arm FLOPs under the
-  toy accounting, excludes stray complete seeds outside 9000-9011 with a
-  warning, refuses unmatched mutation budgets or missing arms, and returns
+  toy accounting, excludes stray complete seeds outside the declared block with
+  a warning, refuses unmatched mutation budgets or missing arms, and returns
   FAIL with the missing-seed list until the queue completes; the harm-guard
-  boundary (reject at >= 10 adaptive losses) is asserted on both sides).
+  boundary (reject at >= 10 adaptive losses) is asserted on both sides). The
+  declared block is overridable with `--seeds "A-B"` (or a comma list)
+  without loosening any criterion - added so section 5.5 change 4's re-reserved
+  queue is a flag, not a code edit; the registered default is unchanged.
   Exit codes:
   0 = PASS (Gate 4 authorized only with all 12 declared seeds complete),
   1 = FAIL, 2 = PASS with qualification (band miss or harm-guard rejection).

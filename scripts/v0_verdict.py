@@ -37,6 +37,25 @@ PRIMARY_COST_PERCENT = 5.0
 HARM_GUARD_LOSS_LIMIT = 10  # adaptive worse in >= 10 of 12 pairs rejects
 
 
+def parse_seeds(spec: str) -> tuple[int, ...]:
+    """Parse ``A-B`` (inclusive range) or a comma-separated seed list.
+
+    The registered queue is ``DECLARED_SEEDS``; this exists so a re-reserved
+    block (section 5.5 change 4) is a flag rather than a code edit, keeping
+    the revision executable without touching registered defaults.
+    """
+    spec = spec.strip()
+    if "-" in spec and "," not in spec:
+        start, end = spec.split("-", 1)
+        return tuple(range(int(start), int(end) + 1))
+    seeds = tuple(int(value.strip()) for value in spec.split(",") if value.strip())
+    if not seeds:
+        raise SystemExit("empty seed specification")
+    if len(set(seeds)) != len(seeds):
+        raise SystemExit("seed specification contains duplicates")
+    return seeds
+
+
 def _seed_numbers(dataset_root: Path) -> list[int]:
     handoff = dataset_root / HANDOFF_DATASET
     if not handoff.is_dir():
@@ -59,16 +78,29 @@ def _load_seed(dataset_root: Path, seed: int) -> dict:
     return summary
 
 
-def compute_verdict(dataset_root: Path, *, probe_batch_count: int) -> dict:
-    """Assemble the machine-checked section 5.1 verdict from published seeds."""
+def compute_verdict(
+    dataset_root: Path,
+    *,
+    probe_batch_count: int,
+    declared_seeds: tuple[int, ...] = DECLARED_SEEDS,
+) -> dict:
+    """Assemble the machine-checked section 5.1 verdict from published seeds.
+
+    ``declared_seeds`` defaults to the registered queue; overriding it does
+    not loosen any rule (the 5% criterion, the tolerance band, the harm guard
+    and the queue-completeness requirement all apply to whatever block is
+    declared).
+    """
+    if not declared_seeds:
+        raise SystemExit("declared seed block must not be empty")
     complete = _seed_numbers(dataset_root)
     if not complete:
         raise SystemExit("no complete seed versions found; nothing to judge")
     # The pre-registered analysis is over the declared queue exactly; stray
     # complete seeds (e.g. smoke tests) must not pollute the aggregate.
-    strays = sorted(set(complete) - set(DECLARED_SEEDS))
-    seeds = [seed for seed in complete if seed in DECLARED_SEEDS]
-    missing = sorted(set(DECLARED_SEEDS) - set(seeds))
+    strays = sorted(set(complete) - set(declared_seeds))
+    seeds = [seed for seed in complete if seed in declared_seeds]
+    missing = sorted(set(declared_seeds) - set(seeds))
     summaries = {seed: _load_seed(dataset_root, seed) for seed in seeds}
 
     # Aggregate per-arm FLOPs across all complete seeds (the pre-registered
@@ -123,6 +155,7 @@ def compute_verdict(dataset_root: Path, *, probe_batch_count: int) -> dict:
     return {
         "protocol": "v0-compute-efficiency-5.1",
         "probe_batch_count": probe_batch_count,
+        "declared_seeds": list(declared_seeds),
         "seeds_complete": seeds,
         "seeds_missing": missing,
         "seeds_stray": strays,
@@ -144,10 +177,10 @@ def compute_verdict(dataset_root: Path, *, probe_batch_count: int) -> dict:
         "verdict": verdict,
         "gate_4_authorized": verdict == "PASS" and not missing,
         "notes": (
-            "Gate 4 authorization requires all 12 declared seeds complete, "
-            "cost <= 5%, measured C inside the [0.5, 2]x band, and the harm "
-            "guard clear. A band miss forces re-derivation before Gate 4 "
-            "(no knob re-tuning against the measured C)."
+            f"Gate 4 authorization requires all {len(declared_seeds)} declared "
+            "seeds complete, cost <= 5%, measured C inside the [0.5, 2]x band, "
+            "and the harm guard clear. A band miss forces re-derivation before "
+            "Gate 4 (no knob re-tuning against the measured C)."
         ),
     }
 
@@ -163,11 +196,21 @@ def main() -> int:
         help="the run's pre-registered probe budget (1 primary, 2 secondary)",
     )
     parser.add_argument(
+        "--seeds", default=None,
+        help="declared seed block as 'A-B' or a comma-separated list "
+        "(default: the registered queue)",
+    )
+    parser.add_argument(
         "--output", type=Path, default=None,
         help="verdict JSON path (default <dataset-root>/v0-5-1-verdict.json)",
     )
     args = parser.parse_args()
-    verdict = compute_verdict(Path(args.dataset_root), probe_batch_count=args.probe_batch_count)
+    declared_seeds = parse_seeds(args.seeds) if args.seeds else DECLARED_SEEDS
+    verdict = compute_verdict(
+        Path(args.dataset_root),
+        probe_batch_count=args.probe_batch_count,
+        declared_seeds=declared_seeds,
+    )
     output = args.output or Path(args.dataset_root) / "v0-5-1-verdict.json"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(verdict, indent=2, sort_keys=True) + "\n")

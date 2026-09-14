@@ -486,3 +486,62 @@ def test_completed_toy_queue_is_judged_out_of_the_declared_band(
     assert verdict["harm_guard"]["adaptive_wins"] == sum(
         1 for pair in verdict["per_seed"] if pair["adaptive_wins"]
     )
+
+
+# --- re-reserving the declared block (section 5.5 change 4) ----------------
+
+
+def test_parse_seeds_accepts_ranges_and_lists() -> None:
+    assert v0_verdict.parse_seeds("12000-12003") == (12000, 12001, 12002, 12003)
+    assert v0_verdict.parse_seeds(" 5, 7 ,9 ") == (5, 7, 9)
+    with pytest.raises(SystemExit):
+        v0_verdict.parse_seeds("5,5")
+    with pytest.raises(SystemExit):
+        v0_verdict.parse_seeds("  ")
+
+
+def test_declared_block_can_be_re_reserved_without_loosening_a_rule(
+    tmp_path: Path,
+) -> None:
+    """A re-reserved queue is a flag, not a code edit, and changes no rule.
+
+    Section 5.5 change 4 moves the declared block off the seeds the real-data
+    diagnostic already spent. The same 5% criterion, tolerance band, harm
+    guard and queue-completeness requirement must apply to whatever block is
+    declared, and the registered block must be untouched when no override is
+    passed.
+    """
+    fresh = tuple(range(12000, 12012))
+    for index, seed in enumerate(fresh):
+        won = index < 6
+        _write_seed(
+            tmp_path,
+            seed,
+            adaptive_loss=1.0 if won else 1.5,
+            random_loss=1.5 if won else 1.0,
+            search_flops=_in_band_search_flops(),
+        )
+
+    # Default: the registered queue is still the analysis block, so the fresh
+    # block reads as strays and the registered seeds as missing.
+    default = v0_verdict.compute_verdict(tmp_path, probe_batch_count=1)
+    assert default["declared_seeds"] == list(DECLARED)
+    assert default["seeds_missing"] == list(DECLARED)
+    assert default["seeds_stray"] == list(fresh)
+    assert default["gate_4_authorized"] is False
+
+    # Overridden: the block is judged on exactly the same rules.
+    re_declared = v0_verdict.compute_verdict(
+        tmp_path, probe_batch_count=1, declared_seeds=fresh
+    )
+    assert re_declared["declared_seeds"] == list(fresh)
+    assert re_declared["seeds_complete"] == list(fresh)
+    assert re_declared["queue_complete"] is True
+    assert re_declared["seeds_stray"] == []
+    assert re_declared["measured_cost_percent"] == pytest.approx(
+        expected_probe_cost_percent(1), rel=1e-4
+    )
+    assert re_declared["in_tolerance_band"] is True
+    assert re_declared["harm_guard"]["adaptive_losses"] == 6
+    assert re_declared["verdict"] == "PASS"
+    assert re_declared["gate_4_authorized"] is True

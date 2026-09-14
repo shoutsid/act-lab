@@ -43,6 +43,23 @@ tolerance band are fixed in code and in §5.1/§5.2. The verdict is machine-chec
      parameters (the §5.1 tolerance band derives from these counts);
    - schedule/dtype constants printed for eyeball confirmation.
 
+5. **STOP — decide §5.5 before launching anything.** The registered seed
+   block **9000–9011 is spent**: the §5.3 real-data diagnostic ran that whole
+   queue through the same `run_pair_session` at reduced fidelity and a §5.1
+   verdict already exists over it (`artifacts/real-proof/datasets/
+   v0-5-1-verdict.json` — measured cost 1.0077%, `PASS_COST_ONLY_HARM_GUARD_
+   REJECTS`, `gate_4_authorized: false`, adaptive losing 11 of 12 pairs). The
+   harm guard is one of the three branches that decide this verdict, so a run
+   on that queue is no longer blind. `RESEARCH_REPORT.md` §5.5 change 4
+   re-reserves the unused block **15000–15011**; if that revision is adopted,
+   pass `--seeds 15000-15011` to the launch command in §2 and to
+   `scripts/v0_verdict.py` in §4 (the verdict script's flag was added for this
+   and loosens no criterion). Do **not** launch on 9000–9011 in either case.
+   Publish the runs under a **fresh** dataset root (`artifacts/datasets`, the
+   §2 default) — never point a session at `artifacts/real-proof/datasets`,
+   whose completed reduced-fidelity seed versions would be treated as
+   finished work by the skip-completed idempotence rule.
+
 ---
 
 ## 1. Session-1 throughput benchmark (fixes dtype + schedule)
@@ -98,8 +115,10 @@ PYTHONPATH=src python -m act.training.cli --mode pair-session \
   `--probe-batch-count 1` (the primary config), dataset root
   `artifacts/datasets`, session dir `artifacts/v0-sessions`.
 - Do **not** pass `--dtype` (it must equal the measured decision and is only
-  there to catch operator error), `--seeds` (queue is registered), or
-  `--tokens-per-second` (overrides the artifact).
+  there to catch operator error) or `--tokens-per-second` (overrides the
+  artifact). `--seeds` is registered too — but see pre-flight item 5: if the
+  §5.5 revision is adopted, `--seeds 15000-15011` is what "registered" means,
+  and the same flag must go to the verdict script.
 
 **Session 1 expected behavior:**
 
@@ -157,6 +176,7 @@ When all 12 seeds publish `complete` versions:
 PYTHONPATH=src python scripts/v0_verdict.py \
   --dataset-root artifacts/datasets \
   --probe-batch-count 1
+  # + `--seeds 15000-15011` if the §5.5 revision was adopted (pre-flight item 5)
 ```
 
 Exit codes and meanings:
