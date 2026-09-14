@@ -57,10 +57,11 @@ def test_decoupled_summaries_load_and_recompute() -> None:
     directory = summaries_dir() / "decoupled"
     summaries = load_summaries(directory, studies=DECOUPLED_STUDIES)
 
-    assert len(DECOUPLED_STUDIES) == len(STUDIES) - 1
+    # The corrected set is the whole factor map: section 9.12 recovered the
+    # field study 1's record predates, so no row is missing on this path.
+    assert DECOUPLED_STUDIES == STUDIES
     assert set(summaries) == {key for key, _, _ in DECOUPLED_STUDIES}
-    # Study 1 is not reconstructible on the decoupled path (section 9.10).
-    assert "legacy" not in summaries
+    assert "legacy" in summaries
     for key, _, filename in DECOUPLED_STUDIES:
         summary = summaries[key]
         assert summary["provenance"] == "decoupled-independent-arm-rng"
@@ -78,6 +79,7 @@ def test_decoupled_recheck_matches_the_report_section_9_11_table() -> None:
     summaries = load_summaries(summaries_dir() / "decoupled", studies=DECOUPLED_STUDIES)
 
     expected_wins = {
+        "legacy": 201,
         "guided": 62,
         "probe-loss": 222,
         "cheap-probe": 188,
@@ -96,8 +98,13 @@ def test_decoupled_recheck_matches_the_report_section_9_11_table() -> None:
     assert summaries["variance"]["gate_passed"] is True
     assert load_summaries()["variance"]["gate_passed"] is False
 
-    # Every recheckable study moved toward the treatment.
+    # The legacy row is a reconstruction (section 9.12), and it reproduces.
+    assert summaries["legacy"]["gate_passed"] is False
+    assert load_summaries()["legacy"]["gate_passed"] is False
+
+    # Every recheckable study moved toward the treatment - all nine rows.
     coupled = load_summaries()
+    assert len(expected_wins) == len(STUDIES) == 9
     for key in expected_wins:
         assert expected_wins[key] > coupled[key]["adaptive_wins"], key
 

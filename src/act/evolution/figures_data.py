@@ -39,11 +39,10 @@ def summaries_dir(root: Path | None = None) -> Path:
 
 # The decoupled (independent arm RNG) set: the studies that reconstruct from
 # their recorded config, so the corrected numbers can be plotted beside the
-# registered ones (report sections 9.10-9.11). Study 1 is absent because its
-# recorded config predates the probe fields - see EXCLUDED there.
-DECOUPLED_STUDIES: tuple[tuple[str, str, str], ...] = tuple(
-    entry for entry in STUDIES if entry[0] != "legacy"
-)
+# registered ones (report sections 9.10-9.12). This is now the whole factor
+# map: study 1's config predates `adaptive_policy`, and section 9.12 recovers
+# the value rather than excluding the study, so no row is missing.
+DECOUPLED_STUDIES: tuple[tuple[str, str, str], ...] = STUDIES
 
 
 def load_summaries(

@@ -266,6 +266,19 @@ def test_summaries_from_records_merges_shards_in_seed_order() -> None:
     assert summaries["s"]["adaptive_wins"] == 2
 
 
+def test_shard_summary_reads_the_shard_schema() -> None:
+    """A written shard reports its seed count without raising.
+
+    Regression: this line once read ``record['per_seed']`` (the probe-validity
+    script's key), which crashed a shard *after* it had written its file, so
+    completed shards looked failed.
+    """
+    record = _record("s", [(3000, 1.0, 1.1), (3001, 1.0, 1.1)])
+    line = recheck.shard_summary(Path("/tmp/s.json"), record)
+    assert "2 seed(s)" in line
+    assert "per_seed" not in line
+
+
 # --- the legacy reconstruction reproduces the published record ---------------
 
 

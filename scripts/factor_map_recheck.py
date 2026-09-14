@@ -331,6 +331,17 @@ def _print_list() -> None:
         print(f"\nreconstructed: {name}\n  supplies {supplied} (record predates the field)")
 
 
+def shard_summary(path: Path, record: dict) -> str:
+    """Confirmation line for a written shard.
+
+    Shard records key their per-seed payload as ``experiments``; ``per_seed``
+    belongs to the probe-validity script's schema. Reading the wrong key here
+    crashed a shard *after* it had written its file, so a completed shard
+    looked like a failed one - hence this being a tested function.
+    """
+    return f"{path}  ({len(record['experiments'])} seed(s))"
+
+
 def _print_compare(rows: list[dict]) -> None:
     print(
         f"{'study':28s} {'n':>4s} {'published':>14s} {'recheck':>14s} "
@@ -427,7 +438,7 @@ def main() -> int:
     suffix = "coupled" if args.coupled else "decoupled"
     path = args.out / f"{args.study}.shard{args.shard:02d}.{suffix}.json"
     path.write_text(json.dumps(record) + "\n")
-    print(f"{path}  ({len(record['per_seed'])} seed(s))")
+    print(shard_summary(path, record))
     return 0
 
 
