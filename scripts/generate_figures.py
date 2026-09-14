@@ -220,9 +220,13 @@ def figure_4_heatmap(summaries_dir_path: Path | None = None) -> "plt.Figure":
     ax.set_yticks(range(k), [f"probe {i + 1}" for i in range(k)])
     ax.set_xlabel("Realized final-loss rank among the 4 branches", fontsize=10)
     ax.set_ylabel("Probe-loss rank at the first mutation event", fontsize=10)
+    # The regime travels into the title: the coupled and decoupled analyses
+    # differ numerically, so an unlabelled figure would not say which record
+    # it plots.
+    regime = payload.get("rng_regime", "coupled")
     ax.set_title(
-        f"Figure 4 — Probe rank vs final rank ({total} counterfactual seeds);\n"
-        f"argmin concordance {concordance:.3f} vs chance 0.250",
+        f"Figure 4 — Probe rank vs final rank ({total} counterfactual seeds,\n"
+        f"{regime} arm RNG); argmin concordance {concordance:.3f} vs chance 0.250",
         fontsize=11,
     )
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="fraction of seeds")
@@ -284,10 +288,17 @@ def main() -> int:
             "fig3-delta-distributions.png",
             figure_3_deltas(summaries, studies, titles.get("fig3")),
         ),
-        # The counterfactual probe-rank analysis behind figure 4 was not part of
-        # the recheck (it is not an arm comparison), so both sets plot the same
-        # committed analysis and the decoupled set labels it as such.
-        ("fig4-probe-rank-heatmap.png", figure_4_heatmap(base)),
+        # Figure 4 reads whatever probe-rank analysis belongs to this set: the
+        # decoupled run writes its own (scripts/probe_validity_analysis.py),
+        # and falls back to the committed coupled analysis if it is absent.
+        (
+            "fig4-probe-rank-heatmap.png",
+            figure_4_heatmap(
+                directory
+                if (directory / "probe-validity-analysis.json").exists()
+                else base
+            ),
+        ),
     )
     for name, figure in outputs:
         target = figure_dir / name

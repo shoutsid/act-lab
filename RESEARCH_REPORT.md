@@ -164,21 +164,44 @@ than a pass (section 9.11).
 ### 3.2 Mechanism: what the probe signal is worth
 
 A pre-registered counterfactual analysis
-(`artifacts/study-summaries/probe-validity-analysis.json`) forced each of the
-4 candidates at the first mutation event (branch 0 verified trajectory-identical
-to greedy selection) and compared probe ranks to realized final ranks across
-384 seeds:
+(`artifacts/study-summaries/probe-validity-analysis.json`; the committed
+generator is `scripts/probe_validity_analysis.py`, which reproduces its stored
+results) forced each of the 4 candidates at the first mutation event (branch 0
+verified to reproduce the greedy run, and cross-checked seed-for-seed against
+the study summary's adaptive arm) and compared probe ranks to realized final
+ranks across 384 seeds. Both RNG regimes, since section 9.11 re-ran it:
 
-- Probe loss **does** predict realized loss: mean per-seed Spearman
-  rho = 0.1057 (t(383) = 3.64, one-tailed p = 1.4e-04); pooled z-scored
-  Pearson r = 0.1041 (z = 4.09).
-- But weakly, and mostly as **avoidance**: the probe-argmin matches the
-  realized best in only 28.1% of seeds (chance 25%), while it avoids a mean
-  worst-branch excess of 0.0860 and leaves only 0.0601 on the table.
+| Statistic | Coupled (published) | Decoupled (section 9.11) |
+|---|---|---|
+| mean per-seed Spearman rho | 0.1057 (t(383) = 3.64) | **0.0776** (t = 2.58) |
+| one-tailed p | 1.4e-04 | **4.98e-03** |
+| rho > 0 in | 53.1% of seeds | 51.3% of seeds |
+| pooled within-seed z-scored Pearson r | 0.1041 | 0.0809 |
+| probe-argmin = realized best (chance 25%) | 28.1% | 28.4% |
+| mean worst-branch excess avoided | 0.0860 | 0.0839 |
+| mean loss left on the table | 0.0601 | 0.0592 |
+
+- Probe loss **does** predict realized loss, but more weakly than published:
+  rho = 0.0776 on the corrected path (p = 4.98e-03), still clearly positive
+  and, with the coupled path, the only place the signal is measured directly
+  rather than through a win count.
+- The **avoidance** reading is confirmed and if anything sharper: the
+  probe-argmin matches the realized best in only 28.4% of seeds (chance 25%)
+  while avoiding a mean worst-branch excess of 0.0839 and leaving only 0.0592
+  on the table. The probe's value is in not picking badly, not in picking the
+  best - and that survives the RNG fix with essentially unchanged magnitude,
+  whereas the rank correlation weakens. That is consistent with section 9.11's
+  finding that the treatment's *edge* persists while its *ranking* signal is
+  weaker than the coupled path suggested.
+
+**Wherever the rest of this report says "rho ~ 0.11", read it as the coupled
+amplitude (0.1057); the corrected value is `0.078`.** The qualitative
+statements are unchanged, the numbers are not.
 
 The coherent story across all nine studies: **selection value comes from having
 candidates worth choosing between**. Probe loss is a real but weak predictor
-(rho ~ 0.11) whose value is concentrated in avoiding bad mutations; a rich
+(rho ~ 0.078 on the corrected path, 0.11 coupled) whose value is concentrated
+in avoiding bad mutations; a rich
 candidate set (cap 4) supplies that avoidance opportunity and passes Gate 3 at
 every horizon and probe-batch count tried, while every narrow-candidate
 variant is a coin flip regardless of probe quality, and repeated greedy
@@ -601,7 +624,8 @@ Findings:
   conclusion "selection value on real text needs richer probes or longer
   horizons" is narrowed by this result: neither axis of the toy factor map
   restores the edge at this fidelity. The coherent account is that single-
-  batch probe-loss ranking, already weak on synthetic data (rho ~ 0.11,
+  batch probe-loss ranking, already weak on synthetic data (rho ~ 0.11 coupled,
+  section 9.11 gives 0.078,
   section 3.2), carries an anti-predictive component on real language
   structure that more probe batches do not wash out (stability) and more
   candidates do not offset (relative loss persists).
@@ -1074,7 +1098,7 @@ section 9.9.
 | 9. Benchmark results | PARTIAL (this report's factor map; no real-corpus benchmarks) |
 | 10. Fresh-initialization results | TODO (policies exist; studies deferred) |
 | 11. Qwen architecture analysis | TODO (deferred) |
-| 12. Paper-quality figures | DONE for the factor map, in **two sets** (section 8): the registered coupled-path figures, and the corrected decoupled set (`--set decoupled`) plotted from summaries emitted by `scripts/factor_map_recheck.py --summaries` and re-checked by `check_summary` at plot time. Both regenerate byte-identically. Study 1 is absent from the corrected set (not reconstructible) and figure 4 is shared, since the counterfactual probe-rank analysis was not re-run. |
+| 12. Paper-quality figures | DONE for the factor map, in **two sets** (section 8): the registered coupled-path figures, and the corrected decoupled set (`--set decoupled`) plotted from summaries emitted by `scripts/factor_map_recheck.py --summaries` and re-checked by `check_summary` at plot time. Both regenerate byte-identically. Study 1 is absent from the corrected set (not reconstructible; figure 4's counterfactual analysis is re-run separately by `scripts/probe_validity_analysis.py`). |
 
 ## 8. Figures
 
@@ -1109,11 +1133,15 @@ from the coupled set, all deliberate:
   probe fields, so it cannot be reconstructed on this path (section 9.10). The
   figure titles say so rather than dropping or substituting the row silently.
 - **Figure 3** therefore shows studies 3, 4, 5 and 6 instead of 1, 3, 4, 5, 6.
-- **Figure 4 is shared.** The counterfactual probe-rank analysis behind it is
-  not an arm comparison and was not part of the recheck, so both sets plot the
-  same committed analysis. It is the one figure whose underlying analysis has
-  not been re-run under the decoupled RNG regime, and it is labelled as such
-  here rather than in the plot.
+- **Figure 4 is set-specific.** The counterfactual probe-rank analysis behind
+  it is not an arm comparison, so it is re-run separately
+  (`scripts/probe_validity_analysis.py`) and the decoupled set plots its own
+  analysis rather than sharing the coupled one: concordance 0.284 vs 0.25 and
+  rho 0.0776 (sections 3.2, 9.11). With that, **no figure in the corrected set
+  is plotted from coupled-path data.** Because the two analyses differ only
+  slightly in the plotted cells, figure 4's title now names its RNG regime - a
+  title-only edit that also regenerated the registered coupled figure, which is
+  the one intentional change to a published figure in this revision.
 
 Section 3's table, and the corrected win counts it quotes, come from the
 decoupled set. Both sets regenerate byte-identically, so neither can drift from
@@ -1132,8 +1160,8 @@ the summaries it is plotted from.
 4. **`fig4-probe-rank-heatmap.png` - probe-rank vs final-rank heatmap** from
    the 384 counterfactual branches: rows are probe ranks, columns realized
    final ranks, each row the conditional distribution of final rank given
-   probe rank; cell (probe 1, final 1) is the argmin concordance 0.281
-   (chance 0.250).
+   probe rank; cell (probe 1, final 1) is the argmin concordance - 0.281
+   coupled, 0.284 decoupled (chance 0.250 in both).
 
 ## 9. Substrate audit: a per-layer bug, a probe-policy axis, and a pool confound
 
@@ -1541,6 +1569,25 @@ cores; comparison artifact
   to the independent running made in section 9.8 through a different entry
   point (the CLI over the same block), which is the check that the recheck
   harness measures the same thing.
+- **The mechanism analysis was re-run as well** - the counterfactual probe-rank
+  sweep behind section 3.2 and figure 4, which until now had **no committed
+  generator** and was therefore reproducible only in principle. It has one now
+  (`scripts/probe_validity_analysis.py`), and the first thing that script did
+  was reproduce the committed coupled results field for field from a fresh
+  4-branch x 384-seed sweep, which is what makes the decoupled re-run a
+  controlled change rather than a second opinion. Decoupled: mean per-seed
+  Spearman rho **0.1057 -> 0.0776** (one-tailed p 1.4e-04 -> 4.98e-03) and
+  pooled within-seed Pearson r 0.1041 -> 0.0809, while the avoidance statistics
+  barely move (concordance 0.281 -> 0.284 vs chance 0.25, worst-branch excess
+  avoided 0.0860 -> 0.0839, left on table 0.0601 -> 0.0592). The ranking signal
+  is weaker than published; the "value is in not choosing badly" reading is
+  confirmed and does not depend on the RNG regime. **Honesty note:** unlike
+  section 9.10 this re-run was not pre-registered. What stands in its place is
+  that the analysis has a frozen `design` string, the seed block and every
+  statistic are unchanged, the coupled path was reproduced field for field
+  first, and the only difference is the RNG regime - so it is a controlled
+  re-measurement rather than a fresh hypothesis. It should still be treated as
+  a reproduction check, not as new pre-registered evidence.
 
 **Caveats.** Nine studies at depth 1 on a five-candidate space, so this
 strengthens or corrects a degenerate-space factor map, not the project's gate

@@ -286,6 +286,25 @@ section 9).
    still rests on the coupled path - a gap, not a pass. Net: no headline claim
    is overturned and no verdict needs revising except variance, but the depth-1
    factor map should now be quoted from the decoupled column.
+8. **The probe-validity counterfactual analysis has a committed generator, and
+   re-runs weaker.** The analysis behind report section 3.2 and figure 4 had
+   **no generator in the repository** - nothing produced
+   `artifacts/study-summaries/probe-validity-analysis.json` - so its numbers
+   were reproducible only in principle. `scripts/probe_validity_analysis.py` is
+   that entry point; it recovered the definitions from the committed file
+   (including two non-obvious ones: `h1_one_tailed_p` is a **normal** tail, not
+   a t tail, and `pooled_zscored_pearson_r` z-scores **within** each seed
+   before pooling), reproduces all 13 stored fields from the committed
+   `per_seed` block, and on a fresh 4-branch x 384-seed coupled sweep
+   reproduces the committed results field for field. Decoupled re-run: mean
+   per-seed Spearman rho **0.1057 -> 0.0776** (p 1.4e-04 -> 4.98e-03), pooled r
+   0.1041 -> 0.0809, while the avoidance statistics barely move (concordance
+   0.281 -> 0.284 vs chance 0.25, excess avoided 0.0860 -> 0.0839, left on
+   table 0.0601 -> 0.0592). Branch 0 reproduces the study summary's adaptive arm
+   seed for seed (max drift 1.9e-6: the identity is exact in principle, not
+   portably bit-exact across environments). Not pre-registered - it is a
+   controlled re-measurement of a frozen `design` string, and section 9.11
+   labels it as such rather than as new evidence. Report sections 3.2, 8, 9.11.
 
 Iteration cost for these checks: ~1.5 s/seed on CPU at depth 4 (GPU measured
 slower at 2.21 s/seed for a hidden-24 model); a 128-seed study is ~85 s.
@@ -710,7 +729,18 @@ These remain TODO or DEFERRED until the first gate passes:
   `artifacts/study-summaries/decoupled/figures/` from summaries emitted by
   `factor_map_recheck.py --summaries` (each re-verified by `check_summary` at
   plot time); that set has eight rows (study 1 is not reconstructible) and
-  shares figure 4, whose counterfactual analysis was not re-run.
+  plots its own figure 4, from the decoupled counterfactual analysis produced by
+  `scripts/probe_validity_analysis.py` (section 9.11).
+- `PYTHONPATH=src python scripts/probe_validity_analysis.py --verify` ->
+  recomputes every field of the committed probe-validity `results` block from
+  its `per_seed` block and checks it (13/13 fields agree). Without `--verify`:
+  `--shard i --shards n --out DIR [--coupled]` runs the 4-branch counterfactual
+  sweep for a seed slice, and `--analyze '<DIR>/*.json' [--out FILE]` merges
+  shards, cross-checks branch 0 against the named study summary, and writes the
+  document in the committed schema. Ran coupled (reproduces the committed
+  results) and decoupled (writes
+  `artifacts/study-summaries/decoupled/probe-validity-analysis.json`) -
+  section 9.11.
 - `PYTHONPATH=src python scripts/factor_map_recheck.py --list` -> prints the
   recheck set (8 probe-loss gate studies + the guided bound) and the one
   excluded study; `--study NAME --shard i --shards n --out DIR` re-runs a
