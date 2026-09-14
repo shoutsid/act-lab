@@ -1026,3 +1026,51 @@ value comes from a substrate with a demonstrated pool confound. Deciding the
 candidate policy and adding a pool-matched control arm (same candidates, same
 probe cost, loss-blind choice) is a prerequisite, and that decision belongs in
 the pre-registration, not in the analysis.
+
+### 9.7 The registered Gate 3 comparison does not survive a non-degenerate pool
+
+The audit's two threads meet in one test: under the **revised** design
+(`probe_candidate_policy="spread"`, so a cap of 4 is a real budget over 20
+candidates rather than a layer-0 prefix), on a fresh block 40000-40127
+(depth 4, steps=24, cap 4/1-batch, 128 seeds, ~143 s):
+
+| Comparison | Wins | Mean delta | Binomial p |
+|---|---|---|---|
+| argmin vs uniform churn (**the registered Gate 3 claim**) | 65/128 | -0.0143 | 0.465 |
+| loss-blind pool vs uniform churn | 63/128 | +0.0100 | 0.604 |
+| **argmin vs loss-blind pool** (paired, same pool, same cost) | **76/128** | **-0.0243** | **0.0208** |
+
+Read together with section 9.5, the picture is coherent and sharper than 9.5
+alone:
+
+- The **registered comparison fails** once the candidate pool is not
+  concentrated on layer 0: argmin does not beat uniform churn (65/128,
+  p = 0.465). The large depth-4 effects seen under the `prefix` policy in 9.5
+  (88/128) were therefore driven by the layer-0 pool, not by probe selection -
+  `prefix`/`argmin` and `prefix`/`random` both passed there (88 and 80), while
+  `spread`/`argmin` does not.
+- The **probe ordering itself is real**: against a loss-blind choice from the
+  identical pool at identical cost, argmin wins the paired comparison 76/128
+  (mean -0.0243, p = 0.021). This is the one positive, controlled result for
+  the mechanism anywhere in the project.
+- Neither arm beats uniform churn, and the pool's loss-blind choice is if
+  anything slightly worse than uniform (+0.010, n.s.), so the benefit is
+  specifically the probe's ordering, not the pool.
+
+**Implication for Gate 3.** Gate 3 as registered ("adaptive > random churn",
+per plan section 99's stop-and-simplify rule) is not reproduced on a substrate
+that can express topology: the depth-1 passes (section 3) are best explained as
+properties of a 5-candidate, single-layer space plus a layer-concentration
+pool effect. The defensible claim is now narrower: **probe-loss ordering beats
+a pool-matched loss-blind control by ~0.02 nats** (p = 0.02, one block, steps
+24). Whether that increment is worth its probe cost, and whether it survives a
+powered pre-registered study at a research-relevant scale, is the decision the
+project now faces - not how to amortize the cost of a controller whose
+registered comparison fails.
+
+**Caveats.** Unregistered, one block, 128 seeds at steps=24, tiny depth-4
+(model 24 hidden), no family-wise correction, and a claim about the *toy*
+substrate - the V0 path has not been measured this way. It is reported because
+it is the first controlled measurement of the mechanism and it inverts the
+project's headline claim; it should be re-run pre-registered before it drives a
+decision.
