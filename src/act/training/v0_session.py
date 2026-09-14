@@ -81,6 +81,18 @@ class V0SessionConfig:
     # Selection: cap-4/1-batch primary (set probe_batch_count=2 for secondary).
     probe_candidate_cap: int = 4
     probe_batch_count: int = 1
+    # Decision rule applied to the probed candidates (real-data diagnostic,
+    # report section 5.3): "argmin" is the registered controller (lowest probe
+    # loss wins); "argmax" deliberately selects the probe-WORST candidate as
+    # the inverted-signal control. Both probe the same candidates with the
+    # same batches and book the same search FLOPs - only the decision differs.
+    probe_selection: str = "argmin"
+    # Landscape instrumentation (report section 5.3): when enabled, each
+    # adaptive mutation-history event records every probed candidate with its
+    # probe loss, sorted best-first so list index = probe rank, plus the
+    # selected candidate's index. Bookkeeping only - it changes no decision,
+    # no FLOPs counter, and no RNG consumption.
+    probe_landscape: bool = False
     validation_batches: int = 4
     # Session mechanics. The declared config trains with checkpointed
     # activations (section 5.1); the T4 fit arithmetic in section 5.2 assumes
@@ -104,6 +116,13 @@ class V0SessionConfig:
     # the held-out validation loss (defaulting to the training stream).
     data_path: str | None = None
     val_data_path: str | None = None
+    # Probe data source (report section 5.3's post-argmax contract): "train"
+    # (default) probes on training-stream windows - the registered controller;
+    # "heldout" probes on windows from the held-out validation stream, testing
+    # whether the argmin ranking's anti-predictive component comes from probe
+    # windows sitting in-corpus. Same candidates, same probe batch count, same
+    # booked probe FLOPs - only the probe windows' source stream differs.
+    probe_data_source: str = "train"
 
     def __post_init__(self) -> None:
         if self.total_steps < 1 or self.batch_size < 1:
@@ -112,6 +131,12 @@ class V0SessionConfig:
             raise ValueError("mutation_interval and mutation_budget must be positive")
         if self.probe_candidate_cap < 1 or self.probe_batch_count < 1:
             raise ValueError("probe budgets must be positive")
+        if self.probe_selection not in {"argmin", "argmax"}:
+            raise ValueError(f"unsupported probe_selection: {self.probe_selection}")
+        if self.probe_data_source not in {"train", "heldout"}:
+            raise ValueError(f"unsupported probe_data_source: {self.probe_data_source}")
+        if self.probe_data_source == "heldout" and self.val_data_path is None:
+            raise ValueError("probe_data_source='heldout' requires val_data_path")
         if self.dtype not in {"fp32", "fp16"}:
             raise ValueError(f"unsupported session dtype: {self.dtype}")
         if self.validation_batches < 1:
@@ -363,13 +388,15 @@ def _adaptive_event(
     device: torch.device,
     probe_batches: tuple[Tensor, ...],
 ) -> tuple[V0MoECausalLM, torch.optim.Optimizer]:
-    """Probe candidate mutations and apply the lowest-probe-loss one.
+    """Probe candidate mutations and apply the probed-selection winner.
 
     Mirrors the toy ``_mutate_by_probe``: probe models are built one at a time
     (never retained), search FLOPs are booked per evaluated candidate, and the
     winner is rebuilt once from the current model with by-id expert transfer.
-    A no-op event (no feasible candidates) preserves the existing optimizer
-    exactly as the toy path does.
+    The decision rule is ``config.probe_selection``: "argmin" (the registered
+    controller) takes the lowest probe loss; "argmax" (the diagnostic control)
+    takes the highest. A no-op event (no feasible candidates) preserves the
+    existing optimizer exactly as the toy path does.
     """
     candidates = feasible_expert_mutations(arm_state.genome)[: config.probe_candidate_cap]
     probe_tokens = sum(batch.numel() for batch in probe_batches)
@@ -386,7 +413,10 @@ def _adaptive_event(
     if not evaluated:
         return model, optimizer
     evaluated.sort(key=lambda item: (item[0], item[1]))
-    probe_loss, _, operation, layer_id, expert_id, winner_genome = evaluated[0]
+    winner_index = -1 if config.probe_selection == "argmax" else 0
+    probe_loss, _, operation, layer_id, expert_id, winner_genome = evaluated[
+        winner_index
+    ]
     before_hash = genome_hash(arm_state.genome)
     arm_state.genome = winner_genome
     arm_state.mutations += 1
@@ -394,21 +424,36 @@ def _adaptive_event(
     arm_state.search_flops += winner.parameter_count * 4
     _prepare_model(winner, config)
     new_optimizer = torch.optim.AdamW(winner.parameters(), lr=config.learning_rate)
-    arm_state.mutation_history.append(
-        {
-            "step": step,
-            "policy": "adaptive_probe_loss",
-            "operation": operation,
-            "layer_id": layer_id,
-            "expert_id": expert_id,
-            "architecture_hash_before": before_hash,
-            "architecture_hash_after": genome_hash(arm_state.genome),
-            "mutation_count": arm_state.mutations,
-            "probe_loss": probe_loss,
-            "probe_candidates": len(evaluated),
-            "probe_batch_count": len(probe_batches),
-        }
-    )
+    entry = {
+        "step": step,
+        "policy": f"adaptive_probe_{config.probe_selection}",
+        "operation": operation,
+        "layer_id": layer_id,
+        "expert_id": expert_id,
+        "architecture_hash_before": before_hash,
+        "architecture_hash_after": genome_hash(arm_state.genome),
+        "mutation_count": arm_state.mutations,
+        "probe_loss": probe_loss,
+        "probe_candidates": len(evaluated),
+        "probe_batch_count": len(probe_batches),
+    }
+    if config.probe_landscape:
+        # ``evaluated`` is sorted by (loss, order) ascending, so the landscape
+        # is reported lowest-probe-loss first and index k is the k-th best
+        # candidate under that loss ordering. ``probe_selected_index`` points
+        # into it (normalized from the argmax rule's -1 tail pick), so an
+        # argmin event selects index 0 and an argmax event selects the last.
+        entry["probe_landscape"] = [
+            {
+                "operation": item[2],
+                "layer_id": item[3],
+                "expert_id": item[4],
+                "probe_loss": item[0],
+            }
+            for item in evaluated
+        ]
+        entry["probe_selected_index"] = winner_index % len(evaluated)
+    arm_state.mutation_history.append(entry)
     return winner, new_optimizer
 
 
@@ -547,12 +592,20 @@ def _train_arm(
         generator.set_state(arm_state.generator_state)
 
     # Probe batches: dedicated generator (never touches the token stream), one
-    # training-batch shape per probe batch, as declared in section 5.1.
+    # training-batch shape per probe batch, as declared in section 5.1. The
+    # probe stream defaults to the training stream; the section-5.3 heldout
+    # diagnostic probes the validation stream instead. Same dedicated
+    # generator and draw discipline either way, so resume determinism and the
+    # bit-identical contract are untouched - the probe batches are rebuilt
+    # identically from the seed on resume.
+    probe_sampler = train_sampler
+    if config.data_path is not None and config.probe_data_source == "heldout":
+        probe_sampler = WindowSampler(config.val_data_path, config.vocab_size)
     probe_generator = torch.Generator(device="cpu")
     probe_generator.manual_seed(config.seed ^ 0xB0B)
-    if train_sampler is not None:
+    if probe_sampler is not None:
         probe_batches = tuple(
-            train_sampler.draw(probe_generator, config.batch_size, config.context_size).to(device)
+            probe_sampler.draw(probe_generator, config.batch_size, config.context_size).to(device)
             for _ in range(config.probe_batch_count)
         )
     else:

@@ -500,6 +500,127 @@ them on the day:
   Validated end-to-end: benchmark artifact -> CLI -> 12/12 declared
   pairs published.
 
+### 5.3 Real-data selection diagnostic: neither toy axis survives real text (harm-guard follow-up)
+
+The section 5.1 machinery executed on the real TinyStories token stream
+(reduced fidelity, seeds 9000-9011; recorded in `IMPLEMENTATION_STATUS.md`)
+ended in `PASS_COST_ONLY_HARM_GUARD_REJECTS`: the cost identity held again
+(measured 1.0077% vs 0.9977% predicted), but the adaptive arm lost 11 of 12
+pairs. The pre-registered next step (study 5's winner's-curse reading) was
+to test the two toy-winning axes on real text. That diagnostic
+(`scripts/real_data_diagnostic.py`) ran both variants over the SAME paired
+seed block 9000-9007 at steps=600 through the production `run_pair_session`,
+with each variant running its own random arm per seed; every variant's random
+arm reproduced its baseline counterpart's final loss exactly, so within each
+pair only the selection policy differed. There is no significance machinery
+here - 8 seeds is a diagnostic sample, not a gate - the numbers below are
+paired descriptions.
+
+| Variant | Factor doubled | Config | Measured probe cost | Adaptive wins | Mean delta vs own random | Mean adaptive vs baseline adaptive |
+|---|---|---|---|---|---|---|
+| var | probe quality (batches) | cap-4 / 4-batch | 3.99% | 0/8 | +0.2858 | +0.0103 |
+| rich | candidate richness | cap-8 / 1-batch | 1.98% | 1/8 | +0.1661 | -0.1094 |
+
+Findings:
+
+- **Variance is excluded as the mechanism - and not by the win counts.** In 5
+  of 8 seeds the 4-batch argmin chose bit-identically to the baseline
+  1-batch argmin (final-loss delta exactly 0.0); where it did differ
+  (seeds 9002, 9005, 9006) outcomes were mixed. Quadrupling probe batches
+  almost never changed the decision, so the probe ranking is already stable
+  at baseline quality: on real text it is stably misaligned, not stochastically
+  wrong. Study 6's winner's-curse mechanism (argmin amplifying probe-batch
+  noise) cannot explain the real-data failure.
+- **Richness operates in absolute terms but not relative to random.** The
+  `rich` adaptive arm beat the baseline adaptive arm by a mean 0.109 in final
+  loss - the toy richness axis itself still transfers - yet it still lost to
+  its own random arm by 0.166. Random probe-argmin candidates are
+  systematically better on real text than the probe's best picks.
+- **Revised reading of the original harm-guard run.** The study-4-era
+  conclusion "selection value on real text needs richer probes or longer
+  horizons" is narrowed by this result: neither axis of the toy factor map
+  restores the edge at this fidelity. The coherent account is that single-
+  batch probe-loss ranking, already weak on synthetic data (rho ~ 0.11,
+  section 3.2), carries an anti-predictive component on real language
+  structure that more probe batches do not wash out (stability) and more
+  candidates do not offset (relative loss persists).
+
+**Pre-registered next discriminator - RUN: the probe is uninformative, not
+inverted.** The argmax control ran on the same paired block through the same
+machinery (`V0SessionConfig.probe_selection="argmax"`; only the decision rule
+differs - same candidates, same probe batches, same booked probe FLOPs,
+measured 1.01% of training FLOPs vs the baseline's ~1.0%). Outcome:
+**0/8 adaptive wins, mean delta vs own random +0.3048** - argmax also loses,
+and by almost exactly as much as argmin (+0.2858); its adaptive arm sits
++0.0293 from the baseline argmin adaptive arm. Two checks confirm the control
+was non-degenerate: on seed 9000 it picked 0/3 identical (operation, layer,
+expert) triples to argmin, and the operation balance inverted (argmin chose
+20 prune / 4 grow across all events; argmax 11 prune / 13 grow). By the
+discriminator contract fixed before the run: both tails of the probe ranking
+losing to random by the same amount means the single-batch probe-loss ranking
+carries **no candidate-ordering information on real text at this fidelity** -
+the signal is uninformative, not inverted, so negating the criterion cannot
+help and the fix must come from probe horizon/tokens (more or later probe
+data), not from the decision rule. The diagnostic remains outside the gate
+framework until a passing configuration is identified and pre-registered on
+a fresh seed block.
+
+Raw evidence: `artifacts/real-diag/diagnostic.json` (per-seed paired losses,
+all three variants; run log alongside); seed summaries under
+`artifacts/real-diag/{var,rich,argmax}/datasets/act-checkpoints/v0-5-1/`.
+The `argmax` variant is unit-pinned (`tests/test_v0_session.py`: config
+validation and the inverted-decision path), and the mutation-history policy
+string (`adaptive_probe_argmin` / `adaptive_probe_argmax`) audits which rule
+produced each recorded event.
+
+**Per-candidate rank logging.** The mechanism claims above (pick identity,
+operation balance, selected rank) were reconstructed post-hoc from raw
+histories. The diagnostic now records them natively: `V0SessionConfig`
+gained a `probe_landscape` flag (bookkeeping only; off by default, mirroring
+the toy path's instrumentation) that writes every probed candidate's probe
+loss into each adaptive event's history, sorted best-first, plus
+`probe_selected_index` pointing into that ordering (index 0 = probe-best,
+last = probe-worst, so an argmin event selects 0 and an argmax event selects
+the tail). The diagnostic enables it for every variant and aggregates a
+per-variant `probe_rank` block into `diagnostic.json` (event count, mean
+selected rank, rank histogram, near-top rate). Any future mechanism claim -
+including the probe-horizon/tokens fix this section motivates - is thus
+directly measurable from the published seed summaries rather than inferred.
+Pre-instrumentation artifacts report `events_with_landscape: 0` until a
+variant is re-run (`--force` moves previous results aside, since the runner
+skips completed pairs).
+
+**Designed fix candidate - probe-data provenance (`heldout`), pre-registered
+before running.** The argmax verdict licensed exactly one fix axis: probe
+horizon/tokens ("more or later probe data"). Its "more" reading is already
+falsified - `var` quadrupled same-distribution probe batches and went 0/8 -
+so the next single-axis candidate tests the "different probe data" reading:
+the probe windows currently come from the training stream, so the argmin
+ranking may be anti-predictive because it scores candidates on text the arm
+is about to train on (in-corpus, memorization-adjacent signal that does not
+transfer to the arm's future). The `heldout` variant (`V0SessionConfig
+.probe_data_source="heldout"`; cap-4/1-batch/argmin, probe batches drawn
+from the held-out validation stream via the existing `WindowSampler`
+discipline) changes only the probe windows' source stream - same
+candidates, same probe batch count, same booked probe FLOPs (baseline-
+matched, ~1%), same paired seed block 9000-9007, and both arms' resume
+determinism is pinned by test. Pre-registered outcome contract: (a)
+heldout-argmin beating its random arm would mean in-corpus probe windows
+are the mechanism and probe-data provenance is the fix; (b) heldout-argmin
+losing like train-argmin (mean delta ~ +0.29) falsifies provenance as the
+mechanism and leaves the probe ranking uninformative under both sources -
+at which point the probe's information content, not its data, is the
+binding constraint and the remaining licensed lever is a longer probe
+horizon (more/later probe tokens, at ~4x probe cost). Either outcome is
+decisive through the `probe_rank` instrumentation (mean selected rank and
+histogram per variant), so mechanism claims stay directly measurable.
+Standard caveats: diagnostic, not a pre-registered gate; 8 seeds
+unpowered; TinyStories validation is held-out *stories* from the same
+corpus, not a distribution shift - which is exactly the point (probe on
+text the arm never trains on). Unit-pinned in `tests/test_v0_real_data.py`
+(config validation, real stream-switch at the first event, cost parity,
+bit-identical resume).
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

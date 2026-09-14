@@ -7,6 +7,7 @@ or a mocked CLI invocation, so the whole file stays in about a second.
 """
 
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -378,3 +379,178 @@ def test_cli_v0_mode_writes_summary(tmp_path: Path, monkeypatch) -> None:
     assert not summary["harm_guard_rejects"]
     assert summary["measured_cost_percent"] == pytest.approx(1.1)
     assert len(summary["per_seed"]) == 2
+
+
+def test_v0_session_config_rejects_unknown_probe_selection() -> None:
+    with pytest.raises(ValueError, match="probe_selection"):
+        V0SessionConfig(probe_selection="median")
+
+
+def test_argmax_selection_takes_the_probe_worst_candidate(tmp_path: Path) -> None:
+    """The argmax control probes identically but decides inverted.
+
+    Same seed, same candidate enumeration, same probe batches and booked
+    probe FLOPs as the argmin controller - only the decision rule differs -
+    so at the first event both arms rank the SAME candidate set and the
+    argmax pick's recorded probe loss must be >= the argmin pick's (equal
+    only under an all-candidate tie; strictly greater only if the choices
+    differ, since one candidate cannot be both strict min and strict max).
+    """
+    common = dict(
+        seed=31,
+        arms=("adaptive",),
+        declared=False,
+        device="cpu",
+        vocab_size=64,
+        context_size=256,
+        hidden_size=64,
+        depth=2,
+        attention_heads=4,
+        expert_count=4,
+        expert_width=32,
+        total_steps=6,
+        mutation_interval=2,
+        mutation_budget=2,
+        probe_batch_count=1,
+        validation_batches=2,
+        checkpoint_interval=2,
+        max_checkpoints=2,
+    )
+    reference = run_v0_session(
+        V0SessionConfig(**common), checkpoint_dir=tmp_path / "argmin"
+    )
+    control = run_v0_session(
+        V0SessionConfig(**common, probe_selection="argmax"),
+        checkpoint_dir=tmp_path / "argmax",
+    )
+    ref_events = reference.arms[0].mutation_history
+    max_events = control.arms[0].mutation_history
+    assert len(ref_events) == len(max_events) == 2
+    assert ref_events[0]["policy"] == "adaptive_probe_argmin"
+    assert max_events[0]["policy"] == "adaptive_probe_argmax"
+    assert control.arms[0].search_flops > 0
+    assert max_events[0]["probe_loss"] >= ref_events[0]["probe_loss"]
+    if max_events[0]["probe_loss"] > ref_events[0]["probe_loss"]:
+        choice = ("operation", "layer_id", "expert_id")
+        assert tuple(max_events[0][k] for k in choice) != tuple(
+            ref_events[0][k] for k in choice
+        )
+
+
+def test_probe_landscape_records_ranked_candidates(tmp_path: Path) -> None:
+    """Landscape instrumentation logs every probed candidate, best-first.
+
+    Mirrors the toy path's ``probe_landscape`` contract: one entry per
+    evaluated candidate sorted ascending by probe loss (index k = k-th best),
+    with ``probe_selected_index`` pointing into it - so an argmin event
+    selects index 0. Bookkeeping only: the winner's probe loss, candidate
+    count, and search FLOPs are unchanged from the un-instrumented run.
+    """
+    common = dict(
+        seed=41,
+        arms=("adaptive",),
+        declared=False,
+        device="cpu",
+        vocab_size=64,
+        context_size=256,
+        hidden_size=64,
+        depth=2,
+        attention_heads=4,
+        expert_count=4,
+        expert_width=32,
+        total_steps=6,
+        mutation_interval=2,
+        mutation_budget=2,
+        probe_batch_count=1,
+        validation_batches=2,
+        checkpoint_interval=2,
+        max_checkpoints=2,
+    )
+    plain = run_v0_session(
+        V0SessionConfig(**common), checkpoint_dir=tmp_path / "plain"
+    )
+    instrumented = run_v0_session(
+        V0SessionConfig(**common, probe_landscape=True),
+        checkpoint_dir=tmp_path / "landscape",
+    )
+    plain_arm = plain.arms[0]
+    landscape_arm = instrumented.arms[0]
+    assert landscape_arm.final_loss == plain_arm.final_loss
+    assert landscape_arm.search_flops == plain_arm.search_flops
+    for event in landscape_arm.mutation_history:
+        landscape = event["probe_landscape"]
+        assert len(landscape) == event["probe_candidates"]
+        losses = [item["probe_loss"] for item in landscape]
+        assert losses == sorted(losses)
+        assert all(math.isfinite(loss) for loss in losses)
+        assert all(item["operation"] in {"grow", "prune"} for item in landscape)
+        assert all("L" in item["layer_id"] for item in landscape)
+        selected = event["probe_selected_index"]
+        assert 0 <= selected < len(landscape)
+        assert event["probe_loss"] == landscape[selected]["probe_loss"]
+        assert selected == 0  # argmin rule picks the probe-best candidate
+
+
+def test_probe_landscape_marks_argmax_tail_selection(tmp_path: Path) -> None:
+    """Under argmax the recorded selected index is the probe-worst rank."""
+    result = run_v0_session(
+        V0SessionConfig(
+            seed=42,
+            arms=("adaptive",),
+            declared=False,
+            device="cpu",
+            vocab_size=64,
+            context_size=256,
+            hidden_size=64,
+            depth=2,
+            attention_heads=4,
+            expert_count=4,
+            expert_width=32,
+            total_steps=4,
+            mutation_interval=2,
+            mutation_budget=1,
+            probe_batch_count=1,
+            validation_batches=2,
+            checkpoint_interval=2,
+            max_checkpoints=2,
+            probe_selection="argmax",
+            probe_landscape=True,
+        ),
+        checkpoint_dir=tmp_path / "argmax-landscape",
+    )
+    for event in result.arms[0].mutation_history:
+        landscape = event["probe_landscape"]
+        selected = event["probe_selected_index"]
+        assert selected == len(landscape) - 1
+        losses = [item["probe_loss"] for item in landscape]
+        assert event["probe_loss"] == max(losses)
+
+
+def test_probe_landscape_off_by_default(tmp_path: Path) -> None:
+    """Without the flag, events carry no landscape fields (contract parity)."""
+    result = run_v0_session(
+        V0SessionConfig(
+            seed=43,
+            arms=("adaptive",),
+            declared=False,
+            device="cpu",
+            vocab_size=64,
+            context_size=256,
+            hidden_size=64,
+            depth=2,
+            attention_heads=4,
+            expert_count=4,
+            expert_width=32,
+            total_steps=4,
+            mutation_interval=2,
+            mutation_budget=1,
+            probe_batch_count=1,
+            validation_batches=2,
+            checkpoint_interval=2,
+            max_checkpoints=2,
+        ),
+        checkpoint_dir=tmp_path / "off",
+    )
+    for event in result.arms[0].mutation_history:
+        assert "probe_landscape" not in event
+        assert "probe_selected_index" not in event

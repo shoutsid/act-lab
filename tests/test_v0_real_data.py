@@ -205,3 +205,103 @@ def test_synthetic_and_real_data_streams_differ(tmp_path: Path) -> None:
         checkpoint_dir=tmp_path / "real",
     )
     assert synthetic.arms[0].final_loss != real.arms[0].final_loss
+
+
+# --- probe data source (section 5.3 heldout diagnostic) ---------------------
+
+
+def test_config_rejects_heldout_probe_source_without_val_stream() -> None:
+    with pytest.raises(ValueError, match="heldout"):
+        V0SessionConfig(declared=False, probe_data_source="heldout")
+
+
+def test_heldout_probe_source_probes_the_val_stream(tmp_path: Path) -> None:
+    """Heldout probing is a real stream switch, not a silent no-op.
+
+    Both variants run the identical arm (same seed, same training stream,
+    same argmin rule); only the probe windows' source differs. At the FIRST
+    event both probe the same pre-mutation model, so if the probe windows
+    really come from the held-out stream the recorded winner probe losses
+    differ; a broken routing (probe windows still from the training stream)
+    would reproduce the train variant's losses bit for bit.
+    """
+    stream = _write_stream(tmp_path / "stream.npy")
+    val_stream = _write_stream(tmp_path / "val.npy", seed=9)
+    common = dict(probe_landscape=True, probe_candidate_cap=4, probe_batch_count=1)
+    train = run_v0_session(
+        _config(tmp_path, stream, val_stream, **common),
+        checkpoint_dir=tmp_path / "train-probe",
+    )
+    heldout = run_v0_session(
+        _config(tmp_path, stream, val_stream, probe_data_source="heldout", **common),
+        checkpoint_dir=tmp_path / "heldout-probe",
+    )
+    train_events = train.arms[1].mutation_history
+    heldout_events = heldout.arms[1].mutation_history
+    assert len(train_events) == len(heldout_events) == 2
+    assert all(event["policy"] == "adaptive_probe_argmin" for event in heldout_events)
+    assert train_events[0]["probe_candidates"] == 4
+    assert heldout_events[0]["probe_candidates"] == 4
+    # First event: same model, different probe windows -> different probe loss.
+    assert train_events[0]["probe_loss"] != heldout_events[0]["probe_loss"]
+    # The probe source is auditable in the published config payload.
+    assert train.config["probe_data_source"] == "train"
+    assert heldout.config["probe_data_source"] == "heldout"
+
+
+def test_heldout_probe_source_books_no_extra_cost(tmp_path: Path) -> None:
+    """Probe provenance changes no booked cost and no budget discipline."""
+    stream = _write_stream(tmp_path / "stream.npy")
+    val_stream = _write_stream(tmp_path / "val.npy", seed=9)
+    train = run_v0_session(
+        _config(tmp_path, stream, val_stream), checkpoint_dir=tmp_path / "train"
+    )
+    heldout = run_v0_session(
+        _config(tmp_path, stream, val_stream, probe_data_source="heldout"),
+        checkpoint_dir=tmp_path / "heldout",
+    )
+    for train_arm, heldout_arm in zip(train.arms, heldout.arms):
+        assert heldout_arm.mutation_count == train_arm.mutation_count
+        assert heldout_arm.search_flops == train_arm.search_flops
+        assert heldout_arm.training_flops == train_arm.training_flops
+
+
+def test_heldout_probe_resume_is_bit_identical(tmp_path: Path) -> None:
+    """The heldout probe stream obeys the section 5.2 resume contract too."""
+    stream = _write_stream(tmp_path / "stream.npy")
+    val_stream = _write_stream(tmp_path / "val.npy", seed=9)
+    config = _config(
+        tmp_path,
+        stream,
+        val_stream,
+        probe_data_source="heldout",
+        total_steps=16,
+        checkpoint_interval=4,
+    )
+
+    reference = run_v0_session(config, checkpoint_dir=tmp_path / "reference")
+
+    session_dir = tmp_path / "sessions"
+    run_v0_session(
+        _config(
+            tmp_path,
+            stream,
+            val_stream,
+            probe_data_source="heldout",
+            total_steps=8,
+            checkpoint_interval=4,
+        ),
+        checkpoint_dir=session_dir,
+    )
+    resumed = run_v0_session(config, checkpoint_dir=session_dir)
+
+    for before, after in zip(reference.arms, resumed.arms):
+        assert after.final_loss == before.final_loss
+        assert after.architecture_hash == before.architecture_hash
+        assert (after.training_flops, after.search_flops) == (
+            before.training_flops,
+            before.search_flops,
+        )
+        assert json.dumps(after.mutation_history, sort_keys=True) == json.dumps(
+            before.mutation_history, sort_keys=True
+        )

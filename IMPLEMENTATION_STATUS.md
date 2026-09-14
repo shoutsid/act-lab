@@ -1,6 +1,6 @@
 # ACT Implementation Status
 
-Updated: 2026-09-13
+Updated: 2026-09-14
 
 This document compares the current workspace against
 `Adaptive Computational Topology - Complete Kaggle Implementation Plan.md`.
@@ -94,8 +94,58 @@ cap-4/1-batch PASSED (228/384 wins, mean delta `-0.036982`, binomial p
 A-vs-B comparison confirms A better in 225/384 pairs (sign z `3.37`,
 two-sided p `8e-04`). Candidate richness is the active axis; probe batches
 matter little within the rich-cap regime (A's delta `-0.037` vs the
-2-batch replication's `-0.052`, two-sample z ~ 1.1, n.s.). Gate-style quality
-tests now number nine, with three passes, all from the cap-4 family.
+2-batch replication's `-0.052`, two-sample z ~ 1.1, n.s.).Gate-style quality tests now number nine, with three passes, all from the cap-4 family.
+(11) The section 5.1 protocol machinery then ran on the REAL TinyStories token
+stream at reduced fidelity (`local_proof_run.py --real-data`, vocab-8192 BPE
+streams, seeds 9000-9011): the cost identity held again (measured probe cost
+1.0077% vs 0.9977% predicted) and arm losses were real language losses, but
+the ADAPTIVE LOST 11 OF 12 PAIRS and the pre-registered harm guard engaged
+(`PASS_COST_ONLY_HARM_GUARD_REJECTS`). (12) The follow-up real-data selection
+diagnostic (`scripts/real_data_diagnostic.py`, same paired seed block
+9000-9007, steps=600, every variant's random arm reproducing its baseline
+counterpart exactly, so only selection differed) tested both toy-winning axes
+on real text and NEITHER RESTORED THE EDGE: variance (cap-4/4-batch, measured
+probe cost 3.99% of training FLOPs) went 0/8 with mean delta `+0.2858`;
+richness (cap-8/1-batch, 1.98%) went 1/8 with mean delta `+0.1661` - though
+its adaptive arm beat the baseline adaptive arm by a mean `0.109` in absolute
+terms, so the richness axis itself still operates. Critically, in 5/8 seeds
+the 4-batch argmin chose bit-identically to the baseline 1-batch argmin
+(final-loss delta exactly `0.0`): on real text the probe ranking is STABLY
+MISALIGNED, not stochastic - the winner's-curse (noise-amplification)
+mechanism is excluded and the ranking is systematically anti-predictive. The
+next discriminator is an argmax control (deliberately select the probe-worst
+candidate). (13) That argmax control has now RUN on the same paired block
+(seeds 9000-9007): 0/8 wins, mean delta vs own random `+0.3048`, mean
+adaptive vs baseline adaptive `+0.0293` - argmax also loses, and by almost
+exactly as much as argmin (`+0.2858`). Both tails of the probe ranking lose
+to random by the same amount while a non-degenerate control (0/3 identical
+picks to argmin on seed 9000; operation balance 11 grow/13 prune vs argmin's
+4/20 prune bias) confirms the rule really inverted: the probe signal is
+UNINFORMATIVE on real text, not inverted - probe-loss ranking carries no
+candidate-ordering information at this fidelity. Per the pre-registered
+discriminator contract, the fix must come from probe horizon/tokens (more or
+later probe data), not from the decision rule. Gate 4 stays blocked on
+real-text evidence. (14) The diagnostic now logs per-candidate probe ranks
+natively: a `probe_landscape` flag on `V0SessionConfig` (off by default,
+mirroring the toy path) records every probed candidate's probe loss in each
+adaptive event's history, sorted best-first, plus the selected candidate's
+index; the diagnostic enables it and aggregates a per-variant `probe_rank`
+block (mean selected rank, rank histogram, near-top rate) into
+diagnostic.json, so future mechanism claims (pick identity, operation
+balance, selected rank) are directly measurable from the published seed
+summaries. (15) The section-5.3 post-argmax fix candidate is DESIGNED and
+pre-registered but NOT YET RUN: the `heldout` variant
+(`V0SessionConfig.probe_data_source="heldout"`) draws probe windows from
+the held-out validation stream instead of the training stream, testing
+whether argmin's anti-predictive ranking comes from probing in-corpus text
+- the last untested reading of the licensed probe-horizon/tokens axis,
+since "more same-distribution batches" is falsified (`var` 0/8). Only the
+probe windows' source differs: same candidates, probe batch count, and
+booked probe FLOPs (~1%, baseline-matched), same paired seeds 9000-9007,
+resume determinism pinned by test. Outcome contract pre-registered in
+report section 5.3: heldout-argmin winning falsifies in-corpus probing as
+the mechanism; losing like train-argmin (~ +0.29) falsifies provenance and
+leaves a longer probe horizon as the remaining licensed lever.
 
 ## Milestone Comparison
 
@@ -109,7 +159,7 @@ tests now number nine, with three passes, all from the cap-4 family.
 | 5. Importance instrumentation | DONE for the first gate | Python records routing/load, gradient norm, parameter norm, Fisher-style EMA, temporal stability, mutation count, and genome hash at structural windows. |
 | 6. Adaptive controller | PARTIAL | Python exposes a deterministic, validated budget-aware `AdaptiveController` plus Pareto frontier/population selection over quality, active parameters, and search FLOPs. The validated default reaches 10/16 wins; broader multi-generation search remains. |
 | 7. Experiment ledger | DONE for the first gate | Browser ledger and Python append-only JSONL registry store config, dataset/tokenizer hashes, code revision, hardware, tokens, FLOPs, arm metrics, mutation fossils, and architecture hashes. Deterministic evaluation summaries are available for report generation. |
-| 8. Final gate: adaptive > random | PASSED three times (cap-4 family at 48 and 144 steps); richness identified as the active axis; cheaper/cadence/narrow variants FAILED | Factor map (all matched budgets, objective verdicts): cap-4/2-batch, 48 steps -> PASS 213/384, p `0.0181`, at 41.9% cost. Cap-2/1-batch, 144 steps -> FAIL 181/380, p `0.8351`, at 4.13% cost. Placement (late, same seeds) -> no effect (p `0.0788`). Cap-2/1-batch, 6 events -> 137/384, significantly WORSE than random (z `-5.61`). Cap-2/4-batch -> 179/384, p `0.9159`. Horizon replication cap-4/2-batch, 144 steps -> PASS 231/384, p `4.04e-05`, t p `1.07e-08`, cost 14.0%. Richness A cap-4/1-batch, 144 steps -> PASS 228/384, p `1.4e-04`, t p `5.0e-05`, cost 7.3%; same-seed B cap-2/2-batch -> FAIL 193/384, p `0.47965`; paired A>B 225/384 (z `3.37`). Probe validity real but weak (rho `0.11`); richness is the active axis, probe batches secondary. Nine gate-style tests, three passes; Bonferroni alpha/9 ~ 0.0056 is cleared by the 144-step replication and richness-A on both statistics. |
+| 8. Final gate: adaptive > random | PASSED three times (cap-4 family at 48 and 144 steps); richness identified as the active axis; cheaper/cadence/narrow variants FAILED | Factor map (all matched budgets, objective verdicts): cap-4/2-batch, 48 steps -> PASS 213/384, p `0.0181`, at 41.9% cost. Cap-2/1-batch, 144 steps -> FAIL 181/380, p `0.8351`, at 4.13% cost. Placement (late, same seeds) -> no effect (p `0.0788`). Cap-2/1-batch, 6 events -> 137/384, significantly WORSE than random (z `-5.61`). Cap-2/4-batch -> 179/384, p `0.9159`. Horizon replication cap-4/2-batch, 144 steps -> PASS 231/384, p `4.04e-05`, t p `1.07e-08`, cost 14.0%. Richness A cap-4/1-batch, 144 steps -> PASS 228/384, p `1.4e-04`, t p `5.0e-05`, cost 7.3%; same-seed B cap-2/2-batch -> FAIL 193/384, p `0.47965`; paired A>B 225/384 (z `3.37`). Probe validity real but weak (rho `0.11`); richness is the active axis, probe batches secondary. Nine gate-style tests, three passes; Bonferroni alpha/9 ~ 0.0056 is cleared by the 144-step replication and richness-A on both statistics. Real-data diagnostic (TinyStories, seeds 9000-9007, paired): variance cap-4/4-batch 0/8 (`+0.2858`), richness cap-8/1-batch 1/8 (`+0.1661`) - neither toy axis restores the edge on real text, and the 4-batch argmin bit-reproduced the 1-batch argmin in 5/8 seeds (ranking stably misaligned, not noisy). |
 
 ## Plan Sections 3-6: Compute and Kaggle Operations
 
@@ -349,7 +399,7 @@ These remain TODO or DEFERRED until the first gate passes:
   1.0077% vs 0.9977% predicted, <1% relative deviation), arm losses were real
   language losses (~3.4-3.6 nats vs the 9.01 synthetic floor), but the
   ADAPTIVE LOST 11 OF 12 PAIRS on real text at this scale: single-batch
-  probe-loss argmin is anti-adaptive here, the study-5 winner's-curse
+  probe-loss argmin is anti-adaptive here,  the study-5 winner's-curse
   mechanism re-emerging on real language structure (adaptive and random arms
   chose the same operation sequences - only the chosen experts differed, so
   the probe's per-candidate ranking is what misleads). The machine-checked
@@ -358,7 +408,71 @@ These remain TODO or DEFERRED until the first gate passes:
   real-data negative result the toy studies could not show: selection value
   on real text needs richer probes or longer horizons, and Gate 4 stays
   blocked. Scratch roots `artifacts/real-proof/{sessions,datasets}`; verdict
-  and session summary committed as evidence.
+  and session summary committed as evidence. (The follow-up diagnostic below
+  revises the "richer probes" reading: neither richer probe batches nor a
+  richer candidate set fixed it.)
+- `PYTHONPATH=src python scripts/real_data_diagnostic.py` -> the selection
+  diagnostic following the real-data harm-guard rejection: both toy-winning
+  axes re-tested on the real TinyStories stream over the same paired seed
+  block 9000-9007 (steps=600, production `run_pair_session`, 8 pairs per
+  variant, ~5.2 min/pair on the local GPU). `var` (cap-4/4-batch; measured
+  probe cost 3.99% of training FLOPs) 0/8 adaptive wins, mean delta vs own
+  random `+0.2858`; `rich` (cap-8/1-batch; 1.98%) 1/8, mean delta
+  `+0.1661`, mean adaptive vs baseline adaptive `-0.1094` (an absolute
+  improvement over the baseline adaptive arm, still a relative loss). In
+  5/8 seeds the 4-batch argmin chose bit-identically to the baseline
+  1-batch argmin (final-loss delta exactly `0.0`), and every variant's
+  random arm replicated its baseline counterpart - only selection differed.
+  Conclusion: on real text the probe ranking is stably misaligned rather
+  than noisy - variance (study 6) is excluded as the mechanism and richness
+  (studies 8/9) does not transfer; next discriminator is an argmax control.
+  Report: `artifacts/real-diag/diagnostic.json` (run log alongside);
+  diagnostic only, not a pre-registered gate, 8 seeds unpowered.
+- `PYTHONPATH=src python scripts/real_data_diagnostic.py --variants argmax`
+  -> the pre-registered argmax control from the diagnostic's
+  stably-misaligned finding, now code and run: `V0SessionConfig` gained
+  `probe_selection` (`"argmin"` default | `"argmax"`), flipping only the
+  decision rule in `_adaptive_event` - same candidates, same probe batches,
+  same booked probe FLOPs (measured 1.01% vs baseline ~1.0%), and the
+  mutation-history policy string (`adaptive_probe_argmin`/`..._argmax`)
+  audits which rule produced each event. On the same seeds 9000-9007:
+  argmax 0/8 adaptive wins, mean delta vs own random `+0.3048` (argmin
+  baseline: `+0.2858`), mean adaptive vs baseline adaptive `+0.0293`;
+  non-degenerate (0/3 identical picks to argmin on seed 9000) with the
+  operation balance inverted (argmin chose 20 prune/4 grow, argmax
+  11 prune/13 grow). Both tails of the probe ranking lose to random by
+  nearly the same amount -> the probe signal is uninformative on real
+  text, not inverted; per the discriminator contract the fix must come
+  from probe horizon/tokens, not the decision rule. Full suite: 274
+  passed (2 new argmax tests pin validation and the inverted-decision
+  path). Report: `artifacts/real-diag/diagnostic.json` now carries all
+  three variants; the empty `run-argmax.log` from a detached-launch
+  failure was removed (the argmax run executed in the foreground).
+- `PYTHONPATH=src python scripts/real_data_diagnostic.py --force` -> per-
+  candidate probe ranks are now logged natively: `V0SessionConfig` gained a
+  `probe_landscape` flag (bookkeeping only; off by default, mirroring the
+  toy path's instrumentation; three new tests pin the sorted-ascending
+  landscape, the argmax tail selection, and the off-by-default contract).
+  The diagnostic enables it for every variant and aggregates a per-variant
+  `probe_rank` block into `diagnostic.json` (event count, mean selected
+  rank, rank histogram, near-top rate), so mechanism claims are directly
+  measurable from the published seed summaries. Full suite: 277 passed.
+  Re-running requires `--force` (the runner skips completed pairs; previous
+  results are moved aside with a timestamp suffix). Existing artifacts
+  pre-date the instrumentation and report `events_with_landscape: 0`.
+- `PYTHONPATH=src python scripts/real_data_diagnostic.py --variants heldout`
+  -> DESIGNED, pre-registered, NOT YET RUN: the section-5.3 post-argmax fix
+  candidate. `V0SessionConfig` gained `probe_data_source` ("train" default |
+  "heldout"), pointing the probe windows at the held-out validation stream
+  (same dedicated generator, same draw discipline, so the bit-identical
+  resume contract holds; validation fail-fast requires `val_data_path` for
+  heldout). Only the probe windows' source stream differs from the baseline
+  adaptive arm - candidates, probe batch count, and booked probe FLOPs are
+  baseline-matched (~1%). Four new tests pin config validation, the real
+  stream switch at the first event, cost parity, and bit-identical resume
+  (full suite: 281 passed). Pre-registered outcome contract lives in report
+  section 5.3; run it on the same paired seed block 9000-9007 before any
+  mechanism claim is updated.
 - `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
   `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
   deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer
