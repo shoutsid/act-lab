@@ -590,8 +590,8 @@ Pre-instrumentation artifacts report `events_with_landscape: 0` until a
 variant is re-run (`--force` moves previous results aside, since the runner
 skips completed pairs).
 
-**Designed fix candidate - probe-data provenance (`heldout`), pre-registered
-before running.** The argmax verdict licensed exactly one fix axis: probe
+**Fix candidate run - probe-data provenance (`heldout`): pre-registered
+hypothesis FALSIFIED (contract outcome b).** The argmax verdict licensed exactly one fix axis: probe
 horizon/tokens ("more or later probe data"). Its "more" reading is already
 falsified - `var` quadrupled same-distribution probe batches and went 0/8 -
 so the next single-axis candidate tests the "different probe data" reading:
@@ -621,8 +621,21 @@ text the arm never trains on). Unit-pinned in `tests/test_v0_real_data.py`
 (config validation, real stream-switch at the first event, cost parity,
 bit-identical resume).
 
-**Designed fix candidate - the long-horizon probe as a one-step lookahead
-(`long`), pre-registered before running.** Every snapshot-probe axis is by
+Heldout outcome (run 2026-09-14, revision `eaa1c45`): **0/8 adaptive wins,
+mean delta vs own random `+0.2840`** - indistinguishable from the baseline
+argmin's `+0.2858`, with the adaptive arm just `+0.0085` from the baseline
+adaptive arm, at the designed 1.01% probe cost; every random arm replicated
+its baseline counterpart. The manipulation was real: mean selected probe
+loss moved from `4.4195` (train windows) to `4.2848` (held-out windows),
+and 9/24 picks changed vs the baseline argmin - more than `var`'s extra
+same-distribution batches moved (7/24). Yet the outcomes did not move.
+Conclusion: the argmin ranking is a function of the current model and the
+candidate set, not of which iid TinyStories windows score it; probe-data
+provenance is excluded as the mechanism.
+
+**Fix candidate run - the long-horizon probe as a one-step lookahead
+(`long`): pre-registered adaptation-blindness hypothesis FALSIFIED (contract
+outcome b).** Every snapshot-probe axis is by
 now exhausted: same-distribution probe batches (`var`, 0/8), candidate
 richness (`rich`, 1/8), decision rule (`argmax`, 0/8), and probe provenance
 (`heldout`, designed). They share one suspect: the probe measures the
@@ -653,6 +666,44 @@ prune:grow while winning would show the prune bias itself was not the
 failure mode. Unit-pinned in `tests/test_v0_session.py` (config
 validation, lookahead cost identity, adaptation actually re-ranking the
 landscape, bit-identical resume).
+
+Long outcome (run 2026-09-14, revision `eaa1c45`): **0/8 adaptive wins,
+mean delta vs own random `+0.3106`** (baseline argmin: `+0.2858`), the
+adaptive arm `+0.0350` from the baseline adaptive arm, at the designed
+3.00% probe cost. The lookahead did exactly what it was designed to do at
+the ranking level: every landscape re-ranked after adaptation, the
+operation balance relaxed from 4/24 to 5/24 grows, and on seed 9000 the
+probe top-ranked the grow candidate at 2 of 3 events (the snapshot probe
+ranks grows last - the prune bias is a ranking artifact of the snapshot
+probe). But re-ranking did not re-rank *toward what helps*: per-seed
+deltas stayed inside the historical harm band, and across seeds the
+correlation between mean selected probe loss and final harm is POSITIVE
+(`+0.51` for `long`, `+0.89` for `heldout`; 8 points, indicative not
+established) - seeds whose argmin picked higher-probe-loss candidates were
+harmed more. One adaptation step restores ranking dynamics, not ranking
+validity.
+
+**Unified verdict after five diagnostic variants.** The probe ranking is
+real, reproducible, and adaptive - stably bit-identical under extra
+batches (`var`), coherent under a different window source (`heldout`),
+re-ranking sensibly under lookahead (`long`) - but its ordering is
+unrelated or inverse to downstream value: argmin loses at every fidelity
+and source (+0.28 to +0.31), argmax loses (+0.30), and the only variant
+with any win (`rich`, cap-8, whose 8/24 grow share matches the random
+arms') is also the one that most dilutes the ranking's influence. Every
+horizon/token reading of the section-5.3 licensed fix axis - more batches,
+different source, lookahead in time - is now exhausted, and the one
+untested reading (more probe tokens at fixed fidelity) would sharpen a
+signal these runs show to be anti-correlated with outcome; it is not
+recommended without a new mechanism hypothesis. The observationally
+motivated next direction is a different axis - changing how the ranking
+is *used* (coarser granularity such as layer-level selection, or
+accept/reject gating of random draws rather than argmin over candidates) -
+which sits outside the section-5.3 contract and requires its own
+pre-registration. All five variants' paired results, probe-rank blocks,
+and per-event landscapes are in `artifacts/real-diag/diagnostic.json`
+(run log `run-heldout-long.log` alongside); 8-seed power caveats apply
+throughout.
 
 ## 6. Reproducibility
 

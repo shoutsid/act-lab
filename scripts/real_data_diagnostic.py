@@ -53,6 +53,11 @@ content, not its data, is the binding constraint (longer probe horizon is
 the remaining licensed lever, at 4x cost). Either outcome is decisive:
 mechanism claims are directly measurable via ``probe_landscape`` ranks.
 
+OUTCOME (run 2026-09-14, revision ``eaa1c45``): heldout 0/8 wins, mean
+delta +0.2840 (baseline argmin +0.2858) - provenance FALSIFIED with the
+manipulation verified real (selected probe losses moved 4.4195 -> 4.2848,
+9/24 picks changed).
+
 Pre-registered outcome contract for ``long`` (fixed before running): the
 mechanism claim under test is that the snapshot probe's anti-predictive
 ranking is an adaptation-blindness artifact (scoring instantaneous loss
@@ -71,6 +76,14 @@ each lookahead step adds ~2% of training FLOPs, so R=1 lands ~3.0% while
 R=2 sits exactly at the 5% criterion with no margin (measured ratios run
 slightly above predicted on real data) - the variant is run at R=1 or not
 at all.
+
+OUTCOME (run 2026-09-14, revision ``eaa1c45``): long 0/8 wins, mean delta
++0.3106 - adaptation blindness FALSIFIED. The lookahead re-ranked as
+designed (grows 5/24; seed 9000 top-ranked the grow at 2/3 events - the
+snapshot probe's prune bias is a ranking artifact) but not toward what
+helps; across seeds mean selected probe loss correlates positively with
+final harm (long +0.51, heldout +0.89; 8 points, indicative). Unified
+verdict and next direction live in report section 5.3.
 
 Per-event probe cost scales as candidates x batches, so ``var`` quadruples
 the baseline cost (~1% -> ~4% of training FLOPs, measured 3.99%) and

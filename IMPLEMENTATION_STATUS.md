@@ -133,33 +133,41 @@ index; the diagnostic enables it and aggregates a per-variant `probe_rank`
 block (mean selected rank, rank histogram, near-top rate) into
 diagnostic.json, so future mechanism claims (pick identity, operation
 balance, selected rank) are directly measurable from the published seed
-summaries. (15) The section-5.3 post-argmax fix candidate is DESIGNED and
-pre-registered but NOT YET RUN: the `heldout` variant
-(`V0SessionConfig.probe_data_source="heldout"`) draws probe windows from
-the held-out validation stream instead of the training stream, testing
-whether argmin's anti-predictive ranking comes from probing in-corpus text
-- the last untested reading of the licensed probe-horizon/tokens axis,
-since "more same-distribution batches" is falsified (`var` 0/8). Only the
-probe windows' source differs: same candidates, probe batch count, and
-booked probe FLOPs (~1%, baseline-matched), same paired seeds 9000-9007,
-resume determinism pinned by test. Outcome contract pre-registered in
-report section 5.3: heldout-argmin winning falsifies in-corpus probing as
-the mechanism; losing like train-argmin (~ +0.29) falsifies provenance and
-leaves a longer probe horizon as the remaining licensed lever. (16) That
-long-horizon lever is DESIGNED and pre-registered but NOT YET RUN, as the
-`long` variant (`V0SessionConfig.probe_finetune_steps=1`): the long-horizon
-probe as a one-step lookahead - each probed candidate is fine-tuned for 1
-AdamW step on a fresh training batch before its probe loss is re-scored on
-the same probe batches, so selection compares post-mutation trainability
-instead of the instantaneous loss dip that structurally biases argmin
-against freshly initialized experts (the observed 4/20 prune bias). Cost:
-~3.0% of training FLOPs at the proof configuration (R=2 would sit exactly
-at the 5% criterion, so R=1 is the only clean setting); resume determinism
-holds via per-event throwaway fine-tune generators. Outcome contract
-pre-registered in report section 5.3: winning implicates the snapshot
-probe's adaptation blindness as the mechanism; losing like the baseline
-(~ +0.29) leaves probe token count at fixed fidelity as the last licensed
-lever. Full suite: 285 passed (4 new lookahead tests).
+summaries. (15) The section-5.3 post-argmax fix candidate, the `heldout`
+variant (`V0SessionConfig.probe_data_source="heldout"`; probe windows drawn
+from the held-out validation stream, only the windows' source differing,
+1.01% measured cost), RAN on 2026-09-14 (revision `eaa1c45`) and its
+pre-registered provenance hypothesis came out FALSIFIED (outcome b):
+0/8 wins, mean delta vs own random `+0.2840` (baseline argmin `+0.2858`),
+adaptive arm just `+0.0085` from the baseline adaptive arm, random arms
+replicating. The manipulation was real - mean selected probe loss moved
+4.4195 -> 4.2848 under held-out windows and 9/24 picks changed vs the
+baseline argmin (more than `var`'s extra batches moved, 7/24) - yet
+outcomes did not move: the ranking is a function of the model and candidate
+set, not of which iid TinyStories windows score it. Probe-data provenance
+is excluded as the mechanism. (16) The long-horizon
+lever ran as the `long` variant (`V0SessionConfig.probe_finetune_steps=1`,
+one AdamW lookahead step per probed candidate, per-event throwaway
+generators, 3.00% measured cost) and its adaptation-blindness hypothesis
+also came out FALSIFIED (outcome b): 0/8 wins, mean delta `+0.3106`,
+adaptive arm `+0.0350` from baseline adaptive. The lookahead worked at the
+ranking level - every landscape re-ranked, grows relaxed to 5/24, and on
+seed 9000 the probe top-ranked the grow at 2 of 3 events (the 4/20 prune
+bias is a ranking artifact of the snapshot probe, now confirmed) - but
+re-ranking did not re-rank toward what helps; across seeds the correlation
+of mean selected probe loss with final harm is positive (+0.51 long,
++0.89 heldout; 8 points, indicative). Unified verdict after five
+diagnostic variants: the probe ranking is real, stable, and adaptive, but
+anti-correlated with downstream value (argmin +0.28 to +0.31 everywhere,
+argmax +0.30, only `rich` - the cap-8 variant whose 8/24 grow share
+matches the random arms' - shows any win, and it most dilutes the
+ranking). Every horizon/token reading of the section-5.3 licensed axis is
+exhausted; the untested reading (more probe tokens at fixed fidelity)
+would sharpen an anti-correlated signal and is not recommended without a
+new mechanism hypothesis. Next direction, outside the section-5.3
+contract and requiring its own pre-registration: change how the ranking
+is used (layer-level coarseness, or accept/reject gating of random draws).
+Full suite: 285 passed (4 lookahead tests).
 
 ## Milestone Comparison
 
@@ -475,36 +483,39 @@ These remain TODO or DEFERRED until the first gate passes:
   results are moved aside with a timestamp suffix). Existing artifacts
   pre-date the instrumentation and report `events_with_landscape: 0`.
 - `PYTHONPATH=src python scripts/real_data_diagnostic.py --variants heldout`
-  -> DESIGNED, pre-registered, NOT YET RUN: the section-5.3 post-argmax fix
-  candidate. `V0SessionConfig` gained `probe_data_source` ("train" default |
-  "heldout"), pointing the probe windows at the held-out validation stream
-  (same dedicated generator, same draw discipline, so the bit-identical
-  resume contract holds; validation fail-fast requires `val_data_path` for
-  heldout). Only the probe windows' source stream differs from the baseline
-  adaptive arm - candidates, probe batch count, and booked probe FLOPs are
-  baseline-matched (~1%). Four new tests pin config validation, the real
-  stream switch at the first event, cost parity, and bit-identical resume
-  (full suite: 281 passed). Pre-registered outcome contract lives in report
-  section 5.3; run it on the same paired seed block 9000-9007 before any
-  mechanism claim is updated.
+  -> RUN 2026-09-14 (with `long`, revision `eaa1c45`, 8 pairs, ~1.2 h): the
+  section-5.3 post-argmax fix candidate. `V0SessionConfig` gained
+  `probe_data_source` ("train" default | "heldout"), pointing the probe
+  windows at the held-out validation stream (same dedicated generator, same
+  draw discipline, so the bit-identical resume contract holds; validation
+  fail-fast requires `val_data_path` for heldout). Only the probe windows'
+  source stream differs from the baseline adaptive arm - candidates, probe
+  batch count, and booked probe FLOPs are baseline-matched (measured 1.01%).
+  Four tests pin config validation, the real stream switch at the first
+  event, cost parity, and bit-identical resume (281 at design time).
+  Outcome: heldout 0/8 adaptive wins, mean delta vs own random `+0.2840`,
+  random arms replicate - the pre-registered provenance hypothesis is
+  FALSIFIED (outcome b) with the manipulation verified real (selected probe
+  losses shifted 4.4195 -> 4.2848; 9/24 picks changed, more than `var`'s
+  extra batches moved).
 - `PYTHONPATH=src python scripts/real_data_diagnostic.py --variants long
-  --force` -> DESIGNED, pre-registered, NOT YET RUN: the long-horizon probe
-  as a one-step lookahead. `V0SessionConfig` gained `probe_finetune_steps`
-  (0 default | R > 0), fine-tuning each probed candidate for R AdamW steps
-  on freshly drawn training batches (fresh optimizer, no momentum carried
-  in) before re-scoring the same probe batches - selection then compares
-  post-mutation trainability, attacking the adaptation blindness that
-  plausibly explains argmin's prune bias. Non-finite post-adaptation losses
-  sort last (untrainable candidates lose); events record
-  `probe_finetune_steps`, and search FLOPs book the adaptation steps on the
-  full probed model (cost identity updated and pinned by test). Fine-tune
-  batches come from per-event throwaway generators, so the bit-identical
-  resume contract holds (pinned by test). Four new tests: config validation,
-  the lookahead cost identity (R=1 ~3.0% / R=2 exactly at the 5% boundary at
-  proof scale), landscape re-ranking + contract consistency under lookahead,
-  and bit-identical resume (full suite: 285 passed). Outcome contract in
-  report section 5.3; run on seeds 9000-9007 before updating any mechanism
-  claim.
+  --force` -> DESIGNED, pre-registered, and RUN 2026-09-14 (same block,
+  revision `eaa1c45`): the long-horizon probe as a one-step lookahead.
+  `V0SessionConfig.probe_finetune_steps` (0 default | R > 0) fine-tunes
+  each probed candidate for R AdamW steps on freshly drawn training batches
+  (fresh optimizer, per-event throwaway generators, bit-identical resume
+  pinned by test); search FLOPs book the adaptation on the full probed
+  model (measured 3.00%). Outcome: 0/8 adaptive wins, mean delta vs own
+  random `+0.3106` - the adaptation-blindness hypothesis is FALSIFIED
+  (outcome b). Mechanism evidence: landscapes re-ranked after adaptation,
+  the operation balance relaxed (5/24 grows) and seed 9000's probe
+  top-ranked the grow at 2 of 3 events - the baseline's 4/20 prune bias is
+  a snapshot-probe ranking artifact - yet per-seed deltas stayed in the
+  harm band, and mean selected probe loss correlates POSITIVELY with final
+  harm across seeds (long +0.51, heldout +0.89; 8 points, indicative).
+  Both scorecards, the unified five-variant verdict, and the next-direction
+  note (change how the ranking is used; own pre-registration required) are
+  recorded in report section 5.3. Full suite: 285 passed.
 - `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
   `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
   deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer
