@@ -21,6 +21,13 @@ artifacts/*
 artifacts/local-proof/*
 !artifacts/local-proof/verdict.json
 !artifacts/local-proof/session-summary.json
+# Real-data protocol proof (TinyStories through the section 5.1 machinery):
+# the machine-checked verdict and session summary are durable evidence; the
+# checkpoint/dataset scratch stays local.
+!artifacts/real-proof/
+artifacts/real-proof/*
+!artifacts/real-proof/verdict.json
+!artifacts/real-proof/session-summary.json
 # Real-LM training record: the machine-checked report is durable evidence;
 # the corpus (1.9 GB), token stream, and checkpoints stay local scratch.
 !artifacts/real-lm/

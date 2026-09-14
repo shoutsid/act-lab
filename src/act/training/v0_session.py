@@ -51,6 +51,7 @@ from act.topology import (
 )
 from act.training.runtime import move_optimizer_state, resolve_device
 from act.training.session import SessionCheckpointPolicy, retain_checkpoints
+from act.training.v0_span import WindowSampler
 
 
 @dataclass(frozen=True)
@@ -94,6 +95,15 @@ class V0SessionConfig:
     checkpoint_interval: int = 500
     max_checkpoints: int = 3
     checkpoint_max_bytes: int | None = None
+    # Real-data token streams (section 5.1 machinery on real text). When set,
+    # every draw is a random window into a flat uint16 token stream instead of
+    # a uniform-random token tensor; shapes, generators, checkpointed state,
+    # and FLOPs booking are identical to the synthetic path, so the cost
+    # identity and the bit-identical resume contract apply unchanged.
+    # ``data_path`` feeds training and probe batches; ``val_data_path`` feeds
+    # the held-out validation loss (defaulting to the training stream).
+    data_path: str | None = None
+    val_data_path: str | None = None
 
     def __post_init__(self) -> None:
         if self.total_steps < 1 or self.batch_size < 1:
@@ -111,6 +121,11 @@ class V0SessionConfig:
             raise ValueError(f"unsupported V0 session arms: {unknown}")
         if len(set(self.arms)) != len(self.arms):
             raise ValueError("arms must be unique")
+        for path in (self.data_path, self.val_data_path):
+            if path is not None and not Path(path).is_file():
+                raise ValueError(f"data stream not found: {path}")
+        if self.val_data_path is not None and self.data_path is None:
+            raise ValueError("val_data_path requires data_path (synthetic sessions are fully synthetic)")
 
     def model_config(self) -> V0MoEConfig:
         return V0MoEConfig(
@@ -516,7 +531,15 @@ def _train_arm(
         validate_declared_v0_config(config.model_config())
 
     # Training token stream: single generator, checkpointed state, so a
-    # resumed session continues the identical sequence of batches.
+    # resumed session continues the identical sequence of batches. With a
+    # real-data stream the same generator picks window positions instead of
+    # raw tokens; RNG consumption and checkpointed state are identical either
+    # way, so the resume contract is untouched.
+    train_sampler = (
+        WindowSampler(config.data_path, config.vocab_size)
+        if config.data_path is not None
+        else None
+    )
     generator = torch.Generator(device="cpu")
     if arm_state.generator_state is None:
         generator.manual_seed(config.seed ^ 0x5EED)
@@ -527,25 +550,36 @@ def _train_arm(
     # training-batch shape per probe batch, as declared in section 5.1.
     probe_generator = torch.Generator(device="cpu")
     probe_generator.manual_seed(config.seed ^ 0xB0B)
-    probe_batches = tuple(
-        torch.randint(
-            0,
-            config.vocab_size,
-            (config.batch_size, config.context_size),
-            generator=probe_generator,
-        ).to(device)
-        for _ in range(config.probe_batch_count)
-    )
+    if train_sampler is not None:
+        probe_batches = tuple(
+            train_sampler.draw(probe_generator, config.batch_size, config.context_size).to(device)
+            for _ in range(config.probe_batch_count)
+        )
+    else:
+        probe_batches = tuple(
+            torch.randint(
+                0,
+                config.vocab_size,
+                (config.batch_size, config.context_size),
+                generator=probe_generator,
+            ).to(device)
+            for _ in range(config.probe_batch_count)
+        )
 
     _prepare_model(model, config)
     wall_start = time.time()
     for step in range(arm_state.step + 1, config.total_steps + 1):
-        tokens = torch.randint(
-            0,
-            config.vocab_size,
-            (config.batch_size, config.context_size),
-            generator=generator,
-        ).to(device)
+        if train_sampler is not None:
+            tokens = train_sampler.draw(
+                generator, config.batch_size, config.context_size
+            ).to(device)
+        else:
+            tokens = torch.randint(
+                0,
+                config.vocab_size,
+                (config.batch_size, config.context_size),
+                generator=generator,
+            ).to(device)
         optimizer.zero_grad(set_to_none=True)
         with torch.autocast(device.type, dtype=torch.float16, enabled=use_amp):
             loss = model.loss(tokens)
@@ -603,15 +637,26 @@ def _train_arm(
 
     validation_generator = torch.Generator(device="cpu")
     validation_generator.manual_seed(config.seed ^ 0xA11CE)
-    validation_batches = tuple(
-        torch.randint(
-            0,
-            config.vocab_size,
-            (config.batch_size, config.context_size),
-            generator=validation_generator,
-        ).to(device)
-        for _ in range(config.validation_batches)
+    val_sampler = (
+        WindowSampler(config.val_data_path or config.data_path, config.vocab_size)
+        if (config.val_data_path or config.data_path) is not None
+        else None
     )
+    if val_sampler is not None:
+        validation_batches = tuple(
+            val_sampler.draw(validation_generator, config.batch_size, config.context_size).to(device)
+            for _ in range(config.validation_batches)
+        )
+    else:
+        validation_batches = tuple(
+            torch.randint(
+                0,
+                config.vocab_size,
+                (config.batch_size, config.context_size),
+                generator=validation_generator,
+            ).to(device)
+            for _ in range(config.validation_batches)
+        )
     model.eval()
     with torch.no_grad():
         validation_loss = (

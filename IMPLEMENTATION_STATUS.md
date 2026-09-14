@@ -269,19 +269,22 @@ These remain TODO or DEFERRED until the first gate passes:
 
 ## Verified Checks
 
-- `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (262, including the
+- `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (272, including the
   26 report-figure data-assembly tests, 14 session-plan tests pinning the
   section 5.2 schedule/dtype tables, 10 handoff tests covering atomic
   publish, checksum rejection, and bit-identical resume through the dataset
   round trip, 9 runner tests covering deadline gating, cooperative
   interrupt + in-progress snapshot, restart-from-scratch, and
   skip-completed idempotence, 22 notebook-builder tests pinning determinism,
-  nbformat validity, and the section 104 claims, 17 verdict tests pinning
+  nbformat validity, and the section 104 claims, 18 verdict tests pinning
   every branch of the section 5.1 decision rules (the 5% criterion, the
-  [0.5, 2]x tolerance band, the 10-of-12 harm guard, queue completeness
+  [0.5, 2]x tolerance band, the 10-of-12 harm guard and its label
+  precedence over a band miss, queue completeness
   gating `gate_4_authorized`, stray-seed exclusion, unmatched-budget and
   missing-arm aborts, and the verdict read through the real publish
-  pipeline), and fp16/CLI tests covering
+  pipeline), 9 real-data session tests (window sampling, vocab guard,
+  config validation, real-data training below the synthetic floor,
+  bit-identical real-data resume, and the publish round trip), and fp16/CLI tests covering
   the fp16 session
   round trip, the version-4 compatibility path, and the pair-session launch
   command's artifact/dtype guards); session runs are deliberately excluded
@@ -334,6 +337,28 @@ These remain TODO or DEFERRED until the first gate passes:
   PASS_WITH_QUALIFICATION (cost 1.0044% <= 5%; declared band correctly not
   met by a reduced model; harm guard clear at 7/12). Re-runnable; `--dry-run`
   prints the plan without training.
+- `PYTHONPATH=src python scripts/local_proof_run.py --real-data` -> the
+  section 5.1 protocol machinery on the REAL TinyStories token stream (vocab
+  8192 streams built by `train_real_lm.py`; `V0SessionConfig.data_path`/
+  `val_data_path` route training, probe, and validation draws through random
+  windows into the streams - shapes, generators, checkpointed state, and
+  FLOPs booking identical to the synthetic path, so the identity and the
+  bit-identical resume contract hold; unit-pinned in `tests/test_v0_real_data.py`).
+  Completed 2026-09-14, 12/12 pairs: verdict
+  PASS_COST_ONLY_HARM_GUARD_REJECTS - the cost identity held again (measured
+  1.0077% vs 0.9977% predicted, <1% relative deviation), arm losses were real
+  language losses (~3.4-3.6 nats vs the 9.01 synthetic floor), but the
+  ADAPTIVE LOST 11 OF 12 PAIRS on real text at this scale: single-batch
+  probe-loss argmin is anti-adaptive here, the study-5 winner's-curse
+  mechanism re-emerging on real language structure (adaptive and random arms
+  chose the same operation sequences - only the chosen experts differed, so
+  the probe's per-candidate ranking is what misleads). The machine-checked
+  harm guard engaged exactly as pre-registered and the verdict label now
+  takes the harm-guard precedence over a band miss (unit-pinned). This is a
+  real-data negative result the toy studies could not show: selection value
+  on real text needs richer probes or longer horizons, and Gate 4 stays
+  blocked. Scratch roots `artifacts/real-proof/{sessions,datasets}`; verdict
+  and session summary committed as evidence.
 - `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
   `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
   deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer

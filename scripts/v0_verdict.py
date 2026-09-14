@@ -107,11 +107,14 @@ def compute_verdict(dataset_root: Path, *, probe_batch_count: int) -> dict:
     if not cost_pass:
         verdict = "FAIL"
         exit_code = 1
+    elif not harm_guard_clear:
+        # The harm guard is the stronger blocker (anti-adaptivity, not
+        # bookkeeping), so it takes label precedence over a band miss: both
+        # exit 2, but the verdict string must surface the rejection.
+        verdict = "PASS_COST_ONLY_HARM_GUARD_REJECTS"
+        exit_code = 2
     elif not in_band:
         verdict = "PASS_WITH_QUALIFICATION"
-        exit_code = 2
-    elif not harm_guard_clear:
-        verdict = "PASS_COST_ONLY_HARM_GUARD_REJECTS"
         exit_code = 2
     else:
         verdict = "PASS"

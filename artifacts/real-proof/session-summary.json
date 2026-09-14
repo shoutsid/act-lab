@@ -1,0 +1,206 @@
+{
+  "declared_seed_queue": [
+    9000,
+    9001,
+    9002,
+    9003,
+    9004,
+    9005,
+    9006,
+    9007,
+    9008,
+    9009,
+    9010,
+    9011
+  ],
+  "latest_published_seed": 9011,
+  "measured_tokens_per_second": 15532.396528992598,
+  "pair_time_hours": 0.14395114851674104,
+  "pairs": [
+    {
+      "action": "completed",
+      "adaptive_final_loss": 4.025018870830536,
+      "random_final_loss": 3.439885199069977,
+      "search_flops_by_arm": {
+        "adaptive": 620660771840,
+        "random": 151243776
+      },
+      "seed": 9000,
+      "training_flops_by_arm": {
+        "adaptive": 62164618444800,
+        "random": 62164618444800
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 3.7037258744239807,
+      "random_final_loss": 3.5070478320121765,
+      "search_flops_by_arm": {
+        "adaptive": 620624065536,
+        "random": 148091904
+      },
+      "seed": 9001,
+      "training_flops_by_arm": {
+        "adaptive": 61303947264000,
+        "random": 61303947264000
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 3.5788990259170532,
+      "random_final_loss": 3.3741536736488342,
+      "search_flops_by_arm": {
+        "adaptive": 620660771840,
+        "random": 149142528
+      },
+      "seed": 9002,
+      "training_flops_by_arm": {
+        "adaptive": 62164618444800,
+        "random": 61303947264000
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 3.60107684135437,
+      "random_final_loss": 3.4634006023406982,
+      "search_flops_by_arm": {
+        "adaptive": 620624065536,
+        "random": 149142528
+      },
+      "seed": 9003,
+      "training_flops_by_arm": {
+        "adaptive": 61303947264000,
+        "random": 61303947264000
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 3.6758156418800354,
+      "random_final_loss": 3.401590585708618,
+      "search_flops_by_arm": {
+        "adaptive": 620624065536,
+        "random": 150193152
+      },
+      "seed": 9004,
+      "training_flops_by_arm": {
+        "adaptive": 61303947264000,
+        "random": 61734282854400
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 3.7947335243225098,
+      "random_final_loss": 3.4517284631729126,
+      "search_flops_by_arm": {
+        "adaptive": 620624065536,
+        "random": 152294400
+      },
+      "seed": 9005,
+      "training_flops_by_arm": {
+        "adaptive": 61303947264000,
+        "random": 62164618444800
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 3.739402174949646,
+      "random_final_loss": 3.4002787470817566,
+      "search_flops_by_arm": {
+        "adaptive": 620661822464,
+        "random": 151243776
+      },
+      "seed": 9006,
+      "training_flops_by_arm": {
+        "adaptive": 62164618444800,
+        "random": 61734282854400
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 3.5488375425338745,
+      "random_final_loss": 3.42539781332016,
+      "search_flops_by_arm": {
+        "adaptive": 620624065536,
+        "random": 154395648
+      },
+      "seed": 9007,
+      "training_flops_by_arm": {
+        "adaptive": 61303947264000,
+        "random": 62594954035200
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 3.8573077917099,
+      "random_final_loss": 4.127933144569397,
+      "search_flops_by_arm": {
+        "adaptive": 620624065536,
+        "random": 151243776
+      },
+      "seed": 9008,
+      "training_flops_by_arm": {
+        "adaptive": 61303947264000,
+        "random": 62164618444800
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 3.734472692012787,
+      "random_final_loss": 3.3279281854629517,
+      "search_flops_by_arm": {
+        "adaptive": 620624065536,
+        "random": 151243776
+      },
+      "seed": 9009,
+      "training_flops_by_arm": {
+        "adaptive": 61303947264000,
+        "random": 62164618444800
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 3.583074629306793,
+      "random_final_loss": 3.4728728532791138,
+      "search_flops_by_arm": {
+        "adaptive": 620624065536,
+        "random": 154395648
+      },
+      "seed": 9010,
+      "training_flops_by_arm": {
+        "adaptive": 61303947264000,
+        "random": 62594954035200
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 4.045934796333313,
+      "random_final_loss": 3.3389667868614197,
+      "search_flops_by_arm": {
+        "adaptive": 620660771840,
+        "random": 151243776
+      },
+      "seed": 9011,
+      "training_flops_by_arm": {
+        "adaptive": 62164618444800,
+        "random": 62164618444800
+      }
+    }
+  ],
+  "pairs_completed": 12,
+  "protocol": "v0-compute-efficiency-5.2",
+  "remaining_hours_at_entry": 12.0,
+  "seeds_requested": [
+    9000,
+    9001,
+    9002,
+    9003,
+    9004,
+    9005,
+    9006,
+    9007,
+    9008,
+    9009,
+    9010,
+    9011
+  ]
+}

@@ -28,6 +28,13 @@ Usage:
   PYTHONPATH=src python scripts/local_proof_run.py            # full queue
   PYTHONPATH=src python scripts/local_proof_run.py --dry-run  # plan only
   PYTHONPATH=src python scripts/local_proof_run.py --steps N   # shorter horizon
+  PYTHONPATH=src python scripts/local_proof_run.py --real-data  # TinyStories streams
+
+With ``--real-data`` the sessions train on the real TinyStories token stream
+built by ``scripts/train_real_lm.py`` (vocab 8192) instead of uniform tokens:
+same protocol, same identity, but the arm losses are real language losses and
+the harm guard becomes semantically meaningful. Uses the dedicated scratch
+roots ``artifacts/real-proof/{sessions,datasets}``.
 """
 
 from __future__ import annotations
@@ -79,6 +86,9 @@ PROOF_CONFIG = V0SessionConfig(
 
 SESSION_DIR = ROOT / "artifacts" / "local-proof" / "sessions"
 DATASET_ROOT = ROOT / "artifacts" / "local-proof" / "datasets"
+REAL_SESSION_DIR = ROOT / "artifacts" / "real-proof" / "sessions"
+REAL_DATASET_ROOT = ROOT / "artifacts" / "real-proof" / "datasets"
+REAL_VOCAB_SIZE = 8_192  # the TinyStories stream's tokenizer vocabulary
 
 
 def _measure_tokens_per_second(config: V0SessionConfig, steps: int = 20) -> float:
@@ -119,14 +129,37 @@ def main() -> int:
         help="timed steps for the throughput measurement",
     )
     parser.add_argument(
+        "--real-data", action="store_true",
+        help="train on the real TinyStories token stream (train_real_lm.py artifact)",
+    )
+    parser.add_argument(
         "--dry-run", action="store_true",
         help="print the benchmark, schedule, and queue plan, then exit",
     )
     args = parser.parse_args()
 
-    config = PROOF_CONFIG if args.steps == PROOF_CONFIG.total_steps else V0SessionConfig(
-        **{**PROOF_CONFIG.__dict__, "total_steps": args.steps}
+    overrides: dict = {}
+    session_dir, dataset_root = SESSION_DIR, DATASET_ROOT
+    if args.real_data:
+        data_path, val_path = _ensure_real_streams()
+        overrides.update(
+            vocab_size=REAL_VOCAB_SIZE,
+            data_path=str(data_path),
+            val_data_path=str(val_path),
+        )
+        session_dir, dataset_root = REAL_SESSION_DIR, REAL_DATASET_ROOT
+    config = V0SessionConfig(
+        **{
+            **PROOF_CONFIG.__dict__,
+            "total_steps": args.steps,
+            **overrides,
+        }
     )
+    if args.real_data:
+        print(
+            f"REAL-DATA PROOF: training on TinyStories streams\n"
+            f"  train: {config.data_path}\n  val:   {config.val_data_path}"
+        )
     tokens_per_arm = config.training_tokens()
     print(f"model dims: {config.__dict__}")
     print(f"queue: {list(DECLARED_SEEDS)}; tokens per arm: {tokens_per_arm:,}")
@@ -147,18 +180,18 @@ def main() -> int:
     if args.dry_run:
         return 0
 
-    SESSION_DIR.mkdir(parents=True, exist_ok=True)
-    DATASET_ROOT.mkdir(parents=True, exist_ok=True)
+    session_dir.mkdir(parents=True, exist_ok=True)
+    dataset_root.mkdir(parents=True, exist_ok=True)
 
     summary = run_pair_session(
         seeds=DECLARED_SEEDS,
         config=config,
-        session_dir=SESSION_DIR,
-        dataset_root=DATASET_ROOT,
+        session_dir=session_dir,
+        dataset_root=dataset_root,
         code_revision=_git_revision(),
         remaining_hours=args.hours,
         measured_tokens_per_second=tokens_per_second,
-        output=DATASET_ROOT / "local-proof-session.json",
+        output=dataset_root / "local-proof-session.json",
         log=_log,
     )
     print(json.dumps({k: summary[k] for k in ("pairs_completed", "latest_published_seed")}, sort_keys=True))
@@ -169,12 +202,26 @@ def main() -> int:
     # the registered machinery.
     verdict_script = ROOT / "scripts" / "v0_verdict.py"
     result = subprocess.run(
-        [sys.executable, str(verdict_script), "--dataset-root", str(DATASET_ROOT)],
+        [sys.executable, str(verdict_script), "--dataset-root", str(dataset_root)],
         env={**os.environ, "PYTHONPATH": str(ROOT / "src")},
     )
     print(f"verdict exit code: {result.returncode} (0 PASS, 1 FAIL, 2 qualification)")
-    print(f"full verdict: {DATASET_ROOT / 'v0-5-1-verdict.json'}")
+    print(f"full verdict: {dataset_root / 'v0-5-1-verdict.json'}")
     return 0
+
+
+def _ensure_real_streams() -> tuple[Path, Path]:
+    """Guarantee the TinyStories train/val token streams exist (cached)."""
+    import train_real_lm
+
+    train_path, valid_path = train_real_lm.stage_corpus()
+    tokens_path = train_real_lm.ART / "tokens.npy"
+    if not tokens_path.is_file():
+        train_real_lm.stage_tokens(train_path, 40_000_000)
+    val_path = train_real_lm.ART / "val-tokens.npy"
+    if not val_path.is_file():
+        train_real_lm.load_val_tokens(valid_path)
+    return tokens_path, val_path
 
 
 def _log(message: str) -> None:

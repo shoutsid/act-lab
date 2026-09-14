@@ -322,6 +322,25 @@ def test_band_miss_qualifies_the_pass_in_both_directions(factor: float, tmp_path
     assert verdict["verdict"] == "PASS_WITH_QUALIFICATION"
 
 
+def test_harm_guard_takes_label_precedence_over_band_miss(tmp_path: Path) -> None:
+    """Cost passes, band misses, and the harm guard rejects: the verdict
+    string must surface the stronger blocker (anti-adaptivity), not the
+    bookkeeping qualification. Both exit 2; the label is decision-relevant.
+    """
+    _populate(
+        tmp_path,
+        search_flops=_in_band_search_flops(factor=2.5),  # outside [0.5, 2]x, under 5%
+        adaptive_wins=2,  # 10 losses -> harm guard rejects
+    )
+
+    verdict = v0_verdict.compute_verdict(tmp_path, probe_batch_count=1)
+
+    assert verdict["primary_pass"] is True
+    assert verdict["in_tolerance_band"] is False
+    assert verdict["harm_guard"]["clear"] is False
+    assert verdict["verdict"] == "PASS_COST_ONLY_HARM_GUARD_REJECTS"
+
+
 # --- the harm guard --------------------------------------------------------
 
 
