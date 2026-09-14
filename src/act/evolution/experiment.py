@@ -36,6 +36,15 @@ class ExperimentConfig:
     adaptive_policy: str = "probe_loss"
     probe_candidate_cap: int = 4
     probe_batch_count: int = 2
+    # Which candidates a cap-bounded probe sees. "prefix" (default, the
+    # historical behaviour every published study used) takes the first
+    # ``probe_candidate_cap`` entries of the layer-major enumeration, which at
+    # depth 1 is nearly the whole space but at depth > 1 confines the search
+    # to the earliest layer(s). "spread" draws a deterministic per-event
+    # random subset of the same size from the WHOLE feasible set, so the cap
+    # is a genuine search budget over layers and operations rather than a
+    # prefix.
+    probe_candidate_policy: str = "prefix"
     probe_landscape: bool = False
     probe_force_candidate: int | None = None
     probe_force_events: int | None = None
@@ -122,6 +131,8 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
         raise ValueError("unsupported adaptive_policy")
     if config.probe_candidate_cap < 1:
         raise ValueError("probe_candidate_cap must be at least 1")
+    if config.probe_candidate_policy not in {"prefix", "spread"}:
+        raise ValueError("unsupported probe_candidate_policy")
     if config.probe_batch_count < 1:
         raise ValueError("probe_batch_count must be at least 1")
     if config.probe_force_candidate is not None and config.probe_force_candidate < 0:
@@ -199,6 +210,7 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
                     config.adaptive_policy,
                     config.probe_candidate_cap,
                     config.probe_batch_count,
+                    config.probe_candidate_policy,
                     config.probe_landscape,
                     config.probe_force_candidate,
                     config.probe_force_events,
@@ -288,6 +300,8 @@ def _mutate_by_probe(
     candidate_cap: int | None,
     probe_batch_count: int,
     policy_label: str,
+    candidate_policy: str = "prefix",
+    sampler_seed: int = 0,
     record_landscape: bool = False,
     force_candidate: int | None = None,
     force_events: int | None = None,
@@ -308,7 +322,16 @@ def _mutate_by_probe(
     if not candidates:
         return
     if candidate_cap is not None:
-        candidates = candidates[:candidate_cap]
+        if candidate_policy == "spread" and len(candidates) > candidate_cap:
+            # Deterministic per-event subset from the WHOLE feasible set, so a
+            # bounded probe can still reach any layer/operation. Seeded from
+            # the event's seed (config.seed + step) so re-runs and resumes
+            # redraw the identical subset.
+            candidates = tuple(
+                random.Random(sampler_seed).sample(list(candidates), candidate_cap)
+            )
+        else:
+            candidates = candidates[:candidate_cap]
     probe_batches = arm.probe_batches[:probe_batch_count]
     probe_tokens = sum(batch.numel() for batch in probe_batches)
     evaluated: list[tuple[float, int, str, str, str | None, ArchitectureGenome]] = []
@@ -380,6 +403,7 @@ def _mutate_by_probe(
         "probe_loss": probe_loss,
         "probe_candidates": len(evaluated),
         "probe_batch_count": len(probe_batches),
+        "probe_candidate_policy": candidate_policy,
     }
     if record_landscape:
         entry["probe_selected_index"] = selected_index
@@ -410,6 +434,7 @@ def _mutate_arm(
     adaptive_policy: str,
     probe_candidate_cap: int,
     probe_batch_count: int,
+    probe_candidate_policy: str = "prefix",
     record_landscape: bool = False,
     force_candidate: int | None = None,
     force_events: int | None = None,
@@ -422,9 +447,9 @@ def _mutate_arm(
             None,
             len(arm.probe_batches),
             "guided",
-            record_landscape,
-            force_candidate,
-            force_events,
+            record_landscape=record_landscape,
+            force_candidate=force_candidate,
+            force_events=force_events,
         )
         return
     if arm.mode == "adaptive" and adaptive_policy == "probe_loss":
@@ -435,9 +460,11 @@ def _mutate_arm(
             probe_candidate_cap,
             probe_batch_count,
             "adaptive_probe_loss",
-            record_landscape,
-            force_candidate,
-            force_events,
+            candidate_policy=probe_candidate_policy,
+            sampler_seed=seed,
+            record_landscape=record_landscape,
+            force_candidate=force_candidate,
+            force_events=force_events,
         )
         return
     chooser = random.Random(seed)

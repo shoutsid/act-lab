@@ -51,6 +51,26 @@ def main() -> None:
         help="probe batches used per candidate evaluation",
     )
     parser.add_argument(
+        "--probe-candidate-policy",
+        choices=("prefix", "spread"),
+        default="prefix",
+        help="how a cap-bounded probe picks candidates: 'prefix' takes the "
+        "first N of the layer-major enumeration (historical), 'spread' draws "
+        "a deterministic subset from the whole feasible set",
+    )
+    parser.add_argument(
+        "--depth",
+        type=int,
+        default=1,
+        help="number of MoE layers in the toy genome (historical studies used 1)",
+    )
+    parser.add_argument(
+        "--expert-count",
+        type=int,
+        default=4,
+        help="experts per layer in the toy genome (historical studies used 4)",
+    )
+    parser.add_argument(
         "--probe-landscape",
         action="store_true",
         help="record every candidate's probe loss in mutation history",
@@ -88,6 +108,9 @@ def main() -> None:
         adaptive_policy=args.adaptive_policy,
         probe_candidate_cap=args.probe_candidate_cap,
         probe_batch_count=args.probe_batch_count,
+        probe_candidate_policy=args.probe_candidate_policy,
+        depth=args.depth,
+        expert_count=args.expert_count,
         probe_landscape=args.probe_landscape,
         probe_force_candidate=args.probe_force_candidate,
         probe_force_events=args.probe_force_events,

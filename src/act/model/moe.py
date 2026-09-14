@@ -23,9 +23,14 @@ class StaticMoEConfig:
 class StaticMoEBlock(nn.Module):
     def __init__(self, config: StaticMoEConfig, expert_ids: tuple[str, ...]) -> None:
         super().__init__()
-        if len(expert_ids) != config.num_experts:
-            raise ValueError("expert_ids must match num_experts")
+        if not expert_ids:
+            raise ValueError("a MoE block needs at least one expert id")
+        # Expert count is PER LAYER: topology evolution produces heterogeneous
+        # layers, so the block derives its shape from its own ids rather than
+        # the config's single ``num_experts`` field.
+        num_experts = len(expert_ids)
         self.expert_ids = expert_ids
+        self.num_experts = num_experts
         self.norm_attn = nn.LayerNorm(config.hidden_size)
         self.attn = nn.MultiheadAttention(
             config.hidden_size,
@@ -34,17 +39,22 @@ class StaticMoEBlock(nn.Module):
             batch_first=True,
         )
         self.norm_moe = nn.LayerNorm(config.hidden_size)
-        self.router = nn.Linear(config.hidden_size, config.num_experts, bias=False)
+        self.router = nn.Linear(config.hidden_size, num_experts, bias=False)
         self.experts = nn.ModuleList(
             nn.Sequential(
                 nn.Linear(config.hidden_size, config.ffn_size),
                 nn.GELU(),
                 nn.Linear(config.ffn_size, config.hidden_size),
             )
-            for _ in range(config.num_experts)
+            for _ in range(num_experts)
         )
+        if not 1 <= config.active_experts <= num_experts:
+            raise ValueError(
+                f"active_experts ({config.active_experts}) must be between 1 and "
+                f"the layer's expert count ({num_experts})"
+            )
         self.active_experts = config.active_experts
-        self.last_load = torch.zeros(config.num_experts)
+        self.last_load = torch.zeros(num_experts)
 
     def forward(self, hidden: Tensor, causal_mask: Tensor) -> Tensor:
         normalized = self.norm_attn(hidden)
@@ -84,8 +94,8 @@ class StaticMoECausalLM(nn.Module):
         super().__init__()
         if config.hidden_size % config.num_heads != 0:
             raise ValueError("hidden_size must be divisible by num_heads")
-        if not 1 <= config.active_experts <= config.num_experts:
-            raise ValueError("active_experts must be between 1 and num_experts")
+        if config.active_experts < 1:
+            raise ValueError("active_experts must be at least 1")
         self.config = config
         self.token_embedding = nn.Embedding(config.vocab_size, config.hidden_size)
         self.position_embedding = nn.Embedding(config.context_size, config.hidden_size)

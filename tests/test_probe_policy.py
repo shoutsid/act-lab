@@ -86,6 +86,55 @@ def test_study_reports_search_flops_by_arm() -> None:
     )
 
 
+def _probed_layers(experiment) -> list[str]:
+    layers: list[str] = []
+    for arm in experiment.arms:
+        if arm.mode != "adaptive":
+            continue
+        for event in arm.mutation_history:
+            layers.extend(item["layer_id"] for item in event.get("probe_landscape", ()))
+    return layers
+
+
+# The candidate cap used to truncate a layer-major list, so at depth > 1 a
+# bounded probe could never reach past the first layer. The spread policy
+# samples the whole feasible set instead.
+_SPREAD_BASE = dict(
+    seed=5,
+    steps=12,
+    mutation_interval=3,
+    mutation_budget=3,
+    depth=4,
+    hidden_size=24,
+    expert_count=4,
+    probe_candidate_cap=2,
+    probe_batch_count=1,
+    probe_landscape=True,
+    arms="random,adaptive",
+)
+
+
+def test_prefix_candidate_policy_is_confined_to_the_first_layer() -> None:
+    prefix_layers = _probed_layers(run_experiment(ExperimentConfig(**_SPREAD_BASE)))
+    assert len(set(prefix_layers)) == 1
+
+
+def test_spread_candidate_policy_reaches_beyond_the_first_layer() -> None:
+    spread = ExperimentConfig(**_SPREAD_BASE, probe_candidate_policy="spread")
+    spread_layers = _probed_layers(run_experiment(spread))
+    assert len(set(spread_layers)) > 1
+    # Per-event subsets are seeded from (config.seed + step): reproducible.
+    assert _probed_layers(run_experiment(spread)) == spread_layers
+
+
+def test_spread_policy_keeps_budgets_matched_and_is_recorded() -> None:
+    spread = ExperimentConfig(**_SPREAD_BASE, probe_candidate_policy="spread")
+    arms = {arm.mode: arm for arm in run_experiment(spread).arms}
+    assert arms["random"].mutation_count == arms["adaptive"].mutation_count
+    for event in arms["adaptive"].mutation_history:
+        assert event["probe_candidate_policy"] == "spread"
+
+
 def test_config_rejects_invalid_probe_budgets() -> None:
     import pytest
 
@@ -97,6 +146,8 @@ def test_config_rejects_invalid_probe_budgets() -> None:
         run_experiment(ExperimentConfig(steps=1, adaptive_policy="bogus"))
     with pytest.raises(ValueError):
         run_experiment(ExperimentConfig(steps=1, probe_candidate_cap=0, validation_batches=1))
+    with pytest.raises(ValueError):
+        run_experiment(ExperimentConfig(steps=1, probe_candidate_policy="bogus"))
 
 
 def test_probe_batch_count_clamps_to_validation_batches() -> None:
