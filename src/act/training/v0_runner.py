@@ -245,14 +245,16 @@ def _run_one_pair(
     )
     arms = {arm.mode: arm.final_loss for arm in result.arms}
     logger(f"seed {seed}: pair complete ({arms})")
-    # Single-arm gated sessions (report section 5.4) publish one arm; the
-    # baseline comparison lives in the paired-block summaries, not here.
+    # Single-arm sessions (gated, report section 5.4; null, report section
+    # 5.8) publish one arm; the baseline comparison lives in the paired-block
+    # summaries, not here.
     return {
         "seed": seed,
         "action": "completed",
         "random_final_loss": arms.get("random"),
         "adaptive_final_loss": arms.get("adaptive"),
         "gated_final_loss": arms.get("gated"),
+        "null_final_loss": arms.get("null"),
         "training_flops_by_arm": {
             arm.mode: arm.training_flops for arm in result.arms
         },

@@ -167,6 +167,21 @@ class V0SessionConfig:
     # ``gate_margin = inf`` reduces the arm to the random arm plus idle
     # probe FLOPs - the built-in budget-matched random control.
     gate_margin: float = 0.0
+    # Do-nothing control (report section 5.8, motivated by the gated
+    # outcome's ``reject_noop`` sweep: the only real-text configuration that
+    # beat the random arms was one that performed zero mutations). The null
+    # arm is that configuration made explicit: a single-arm session that
+    # shares the random arm's init identity (offset 1), training stream, and
+    # chooser-seed discipline, but performs NO mutation at any structural
+    # event - each event appends one recorded no-op entry (operation "null",
+    # gate_decision "null") and books no probe FLOPs, so search_flops stays
+    # exactly 0 and mutation_count stays 0. It is the cleanest churn-harm
+    # baseline the matched-budget protocol supports: budget-matched (every
+    # event slot is consumed), single-arm like gated, and paired against the
+    # baseline block's stored random arms. Because the gated arm at theta=0
+    # rejected every draw and every fallback on the diagnostic block, the
+    # null arm should reproduce the gated arm's losses bit-for-bit on the
+    # same seeds - a built-in replication check of the section-5.4 run.
 
     def __post_init__(self) -> None:
         if self.total_steps < 1 or self.batch_size < 1:
@@ -191,11 +206,13 @@ class V0SessionConfig:
             raise ValueError("gate_margin must be non-negative")
         if "gated" in self.arms and self.arms != ("gated",):
             raise ValueError("the gated arm runs as its own single-arm session (arms=('gated',))")
+        if "null" in self.arms and self.arms != ("null",):
+            raise ValueError("the null arm runs as its own single-arm session (arms=('null',))")
         if self.dtype not in {"fp32", "fp16"}:
             raise ValueError(f"unsupported session dtype: {self.dtype}")
         if self.validation_batches < 1:
             raise ValueError("validation_batches must be positive")
-        unknown = [arm for arm in self.arms if arm not in {"random", "adaptive", "gated"}]
+        unknown = [arm for arm in self.arms if arm not in {"random", "adaptive", "gated", "null"}]
         if unknown:
             raise ValueError(f"unsupported V0 session arms: {unknown}")
         if len(set(self.arms)) != len(self.arms):
@@ -241,6 +258,9 @@ def predicted_cost_ratio(config: V0SessionConfig) -> float:
         search = events * 2 * probe_tokens * 2 * active
         training = 2 * total * config.training_tokens()
         return search / training
+    if config.arms == ("null",):
+        # The do-nothing control books nothing: no probes, no rebuilds.
+        return 0.0
     per_candidate = probe_tokens * 2 * active
     if config.probe_finetune_steps > 0:
         per_candidate += (
@@ -849,6 +869,37 @@ def _gated_event(
     return model, optimizer
 
 
+def _null_event(
+    arm_state: _SessionState,
+    config: V0SessionConfig,
+    step: int,
+) -> None:
+    """Record one do-nothing structural event (report section 5.8).
+
+    The null arm consumes its event slot but performs no mutation: no draw,
+    no probe, no rebuild, no fallback - not even the random arm's chooser
+    RNG draw, whose only observable effect here would be bookkeeping noise.
+    The entry exists so the arm's history shows the events were consumed
+    deliberately (budget-matched), and so publish and downstream analysis
+    see a well-formed mutation_history.
+    """
+    arm_state.mutation_history.append(
+        {
+            "step": step,
+            "policy": "null",
+            "operation": "null",
+            "layer_id": None,
+            "expert_id": None,
+            "gate_decision": "null",
+            "gate_margin": None,
+            "architecture_hash_before": genome_hash(arm_state.genome),
+            "architecture_hash_after": genome_hash(arm_state.genome),
+            "mutation_count": arm_state.mutations,
+            "probe_candidates": 0,
+        }
+    )
+
+
 def _random_event(
     arm_state: _SessionState,
     model: V0MoECausalLM,
@@ -938,7 +989,7 @@ def _train_arm(
     # gated session at gate_margin=inf reproduces the random arm EXACTLY -
     # the built-in budget-matched random control - and at any finite margin
     # the trajectory diverges only where the gate intervenes.
-    arm_seed = config.seed * 10 + {"random": 1, "adaptive": 2, "gated": 1}[mode]
+    arm_seed = config.seed * 10 + {"random": 1, "adaptive": 2, "gated": 1, "null": 1}[mode]
     # fp16 sessions train under autocast with a GradScaler over fp32 master
     # weights; fp32 sessions keep the plain path. Both are created here so a
     # resume restores into the same object graph either way.
@@ -1083,6 +1134,8 @@ def _train_arm(
                 model, optimizer = _gated_event(
                     arm_state, model, optimizer, config, step, device, probe_batches
                 )
+            elif mode == "null":
+                _null_event(arm_state, config, step)
             else:
                 model, optimizer = _random_event(
                     arm_state, model, optimizer, config, step, device

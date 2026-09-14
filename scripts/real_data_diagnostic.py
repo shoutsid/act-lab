@@ -126,6 +126,28 @@ pre-registrations): a do-nothing control arm on a fresh block; an
 intermediate-theta sweep (theta 0.05/0.1 would have accepted 11/24 and
 21/24 of the observed draws). Full write-up: report section 5.7.
 
+- ``null`` : the section-5.8 do-nothing control - a single-arm session
+  (``V0SessionConfig(arms=("null",))``) that shares the random arm's init
+  identity (offset 1), training stream, and event cadence, but performs no
+  mutation at any structural event: each event appends one recorded no-op
+  (operation "null"), books no probe FLOPs, and consumes the budget slot,
+  so the arm is budget-matched with zero churn. Paired against the
+  baseline block's stored random arms, it measures pure churn harm at
+  matched budget on this block.
+
+Pre-registered outcome contract for ``null`` (fixed before running):
+(a) the null arm beating the paired random arms (mean delta < 0 or wins
+>= 5/8) establishes churn harm as a real effect on this block and
+re-labels every real-data variant's loss as partly churn harm; the gated
+follow-up question then becomes whether ACCEPTED draws beat doing
+nothing, not whether gating beats random. (b) a null-vs-random delta
+inside +/-0.1 nats would mean the gated run's -0.12 was seed luck, and
+the gate program stays closed. Built-in checks: the null arm must book
+zero search FLOPs and zero mutations, and its final losses should
+reproduce the gated run bit-for-bit on the same seeds (the gated arm
+accepted nothing - this is the replication check of the section-5.4 run
+at essentially zero marginal cost).
+
 Per-event probe cost scales as candidates x batches, so ``var`` quadruples
 the baseline cost (~1% -> ~4% of training FLOPs, measured 3.99%) and
 ``rich`` doubles it (measured 1.98%); ``argmax`` matches the baseline's
@@ -149,6 +171,7 @@ Usage:
   PYTHONPATH=src python scripts/real_data_diagnostic.py --variants heldout --force
   PYTHONPATH=src python scripts/real_data_diagnostic.py --variants long --force
   PYTHONPATH=src python scripts/real_data_diagnostic.py --variants gated
+  PYTHONPATH=src python scripts/real_data_diagnostic.py --variants null
 """
 
 from __future__ import annotations
@@ -183,6 +206,14 @@ VARIANTS: dict[str, dict[str, object]] = {
     # seeds' published baseline random arms, and the arm is its own control
     # at theta=inf (it reproduces the random arm exactly).
     "gated": {"arms": ("gated",), "gate_margin": 0.0},
+    # Section 5.8's do-nothing control (the gated outcome's follow-up):
+    # matched-budget churn vs NO churn. A single-arm session that shares the
+    # random arm's init identity and training stream but performs no
+    # mutation at any structural event (each event is one recorded no-op;
+    # zero probe FLOPs). Paired against the baseline block's stored random
+    # arms; its losses should reproduce the gated run bit-for-bit on the
+    # same seeds, because the gated arm accepted nothing.
+    "null": {"arms": ("null",)},
 }
 
 
@@ -355,6 +386,31 @@ def _gate_stats(dataset_root: Path, seeds: tuple[int, ...]) -> dict:
     }
 
 
+def _null_stats(dataset_root: Path, seeds: tuple[int, ...]) -> dict:
+    """Aggregate the null arm's bookkeeping (zero mutations by construction).
+
+    Any nonzero mutation count here means the arm is not the do-nothing
+    control it claims to be; the count is reported so the check is
+    machine-readable from the published diagnostic.
+    """
+    events = 0
+    mutations = 0
+    for seed in seeds:
+        path = (
+            dataset_root / "act-checkpoints" / "v0-5-1" / f"seed-{seed:04d}"
+            / "reports" / "seed-summary.json"
+        )
+        if not path.is_file():
+            continue
+        summary = json.loads(path.read_text())
+        if summary.get("status") != "complete":
+            continue
+        arm = summary["arms"].get("null", {})
+        mutations += int(arm.get("mutation_count", 0))
+        events += len(arm.get("mutation_history", []))
+    return {"events_recorded": events, "mutations": mutations}
+
+
 def analyze(seeds: tuple[int, ...], steps: int) -> dict:
     baseline = _seed_losses(BASELINE_ROOT, seeds)
     report: dict[str, object] = {
@@ -366,9 +422,12 @@ def analyze(seeds: tuple[int, ...], steps: int) -> dict:
     }
     for name, overrides in VARIANTS.items():
         root = DIAG_ROOT / name / "datasets"
-        arm_names = ("gated",) if overrides.get("arms") == ("gated",) else ("random", "adaptive")
+        single_arm = overrides.get("arms")
+        arm_names = (
+            (single_arm,) if single_arm in (("gated",), ("null",)) else ("random", "adaptive")
+        )
         losses = _seed_losses(root, seeds, arm_names)
-        treatment = "gated" if arm_names == ("gated",) else "adaptive"
+        treatment = arm_names[0] if len(arm_names) == 1 else "adaptive"
         paired = []
         for seed in sorted(set(losses) & set(baseline)):
             paired.append(
@@ -410,6 +469,8 @@ def analyze(seeds: tuple[int, ...], steps: int) -> dict:
         }
         if treatment == "gated":
             report["variants"][name]["gate"] = _gate_stats(root, seeds)
+        if treatment == "null":
+            report["variants"][name]["null"] = _null_stats(root, seeds)
     return report
 
 

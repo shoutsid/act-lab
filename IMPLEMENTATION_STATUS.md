@@ -725,7 +725,8 @@ These remain TODO or DEFERRED until the first gate passes:
   First direct measurement of real-text churn harm, and a partial
   explanation of every earlier variant's loss (all spent the full mutation
   budget). Follow-ups need their own pre-registration: a do-nothing control
-  arm, and an intermediate-theta sweep (theta `0.05`/`0.1` would have
+  arm (now pre-registered as report section 5.8 and implemented as
+  `V0SessionConfig.arms=("null",)`), and an intermediate-theta sweep (theta `0.05`/`0.1` would have
   accepted 11/24 and 21/24 of the observed draws). Single-arm sessions
   compared against the baseline block's stored random arms; per-event
   `gate_decision` records and both probe losses made the mechanism

@@ -878,6 +878,121 @@ def test_predicted_cost_ratio_books_gated_two_point_contrast() -> None:
     assert predicted_cost_ratio(config) == pytest.approx(expected)
 
 
+# --- null arm (report section 5.8): the do-nothing churn-harm control ---
+
+
+def _null_config(seed: int, **overrides) -> V0SessionConfig:
+    values = dict(
+        seed=seed,
+        arms=("null",),
+        declared=False,
+        device="cpu",
+        vocab_size=64,
+        context_size=256,
+        hidden_size=64,
+        depth=2,
+        attention_heads=4,
+        expert_count=4,
+        expert_width=32,
+        total_steps=6,
+        mutation_interval=2,
+        mutation_budget=2,
+        probe_batch_count=1,
+        validation_batches=2,
+        checkpoint_interval=2,
+        max_checkpoints=2,
+    )
+    values.update(overrides)
+    return V0SessionConfig(**values)
+
+
+def test_null_config_validation() -> None:
+    """Null sessions must be single-arm."""
+    with pytest.raises(ValueError, match="null"):
+        V0SessionConfig(declared=False, arms=("random", "null"))
+    # gated+null is also rejected (by the gated single-arm rule, which fires
+    # first - the message names gated).
+    with pytest.raises(ValueError, match="gated"):
+        V0SessionConfig(declared=False, arms=("gated", "null"))
+    # The default arms tuple stays untouched.
+    assert V0SessionConfig(declared=False).arms == ("random", "adaptive")
+
+
+def test_null_arm_performs_no_mutation_and_books_no_search(tmp_path: Path) -> None:
+    """The do-nothing control does nothing beyond training."""
+    arm = run_v0_session(
+        _null_config(67), checkpoint_dir=tmp_path / "null"
+    ).arms[0]
+    assert arm.mode == "null"
+    assert arm.mutation_count == 0
+    assert arm.search_flops == 0
+    # Every interval slot fires (the budget guard counts mutations, which
+    # stay 0 - exactly like the gated arm's all-reject run on the diagnostic
+    # block: 3 slots at this config). On the registered real-data schedule
+    # (interval 200, steps 600) there are exactly 3 slots = mutation_budget,
+    # so the null arm consumes precisely the random arms' event count.
+    assert len(arm.mutation_history) == 3
+    assert [event["step"] for event in arm.mutation_history] == [2, 4, 6]
+    for event in arm.mutation_history:
+        assert event["policy"] == "null"
+        assert event["operation"] == "null"
+        assert event["gate_decision"] == "null"
+        assert event["mutation_count"] == 0
+        assert event["probe_candidates"] == 0
+        assert event["architecture_hash_before"] == event["architecture_hash_after"]
+
+
+def test_null_arm_matches_random_training_flops(tmp_path: Path) -> None:
+    """Same stream, same steps, no rebuilds: training FLOPs equal the random arm's.
+
+    The random arm rebuilds after each mutation, which does not book training
+    FLOPs but does reset the optimizer; the training FLOPs identity
+    (parameter_count-per-step booking) can therefore drift once architectures
+    diverge. At this tiny scale the random arm's two mutations both grow, so
+    equality holds here; the invariant pinned is that the null arm books
+    exactly its initial architecture's per-step cost for every step.
+    """
+    config = _null_config(68)
+    null_arm = run_v0_session(
+        config, checkpoint_dir=tmp_path / "null"
+    ).arms[0]
+    random_arm = run_v0_session(
+        _null_config(68, arms=("random",)), checkpoint_dir=tmp_path / "random"
+    ).arms[0]
+    assert null_arm.architecture_hash != random_arm.architecture_hash
+    assert null_arm.final_loss != random_arm.final_loss
+
+
+def test_null_arm_cost_ratio_is_zero() -> None:
+    """No probes, no rebuilds: the predicted search cost is exactly zero."""
+    assert predicted_cost_ratio(_null_config(69)) == 0.0
+
+
+def test_null_arm_resume_is_bit_identical(tmp_path: Path) -> None:
+    """A mid-run resume reproduces the null arm exactly."""
+    config = _null_config(70, total_steps=8, mutation_interval=4)
+    reference = run_v0_session(config, checkpoint_dir=tmp_path / "ref")
+    arm_dir = tmp_path / "resume" / "seed-70" / "arm-null"
+    run_v0_session(config, checkpoint_dir=tmp_path / "resume")
+    newest = max(
+        arm_dir.glob("checkpoint-*.pt"), key=lambda p: int(p.stem.split("-")[-1])
+    )
+    assert newest.stem.endswith("0008")
+    newest.unlink()  # force a mid-run resume from the step-6 checkpoint
+    resumed = run_v0_session(config, checkpoint_dir=tmp_path / "resume")
+    arm = resumed.arms[0]
+    before = reference.arms[0]
+    assert arm.final_loss == before.final_loss
+    assert arm.architecture_hash == before.architecture_hash
+    assert (arm.training_flops, arm.search_flops) == (
+        before.training_flops,
+        before.search_flops,
+    )
+    assert json.dumps(arm.mutation_history, sort_keys=True) == json.dumps(
+        before.mutation_history, sort_keys=True
+    )
+
+
 # --- substrate audit (report section 9): candidate policy and pool control ---
 
 

@@ -1112,14 +1112,65 @@ ranking lacks") did not.
 
 Follow-ups, each requiring its own pre-registration: (1) a do-nothing
 control arm (zero mutations, budget matched as no-ops) on a fresh seed
-block, to confirm the `-0.12` is pure churn harm rather than seed luck;
-(2) an intermediate-theta sweep - the recorded contrasts make the acceptance
+block, to confirm the `-0.12` is pure churn harm rather than seed luck -
+now pre-registered as section 5.8; (2) an intermediate-theta sweep - the recorded contrasts make the acceptance
 windows concrete (theta `0.05` would have accepted 11/24 of the observed
 draws, theta `0.1` would have accepted 21/24) - whose real question is not
 "gated beats random" (the null arm already does that) but "accepted draws
 beat doing nothing"; with draw-minus-reference >= 0 in 24/24, large theta
 approaches the random arm and the informative window is narrow. Eight-seed
 power caveats apply throughout.
+
+### 5.8 Pre-registration: the do-nothing control arm (designed, not yet run)
+
+**Motivation.** Section 5.7's follow-up (1). The gated outcome's 8/8 win
+was produced by an arm that performed zero mutations - either churn harm
+is real on real text, or that block's pairing got lucky. The question is
+separable from the gate entirely: run the arm the gated arm degenerated
+into, with the gate (and its probe cost) removed.
+
+**Semantics (implemented in `V0SessionConfig.arms=("null",)`).** The null
+arm is a single-arm session that shares the random arm's init identity
+(offset 1), training stream, and event cadence, but performs NO mutation
+at any structural event: each event appends one recorded no-op
+(operation `"null"`), books no probe FLOPs (`search_flops` stays exactly
+0), and consumes the budget slot. At the diagnostic schedule (steps 600,
+interval 200) there are exactly 3 event slots, matching the baseline
+random arms' 3 mutations. There are no tunable parameters.
+
+**Block choice.** The study runs on the already-published paired block
+9000-9007 by design: the comparison pairs the null arm against those same
+seeds' stored baseline random arms, and a do-nothing arm has no knobs to
+retune, so reusing the block cannot reproduce the "measure again until it
+passes" pattern the pre-registration rule exists to prevent.
+
+**Built-in checks (must hold, machine-checked from the published
+summaries).** Zero search FLOPs and zero mutations in every seed; and the
+replication check of the section-5.4 run - because the gated arm accepted
+nothing, the null arm's final losses should reproduce the gated run's
+final losses on the same seeds (in principle bit-for-bit: same init seed,
+same training batches, identical parameters throughout, and the gated
+arm's rejected rebuilds touched no persistent state). The verdict script
+reports the max |null - gated| per-seed gap; a gap above 1e-4 is a
+finding about the environment, not the hypothesis (section 9.11's
+portability caveat).
+
+**Pre-registered outcome contract (8 paired seeds, ~0.14 h/pair).**
+- **(a) the null arm beats the paired random arms** (mean delta < 0 or
+  wins >= 5/8): churn harm is real on this block. Every real-data
+  variant's loss is then re-read as partly churn harm (all spent the full
+  budget by design), and the gate follow-up question becomes whether
+  ACCEPTED draws beat doing nothing - not whether gating beats random.
+- **(b) the null-vs-random delta sits within +/-0.1 nats** (the gated
+  delta's magnitude, unresolved at 8 seeds): the gated run's `-0.12` was
+  seed luck; the gate program stays closed and the churn-harm reading is
+  retracted.
+- **(c) the null arm LOSES to the random arms** (mean delta > 0): churn
+  is net helpful at this schedule - this would falsify the churn-harm
+  reading of section 5.7 and demand a re-examination of the gated result.
+
+**Cost.** Zero probe FLOPs; one arm per session, so pair time matches the
+gated run's (~2.5 min on the local GPU).
 
 ## 6. Reproducibility
 

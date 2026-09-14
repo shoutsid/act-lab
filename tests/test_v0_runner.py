@@ -56,6 +56,35 @@ def test_declared_seed_block_matches_the_adopted_revision() -> None:
     assert 9000 not in DECLARED_SEEDS
 
 
+def test_single_arm_null_session_publishes_one_arm(tmp_path: Path) -> None:
+    """The do-nothing control publishes a single-arm seed summary.
+
+    The null arm books zero search FLOPs (no probes, no rebuilds) and the
+    pair summary carries its loss under ``null_final_loss`` the way gated
+    sessions publish ``gated_final_loss``.
+    """
+    summary = run_pair_session(
+        config=_config(arms=("null",)),
+        session_dir=tmp_path / "sessions",
+        dataset_root=tmp_path / "dataset",
+        code_revision="rev",
+        remaining_hours=8.0,
+        measured_tokens_per_second=1e9,  # instantaneous tiny pair
+        seeds=(9000,),
+        output=tmp_path / "summary.json",
+    )
+    assert [entry["action"] for entry in summary["pairs"]] == ["completed"]
+    entry = summary["pairs"][0]
+    assert entry["null_final_loss"] is not None
+    assert entry["random_final_loss"] is None
+    assert entry["search_flops_by_arm"] == {"null": 0}
+    seed_summary = load_seed_summary(tmp_path / "dataset", 9000)
+    assert seed_summary["status"] == "complete"
+    arm = seed_summary["arms"]["null"]
+    assert arm["mutation_count"] == 0
+    assert arm["search_flops"] == 0
+
+
 def test_rejects_invalid_clock_and_throughput(tmp_path: Path) -> None:
     config = _config()
     with pytest.raises(ValueError, match="measured_tokens_per_second"):
