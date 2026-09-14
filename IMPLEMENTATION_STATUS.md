@@ -344,9 +344,17 @@ These remain TODO or DEFERRED until the first gate passes:
   (perplexity 5.55) against the uniform floor 9.011 (ppl 8192) - the model
   really learned the language. Inference produces fluent on-genre story text
   (greedy decoding deterministic; out-of-domain text scores ppl ~4000, i.e.
-  the model knows its domain). Report and samples in
+  the model  knows its domain). Report and samples in
   `artifacts/real-lm/report.json`; corpus/tokens/checkpoints are local
   scratch (gitignored).
+- `PYTHONPATH=src python scripts/real_lm_chat.py` -> interactive streaming
+  chat over the trained checkpoint: user lines are appended to the rolling
+  story context (the model reacts to what you typed, verified: a "brave
+  knight" line produced a lion-roar continuation), tokens print as they are
+  generated, and session commands (/new with optional seed, /temp, /topk,
+  /len, /show, /save, /quit) manage the loop; `--once` reads one seed line
+  from stdin for piped use. Reuses `real_lm_infer.load_model` so chat and
+  one-shot inference always agree on config, checkpoint, and decode.
 - `PYTHONPATH=src python scripts/generate_figures.py` -> writes the four factor-map
   figures to `artifacts/study-summaries/figures/` (fig1 win-rate forest,
   fig2 quality-vs-cost, fig3 delta distributions, fig4 probe-rank heatmap),
