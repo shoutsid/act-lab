@@ -107,7 +107,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--treatment",
-        choices=("adaptive", "guided"),
+        choices=("adaptive", "guided", "null"),
         default="adaptive",
         help="arm scored against random in a gate study",
     )

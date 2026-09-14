@@ -1198,6 +1198,60 @@ still applies; a powered confirmation on a fresh block (or at the toy
 scale where 384 seeds are cheap) is the next pre-registration if this axis
 is pursued.
 
+### 5.9 Pre-registration: does the toy adaptive edge clear the do-nothing bar? (designed, not yet run)
+
+**Motivation.** Sections 5.7-5.8 established real-text churn harm and showed
+a do-nothing arm beating random churn there. Every toy Gate-style pass -
+including the section 5.6 depth-4 confirmation - was scored against random
+churn, and the toy path never had a null arm, so "adaptive > random" has
+never been tested against "adaptive > nothing". If churn is also harmful on
+the synthetic substrate, part of every toy pass is churn suppression and the
+pool-matched control of section 9.5 needs a third control.
+
+**Design.** Study 3's registered config (hidden 24, depth 1, expert_count 4,
+active 2, steps 48, interval 12, budget 3, cap 4 / 2 probe batches,
+`adaptive_policy=probe_loss`), run as a THREE-arm block per seed -
+`arms="random,adaptive,null"`, `independent_arm_rng=True` (pinned explicitly
+per the section 9.8 convention), `device=cpu` - on the never-observed fresh
+block **70000-70383** (384 seeds). Arm order keeps indices 0/1 on
+random/adaptive, and the null arm consumes no global torch RNG, so the
+adaptive-vs-random comparison is by construction identical to the two-arm
+block (pinned by test: 3-arm == 2-arm bit-for-bit on anchor seed 3000; the
+committed decoupled recheck's absolute constants are environment-sensitive
+at 1e-6 per section 9.11, so the invariance is pinned within-environment).
+Both comparisons below come from the same fresh run - no committed numbers
+are mixed with fresh ones.
+
+**Pre-registered outcome contract (alpha = 0.05, two primaries, Bonferroni
+alpha/2 = 0.0025; verdict machine-checked, exact binomial via
+`act.evolution.study`).**
+1. **Null-vs-random** (churn-harm replication at toy scale): one-tailed
+   sign test on per-seed null-minus-random deltas (null < random = churn
+   harm). Pass = clears alpha/2.
+2. **Adaptive-vs-null** (the new bar for Gate 3 claims): one-tailed sign
+   test on per-seed adaptive-minus-null deltas (adaptive < null = the
+   controller beats doing nothing). Pass = clears alpha/2.
+- Secondary (reported, not gating): adaptive-vs-random on the same run
+  (expected to replicate the decoupled direction); mean deltas of all three
+  pairings; per-arm search FLOPs (null must book exactly 0) and mutation
+  counts (null exactly 0, random/adaptive exactly the budget).
+
+**Interpretation grid (pre-registered).**
+- 1 and 2 both pass: the toy edge is real beyond both the pool effect and
+  churn suppression; the factor map stands with an added control.
+- 1 passes, 2 fails: toy churn harm is as large as the adaptive edge - the
+  Gate 3 passes are substantially churn suppression and the factor map must
+  be re-derived against the null arm.
+- 1 fails (no toy churn harm): the toy substrate differs qualitatively from
+  real text on this axis; comparisons against random churn remain meaningful
+  at toy scale, and the null control stays a real-data requirement.
+- 2 fails with adaptive LOSING to null: the strongest form of the section-1
+  "stop and simplify" rule applies.
+
+**Cost.** ~1.5-2 s/seed at depth 1 -> 384 seeds in ~13 min single-core,
+sharded 20-way well under 2 minutes wall (CPU per the section 5.6 hardware
+note).
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

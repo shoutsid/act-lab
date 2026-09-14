@@ -109,14 +109,16 @@ def run_gate_study(
     """Run a paired multi-seed study of a treatment arm versus random churn.
 
     ``treatment`` selects the arm scored against ``random``: the budget-aware
-    ``adaptive`` controller (default, the Gate 3 comparison) or the probe-loss
-    greedy ``guided`` diagnostic upper bound.
+    ``adaptive`` controller (default, the Gate 3 comparison), the probe-loss
+    greedy ``guided`` diagnostic upper bound, or the do-nothing ``null``
+    control (report section 5.9 - churn harm at matched budget, whose deltas
+    pair within-seed against the adaptive arm's).
     """
     if not seeds:
         raise ValueError("study requires at least one seed")
     if len(set(seeds)) != len(seeds):
         raise ValueError("study seeds must be unique")
-    if treatment not in {"adaptive", "guided"}:
+    if treatment not in {"adaptive", "guided", "null"}:
         raise ValueError("unsupported treatment arm")
     configured_arms = {mode.strip() for mode in config.arms.split(",") if mode.strip()}
     if "random" not in configured_arms:
@@ -176,6 +178,13 @@ def _treatment_delta(result: ExperimentResult, treatment: str) -> float:
 
 def _has_matched_budget(result: ExperimentResult, treatment: str) -> bool:
     arms = {arm.mode: arm for arm in result.arms}
+    if treatment == "null":
+        # The do-nothing control consumes every event slot by definition (its
+        # history records the slots; its mutation count stays 0), so "matched
+        # budget" means the null arm's recorded no-ops equal the random arm's
+        # actual mutation count.
+        null_arm = arms["null"]
+        return len(null_arm.mutation_history or ()) == arms["random"].mutation_count
     return arms["random"].mutation_count == arms[treatment].mutation_count
 
 

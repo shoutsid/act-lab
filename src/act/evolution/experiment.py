@@ -67,6 +67,36 @@ class ExperimentConfig:
     device: str = "cpu"
 
 
+def _mutate_null(arm, step, mutations, budget):
+    """Record one do-nothing structural event for the null arm (report 5.9).
+
+    The toy twin of the V0 path's null arm (report section 5.8): no draw, no
+    probe, no rebuild, no fallback - and, unlike the V0 diagnostic schedule
+    (whose 600 steps / interval 200 give exactly 3 slots), the toy loop fires
+    at every interval slot, so the arm self-limits its recorded events to
+    ``mutation_budget`` (the random arm stops mutating once its count reaches
+    the budget, so alignment with the random arm's event count is exact).
+    """
+    if arm.mutation_history is None:
+        raise RuntimeError("mutation history is not initialized")
+    # ``mutations`` stays 0 forever on this arm, so the recorded history is
+    # the slot counter: stop once the budget is consumed.
+    if len(arm.mutation_history) >= budget:
+        return
+    mutations = len(arm.mutation_history)
+    arm.mutation_history.append(
+        {
+            "step": step,
+            "policy": "null",
+            "operation": "null",
+            "layer_id": None,
+            "architecture_hash_before": genome_hash(arm.genome),
+            "architecture_hash_after": genome_hash(arm.genome),
+            "mutation_count": mutations,
+        }
+    )
+
+
 @dataclass(frozen=True)
 class ArmResult:
     mode: str
@@ -115,7 +145,7 @@ class _Arm:
 def _parse_arms(spec: str) -> tuple[str, ...]:
     """Parse and validate the comma-separated arm selection."""
     modes = tuple(mode.strip() for mode in spec.split(",") if mode.strip())
-    supported = {"fixed", "random", "adaptive", "guided"}
+    supported = {"fixed", "random", "adaptive", "guided", "null"}
     if not modes:
         raise ValueError("arms must name at least one arm")
     if len(set(modes)) != len(modes):
@@ -216,6 +246,14 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
                 and step % config.mutation_interval == 0
                 and arm.mutations < config.mutation_budget
             ):
+                if arm.mode == "null":
+                    _mutate_null(
+                        arm,
+                        step,
+                        arm.mutations,
+                        config.mutation_budget,
+                    )
+                    continue
                 if config.independent_arm_rng:
                     # Rebuild initialisation is the only consumer of the global
                     # torch RNG here (data and validation use dedicated CPU
