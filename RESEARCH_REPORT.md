@@ -31,7 +31,12 @@ seeds.
   mutations differs"; section 9.5 shows this is **not accurate** as implemented -
   the arms also differ in their candidate distribution, and a loss-blind
   choice from the same candidate pool reproduces most of the effect. The
-  corrected control is pool-matched.
+  corrected control is pool-matched. Sections 5.8-5.10 add a third control:
+  the **do-nothing arm** (matched budget, zero mutations), which beat random
+  churn on real text (5.8) and exposed study 3's depth-1 toy edge as churn
+  suppression (5.9), while the depth-4 pass survives it (5.10). The claim
+  "adaptive improves capability per FLOP" is therefore now supported only
+  where a controller clears the null bar: depth 4 with the spread policy.
 - **Decision if false**: stop and simplify the architecture controller; do not
   scale until a controller passes.
 
@@ -52,7 +57,11 @@ section 9.1. The random control draws uniformly over layers and operations
 while a bounded treatment draws from a capped candidate list, so the two arms
 differ in candidate distribution as well as selection; the study below is
 interpreted with that in mind, and the pool-matched control (section 9.5)
-should be the baseline for any re-run.
+should be the baseline for any re-run. **Sections 5.9-5.10 sharpen these
+caveats into a verdict: on this depth-1 substrate the study-3 pass is churn
+suppression (null < adaptive < random), so the depth-1 rows must be read
+with the do-nothing bar in mind and only the depth-4 family (sections 5.6,
+5.10) supports the improvement claim as stated.**
 
 Gate-study verdicts are objective and machine-computed
 (`src/act/evolution/study.py`):
@@ -1332,6 +1341,56 @@ creates real value on top of not churning harmfully (adaptive < null <
 random). The richness axis separates suppression from creation - coherent
 with sections 5.3-5.6 - and Gate 3's depth-4 evidence stands, now with a
 third control under it.
+
+### 5.11 Pre-registration: the intermediate-theta sweep against the null arm (designed, not yet run)
+
+**Motivation.** Section 5.7's follow-up (2), now correctly aimed: the
+question is not "does gating beat random" (doing nothing already does,
+section 5.8) but "do ACCEPTED draws beat doing nothing". The recorded
+section-5.4 contrasts make the acceptance windows concrete - theta `0.02`
+would have accepted 4/24 observed draws, theta `0.05` accepted 11/24,
+theta `0.1` accepted 21/24 - so the sweep samples the conservative,
+middle, and near-random points of the axis.
+
+**Design.** Single-arm sessions on the V0 diagnostic path (steps 600,
+interval 200, budget 3, cap 4 / 1 probe batch) on the fresh block
+**9008-9017** (10 seeds). Seeds 9008-9011 have published baseline
+random/adaptive arms from the section-5.1 proof run, but NO null or gated
+outcome has ever been observed at any seed 9008-9017; the primary
+comparison involves only fresh outcomes. Arms run: the null control
+(once) and `gated` at theta in {`0.02`, `0.05`, `0.1`} - the family is
+declared here because the theta values were chosen from the already-
+observed 5.4 contrasts (posthoc family, pre-declared membership); the
+family-wise correction buys back the posthoc selection. Power: n = 10 is
+the smallest block whose sign-test bar (9/10, p `0.0098`) clears the
+Bonferroni alpha/3 = `0.0167` bar - 8 seeds cannot pass at all (7/8 gives
+p `0.0353`).
+
+**Primary.** For each theta: one-tailed sign test on per-seed
+gated-minus-null final-loss deltas (gated < null = accepted draws beat
+doing nothing), each against alpha/3; the family verdict is "at least one
+theta clears".
+
+**Pre-registered interpretation.**
+- Some theta clears alpha/3: the gate axis reopens - accepted draws carry
+  value the null arm misses; pre-register a powered block (>= 32 seeds) on
+  a fresh range around the winning theta.
+- No theta clears: the probe-on-real-text program is concluded as
+  falsified in ALL of its usable forms at this fidelity - ordering
+  (5.3-5.4), absolute threshold at theta=0 (5.4), and intermediate
+  thresholds (this study) - and the next direction moves off probe-derived
+  selection entirely (routing-statistics heuristics, or no real-data
+  topology mutation at this scale).
+
+**Secondary (reported, not gating).** Accept rate and accepted-operation
+balance per theta (mechanism: conservative theta should accept mostly
+benign prunes; near-random theta approaches the random arm); the
+same-seed comparison against the published random arms at 9008-9011
+(secondary, 4 pairs only); per-arm search FLOPs (gated ~2x the baseline
+adaptive booking, null exactly 0).
+
+**Cost.** ~10 null sessions + 30 gated sessions at ~2.5 min each, ~1.7 h
+on the local GPU; idempotent (skip-completed), resumable.
 
 ## 6. Reproducibility
 
