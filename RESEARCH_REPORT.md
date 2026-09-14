@@ -1381,3 +1381,60 @@ study is ~2.5 min at 16 single-threaded shards. Hardware note worth keeping:
 resolves to CUDA, and 16 processes contending for one GPU made the same study
 take >13 min before it was killed - the hidden-24 model is CPU-faster (section
 9.3), and a GPU-contended run is strictly worse than a CPU-sharded one.
+
+### 9.10 Declared re-run of the published factor map on the decoupled path
+
+**Why.** Section 9.8 establishes that all nine published gate studies - and the
+guided upper bound - ran with the arms coupled through the global torch RNG, so
+their "matched random churn" baseline drifts with the treatment. The depth-1
+factor map is the evidence behind section 3's narrative ("nine studies, three
+passes", "richness is the active axis", "cadence beyond three events is
+actively harmful"). Only one of those studies has been re-run since: study 3's
+own block came back 222/384 with the fix (still PASS) and saved. The rest are
+still quoted from the coupled path.
+
+**Declaration (fixed before the run).**
+
+- **Scope.** Every committed study summary that reconstructs the published
+experiment exactly from its recorded config: the eight probe-loss gate studies
+(`probe-loss`, `horizon`, `rich`, `narrow`, `cheap-probe`, `variance`,
+`cadence`, `late-placement`) plus `guided-upper-bound-96`. Each is re-run with
+its **published config, published seed block and treatment arm**, with
+`independent_arm_rng=True` as the only change, at the same probe budgets.
+- **Excluded: `gate3-legacy-signal-384`.** Its recorded config predates the
+probe fields and its treatment is the pre-probe signal controller, so
+reconstructing it would silently run a different experiment (`probe_loss`,
+cap 4/2-batch). It is reported as not reconstructible, not re-run, and its
+published FAIL is left standing with that caveat.
+- **Decision rule.** A study **reproduces** if its verdict label at alpha=0.05
+  is unchanged (`gate_passed` recomputed on the same n); it **flips** otherwise.
+  A flip revises the published claim; it is not a new result to be preferred,
+  and the coupled number is not "wrong" - it is the number that path produces.
+  A reproducing study gains no strength from the recheck: it is still a
+  depth-1 toy gate.
+- **Reported either way** (so a "reproduces" label cannot hide a material
+effect-size move): win counts, exact binomial p, mean adaptive-minus-random
+delta, and the win-count delta against the committed summary.
+- **Device.** The summaries record `device: auto`; the recheck pins `cpu`
+  (section 9.3) on the strength of the section 9.9 result that this substrate
+  reproduces committed CUDA-produced numbers exactly on CPU.
+
+**Outcome contract.** No outcome is pre-judged. A clean sweep means section 3's
+narrative survives the control fix and only the effect sizes need restating; any
+flip is written into section 3 and the milestone table as a revision, with the
+coupled number kept beside it for the audit trail.
+
+**Reproduce.**
+
+```bash
+PYTHONPATH=src python scripts/factor_map_recheck.py --list
+# 16 single-threaded shards per study, then aggregate:
+PYTHONPATH=src OMP_NUM_THREADS=1 python scripts/factor_map_recheck.py \
+  --study gate3-probe-loss-384 --shard 0 --shards 16 --out /tmp/recheck
+PYTHONPATH=src python scripts/factor_map_recheck.py \
+  --compare '/tmp/recheck/*.json' --compare-out artifacts/factor-map-recheck.json
+```
+
+`--coupled` re-runs the historical shared-RNG path for a control comparison, so
+the coupled/decoupled difference is measurable per study rather than inferred.
+**Result recorded in section 9.11.**
