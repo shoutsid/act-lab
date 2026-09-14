@@ -85,7 +85,7 @@ def run_shard(shard: int, shards: int, profile: str) -> Path:
     experiments = []
     for seed in spec["seeds"][shard::shards]:
         config = ExperimentConfig(
-            arms="random,adaptive,null", **REGISTERED, **spec["overrides"]
+            **{**REGISTERED, **spec["overrides"], "arms": "random,adaptive,null"}
         )
         result = run_experiment(replace(config, seed=seed))
         experiments.append(

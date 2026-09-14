@@ -95,6 +95,20 @@ A-vs-B comparison confirms A better in 225/384 pairs (sign z `3.37`,
 two-sided p `8e-04`). Candidate richness is the active axis; probe batches
 matter little within the rich-cap regime (A's delta `-0.037` vs the
 2-batch replication's `-0.052`, two-sample z ~ 1.1, n.s.).Gate-style quality tests now number nine, with three passes, all from the cap-4 family.
+(11a) The section 5.9 do-nothing control then RE-DERIVED study 3's toy
+pass: run as a three-arm block (random, adaptive, null; same registered
+config, fresh block 70000-70383, `independent_arm_rng=True`), churn harm
+replicated at toy scale (null < random 280/384, p `4.7e-20`) and the
+adaptive arm LOST to the null arm (117/384, mean `+0.0508`, p `1.0`) -
+the ordering null < adaptive < random means study 3's edge is churn
+suppression, not value creation (report section 5.9). (11b) The
+section-5.6 depth-4 confirmation then faced the same control (section
+5.10, fresh block 71000-71383, same three-arm design): BOTH primaries
+pass - churn harm replicates (null < random 254/384, p `1.2e-10`) AND
+adaptive beats the null arm (218/384, mean `-0.0297`, p `4.6e-03`,
+clearing alpha/2) - so the depth-4 edge is genuine value creation
+(~26% of the raw edge survives the do-nothing bar) and Gate 3's depth-4
+evidence stands with a third control under it.
 (11) The section 5.1 protocol machinery then ran on the REAL TinyStories token
 stream at reduced fidelity (`local_proof_run.py --real-data`, vocab-8192 BPE
 streams, seeds 9000-9011): the cost identity held again (measured probe cost

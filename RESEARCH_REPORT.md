@@ -1308,6 +1308,28 @@ fails).
 **Cost.** ~1.5-2 s/seed at depth 4 on CPU (measured section 9.3), sharded
 20-way ~1 min wall.
 
+**Outcome (run 2026-09-14, revision `a9632a6`): interpretation branch 1 -
+both primaries PASS.** Verdict machine-checked (the `depth4` profile;
+shards under `artifacts/toy-null-study/depth4/`, not committed); built-in
+checks held in 384/384 seeds. **Primary 1 PASS**: null-vs-random 254/384,
+mean `-0.0833`, p `1.22e-10` - churn harm exists at depth 4 as well.
+**Primary 2 PASS**: adaptive-vs-null 218/384, mean `-0.0297`, p
+`4.58e-03` - the depth-4 controller beats doing nothing, out-of-sample,
+clearing Bonferroni alpha/2. Secondary: adaptive-vs-random 263/384, mean
+`-0.1130`, p `1.68e-13`, replicating the section-5.6 registered direction
+on a fresh block (255/384 on the committed one). Per-arm mean losses:
+adaptive `12.4289` < null `12.4586` < random `12.5419` - the ordering
+FLIPS relative to depth 1. Reading: of the raw adaptive-vs-random edge at
+depth 4 (`0.1130`), about `0.083` is churn suppression and pool effects,
+and about `0.030` (~26%) is genuine value creation that survives the
+do-nothing bar. Combined with section 5.9, the factor map's summary is now
+sharper: at depth 1 the probe-loss controller suppresses churn but destroys
+no value (null < adaptive < random); at depth 4 with the spread policy it
+creates real value on top of not churning harmfully (adaptive < null <
+random). The richness axis separates suppression from creation - coherent
+with sections 5.3-5.6 - and Gate 3's depth-4 evidence stands, now with a
+third control under it.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
