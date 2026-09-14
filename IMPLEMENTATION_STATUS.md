@@ -222,28 +222,30 @@ section 9).
    is corrected. The factor map needs re-derivation with a pool-matched
    baseline before the section 5.1 cost protocol is run.
 
-4. **The depth-4 result is unstable, and the arm coupling is the reason (a
-   withdrawn claim).** Under `spread` (depth 4, block 40000-40127) the
-   registered comparison measures 65/128 (p `0.465`) on the shared-RNG path and
-   80/128 (p `0.0030`) with independent arm RNG on the same seeds; at steps=48
-   (64 seeds, underpowered) it is 33/64 (p `0.45`). An earlier draft of this
-   audit concluded "the registered comparison fails on a non-degenerate pool" -
-   that reading is WITHDRAWN as an artifact of finding 5. The pool-matched
-   increment is positive in every clean run (`-0.0395`, `-0.0350`) but never
-   clears p < 0.05 (`0.092`, `0.052`). Gate 3's status should not be updated
-   from these runs. Report section 9.7. Reproducible: `PYTHONPATH=src python
-   scripts/toy_policy_ablation.py --policies spread [--independent-arm-rng]`.
-5. **The toy arms are coupled through the global torch RNG, and it is
-   first-order.** A grow draws fresh expert weights from the stream a prune
-   does not, so runs whose treatments choose differently perturb the random
-   arm's later rebuilds: on the block above the random arm is bit-identical
-   across rules in only 70/128 seeds, and fixing it moves the registered
-   comparison from 65/128 to 80/128 (finding 4). Every published gate study
-   used the shared path, so the depth-1 factor map's numbers are not
-   trustworthy as controlled comparisons and need a re-run. The V0 path is not
-   affected (arms train sequentially with per-arm seeding). Fix implemented as
-   the opt-in `ExperimentConfig.independent_arm_rng` (default `False`, so
-   existing numbers reproduce unchanged). Report section 9.8.
+4. **The depth-4 mechanism passes cleanly once the coupling is fixed (a
+   withdrawn claim, corrected).** Under `spread` at the registered horizon with
+   independent arm RNG and full power (depth 4, steps=48, 384 seeds
+   50000-50383): the registered comparison is 246/384 (mean `-0.0745`, p
+   `1.9e-08`); a loss-blind choice from the *identical* pool also beats uniform
+   churn (217/384, p `0.0062`), so the pool accounts for ~29% of the mean gain;
+   and probe ordering adds a decisive increment over the same pool at the same
+   cost (222/384, mean `-0.0529`, p `0.0013`). All three clear Bonferroni
+   alpha/3. An earlier draft concluded from a low-power shared-RNG run that
+   "the registered comparison fails on a non-degenerate pool" - that reading is
+   WITHDRAWN (65/128 coupled vs 80/128 decoupled on the same seeds; the
+   64-seed steps=48 block is consistent with the powered rate). Report section
+   9.7.
+5. **The toy arms are coupled through the global torch RNG.** A grow draws
+   fresh expert weights from the stream a prune does not, so runs whose
+   treatments choose differently perturb the random arm's later rebuilds (the
+   random arm is bit-identical across rules in only 70/128 seeds on the audit
+   block; 384/384 once fixed). The V0 path is not affected (arms train
+   sequentially with per-arm seeding). Fix implemented as the opt-in
+   `ExperimentConfig.independent_arm_rng` (default `False`, so published numbers
+   reproduce unchanged). Re-run of study 3's own block 3000-3383: the shared
+   path reproduces the committed artifact exactly (213/384, mean `-0.025955`,
+   p `0.01814`) and the fix gives a slightly stronger 222/384 (mean `-0.034406`,
+   p `0.00128`), so the depth-1 pass survives the fix. Report section 9.8.
 
 Iteration cost for these checks: ~1.5 s/seed on CPU at depth 4 (GPU measured
 slower at 2.21 s/seed for a hidden-24 model); a 128-seed study is ~85 s.
@@ -260,7 +262,7 @@ slower at 2.21 s/seed for a hidden-24 model); a 128-seed study is ~85 s.
 | 5. Importance instrumentation | DONE for the first gate | Python records routing/load, gradient norm, parameter norm, Fisher-style EMA, temporal stability, mutation count, and genome hash at structural windows. |
 | 6. Adaptive controller | PARTIAL | Python exposes a deterministic, validated budget-aware `AdaptiveController` plus Pareto frontier/population selection over quality, active parameters, and search FLOPs. The validated default reaches 10/16 wins; broader multi-generation search remains. |
 | 7. Experiment ledger | DONE for the first gate | Browser ledger and Python append-only JSONL registry store config, dataset/tokenizer hashes, code revision, hardware, tokens, FLOPs, arm metrics, mutation fossils, and architecture hashes. Deterministic evaluation summaries are available for report generation. |
-| 8. Final gate: adaptive > random | PASSED three times at depth 1 (cap-4 family at 48 and 144 steps; cheaper/cadence/narrow variants FAILED) - **but all three ran on the shared-RNG path, which the audit shows is first-order**: on a depth-4 `spread` substrate the registered comparison is 80/128 (p `0.0030`) with independent arm RNG versus 65/128 (p `0.465`) without, and 33/64 (p `0.45`) at steps=48. The depth-4 result is unstable across horizon, so Gate 3's status should not be re-stated from it. See the Substrate Audit section and report sections 9.7-9.8. | Factor map (all matched budgets, objective verdicts): cap-4/2-batch, 48 steps -> PASS 213/384, p `0.0181`, at 41.9% cost. Cap-2/1-batch, 144 steps -> FAIL 181/380, p `0.8351`, at 4.13% cost. Placement (late, same seeds) -> no effect (p `0.0788`). Cap-2/1-batch, 6 events -> 137/384, significantly WORSE than random (z `-5.61`). Cap-2/4-batch -> 179/384, p `0.9159`. Horizon replication cap-4/2-batch, 144 steps -> PASS 231/384, p `4.04e-05`, t p `1.07e-08`, cost 14.0%. Richness A cap-4/1-batch, 144 steps -> PASS 228/384, p `1.4e-04`, t p `5.0e-05`, cost 7.3%; same-seed B cap-2/2-batch -> FAIL 193/384, p `0.47965`; paired A>B 225/384 (z `3.37`). Probe validity real but weak (rho `0.11`); richness is the active axis, probe batches secondary. Nine gate-style tests, three passes; Bonferroni alpha/9 ~ 0.0056 is cleared by the 144-step replication and richness-A on both statistics. Real-data diagnostic (TinyStories, seeds 9000-9007, paired): variance cap-4/4-batch 0/8 (`+0.2858`), richness cap-8/1-batch 1/8 (`+0.1661`) - neither toy axis restores the edge on real text, and the 4-batch argmin bit-reproduced the 1-batch argmin in 5/8 seeds (ranking stably misaligned, not noisy). |
+| 8. Final gate: adaptive > random | PASSED three times at depth 1 (cap-4 family at 48 and 144 steps; cheaper/cadence/narrow variants FAILED), and now **also on a non-degenerate depth-4 pool** with the arm coupling fixed: steps=48, 384 seeds, `spread` + `independent_arm_rng` gives 246/384 (p `1.9e-08`) for the registered comparison, with a loss-blind same-pool control at 217/384 (p `0.0062`) and the probe-ordering increment decisively positive (222/384, p `0.0013`). The original passes were on the shared-RNG path; a re-test of study 3's block reproduces it exactly (213/384) and gives 222/384 with the fix. See the Substrate Audit section and report sections 9.7-9.8. | Factor map (all matched budgets, objective verdicts): cap-4/2-batch, 48 steps -> PASS 213/384, p `0.0181`, at 41.9% cost. Cap-2/1-batch, 144 steps -> FAIL 181/380, p `0.8351`, at 4.13% cost. Placement (late, same seeds) -> no effect (p `0.0788`). Cap-2/1-batch, 6 events -> 137/384, significantly WORSE than random (z `-5.61`). Cap-2/4-batch -> 179/384, p `0.9159`. Horizon replication cap-4/2-batch, 144 steps -> PASS 231/384, p `4.04e-05`, t p `1.07e-08`, cost 14.0%. Richness A cap-4/1-batch, 144 steps -> PASS 228/384, p `1.4e-04`, t p `5.0e-05`, cost 7.3%; same-seed B cap-2/2-batch -> FAIL 193/384, p `0.47965`; paired A>B 225/384 (z `3.37`). Probe validity real but weak (rho `0.11`); richness is the active axis, probe batches secondary. Nine gate-style tests, three passes; Bonferroni alpha/9 ~ 0.0056 is cleared by the 144-step replication and richness-A on both statistics. Real-data diagnostic (TinyStories, seeds 9000-9007, paired): variance cap-4/4-batch 0/8 (`+0.2858`), richness cap-8/1-batch 1/8 (`+0.1661`) - neither toy axis restores the edge on real text, and the 4-batch argmin bit-reproduced the 1-batch argmin in 5/8 seeds (ranking stably misaligned, not noisy). |
 
 ## Plan Sections 3-6: Compute and Kaggle Operations
 

@@ -59,6 +59,13 @@ def main() -> None:
         "a deterministic subset from the whole feasible set",
     )
     parser.add_argument(
+        "--independent-arm-rng",
+        action="store_true",
+        help="seed rebuild init per (arm, event) so the random baseline is the "
+        "same control under any treatment (substrate audit, report section "
+        "9.8); changes numbers relative to the published shared-RNG studies",
+    )
+    parser.add_argument(
         "--probe-selection",
         choices=("argmin", "argmax", "random"),
         default="argmin",
@@ -117,6 +124,7 @@ def main() -> None:
         probe_batch_count=args.probe_batch_count,
         probe_candidate_policy=args.probe_candidate_policy,
         probe_selection=args.probe_selection,
+        independent_arm_rng=args.independent_arm_rng,
         depth=args.depth,
         expert_count=args.expert_count,
         probe_landscape=args.probe_landscape,

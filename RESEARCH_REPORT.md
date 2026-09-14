@@ -804,12 +804,14 @@ findings break that:
    layer 0 and its first three prunes, so the declared search would explore
    one layer out of twelve. The V0 session now exposes `spread` for exactly
    this reason.
-2. The positive quality evidence for probe selection came from a substrate
-   with a demonstrated pool confound (section 9.5): at depth 4 the registered
-   rule wins 88/128 while a loss-blind choice from the same candidate pool
-   wins 80/128, so roughly 40% of the effect is attributable to the pool, not
-   to selection. Measuring the *cost* of that controller would price a quality
-   claim that is not established at any real fidelity.
+2. The quality evidence is a toy-substrate result carrying a real pool
+   component. The clean, powered depth-4 measurement (section 9.7) gives the
+   registered comparison 246/384 against uniform churn while a loss-blind
+   same-pool control gets 217/384, so the pool accounts for ~29% of the mean
+   gain, and the probe ordering adds a decisive increment on top (222/384,
+   p `0.0013`). The mechanism is real; the effect size measured against uniform
+   churn is nonetheless inflated by the pool, so the protocol should price the
+   controller against a pool-matched control.
 
 **Proposed changes (design only; every registered threshold is unchanged).**
 
@@ -833,7 +835,8 @@ findings break that:
 events, the planned/measured test sizes, the 5% criterion, the tolerance band,
 the harm guard, and the rule that no knob is re-tuned against the measured C.
 
-**Status.** Proposed, not adopted; adopting it is a pre-registration and config
+**Status.** Proposed, not adopted, and to be re-derived from the corrected
+section 9.7 results before it is adopted; adopting it is a pre-registration and config
 decision, **not a code change**. The registered defaults remain
 `prefix`/`argmin`, so the original protocol stays runnable; the revised one is
 reached by setting `probe_candidate_policy="spread"`. The pool-matched control
@@ -974,6 +977,9 @@ The ordering is real - a monotone gradient across the full range of the rule
 entirely and picks randomly from the same pool **also passes decisively**.
 Roughly 40% of the argmin edge is therefore attributable to the candidate
 pool (at depth 4, to concentrating mutations on layer 0), not to selection.
+(These runs are all on the shared-RNG path; the clean, powered re-measurement
+in section 9.7 puts the pool's share of the mean gain at ~29% - lower, and with
+selection carrying the larger, significant part.)
 
 **Consequences.** (1) The factor map's passes overstate probe selection:
 part of the effect is a location policy shared by the pool, and the effect
@@ -1027,59 +1033,69 @@ candidate policy and adding a pool-matched control arm (same candidates, same
 probe cost, loss-blind choice) is a prerequisite, and that decision belongs in
 the pre-registration, not in the analysis.
 
-### 9.7 The depth-4 result is unstable, and the shared-RNG coupling is why
+### 9.7 The depth-4 mechanism, measured cleanly: the gate and the increment both pass
 
-The audit's threads meet in one test: under the revised design (`spread`, so a
-cap of 4 is a real budget over 20 candidates rather than a layer-0 prefix),
-fresh block 40000-40127, depth 4, cap 4/1-batch. The first two blocks differ
-ONLY in whether the arms share the global RNG (section 9.8):
+Under the revised design (`spread`, so a cap of 4 is a real budget over 20
+candidates rather than a layer-0 prefix). Four blocks; the differences are RNG
+regime (section 9.8), sample size and horizon:
 
 | Comparison | Wins | Mean delta | Binomial p |
 |---|---|---|---|
-| **steps=24, 128 seeds, SHARED RNG** (historical default) | | | |
+| **steps=24, 128 seeds, SHARED RNG** (historical default), block 40000-40127 | | | |
 | argmin vs uniform churn (the registered claim) | 65/128 | -0.0143 | 0.465 |
 | loss-blind pool vs uniform churn | 63/128 | +0.0100 | 0.604 |
 | argmin vs loss-blind pool (paired, same pool/cost) | 76/128 | -0.0243 | 0.021 |
-| **steps=24, 128 seeds, INDEPENDENT arm RNG** | | | |
-| argmin vs uniform churn (the registered claim) | 80/128 | -0.0609 | 0.0030 |
+| **steps=24, 128 seeds, INDEPENDENT arm RNG**, block 40000-40127 | | | |
+| argmin vs uniform churn | 80/128 | -0.0609 | 0.0030 |
 | loss-blind pool vs uniform churn | 68/128 | -0.0214 | 0.268 |
-| argmin vs loss-blind pool (paired, same pool/cost) | 72/128 | -0.0395 | 0.092 |
+| argmin vs loss-blind pool (paired) | 72/128 | -0.0395 | 0.092 |
 | **steps=48, 64 seeds, INDEPENDENT arm RNG** (underpowered; threshold 39/64) | | | |
-| argmin vs uniform churn (the registered claim) | 33/64 | -0.0345 | 0.450 |
+| argmin vs uniform churn | 33/64 | -0.0345 | 0.450 |
 | loss-blind pool vs uniform churn | 31/64 | +0.0005 | 0.646 |
-| argmin vs loss-blind pool (paired, same pool/cost) | 39/64 | -0.0350 | 0.052 |
+| argmin vs loss-blind pool (paired) | 39/64 | -0.0350 | 0.052 |
+| **steps=48, 384 seeds, INDEPENDENT arm RNG - POWERED**, block 50000-50383 | | | |
+| argmin vs uniform churn (the registered claim) | **246/384** | **-0.0745** | **1.9e-08** |
+| loss-blind pool vs uniform churn | 217/384 | -0.0215 | 0.0062 |
+| argmin vs loss-blind pool (paired) | **222/384** | **-0.0529** | **0.0013** |
 
 **Withdrawn claim.** An earlier draft of this section concluded, from the
 shared-RNG rows, that "the registered Gate 3 comparison does not survive a
 non-degenerate pool". That reading is **withdrawn**: the shared-RNG path is not
 a neutral default, and fixing it moves the registered comparison from 65/128
-(p = 0.465) to 80/128 (p = 0.0030). The apparent failure was an artifact of the
-arm coupling, not of the candidate pool.
+(p = 0.465) to 80/128 (p = 0.0030) on the same seeds.
 
-What the clean rows actually support:
+**Final reading of the clean, powered block (the one that decides).** At 384
+seeds, steps=48, independent arm RNG, on a fresh block:
 
-- Under independent arm RNG the registered comparison **passes at steps=24**
-  (80/128, p = 0.0030) and **does not at steps=48 with 64 seeds** (33/64,
-  p = 0.450; underpowered, threshold 39/64, and the mean delta is smaller at
-  the longer horizon rather than larger as the depth-1 studies found).
-- The pool-matched increment is positive in every clean run (`-0.0395` at
-  steps=24, `-0.0350` at steps=48) but never clears p < 0.05 (`0.092` and
-  `0.052`), so the probe's *incremental* value over a loss-blind choice is
-  suggested, not established.
-- No clean run shows the pool alone beating uniform churn, so the effect is not
-  merely the pool either.
+- The **registered comparison passes decisively**: 246/384 (64.1%), mean
+  `-0.0745`, p `1.9e-08`.
+- A **loss-blind choice from the identical pool also beats uniform churn**
+  (217/384, p `0.0062`), so the candidate pool is part of the effect - the
+  location contribution is about `0.0215 / 0.0745 ~= 29%` of the mean gain, not
+  most of it as the coupled `prefix` runs of 9.5 suggested.
+- **Probe ordering adds a decisive increment over the identical pool at
+  identical cost**: 222/384 (57.8%), mean `-0.0529`, p `0.0013`.
+- All three comparisons clear Bonferroni alpha/3 = 0.0167.
+- The underpowered steps=48/64-seed block is consistent with this rate (at
+  57.8%, 37 expected of 64, observed 33), so its null result is a power effect,
+  not a different mechanism.
 
-**Implication.** Do not update Gate 3's status from this section. The depth-4
-spread design is *unstable at toy scale* - the verdict moves with horizon and
-sample - and the one firmly established fact is methodological: the shared-RNG
-coupling materially perturbs the comparison. A powered, pre-registered study
-with `independent_arm_rng=True` is the prerequisite for any claim, and the same
-fix applies to the whole depth-1 factor map (section 9.8).
+The random-arm invariance check is exact in this regime (384/384 seeds), which
+is what the decoupling guarantees.
 
-**Caveats.** Unregistered, one block, a tiny depth-4 model (24 hidden), no
-family-wise correction, and a claim only about the *toy* substrate - the V0
-path has not been measured this way. Reproduce with `PYTHONPATH=src python
-scripts/toy_policy_ablation.py --policies spread [--independent-arm-rng]`.
+**Implication for Gate 3.** Once the arm coupling is fixed, the gate passes on a
+substrate that can express topology (depth 4 with a non-degenerate candidate
+pool), on both the registered comparison and the controlled increment test. The
+depth-1 passes of section 3 should be regarded as a weaker, degenerate-space
+instance of the same result rather than the project's only evidence - but the
+depth-4 result is still toy-scale and needs a pre-registered re-run before it
+is cited as the project's gate.
+
+**Caveats.** Unregistered, one fresh block (50000-50383), synthetic tokens, a
+tiny depth-4 model (24 hidden), and a claim only about the toy substrate - the
+V0 declared path has not been measured in this regime. Reproduce with
+`PYTHONPATH=src python scripts/toy_policy_ablation.py --policies spread
+--independent-arm-rng`.
 
 ### 9.8 The toy arms are coupled through the global torch RNG
 
@@ -1098,14 +1114,19 @@ as a `[coupling]` line rather than asserting independence.
 
 Consequences:
 
-- It is not a nuisance term but a first-order effect: section 9.7 measures the
-  registered comparison at 65/128 (p = 0.465) under the shared RNG and 80/128
-  (p = 0.0030) under independent arm RNG on the same seeds. Any toy arm
-  comparison made on the shared path - which is **every published gate study**,
-  all nine of them plus the placement and probe-validity runs - carries a
-  baseline that drifts with the treatment. The depth-1 factor map's numbers are
-  therefore not trustworthy as controlled comparisons and should be re-run with
-  the fix before they are cited again.
+- It is not a nuisance term but a first-order effect at low power: section 9.7
+  measures the registered comparison at 65/128 (p = 0.465) under the shared RNG
+  and 80/128 (p = 0.0030) under independent arm RNG on the same seeds, and the
+  size of the swing shrinks as the sample grows. Any toy arm comparison made on
+  the shared path - which is **every published gate study**, all nine of them
+  plus the placement and probe-validity runs - carries a baseline that drifts
+  with the treatment, so the reported effect sizes are not exactly controlled.
+  The effect on the conclusions is smaller than the summary above first
+  implied: re-running study 3's own block (3000-3383) reproduces it exactly on
+  the shared path (213/384, mean `-0.025955`, p `0.01814` - bit-for-bit the
+  committed artifact) and gives a slightly **stronger** result with the fix
+  (222/384, mean `-0.034406`, p `0.00128`). The depth-1 pass therefore survives;
+  the fix should still be the default for new studies.
 - The V0 path does not share it: arms are trained sequentially with per-arm
   seeding, which is why the real-data diagnostic checked and found every random
   arm replicating its baseline counterpart exactly.
