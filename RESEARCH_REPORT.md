@@ -211,7 +211,8 @@ default remains cap-4/2-batch; cap-4/1-batch is the validated cheaper option.
 |---|---|---|---|---|---|---|
 | Horizon replication | study 3 config at steps=144 | cap4/2-batch, 3 events, steps=144 | fresh 8000-8383 | binomial sign test, alpha=0.05 | PASS -> pass generalizes; FAIL -> pass was horizon-specific | **DONE: PASS** (231/384, p 4.04e-05, t p 1.07e-08, cost 14.0%) |
 | Richness | candidate set size at fixed probe tokens | cap4/1-batch (A) vs cap2/2-batch (B), 3 events, steps=144 | fresh 7000-7383 | binomial sign test, alpha=0.05; factor claim: paired A-vs-B, one-tailed "rich better" | PASS & A>B -> richness is the active axis; B passes & B>=A -> probe quality is; neither -> both jointly necessary | **DONE: PASS for richness** (A 228/384, p 1.4e-04, t p 5.0e-05, cost 7.3%; B 193/384, p 0.48, cost 8.1%; paired A better 225/384, z = 3.37, p 8e-04) |
-| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config (see 5.1) | fresh 9000-9011 (12 pairs) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] | PASS + in-band + harm guard clear -> Gate 4 authorized; outside band -> re-derive before Gate 4; FAIL -> Gate 4 stays blocked | **PRE-REGISTERED (section 5.1), execution planned (section 5.2), not yet run** |
+| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config (see 5.1) | fresh 9000-9011 (12 pairs) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] | PASS + in-band + harm guard clear -> Gate 4 authorized; outside band -> re-derive before Gate 4; FAIL -> Gate 4 stays blocked | **PRE-REGISTERED (section 5.1), execution planned (section 5.2), not yet run; blocked on the 5.6 decision** |
+| Depth-4 Gate 3 confirmation | substrate expressiveness + selection value, with the arm-RNG fix | cap4/2-batch, `spread`, `independent_arm_rng`, 3 events, steps=48, depth 4 | fresh 60000-60383 (384 pairs) | argmin vs uniform churn, alpha/3 = 0.01667 (>= 214/384); paired argmin vs pool-matched control | PASS -> Gate 3 established on a non-degenerate substrate, 5.5 adopted; POOL-DRIVEN -> withdraw the selection claim; NOT REPRODUCED -> Gate 3 open, 5.1 must not launch | **PRE-REGISTERED (section 5.6), running out-of-sample on a fresh block** |
 
 ### 5.1 Protocol: real-scale compute-efficiency measurement (pre-registered; gates Gate 4)
 
@@ -846,6 +847,96 @@ control runs as a second session over the same seed pairs with
 exactly how `scripts/real_data_diagnostic.py` already pairs its variants. The
 only genuinely new reporting surface is the interpretation clause in change
 (3), which is text, not machinery.
+
+### 5.6 Pre-registration: depth-4 Gate 3 confirmation on a fresh seed block
+
+**Role.** Section 9.7 is the project's strongest substrate result - the
+registered comparison and the controlled selection increment both pass on a
+depth-4 pool with the arm coupling fixed - but it is *exploratory and
+unregistered*, measured on a block that was itself chosen after the audit. This
+study converts it into registered evidence by freezing the design here and
+running it once on a **fresh, never-observed seed block**. It is the entry
+condition for both section 5.5 (whose revision is justified by the same result)
+and any Gate 4 / compute spend.
+
+**Hypothesis.** On a substrate deep enough to express a topology search, (a)
+probe-loss selection beats matched-budget uniform topology churn, and (b) the
+probe ordering carries a value increment over a loss-blind choice from the
+*identical* candidate pool at the *identical* probe cost.
+
+**Substrate (frozen).** Toy generator, `depth=4`, `hidden_size=24`,
+`vocab_size=32`, `expert_count=4`, `active_experts=2`, `sequence_length=12`,
+`batch_size=2`, `steps=48`, `mutation_interval=12`, `mutation_budget=3`,
+`probe_candidate_policy="spread"`, `probe_candidate_cap=4`,
+`probe_batch_count=2`, `independent_arm_rng=True`, arms `random,adaptive`.
+Feasible candidate set at the initial genome is 20 (4 layers x {2 grows, 3
+prunes}), so a cap of 4 is a real budget over the space rather than a layer-0
+prefix - the property section 5.5 depends on.
+
+**Seeds.** Fresh block **60000-60383** (384 pairs), disjoint from every
+previously used block: 1000-8000 (factor map), 5000-6000 (cadence/variance),
+9000-9011 (section 5.1 queue), 20000-20127 (depth-4 policy matrix),
+30000-30011 (reduced-dim V0 check), 40000-40127 (policy ablation),
+50000-50383 (section 9.7 powered block). No seed in this block has been run in
+any configuration before, so the result is out-of-sample for every prior number.
+
+**Comparisons.** All three are computed on the same 384 seeds; every decision
+rule is a run of the same substrate with the rule as the only difference.
+
+| # | Comparison | Role | Test |
+|---|---|---|---|
+| 1 | `argmin` vs uniform churn | primary (the registered Gate 3 claim) | one-tailed exact binomial |
+| 2 | `random`-in-pool vs uniform churn | pool/location contribution | one-tailed exact binomial |
+| 3 | `argmin` vs `random`-in-pool (paired, same pool & cost) | the selection increment | one-tailed exact binomial on paired deltas |
+
+**Thresholds (declared before the run).** At n=384 the minimum passing win
+counts are **209/384** at alpha=0.05, and **214/384** at the Bonferroni level
+alpha/3 = 0.01667 used for the three comparisons. (For reference, the depth-1
+study 3 result of 213/384 clears alpha=0.05 but misses alpha/3 by one seed.)
+
+**Decision rules (frozen).**
+
+- **PASS** - comparisons 1 *and* 3 clear alpha/3, and comparison 2 is either
+  significant or not (its value only bounds the pool contribution): Gate 3 is
+  established on a non-degenerate substrate, section 5.5's justification is
+  confirmed, and the Gate 4 path opens.
+- **POOL-DRIVEN (withdraw the selection claim)** - comparison 1 clears alpha/3
+  but comparison 3 does not: most of the effect is candidate placement, the
+  probe-ordering mechanism is not supported, and the plan's "stop and
+  simplify" rule applies to the search design.
+- **NOT REPRODUCED** - comparison 1 fails alpha/3: the depth-1 passes are
+  recording-space artifacts of a degenerate 5-candidate space, Gate 3 is open,
+  section 5.5 is **not** adopted, and the section 5.1 T4 run must not launch
+  (its cost measurement would price an unvalidated controller).
+- **VOID (validity control)** - the inverted-signal control (`argmax` vs
+  uniform churn) passes alpha/3 on the same seeds: the probe signal carries no
+  ordering information at this scale and the study says nothing either way.
+
+**Secondary observables (reported, not gating).** Random-arm invariance must be
+384/384 (it is the decoupling guarantee, and any other value means the run is
+invalid); mean adaptive-minus-random and paired mean deltas with paired-t
+p-values; per-arm search FLOPs and the search/training cost ratio; and the
+count of seeds on which `argmin` and `random`-in-pool choose the identical
+candidate.
+
+**Reproduce (one line, after this file is committed).**
+
+```bash
+PYTHONPATH=src OMP_NUM_THREADS=1 python -m act.evolution.cli --steps 48 \
+  --depth 4 --expert-count 4 --probe-candidate-policy spread \
+  --probe-candidate-cap 4 --probe-batch-count 2 --independent-arm-rng \
+  --probe-selection argmin --arms random,adaptive \
+  --seeds $(seq -s, 60000 60383) --output artifacts/depth4-confirm.jsonl
+```
+
+and the same command with `--probe-selection random` for comparison 2, and with
+`--probe-selection argmax` for the validity control. Reproduction note: the
+candidate policy and the pool-random draw are seeded from `(seed, step)` and the
+arm RNG is per `(arm, event)`, so these runs are deterministic on CPU and
+re-runnable bit-identically.
+
+**Status.** Registered here (committed *before* the run, per the project's
+pre-registration rule); result recorded in section 9.9.
 
 ## 6. Reproducibility
 
