@@ -833,11 +833,16 @@ findings break that:
 events, the planned/measured test sizes, the 5% criterion, the tolerance band,
 the harm guard, and the rule that no knob is re-tuned against the measured C.
 
-**Status.** Proposed, not adopted. Both the original and the revised design are
-executable from the committed code (the registered defaults remain
-`prefix`/`argmin`), so adopting this is a config and pre-registration decision,
-not a code change - apart from the small addition of the pool-matched arm to
-the session loop, which the single-arm `gated` path already shows how to do.
+**Status.** Proposed, not adopted; adopting it is a pre-registration and config
+decision, **not a code change**. The registered defaults remain
+`prefix`/`argmin`, so the original protocol stays runnable; the revised one is
+reached by setting `probe_candidate_policy="spread"`. The pool-matched control
+needs no new arm: a session's decision rule is session-level config, so the
+control runs as a second session over the same seed pairs with
+`probe_selection="random"`, paired against the shared baseline random arms -
+exactly how `scripts/real_data_diagnostic.py` already pairs its variants. The
+only genuinely new reporting surface is the interpretation clause in change
+(3), which is text, not machinery.
 
 ## 6. Reproducibility
 
