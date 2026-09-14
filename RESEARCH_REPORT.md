@@ -1076,6 +1076,16 @@ project's headline claim; it should be re-run pre-registered before it drives a
 decision. Reproduce with `PYTHONPATH=src python scripts/toy_policy_ablation.py
 --policies spread`, which recomputes these three rows from the committed code.
 
+**Horizon check (not a steps=24 artifact).** Re-run on the same block at the
+registered horizon (steps=48, first 64 seeds of the block, spread policy):
+argmin vs uniform is 37/64 (mean `-0.0407`, p `0.130`) - still no pass; the
+loss-blind pool vs uniform is 36/64 (p `0.191`); and the paired
+argmin-vs-pool-random row still passes at 40/64 (mean `-0.0264`, p `0.030`).
+The registered comparison's failure and the mechanism's controlled increment
+both hold at the longer horizon, so neither is an artifact of the shorter run.
+The 64-seed block is underpowered (threshold 39/64), so these are directional
+confirmations rather than a powered result.
+
 ### 9.8 The toy arms are coupled through the global torch RNG
 
 `run_experiment` trains the arms interleaved in one step loop against a shared
