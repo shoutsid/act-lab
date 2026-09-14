@@ -67,10 +67,18 @@ EXCLUDED = {
 
 
 def published_summaries() -> dict[str, dict]:
-    """Committed study summaries that carry a config and a seed block."""
+    """Committed study summaries that carry a config and a seed block.
+
+    The directory also holds this script's own comparison artifact (a list of
+    per-study rows, not a study) and the analysis-only probe-validity record,
+    so anything that is not a single study object is skipped rather than
+    mistaken for one.
+    """
     summaries: dict[str, dict] = {}
     for path in sorted(SUMMARIES.glob("*.json")):
         data = json.loads(path.read_text())
+        if not isinstance(data, dict):
+            continue
         if data.get("config") and data.get("seeds"):
             summaries[path.stem] = data
     return summaries

@@ -263,8 +263,29 @@ section 9).
    candidates over 4 layers) genuinely larger than the search cap, on the
    decoupled RNG path, and out-of-sample. Report sections 5.6 and 9.9.
    Hardware note: pin `--device cpu`; the default `auto` selects CUDA and 16
-   processes sharing one GPU made the same study >5x slower (>13 min before
+   processes sharing one GPU made the same study >5 min slower (>13 min before
    being killed vs ~2.5 min on CPU shards).
+7. **The published factor map has been re-run on the decoupled path.**
+   Section 9.8 showed all nine studies used the drifting baseline, so section
+   9.10 declared a reproduction check (published config, seed block and
+   treatment arm, only `independent_arm_rng` changed) and section 9.11 records
+   the result on 144 shards (~6 min wall at 16 single-threaded cores;
+   `artifacts/study-summaries/factor-map-recheck.json`). **8 of 9 verdict labels
+   reproduce.** Every win count moves toward the treatment (+1 to +30, mean
+   +9.6, all nine positive), so the coupling was a *directional* bias that made
+   every published number - passes and nulls - understate the adaptive arm.
+   Studies clearing Bonferroni alpha/9 rise from **2/9 to 4/9** (horizon
+   4.0e-05 -> 1.7e-09, richness A 1.4e-04 -> 9.4e-05, probe-loss 0.0181 ->
+   0.00128, guided 0.0158 -> 0.00279). The single **label flip** is variance
+   reduction: 179/384 FAIL -> 209/384 PASS at exactly the alpha=0.05 threshold,
+   which fails alpha/9 and is therefore a null in both directions - it must not
+   be quoted as evidence that more probe batches help. Cadence's
+   "significantly worse than random" claim survives but weakens
+   (137/384 -> 148/384). `gate3-legacy-signal-384` was excluded as not
+   reconstructible from its recorded config, so the legacy controller's FAIL
+   still rests on the coupled path - a gap, not a pass. Net: no headline claim
+   is overturned and no verdict needs revising except variance, but the depth-1
+   factor map should now be quoted from the decoupled column.
 
 Iteration cost for these checks: ~1.5 s/seed on CPU at depth 4 (GPU measured
 slower at 2.21 s/seed for a hidden-24 model); a 128-seed study is ~85 s.
@@ -281,7 +302,7 @@ slower at 2.21 s/seed for a hidden-24 model); a 128-seed study is ~85 s.
 | 5. Importance instrumentation | DONE for the first gate | Python records routing/load, gradient norm, parameter norm, Fisher-style EMA, temporal stability, mutation count, and genome hash at structural windows. |
 | 6. Adaptive controller | PARTIAL | Python exposes a deterministic, validated budget-aware `AdaptiveController` plus Pareto frontier/population selection over quality, active parameters, and search FLOPs. The validated default reaches 10/16 wins; broader multi-generation search remains. |
 | 7. Experiment ledger | DONE for the first gate | Browser ledger and Python append-only JSONL registry store config, dataset/tokenizer hashes, code revision, hardware, tokens, FLOPs, arm metrics, mutation fossils, and architecture hashes. Deterministic evaluation summaries are available for report generation. |
-| 8. Final gate: adaptive > random | **PASSED under a pre-registered, out-of-sample depth-4 design.** Section 5.6 was registered before the run and executed once on the fresh block 60000-60383 (384 seeds, depth 4, `spread`, `independent_arm_rng=True`, cap 4/2-batch, steps=48): registered comparison 255/384 (p `6.1e-11`), controlled same-pool selection increment 236/384 (p `4.1e-06`), loss-blind same-pool control 209/384 (p `0.046`), `argmax` validity control does not pass (173/384), random-arm invariance 384/384 - all three decision rules clear Bonferroni alpha/3 where required. This is the first gate pass on a candidate pool (20 over 4 layers) genuinely larger than the cap, with the arm-RNG coupling fixed and out-of-sample. Earlier evidence: an exploratory powered depth-4 run (246/384, p `1.9e-08`; pool 217/384; increment 222/384, p `0.0013`), and three depth-1 passes on the shared-RNG path (study 3's block reproduces exactly at 213/384 and gives 222/384 with the fix) that should now be read as a degenerate 5-candidate-space instance. See the Substrate Audit section and report sections 9.7-9.9. | Factor map (all matched budgets, objective verdicts): cap-4/2-batch, 48 steps -> PASS 213/384, p `0.0181`, at 41.9% cost. Cap-2/1-batch, 144 steps -> FAIL 181/380, p `0.8351`, at 4.13% cost. Placement (late, same seeds) -> no effect (p `0.0788`). Cap-2/1-batch, 6 events -> 137/384, significantly WORSE than random (z `-5.61`). Cap-2/4-batch -> 179/384, p `0.9159`. Horizon replication cap-4/2-batch, 144 steps -> PASS 231/384, p `4.04e-05`, t p `1.07e-08`, cost 14.0%. Richness A cap-4/1-batch, 144 steps -> PASS 228/384, p `1.4e-04`, t p `5.0e-05`, cost 7.3%; same-seed B cap-2/2-batch -> FAIL 193/384, p `0.47965`; paired A>B 225/384 (z `3.37`). Probe validity real but weak (rho `0.11`); richness is the active axis, probe batches secondary. Nine gate-style tests, three passes; Bonferroni alpha/9 ~ 0.0056 is cleared by the 144-step replication and richness-A on both statistics. Real-data diagnostic (TinyStories, seeds 9000-9007, paired): variance cap-4/4-batch 0/8 (`+0.2858`), richness cap-8/1-batch 1/8 (`+0.1661`) - neither toy axis restores the edge on real text, and the 4-batch argmin bit-reproduced the 1-batch argmin in 5/8 seeds (ranking stably misaligned, not noisy). |
+| 8. Final gate: adaptive > random | **PASSED under a pre-registered, out-of-sample depth-4 design.** Section 5.6 was registered before the run and executed once on the fresh block 60000-60383 (384 seeds, depth 4, `spread`, `independent_arm_rng=True`, cap 4/2-batch, steps=48): registered comparison 255/384 (p `6.1e-11`), controlled same-pool selection increment 236/384 (p `4.1e-06`), loss-blind same-pool control 209/384 (p `0.046`), `argmax` validity control does not pass (173/384), random-arm invariance 384/384 - all three decision rules clear Bonferroni alpha/3 where required. This is the first gate pass on a candidate pool (20 over 4 layers) genuinely larger than the cap, with the arm-RNG coupling fixed and out-of-sample. Earlier evidence: an exploratory powered depth-4 run (246/384, p `1.9e-08`; pool 217/384; increment 222/384, p `0.0013`), and three depth-1 passes on the shared-RNG path (study 3's block reproduces exactly at 213/384 and gives 222/384 with the fix) that should now be read as a degenerate 5-candidate-space instance. See the Substrate Audit section and report sections 9.7-9.9. | Factor map (all matched budgets, objective verdicts): cap-4/2-batch, 48 steps -> PASS 213/384, p `0.0181`, at 41.9% cost. Cap-2/1-batch, 144 steps -> FAIL 181/380, p `0.8351`, at 4.13% cost. Placement (late, same seeds) -> no effect (p `0.0788`). Cap-2/1-batch, 6 events -> 137/384, significantly WORSE than random (z `-5.61`). Cap-2/4-batch -> 179/384, p `0.9159`. Horizon replication cap-4/2-batch, 144 steps -> PASS 231/384, p `4.04e-05`, t p `1.07e-08`, cost 14.0%. Richness A cap-4/1-batch, 144 steps -> PASS 228/384, p `1.4e-04`, t p `5.0e-05`, cost 7.3%; same-seed B cap-2/2-batch -> FAIL 193/384, p `0.47965`; paired A>B 225/384 (z `3.37`). Probe validity real but weak (rho `0.11`); richness is the active axis, probe batches secondary. Nine gate-style tests, three passes; Bonferroni alpha/9 ~ 0.0056 is cleared by the 144-step replication and richness-A on both statistics. Real-data diagnostic (TinyStories, seeds 9000-9007, paired): variance cap-4/4-batch 0/8 (`+0.2858`), richness cap-8/1-batch 1/8 (`+0.1661`) - neither toy axis restores the edge on real text, and the 4-batch argmin bit-reproduced the 1-batch argmin in 5/8 seeds (ranking stably misaligned, not noisy). **Re-run on the decoupled arm-RNG path (sections 9.10-9.11, Substrate Audit item 7): 8 of 9 labels reproduce, every win count moves toward the treatment (+1..+30, mean +9.6), studies clearing alpha/9 rise 2/9 -> 4/9 (horizon 1.7e-09, richness A 9.4e-05, probe-loss 0.00128, guided 0.00279), and the single flip is the variance study (179/384 FAIL -> 209/384 threshold PASS, failing alpha/9, i.e. a null either way). Cadence's harm claim survives at 148/384 (from 137/384). The legacy-signal study is not reconstructible and still rests on the coupled path.** So the factor-map claims stand, with corrected effect sizes; quote them from the decoupled column. |
 
 ## Plan Sections 3-6: Compute and Kaggle Operations
 
@@ -686,6 +707,17 @@ These remain TODO or DEFERRED until the first gate passes:
   figures to `artifacts/study-summaries/figures/` (fig1 win-rate forest,
   fig2 quality-vs-cost, fig3 delta distributions, fig4 probe-rank heatmap),
   byte-identical across re-runs.
+- `PYTHONPATH=src python scripts/factor_map_recheck.py --list` -> prints the
+  recheck set (8 probe-loss gate studies + the guided bound) and the one
+  excluded study; `--study NAME --shard i --shards n --out DIR` re-runs a
+  shard's slice with the published config and only `independent_arm_rng`
+  changed, and `--compare '<DIR>/*.json'>` applies the declared label-agreement
+  rule and can write the result artifact. Ran as declared: 144 shards,
+  ~6 min wall, `artifacts/study-summaries/factor-map-recheck.json` (section
+  9.11). Unit-pinned in `tests/test_factor_map_recheck.py` (recheck set and
+  exclusion, only-the-RNG-changes reconstruction, shard merge order, label
+  agreement and flip detection, threshold recomputation from n, and incomplete
+  seed sets never reporting agreement).
 - `PYTHONPATH=src python scripts/v0_verdict.py --dataset-root <root>` -> computes
   the pre-registered §5.1 verdict from the published seed summaries (verified
   against a live-published dataset and now unit-pinned in

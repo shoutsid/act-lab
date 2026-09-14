@@ -75,7 +75,10 @@ result.
 
 Nine pre-registered gate-style quality tests now cover the controller design
 space at toy fidelity. One configuration family - a rich candidate set - has
-passed three times, twice decisively.
+passed three times, twice decisively; on the decoupled arm-RNG path of section
+9.11 the same three passes hold with stronger statistics and a fourth study
+(variance reduction) reaches a threshold-level pass that fails family-wise
+correction and is therefore reported as a null.
 
 | # | Study | Selection policy | Events x probe budget | Horizon | Seeds | Wins | Mean delta | Binomial p | Paired-t p | Probe cost | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -95,6 +98,16 @@ gate test: late placement changed 39% of probe decisions but did not
 significantly change outcomes (201/380 pairs favored late placement, paired
 p = 0.0788), exonerating mutation placement as the explanation of study 4's
 failure.
+
+**Every number in the table above is from the coupled arm-RNG path** (section
+9.8). The factor map was re-run with the coupling fixed, on the same configs and
+seed blocks, in the declared reproduction check of section 9.10; the decoupled
+table is section 9.11. Headline: **8 of 9 verdict labels reproduce**, every
+effect size moves toward the treatment (all nine win shifts positive), the
+number of studies clearing family-wise correction rises from 2 to 4, and the one
+label flip is the variance study - a threshold pass (209/384, p 0.046) that
+fails alpha/9 and is therefore a null in both directions rather than a new
+positive. Read the rest of this section with those corrections applied.
 
 ### 3.1 Narrative
 
@@ -135,11 +148,18 @@ horizon to amortize) hit the 5% cost target (4.13%) but lost the quality edge
 entirely. The **cadence** study (study 5) tested whether accumulating the weak
 signal over six events instead of three would help; it did the opposite —
 137/384 wins is significantly *worse* than random (z = -5.61, p ~ 2e-08).
+On the decoupled path the same study is 148/384, still significantly worse
+(P(X<=148) = 4.1e-06) but less severely: the harm claim holds, its magnitude
+was inflated by the baseline (section 9.11).
 The **variance** study (study 6) tested the complementary winner's-curse
 hypothesis — that single-batch probes mislead because their argmin partly
 selects for probe-batch noise — by quadrupling probe batches at fixed
 candidates; the mean moved in the predicted direction (+0.0117 to -0.0039) but
 not significantly, so variance reduction alone does not restore the edge.
+This is the study whose label flips on the decoupled path (179/384 -> 209/384,
+p 0.046), where 209/384 is exactly the alpha=0.05 threshold; it fails alpha/9,
+so the corrected reading is "no probe-batch effect in either direction" rather
+than a pass (section 9.11).
 
 ### 3.2 Mechanism: what the probe signal is worth
 
@@ -172,12 +192,15 @@ research scale is precisely the plan's deferred compute-efficiency milestone.
 
 ### 3.3 Statistical caution
 
-- Nine gate-style quality tests have been run. Study 3's sign-test pass
-  (p = 0.0181) is marginal under Bonferroni, but studies 7 and 8 clear the
-  family-wise bar (alpha/9 ~ 0.0056) on *both* statistics (4.0e-05/1.1e-08
-  and 1.4e-04/5.0e-05), so the family-level evidence for "probe-loss selection
-  beats matched random churn on quality" no longer rests on a single marginal
-  test. The guided study (2) was a diagnostic, not a gate claim.
+- Nine gate-style quality tests have been run. On the coupled path study 3's
+  sign-test pass (p = 0.0181) was marginal under Bonferroni while studies 7 and
+  8 cleared the family-wise bar (alpha/9 ~ 0.0056) on *both* statistics
+  (4.0e-05/1.1e-08 and 1.4e-04/5.0e-05). On the **decoupled path (section
+  9.11) four studies clear alpha/9** - horizon (1.7e-09), richness A (9.4e-05),
+  probe-loss (0.00128, which was the marginal one and is no longer marginal),
+  and the guided diagnostic (0.00279) - so the family-level evidence no longer
+  depends on counting only two clear tests. The guided study (2) is a
+  diagnostic, not a gate claim.
 - Studies 1, 3, 5, 6, 7, 8 are mutually independent (disjoint seed blocks).
   Studies 4, 9, and the placement study share seeds by design (4 and placement
   as same-seed paired comparisons; 9 paired against 8). Study 6's descriptive
@@ -1066,6 +1089,15 @@ records. Re-runs are byte-identical. The data assembly lives in
 `act.evolution.figures_data` (standard library only), unit-tested in
 `tests/test_report_figures.py` against scipy reference values.
 
+**Open item (section 9.11).** These four figures plot the **coupled-path**
+summaries, which are the committed record but are no longer the numbers section
+3 quotes. A decoupled figure set needs the recheck written back out in the study
+summary schema (the recheck currently stores per-seed losses in its own shard
+records), and until that is done fig1's forest and fig2's cost scatter disagree
+with section 3's table. Do not regenerate the figures from the coupled
+summaries and call them current: either regenerate from a decoupled summary set
+or label them as the coupled-path record.
+
 1. **`fig1-winrate-forest.png` - win-rate forest plot**: one row per study
    (#1-#9), point estimate with the exact binomial (Clopper-Pearson) 95%
    interval, threshold line at the 384-seed pass boundary (209/384).
@@ -1438,3 +1470,70 @@ PYTHONPATH=src python scripts/factor_map_recheck.py \
 `--coupled` re-runs the historical shared-RNG path for a control comparison, so
 the coupled/decoupled difference is measurable per study rather than inferred.
 **Result recorded in section 9.11.**
+
+### 9.11 Result: eight of nine labels reproduce, and every effect moves toward the treatment
+
+Ran as declared (144 shards over 9 studies, ~6 min wall on 16 single-threaded
+cores; comparison artifact
+`artifacts/study-summaries/factor-map-recheck.json`).
+
+| # | Study | Published | Recheck (decoupled) | Win shift | Verdict |
+|---|---|---|---|---|---|
+| 1 | Legacy controller | 195/384 FAIL (p 0.399) | *excluded - not reconstructible* | - | - |
+| 2 | Guided upper bound | 59/96 PASS (p 0.0158) | 62/96 PASS (p 0.00279) | +3 | reproduces |
+| 3 | Probe-loss controller | 213/384 PASS (p 0.0181) | 222/384 PASS (p 0.00128) | +9 | reproduces |
+| 4 | Cheap probe | 181/380 FAIL (p 0.835) | 188/380 FAIL (p 0.601) | +7 | reproduces |
+| 5 | Cadence | 137/384 FAIL (p ~ 1.0) | 148/384 FAIL (p ~ 1.0) | +11 | reproduces |
+| 6 | Variance reduction | 179/384 FAIL (p 0.916) | 209/384 **PASS** (p 0.046) | +30 | **FLIPS** |
+| 7 | Horizon replication | 231/384 PASS (p 4.04e-05) | 250/384 PASS (p 1.68e-09) | +19 | reproduces |
+| 8 | Richness A | 228/384 PASS (p 1.4e-04) | 229/384 PASS (p 9.36e-05) | +1 | reproduces |
+| 9 | Richness B | 193/384 FAIL (p 0.480) | 198/384 FAIL (p 0.287) | +5 | reproduces |
+
+**What this changes.**
+
+- **The section 3 narrative survives.** Eight of nine labels reproduce, so
+  "richness is the active axis", "probe quality is secondary", "the pass is not
+  horizon-specific" and "the legacy signal controller is a coin flip" are all
+  unchanged in verdict.
+- **But every single study moved toward the treatment** (win shifts +1 to +30,
+  mean +9.6 wins ~ +2.5 points, all nine positive). The coupling was therefore
+  a *directional* bias, not symmetric noise: on the shared-RNG path every
+  published number - passes and nulls alike - understated the adaptive arm.
+  That is the strongest statement this recheck licenses, and it is a statement
+  about the previous measurements rather than about the controller.
+- **The family-level evidence strengthens.** Clearing Bonferroni alpha/9 goes
+  from **2 of 9 studies** (horizon, richness A) to **4 of 9**: probe-loss now
+  clears it (p 0.00128) where the coupled number was marginal (0.0181), and the
+  guided diagnostic does too (0.00279). Horizon also moves from 4.0e-05 to
+  1.7e-09.
+- **The one flip is a null, not a new positive.** Variance reduction moves from
+  a clear-looking FAIL (179/384) to a threshold PASS (209/384, exactly the
+  alpha=0.05 minimum). At p 0.046 it does **not** clear alpha/9, so the honest
+  reading of that study is "no probe-batch effect in either direction" - the
+  coupled baseline made a null look like a marked failure. It must not be
+  quoted as evidence that quadrupling probe batches helps.
+- **The one "actively harmful" claim survives, weakened.** Cadence stays
+  significantly worse than random on both paths, but less severely: 137/384
+  (P(X<=137) = 1.1e-08) becomes 148/384 (P(X<=148) = 4.1e-06). The claim is
+  real; its published magnitude was inflated by the baseline.
+- **Cross-validation.** The probe-loss recheck returned 222/384, bit-identical
+  to the independent running made in section 9.8 through a different entry
+  point (the CLI over the same block), which is the check that the recheck
+  harness measures the same thing.
+
+**Caveats.** Nine studies at depth 1 on a five-candidate space, so this
+strengthens or corrects a degenerate-space factor map, not the project's gate
+(section 9.9 is the gate). The variance flip sits exactly on a threshold, so
+it is reported as a null rather than as a pass. The shift's magnitude tracks
+neither probe cost nor event count cleanly (richness A moves +1 while variance
+moves +30), so the coupling's dependence on the treatment's choices is
+characterised but not explained; the natural hypothesis - more probe draws give
+sharper picks, and grows draw weights where prunes do not, so sharper picking
+consumes more of the shared stream - is untested here. `gate3-legacy-signal-384`
+was excluded as not reconstructible, so the legacy controller's published FAIL
+still rests on the coupled path; that is a gap, not a pass.
+
+**Consequence for the project.** No published *verdict* in the factor map needs
+revising except variance, and no headline claim is overturned. Every published
+*effect size* does need the recheck number beside it, and the depth-1 factor map
+should from here on be quoted from the decoupled column.

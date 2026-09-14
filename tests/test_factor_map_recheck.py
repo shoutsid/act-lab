@@ -61,8 +61,11 @@ def test_recheck_set_covers_the_reconstructible_studies() -> None:
     # The signal-era study cannot be reconstructed from its recorded config.
     assert "gate3-legacy-signal-384" not in available
     assert "gate3-legacy-signal-384" in recheck.EXCLUDED
-    # The analysis-only artifact carries no config and is not a study.
+    # The analysis-only artifact carries no config and is not a study, and the
+    # recheck's own comparison artifact (a list of rows) must not be read as one.
     assert "probe-validity-analysis" not in available
+    assert "factor-map-recheck" not in available
+    assert "factor-map-recheck" not in recheck.published_summaries()
 
 
 def test_build_config_changes_only_the_rng_regime() -> None:
