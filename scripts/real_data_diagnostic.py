@@ -148,6 +148,17 @@ reproduce the gated run bit-for-bit on the same seeds (the gated arm
 accepted nothing - this is the replication check of the section-5.4 run
 at essentially zero marginal cost).
 
+OUTCOME (run 2026-09-14, revision ``9e5e448``): outcome (a) - churn harm
+is REAL. null 8/8 wins, mean delta ``-0.1217`` (per-seed -0.08 to -0.20,
+all negative); zero mutations / zero search FLOPs in 8/8 seeds; and the
+replication check is EXACT - max |null - gated| = 0.000000 on all eight
+seeds, the null arm reproducing the gated run bit-for-bit as the section
+5.7 degeneracy reading predicted. Every section-5.3 variant's loss is
+partly churn harm; the theta sweep's control should be the null arm; the
+honest real-text ladder for Gate 4 is null < random < adaptive. Verdict
+machine-checked by ``scripts/null_verdict.py``; write-up in report
+section 5.8.
+
 Per-event probe cost scales as candidates x batches, so ``var`` quadruples
 the baseline cost (~1% -> ~4% of training FLOPs, measured 3.99%) and
 ``rich`` doubles it (measured 1.98%); ``argmax`` matches the baseline's
@@ -424,7 +435,7 @@ def analyze(seeds: tuple[int, ...], steps: int) -> dict:
         root = DIAG_ROOT / name / "datasets"
         single_arm = overrides.get("arms")
         arm_names = (
-            (single_arm,) if single_arm in (("gated",), ("null",)) else ("random", "adaptive")
+            single_arm if single_arm in (("gated",), ("null",)) else ("random", "adaptive")
         )
         losses = _seed_losses(root, seeds, arm_names)
         treatment = arm_names[0] if len(arm_names) == 1 else "adaptive"

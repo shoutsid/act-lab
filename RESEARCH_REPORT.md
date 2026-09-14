@@ -1172,6 +1172,32 @@ portability caveat).
 **Cost.** Zero probe FLOPs; one arm per session, so pair time matches the
 gated run's (~2.5 min on the local GPU).
 
+**Outcome (run 2026-09-14, revision `9e5e448`): outcome (a) - churn harm is
+REAL on this block.** 8/8 wins, mean delta `-0.1217` (per-seed deltas
+`-0.0804` to `-0.2003`, every seed negative; verdict machine-checked by
+`scripts/null_verdict.py`). Both built-in checks held: zero mutations and
+zero search FLOPs in 8/8 seeds, and the replication check is exact - max
+|null - gated| = `0.000000` across all eight seeds, the null arm
+reproducing the gated run bit-for-bit as the degeneracy reading of section
+5.7 predicted (the gated arm's vetoed rebuilds genuinely left no residue,
+and the determinism contract survives a fresh process).
+
+Consequences. (1) The `-0.12` is not seed luck: at this schedule on real
+text, matched-budget random churn costs ~0.12 nats against doing nothing.
+(2) Every real-data variant's loss in section 5.3 is re-read as partly
+churn harm - argmin, argmax, `var`, and `heldout` spent the full budget
+for deltas of `+0.17` to `+0.31`, i.e. roughly the churn cost plus a
+directly harmful selection, while `rich`'s `+0.166` sits near the churn
+line. (3) The gate follow-up question is now sharp: not "does gating beat
+random" (doing nothing already does) but "do ACCEPTED draws beat doing
+nothing" - the intermediate-theta sweep's control arm should be the null
+arm, not random. (4) For the eventual Gate 4 protocol, the random arm is a
+weak baseline on real text: a controller must now clear the null arm, and
+the honest ladder is null < random < adaptive-at-theta. Eight-seed power
+still applies; a powered confirmation on a fresh block (or at the toy
+scale where 384 seeds are cheap) is the next pre-registration if this axis
+is pursued.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

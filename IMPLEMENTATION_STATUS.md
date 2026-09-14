@@ -706,9 +706,22 @@ These remain TODO or DEFERRED until the first gate passes:
   Both scorecards, the unified five-variant verdict, and the next-direction
   note (change how the ranking is used; own pre-registration required) are
   recorded in report section 5.3. Full suite: 285 passed.
-- `PYTHONPATH=src python scripts/real_data_diagnostic.py --variants gated`
-  -> RAN 2026-09-14 (revision `ef4bacd`; pre-registered in report section
-  5.4, outcome in section 5.7): accept/reject gating of random draws - the
+- `PYTHONPATH=src python scripts/real_data_diagnostic.py --variants null`
+  -> RAN 2026-09-14 (revision `9e5e448`; pre-registered in report section
+  5.8, outcome in the same section): the do-nothing control arm
+  (`V0SessionConfig.arms=("null",)`) - single-arm like gated, sharing the
+  random arm's init identity and training stream, recording each event as
+  a no-op, booking zero probe FLOPs. Result: **outcome (a) - churn harm is
+  REAL**: null 8/8 wins vs the baseline random arms, mean delta `-0.1217`
+  (per-seed -0.08 to -0.20, all negative). Built-in checks held: zero
+  mutations / zero search FLOPs in 8/8 seeds, and the replication check is
+  EXACT - max |null - gated| = 0.000000 on all eight seeds, the null arm
+  reproducing the gated run bit-for-bit as the section-5.7 degeneracy
+  reading predicted. Consequences: every section-5.3 variant's loss is
+  partly churn harm; the theta sweep's control should be the null arm ("do
+  accepted draws beat doing nothing?"); the honest real-text ladder for
+  Gate 4 is null < random < adaptive. Verdict machine-checked by
+  `scripts/null_verdict.py`. Full suite: 338 passed (6 null tests).: accept/reject gating of random draws - the
   probe's ABSOLUTE signal (does this single mutation hurt the current
   model?) as a per-event gate on the random arm's draw, abandoning the
   anti-predictive ordering entirely. Result: **8/8 wins, mean delta vs own
@@ -726,7 +739,8 @@ These remain TODO or DEFERRED until the first gate passes:
   explanation of every earlier variant's loss (all spent the full mutation
   budget). Follow-ups need their own pre-registration: a do-nothing control
   arm (now pre-registered as report section 5.8 and implemented as
-  `V0SessionConfig.arms=("null",)`), and an intermediate-theta sweep (theta `0.05`/`0.1` would have
+  `V0SessionConfig.arms=("null",)` - RAN, outcome (a), see below), and an
+  intermediate-theta sweep (theta `0.05`/`0.1` would have
   accepted 11/24 and 21/24 of the observed draws). Single-arm sessions
   compared against the baseline block's stored random arms; per-event
   `gate_decision` records and both probe losses made the mechanism
