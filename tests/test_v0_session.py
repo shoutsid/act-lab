@@ -876,3 +876,121 @@ def test_predicted_cost_ratio_books_gated_two_point_contrast() -> None:
         / (2 * total * config.training_tokens())
     )
     assert predicted_cost_ratio(config) == pytest.approx(expected)
+
+
+# --- substrate audit (report section 9): candidate policy and pool control ---
+
+
+def _policy_config(seed: int, **overrides) -> V0SessionConfig:
+    """A tiny depth-4 adaptive session: deep enough for the cap to matter."""
+    values = dict(
+        seed=seed,
+        arms=("random", "adaptive"),
+        declared=False,
+        device="cpu",
+        vocab_size=64,
+        context_size=256,
+        hidden_size=64,
+        depth=4,
+        attention_heads=4,
+        expert_count=4,
+        expert_width=32,
+        total_steps=8,
+        mutation_interval=3,
+        mutation_budget=2,
+        probe_candidate_cap=4,
+        probe_batch_count=1,
+        validation_batches=2,
+        checkpoint_interval=2,
+        max_checkpoints=2,
+        probe_landscape=True,
+    )
+    values.update(overrides)
+    return V0SessionConfig(**values)
+
+
+def _adaptive_events(result: V0SessionResult) -> list[dict]:
+    arm = next(arm for arm in result.arms if arm.mode == "adaptive")
+    return list(arm.mutation_history)
+
+
+def _probed_layers(result: V0SessionResult) -> set[str]:
+    layers: set[str] = set()
+    for event in _adaptive_events(result):
+        layers.update(item["layer_id"] for item in event.get("probe_landscape", ()))
+    return layers
+
+
+def test_probe_candidate_policy_and_selection_validation() -> None:
+    V0SessionConfig(declared=False, probe_candidate_policy="spread")
+    V0SessionConfig(declared=False, probe_selection="random")
+    with pytest.raises(ValueError, match="probe_candidate_policy"):
+        V0SessionConfig(declared=False, probe_candidate_policy="bogus")
+    with pytest.raises(ValueError, match="probe_selection"):
+        V0SessionConfig(declared=False, probe_selection="bogus")
+
+
+def test_prefix_policy_is_confined_to_the_first_layer_but_spread_is_not(
+    tmp_path: Path,
+) -> None:
+    """The registered prefix cap reaches only layer 0 at depth 4; spread does not."""
+    prefix = run_v0_session(
+        _policy_config(71, probe_candidate_policy="prefix"),
+        checkpoint_dir=tmp_path / "prefix",
+    )
+    spread = run_v0_session(
+        _policy_config(71, probe_candidate_policy="spread"),
+        checkpoint_dir=tmp_path / "spread",
+    )
+    assert _probed_layers(prefix) == {"L0"}
+    assert len(_probed_layers(spread)) > 1
+    # The policy is recorded per event for auditability.
+    for event in _adaptive_events(prefix):
+        assert event["probe_candidate_policy"] == "prefix"
+    for event in _adaptive_events(spread):
+        assert event["probe_candidate_policy"] == "spread"
+
+
+def test_random_probe_selection_is_deterministic_and_recorded(tmp_path: Path) -> None:
+    """The pool-matched control ignores probe loss but is fully reproducible."""
+    config = _policy_config(72, probe_selection="random")
+    first = run_v0_session(config, checkpoint_dir=tmp_path / "a")
+    second = run_v0_session(config, checkpoint_dir=tmp_path / "b")
+    events = _adaptive_events(first)
+    assert events
+    assert all(event["probe_selection"] == "random" for event in events)
+    assert json.dumps(events, sort_keys=True) == json.dumps(
+        _adaptive_events(second), sort_keys=True
+    )
+    # argmin always selects index 0, so a random rule that never disagrees
+    # would mean the control silently collapsed onto the registered rule.
+    argmin_indices = [
+        event["probe_selected_index"]
+        for event in _adaptive_events(
+            run_v0_session(_policy_config(72), checkpoint_dir=tmp_path / "c")
+        )
+    ]
+    assert [event["probe_selected_index"] for event in events] != argmin_indices
+
+
+def test_spread_policy_resume_is_bit_identical(tmp_path: Path) -> None:
+    """A re-executed probe event must redraw the identical candidate subset."""
+    config = _policy_config(73, arms=("adaptive",), probe_candidate_policy="spread")
+    reference = run_v0_session(config, checkpoint_dir=tmp_path / "ref")
+    arm_dir = tmp_path / "resume" / "seed-73" / "arm-adaptive"
+    run_v0_session(config, checkpoint_dir=tmp_path / "resume")
+    # Keep only the step-2 checkpoint so the events at steps 3 and 6 re-execute.
+    for path in arm_dir.glob("checkpoint-*.pt"):
+        if int(path.stem.split("-")[-1]) > 2:
+            path.unlink()
+    resumed = run_v0_session(config, checkpoint_dir=tmp_path / "resume")
+    arm, before = resumed.arms[0], reference.arms[0]
+    assert arm.final_loss == before.final_loss
+    assert arm.architecture_hash == before.architecture_hash
+    assert (arm.training_flops, arm.search_flops) == (
+        before.training_flops,
+        before.search_flops,
+    )
+    assert json.dumps(arm.mutation_history, sort_keys=True) == json.dumps(
+        before.mutation_history, sort_keys=True
+    )

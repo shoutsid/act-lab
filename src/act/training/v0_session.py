@@ -81,6 +81,15 @@ class V0SessionConfig:
     # Selection: cap-4/1-batch primary (set probe_batch_count=2 for secondary).
     probe_candidate_cap: int = 4
     probe_batch_count: int = 1
+    # Which candidates a capped probe sees. "prefix" is the registered
+    # section 5.1 default: the first ``probe_candidate_cap`` entries of the
+    # layer-major enumeration, which at the declared depth (12 layers x 8
+    # experts = 108 candidates) confines a cap of 4 to the earliest layer.
+    # "spread" draws a deterministic per-event subset of the whole feasible
+    # set, so the cap is a search budget over layers and operations rather
+    # than a prefix. Added by the substrate audit (`RESEARCH_REPORT.md`
+    # section 9); the registered protocol is unchanged at the default.
+    probe_candidate_policy: str = "prefix"
     # Decision rule applied to the probed candidates (real-data diagnostic,
     # report section 5.3): "argmin" is the registered controller (lowest probe
     # loss wins); "argmax" deliberately selects the probe-WORST candidate as
@@ -163,8 +172,12 @@ class V0SessionConfig:
             raise ValueError("mutation_interval and mutation_budget must be positive")
         if self.probe_candidate_cap < 1 or self.probe_batch_count < 1:
             raise ValueError("probe budgets must be positive")
-        if self.probe_selection not in {"argmin", "argmax"}:
+        if self.probe_selection not in {"argmin", "argmax", "random"}:
             raise ValueError(f"unsupported probe_selection: {self.probe_selection}")
+        if self.probe_candidate_policy not in {"prefix", "spread"}:
+            raise ValueError(
+                f"unsupported probe_candidate_policy: {self.probe_candidate_policy}"
+            )
         if self.probe_data_source not in {"train", "heldout"}:
             raise ValueError(f"unsupported probe_data_source: {self.probe_data_source}")
         if self.probe_data_source == "heldout" and self.val_data_path is None:
@@ -493,7 +506,19 @@ def _adaptive_event(
     model. A no-op event (no feasible candidates) preserves the existing
     optimizer exactly as the toy path does.
     """
-    candidates = feasible_expert_mutations(arm_state.genome)[: config.probe_candidate_cap]
+    candidates = feasible_expert_mutations(arm_state.genome)
+    if len(candidates) > config.probe_candidate_cap:
+        if config.probe_candidate_policy == "spread":
+            # Deterministic per-event subset of the WHOLE feasible set, seeded
+            # from (seed, step) so any re-executed event - a fresh run or a
+            # mid-run resume - redraws the identical candidates.
+            candidates = tuple(
+                random.Random(config.seed * 1_000_003 + step).sample(
+                    list(candidates), config.probe_candidate_cap
+                )
+            )
+        else:
+            candidates = candidates[: config.probe_candidate_cap]
     probe_tokens = sum(batch.numel() for batch in probe_batches)
     evaluated: list[tuple[float, int, str, str, str | None, ArchitectureGenome]] = []
     for order, (operation, layer_id, expert_id) in enumerate(candidates):
@@ -527,9 +552,20 @@ def _adaptive_event(
     if not evaluated:
         return model, optimizer
     evaluated.sort(key=lambda item: (item[0], item[1]))
-    winner_index = -1 if config.probe_selection == "argmax" else 0
+    if config.probe_selection == "argmax":
+        selected_index = len(evaluated) - 1
+    elif config.probe_selection == "random":
+        # Pool-matched random control (substrate audit, report section 9):
+        # the same probed candidates at the same probe cost, chosen without
+        # reference to probe loss. Seeded from (seed, step) for resume
+        # determinism.
+        selected_index = random.Random(config.seed * 1_000_003 + step).randrange(
+            len(evaluated)
+        )
+    else:
+        selected_index = 0
     probe_loss, _, operation, layer_id, expert_id, winner_genome = evaluated[
-        winner_index
+        selected_index
     ]
     before_hash = genome_hash(arm_state.genome)
     arm_state.genome = winner_genome
@@ -551,6 +587,8 @@ def _adaptive_event(
         "probe_candidates": len(evaluated),
         "probe_batch_count": len(probe_batches),
         "probe_finetune_steps": config.probe_finetune_steps,
+        "probe_candidate_policy": config.probe_candidate_policy,
+        "probe_selection": config.probe_selection,
     }
     if config.probe_landscape:
         # ``evaluated`` is sorted by (loss, order) ascending, so the landscape
@@ -567,7 +605,7 @@ def _adaptive_event(
             }
             for item in evaluated
         ]
-        entry["probe_selected_index"] = winner_index % len(evaluated)
+        entry["probe_selected_index"] = selected_index
     arm_state.mutation_history.append(entry)
     return winner, new_optimizer
 
