@@ -1252,6 +1252,62 @@ alpha/2 = 0.0025; verdict machine-checked, exact binomial via
 sharded 20-way well under 2 minutes wall (CPU per the section 5.6 hardware
 note).
 
+**Outcome (run 2026-09-14, revision `78186e4`): interpretation branch 2 -
+1 PASS / 2 FAIL.** Verdict machine-checked (`scripts/null_toy_study.py
+verdict`; shards under `artifacts/toy-null-study/`, not committed):
+built-in checks held in 384/384 seeds (mutations 3/3/0, zero null search
+FLOPs). **Primary 1 PASS**: null-vs-random 280/384, mean `-0.0795`, p
+`4.69e-20` - churn harm replicates on the toy substrate. **Primary 2 FAIL
+decisively**: adaptive-vs-null 117/384, mean `+0.0508`, p `1.0` - on
+study 3's config the controller LOSES to doing nothing. Secondary:
+adaptive-vs-random 225/384, mean `-0.0288`, p `4.43e-04`, replicating the
+decoupled study-3 direction on a fresh block (222/384 on the committed
+block). Per-arm mean losses: null `15.0745` < adaptive `15.1253` < random
+`15.1540` - the ordering is null < adaptive < random. Reading: the
+study-3 "adaptive edge" is directional and replicable, but it is churn
+SUPPRESSION - a controller that mutates more sensibly than random still
+ends up worse than never mutating at all. Study 3's factor-map row must
+now be quoted as "adaptive < random, both > null". The registered
+section-5.2 config is depth 1, the degenerate 5-candidate space of
+section 9.5; the open question is whether the section-5.6 depth-4 pass
+(spread policy, a 20-candidate pool genuinely larger than the cap)
+clears the do-nothing bar - pre-registered next as section 5.10.
+
+### 5.10 Pre-registration: the depth-4 confirmation against the null arm (designed, not yet run)
+
+**Motivation.** Section 5.9's branch 2 leaves the project's current Gate 3
+evidence - the section-5.6 depth-4 confirmation (spread policy, cap 4 over
+a 20-candidate pool, `independent_arm_rng=True`) - as the last pass not yet
+faced with a do-nothing control. Its registered comparisons beat random
+churn and a loss-blind same-pool choice, but both controls still churn; if
+the null arm beats them all, the pool story collapses too.
+
+**Design.** The section-5.6 config (study-3 defaults with depth 4 and
+`probe_candidate_policy="spread"`), run as the same three-arm block per
+seed (`arms="random,adaptive,null"`, `independent_arm_rng=True`,
+`device=cpu`) on the never-observed fresh block **71000-71383** (384
+seeds). Same machinery as section 5.9 (the `depth4` profile of
+`scripts/null_toy_study.py`); same pre-registered primaries and
+Bonferroni alpha/2 bar, plus the section-5.6 secondaries as secondary
+observables (loss-blind pool comparison is NOT re-run here - it is
+scored in section 5.6 and the pool story is only re-opened if primary 2
+fails).
+
+**Interpretation grid.**
+- Primary 2 passes (adaptive < null clears alpha/2): the depth-4 edge is
+  genuine value creation beyond both the pool effect and churn suppression;
+  Gate 3 stands on the depth-4 substrate.
+- Primary 2 fails: the project's Gate 3 evidence is churn suppression at
+  every tested fidelity - the honest reading becomes "no topology controller
+  tested so far creates value; several mutate less harmfully than random"
+  and the section-1 "stop and simplify" rule governs the next step.
+- Primary 1 fails (no depth-4 churn harm): informative either way - it
+  would mean churn harm is fidelity/config-dependent, weakening the
+  real-text transfer of the toy null result.
+
+**Cost.** ~1.5-2 s/seed at depth 4 on CPU (measured section 9.3), sharded
+20-way ~1 min wall.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
