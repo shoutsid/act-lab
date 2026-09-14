@@ -45,6 +45,13 @@ class ExperimentConfig:
     # is a genuine search budget over layers and operations rather than a
     # prefix.
     probe_candidate_policy: str = "prefix"
+    # Decision rule applied to the probed candidates. "argmin" (default, the
+    # registered controller) takes the lowest probe loss, "argmax" the highest
+    # (the inverted-signal control), and "random" picks uniformly among the
+    # SAME probed candidates at the SAME probe cost - the pool-matched random
+    # control that isolates selection quality from the candidate pool's shape.
+    # Mirrors `V0SessionConfig.probe_selection` so both paths share semantics.
+    probe_selection: str = "argmin"
     probe_landscape: bool = False
     probe_force_candidate: int | None = None
     probe_force_events: int | None = None
@@ -133,6 +140,8 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
         raise ValueError("probe_candidate_cap must be at least 1")
     if config.probe_candidate_policy not in {"prefix", "spread"}:
         raise ValueError("unsupported probe_candidate_policy")
+    if config.probe_selection not in {"argmin", "argmax", "random"}:
+        raise ValueError("unsupported probe_selection")
     if config.probe_batch_count < 1:
         raise ValueError("probe_batch_count must be at least 1")
     if config.probe_force_candidate is not None and config.probe_force_candidate < 0:
@@ -211,6 +220,7 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
                     config.probe_candidate_cap,
                     config.probe_batch_count,
                     config.probe_candidate_policy,
+                    config.probe_selection,
                     config.probe_landscape,
                     config.probe_force_candidate,
                     config.probe_force_events,
@@ -301,6 +311,7 @@ def _mutate_by_probe(
     probe_batch_count: int,
     policy_label: str,
     candidate_policy: str = "prefix",
+    probe_selection: str = "argmin",
     sampler_seed: int = 0,
     record_landscape: bool = False,
     force_candidate: int | None = None,
@@ -373,7 +384,17 @@ def _mutate_by_probe(
             f"probe_force_candidate {force_candidate} out of range "
             f"(only {len(evaluated)} candidates evaluated)"
         )
-    selected_index = force_candidate if forced_here else 0
+    if forced_here:
+        selected_index = force_candidate
+    elif probe_selection == "argmax":
+        selected_index = len(evaluated) - 1
+    elif probe_selection == "random":
+        # Pool-matched random control: the same probed candidates at the same
+        # probe cost, chosen without reference to probe loss. Seeded from the
+        # event's seed so re-runs redraw the identical choice.
+        selected_index = random.Random(sampler_seed).randrange(len(evaluated))
+    else:
+        selected_index = 0
     probe_loss, _, operation, layer_id, expert_id, winner = evaluated[selected_index]
     before_hash = genome_hash(arm.genome)
     arm.genome = winner
@@ -404,6 +425,7 @@ def _mutate_by_probe(
         "probe_candidates": len(evaluated),
         "probe_batch_count": len(probe_batches),
         "probe_candidate_policy": candidate_policy,
+        "probe_selection": probe_selection,
     }
     if record_landscape:
         entry["probe_selected_index"] = selected_index
@@ -435,6 +457,7 @@ def _mutate_arm(
     probe_candidate_cap: int,
     probe_batch_count: int,
     probe_candidate_policy: str = "prefix",
+    probe_selection: str = "argmin",
     record_landscape: bool = False,
     force_candidate: int | None = None,
     force_events: int | None = None,
@@ -461,6 +484,7 @@ def _mutate_arm(
             probe_batch_count,
             "adaptive_probe_loss",
             candidate_policy=probe_candidate_policy,
+            probe_selection=probe_selection,
             sampler_seed=seed,
             record_landscape=record_landscape,
             force_candidate=force_candidate,

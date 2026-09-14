@@ -59,6 +59,13 @@ def main() -> None:
         "a deterministic subset from the whole feasible set",
     )
     parser.add_argument(
+        "--probe-selection",
+        choices=("argmin", "argmax", "random"),
+        default="argmin",
+        help="decision rule over probed candidates: 'argmin' (registered), "
+        "'argmax' (inverted control), 'random' (pool-matched random control)",
+    )
+    parser.add_argument(
         "--depth",
         type=int,
         default=1,
@@ -109,6 +116,7 @@ def main() -> None:
         probe_candidate_cap=args.probe_candidate_cap,
         probe_batch_count=args.probe_batch_count,
         probe_candidate_policy=args.probe_candidate_policy,
+        probe_selection=args.probe_selection,
         depth=args.depth,
         expert_count=args.expert_count,
         probe_landscape=args.probe_landscape,

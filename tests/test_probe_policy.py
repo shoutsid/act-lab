@@ -135,6 +135,44 @@ def test_spread_policy_keeps_budgets_matched_and_is_recorded() -> None:
         assert event["probe_candidate_policy"] == "spread"
 
 
+def test_probe_selection_rules_differ_and_are_deterministic() -> None:
+    # Same candidate pool, same probe cost; only the decision rule differs.
+    base = dict(
+        seed=7,
+        steps=12,
+        mutation_interval=3,
+        mutation_budget=3,
+        depth=4,
+        hidden_size=24,
+        expert_count=4,
+        probe_candidate_cap=4,
+        probe_batch_count=1,
+        probe_landscape=True,
+        arms="random,adaptive",
+    )
+
+    def selections(policy: str):
+        experiment = run_experiment(ExperimentConfig(**base, probe_selection=policy))
+        arm = next(arm for arm in experiment.arms if arm.mode == "adaptive")
+        return tuple(event["probe_selected_index"] for event in arm.mutation_history)
+
+    argmin_selections = selections("argmin")
+    assert argmin_selections and all(index == 0 for index in argmin_selections)
+    # Random draws are reproducible across runs (seeded per event).
+    assert selections("random") == selections("random")
+    assert selections("argmax") != argmin_selections
+
+
+def test_probe_selection_is_recorded_in_history() -> None:
+    experiment = run_experiment(
+        ExperimentConfig(**_SPREAD_BASE, probe_selection="random")
+    )
+    arm = next(arm for arm in experiment.arms if arm.mode == "adaptive")
+    assert all(
+        event["probe_selection"] == "random" for event in arm.mutation_history
+    )
+
+
 def test_config_rejects_invalid_probe_budgets() -> None:
     import pytest
 
@@ -148,6 +186,8 @@ def test_config_rejects_invalid_probe_budgets() -> None:
         run_experiment(ExperimentConfig(steps=1, probe_candidate_cap=0, validation_batches=1))
     with pytest.raises(ValueError):
         run_experiment(ExperimentConfig(steps=1, probe_candidate_policy="bogus"))
+    with pytest.raises(ValueError):
+        run_experiment(ExperimentConfig(steps=1, probe_selection="bogus"))
 
 
 def test_probe_batch_count_clamps_to_validation_batches() -> None:
