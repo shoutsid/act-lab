@@ -354,8 +354,13 @@ These remain TODO or DEFERRED until the first gate passes:
   other error is fail-fast at launch and never-raising at exit. The test
   dataset was deleted after the round trip; unit tests still inject a
   fake client, so the kaggle package is never needed by the suite.
-8. NEXT: Gate 3 quality is established for the cap-4 controller family (three
-   passes across horizons and probe-batch counts; richness is the active axis).
+8. NEXT: Gate 3 quality was *reported* as established for the cap-4 controller
+   family (three passes across horizons and probe-batch counts; richness the
+   active axis), and the substrate audit (see that section) now qualifies all
+   three passes: they ran at depth 1 on a 5-candidate mutation space, the toy
+   path could not build depth > 1 at all, and a loss-blind choice from the same
+   candidate pool reproduces ~40% of the effect. Re-derivation on a depth > 1
+   substrate with a pool-matched baseline is a prerequisite, not a follow-up.
    The remaining blocker is compute-efficiency: cap-4/1-batch cuts probe cost to
    7.3% at toy scale and amortizes with horizon, but real-scale measurement is
    the plan's deferred compute-efficiency milestone and gates Gate 4 (adaptive >
@@ -366,7 +371,12 @@ These remain TODO or DEFERRED until the first gate passes:
    0.094% of training FLOPs under the measured per-event identity, decision
    rules fixed (5% criterion + factor-2 tolerance band + anti-adaptivity harm
    guard), seeds 9000-9011 reserved. Running it as specified - without retuning
-   knobs against the result - is the entry condition for Gate 4. The section 5.2
+   knobs against the result - is the entry condition for Gate 4. **Do not
+   launch on the current pre-registration**: the audit's proposed revision
+   (`RESEARCH_REPORT.md` section 5.5) must be decided first, because the
+   registered prefix controller reaches only layer 0 at the declared depth and
+   the pool-matched control arm is the missing quality check. Both designs are
+   executable from the committed code; only the decision is outstanding. The section 5.2
    pre-launch tooling (throughput benchmark, session scheduler, deadline rules,
    working-dir ledger, versioned-dataset handoff) is now code and unit-tested,
    and the pieces are tied together by `act.training.v0_runner.run_pair_session`,

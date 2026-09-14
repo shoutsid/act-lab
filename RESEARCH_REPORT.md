@@ -787,6 +787,58 @@ eaa1c45 protocol, ~1.2 h on the local GPU).**
   balance under rejection (rejections should skew prune-accepts and
   grow-fallbacks if the snapshot bias shows up in absolute form).
 
+### 5.5 Proposed revision to the 5.1 protocol (pre-launch, REQUIRES SIGN-OFF)
+
+The substrate audit (section 9) invalidated a premise of section 5.1, so the
+protocol should not launch as written. The original text above is left intact
+for the audit trail; this subsection is the proposed revision, and it takes
+effect only if adopted before the T4 run.
+
+**Why a revision is needed.** Section 5.1 is a *cost* protocol whose value
+depends on the controller under measurement being the validated one. Two
+findings break that:
+
+1. The registered primary controller uses `probe_candidate_policy="prefix"`
+   over `feasible_expert_mutations`, which is layer-major. At the declared
+   depth (12 layers x 8 experts = 108 candidates) a cap of 4 reaches only
+   layer 0 and its first three prunes, so the declared search would explore
+   one layer out of twelve. The V0 session now exposes `spread` for exactly
+   this reason.
+2. The positive quality evidence for probe selection came from a substrate
+   with a demonstrated pool confound (section 9.5): at depth 4 the registered
+   rule wins 88/128 while a loss-blind choice from the same candidate pool
+   wins 80/128, so roughly 40% of the effect is attributable to the pool, not
+   to selection. Measuring the *cost* of that controller would price a quality
+   claim that is not established at any real fidelity.
+
+**Proposed changes (design only; every registered threshold is unchanged).**
+
+1. Primary controller uses `probe_candidate_policy="spread"` (cap 4 drawn
+   from the whole feasible set). This changes no cost term: the section 5.1
+   identity `S = E * k * Bp * 2 * N_active` still holds with the same E, k and
+   Bp, so the declared prediction `C = 0.094%` and the `[0.5, 2]x` band
+   `[0.047%, 0.189%]` carry over unchanged. The 5% criterion, the band, and
+   the 10-of-12 harm guard are all untouched, as is the no-re-tuning rule.
+2. Add a pool-matched control arm (the same candidates, same probe cost, and
+   a loss-blind uniform choice - `probe_selection="random"`) on the same 12
+   seed pairs. Its per-seed quality is reported descriptively.
+3. Add one interpretation clause, in the same spirit as the harm guard: if
+   the pool-matched arm's quality is indistinguishable from the adaptive
+   arm's, record the cost PASS but withhold the Gate 4 recommendation, since
+   the quality premise would then be unsupported. This is a reporting rule,
+   not a new threshold.
+
+**Explicitly unchanged.** The seed block 9000-9011, the declared V0 model
+(285,336,576 / 134,341,632), the budget D = 24,576,000 tokens per arm, E = 3
+events, the planned/measured test sizes, the 5% criterion, the tolerance band,
+the harm guard, and the rule that no knob is re-tuned against the measured C.
+
+**Status.** Proposed, not adopted. Both the original and the revised design are
+executable from the committed code (the registered defaults remain
+`prefix`/`argmin`), so adopting this is a config and pre-registration decision,
+not a code change - apart from the small addition of the pool-matched arm to
+the session loop, which the single-arm `gated` path already shows how to do.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
