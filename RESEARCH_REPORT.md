@@ -188,7 +188,25 @@ research scale is precisely the plan's deferred compute-efficiency milestone.
 
 ## 4. What Gate 3 currently means
 
-Gate 3 ("adaptive > random; if failed, stop and simplify") has now been passed
+**Gate 3 is established on a substrate that can express topology search.** The
+project's gate evidence is now the pre-registered section 5.6 depth-4
+confirmation (section 9.9): committed before the run and executed once on the
+never-observed block 60000-60383, it passes the registered comparison
+(255/384, p `6.1e-11`) *and* the controlled selection increment against a
+loss-blind choice from the identical candidate pool (236/384, p `4.1e-06`),
+while the inverted-signal control does not pass and the loss-blind pool control
+clears only alpha (`0.046`). This matters because it is the first gate result
+measured on a pool (20 feasible candidates over 4 layers) that is genuinely
+larger than the search cap, and with the arm-RNG coupling fixed (`independent_
+arm_rng=True`) and out-of-sample - whereas the depth-1 passes below were
+measured on a degenerate 5-candidate single-layer space, on the coupled RNG
+path, and needed the window > 1 mutation event to begin differentiating.
+
+Everything in the remainder of this section predates that confirmation and
+describes the depth-1 factor map; read it as a weaker, degenerate-space
+instance of the same result rather than as the project's gate evidence.
+
+Gate 3 ("adaptive > random; if failed, stop and simplify") had been passed
 three times by one controller family - bounded probe-loss selection with a rich
 candidate set (cap 4) - across two horizons and two probe-batch counts, with
 two of the three passes decisive under family-wise correction. The mechanism
@@ -212,7 +230,7 @@ default remains cap-4/2-batch; cap-4/1-batch is the validated cheaper option.
 | Horizon replication | study 3 config at steps=144 | cap4/2-batch, 3 events, steps=144 | fresh 8000-8383 | binomial sign test, alpha=0.05 | PASS -> pass generalizes; FAIL -> pass was horizon-specific | **DONE: PASS** (231/384, p 4.04e-05, t p 1.07e-08, cost 14.0%) |
 | Richness | candidate set size at fixed probe tokens | cap4/1-batch (A) vs cap2/2-batch (B), 3 events, steps=144 | fresh 7000-7383 | binomial sign test, alpha=0.05; factor claim: paired A-vs-B, one-tailed "rich better" | PASS & A>B -> richness is the active axis; B passes & B>=A -> probe quality is; neither -> both jointly necessary | **DONE: PASS for richness** (A 228/384, p 1.4e-04, t p 5.0e-05, cost 7.3%; B 193/384, p 0.48, cost 8.1%; paired A better 225/384, z = 3.37, p 8e-04) |
 | Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config (see 5.1) | fresh 9000-9011 (12 pairs) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] | PASS + in-band + harm guard clear -> Gate 4 authorized; outside band -> re-derive before Gate 4; FAIL -> Gate 4 stays blocked | **PRE-REGISTERED (section 5.1), execution planned (section 5.2), not yet run; blocked on the 5.6 decision** |
-| Depth-4 Gate 3 confirmation | substrate expressiveness + selection value, with the arm-RNG fix | cap4/2-batch, `spread`, `independent_arm_rng`, 3 events, steps=48, depth 4 | fresh 60000-60383 (384 pairs) | argmin vs uniform churn, alpha/3 = 0.01667 (>= 214/384); paired argmin vs pool-matched control | PASS -> Gate 3 established on a non-degenerate substrate, 5.5 adopted; POOL-DRIVEN -> withdraw the selection claim; NOT REPRODUCED -> Gate 3 open, 5.1 must not launch | **PRE-REGISTERED (section 5.6), running out-of-sample on a fresh block** |
+| Depth-4 Gate 3 confirmation | substrate expressiveness + selection value, with the arm-RNG fix | cap4/2-batch, `spread`, `independent_arm_rng`, 3 events, steps=48, depth 4 | fresh 60000-60383 (384 pairs) | argmin vs uniform churn, alpha/3 = 0.01667 (>= 214/384); paired argmin vs pool-matched control | PASS -> Gate 3 established on a non-degenerate substrate, 5.5 adopted; POOL-DRIVEN -> withdraw the selection claim; NOT REPRODUCED -> Gate 3 open, 5.1 must not launch | **DONE: PASS** (argmin vs uniform 255/384, p `6.1e-11`; paired increment 236/384, p `4.1e-06`; pool-matched control 209/384, p `0.046`; validity control does not pass). Section 9.9 |
 
 ### 5.1 Protocol: real-scale compute-efficiency measurement (pre-registered; gates Gate 4)
 
@@ -836,9 +854,12 @@ findings break that:
 events, the planned/measured test sizes, the 5% criterion, the tolerance band,
 the harm guard, and the rule that no knob is re-tuned against the measured C.
 
-**Status.** Proposed, not adopted, and to be re-derived from the corrected
-section 9.7 results before it is adopted; adopting it is a pre-registration and config
-decision, **not a code change**. The registered defaults remain
+**Status.** Proposed, not adopted. Its justification is now **confirmed by
+registered evidence**: the section 5.6 depth-4 confirmation passed out-of-sample
+on a fresh block (including the pool-matched control, which clears only alpha
+while the selection increment clears alpha/3 - section 9.9), so the revision no
+longer rests on exploratory numbers and only the sign-off is outstanding.
+Adopting it is a pre-registration and config decision, **not a code change**. The registered defaults remain
 `prefix`/`argmin`, so the original protocol stays runnable; the revised one is
 reached by setting `probe_candidate_policy="spread"`. The pool-matched control
 needs no new arm: a session's decision rule is session-level config, so the
@@ -935,8 +956,12 @@ candidate policy and the pool-random draw are seeded from `(seed, step)` and the
 arm RNG is per `(arm, event)`, so these runs are deterministic on CPU and
 re-runnable bit-identically.
 
-**Status.** Registered here (committed *before* the run, per the project's
-pre-registration rule); result recorded in section 9.9.
+**Status.** Registered here (committed as `b876ac1`, *before* the run, per the
+project's pre-registration rule); executed once on the declared fresh block.
+**Result: PASS** - comparisons 1 (255/384, p `6.1e-11`) and 3 (236/384,
+p `4.1e-06`) both clear alpha/3, the pool-matched control clears only alpha
+(209/384, p `0.046`), and the validity control does not pass. Full write-up in
+section 9.9.
 
 ## 6. Reproducibility
 
@@ -1228,3 +1253,58 @@ before each mutation, so rebuild initialisation cannot leak between arms; the
 shared init identity that the pairing relies on is untouched. The default stays
 `False` so existing numbers reproduce unchanged, which is also why the historical
 studies still need an explicit re-run rather than being silently reinterpreted.
+
+### 9.9 Result: the depth-4 confirmation PASSES out-of-sample
+
+The section 5.6 pre-registration was committed as `b876ac1`, *before* the run,
+and then executed once on the never-observed block 60000-60383 (384 seeds,
+depth 4, `spread`, `independent_arm_rng=True`, cap 4/2-batch, steps=48). Every
+number below is out-of-sample for the entire project.
+
+| # | Comparison | Wins | Mean delta | Exact binomial p | Threshold |
+|---|---|---|---|---|---|
+| 1 | `argmin` vs uniform churn (registered claim) | **255/384** (66.4%) | **-0.1004** | **6.1e-11** | PASS (needs 214 at alpha/3) |
+| 2 | pool-random vs uniform churn | 209/384 (54.4%) | -0.0324 | 0.046 | fails alpha/3; marginal at alpha |
+| 3 | `argmin` vs pool-random, paired (mechanism) | **236/384** (61.5%) | **-0.0680** | **4.1e-06** | PASS (needs 214 at alpha/3) |
+| V | `argmax` vs uniform churn (validity control) | 173/384 (45.1%) | +0.0355 | 0.977 | does not pass - study is not void |
+
+Random-arm invariance is **384/384** across all three decision rules, which is
+exactly what the decoupling guarantees and confirms the run is valid.
+
+**Verdict: PASS.** Comparisons 1 and 3 clear Bonferroni alpha/3 = 0.01667 by a
+wide margin (both p < 1e-05), and the inverted-signal control does not pass, so
+the signal carries real ordering information. Under section 5.6's frozen rules:
+Gate 3 is established on a substrate that can express a topology search, and
+section 5.5's justification is confirmed.
+
+**What it changes, and what it does not.**
+
+- The registered Gate 3 comparison now passes **out-of-sample** on a
+  non-degenerate pool (20 feasible candidates over 4 layers), not just on the
+  exploratory block that motivated the design. The rate is slightly stronger
+  than the exploratory run (66.4% vs 64.1% for comparison 1; 61.5% vs 57.8%
+  for the paired increment), so the effect is not a block artifact.
+- The **pool is a minority of the effect**: a loss-blind choice from the
+  identical pool clears only alpha = 0.05 (209/384, p = 0.046) and fails
+  alpha/3, contributing ~`0.0324 / 0.1004 ~= 32%` of the mean gain. The
+  selection increment is the larger share (~68%) and clears alpha/3 easily.
+  This resolves the section 9.5 question in the mechanism's favour on a
+  substrate where the pool is genuinely larger than the cap.
+- It does **not** extend the claim beyond the toy substrate. The model is
+  hidden-24 depth-4 on synthetic tokens; the V0 declared path has still not
+  been measured in this regime (section 9.6 found no edge there at reduced
+  dimension, and section 5.3 found none on real text). Gate 3 is established
+  for the toy gate, which is what the plan's gate 3 asks for; the real-scale
+  question is the section 5.1 cost protocol.
+- The absolute search cost is unchanged in character: probe search is ~93x the
+  random arm's search FLOPs here (the mechanism's price at toy scale), which is
+  precisely why section 5.1 measures the *ratio to training* rather than the
+  ratio to the churn baseline.
+
+**Reproduce.** The section 5.6 one-liners (three `act.evolution.cli` runs, one
+per decision rule, over `60000-60383`), aggregated as above; on CPU the whole
+study is ~2.5 min at 16 single-threaded shards. Hardware note worth keeping:
+`--device` must be pinned to `cpu` for this substrate. The default `auto`
+resolves to CUDA, and 16 processes contending for one GPU made the same study
+take >13 min before it was killed - the hidden-24 model is CPU-faster (section
+9.3), and a GPU-contended run is strictly worse than a CPU-sharded one.

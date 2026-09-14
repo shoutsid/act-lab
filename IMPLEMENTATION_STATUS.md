@@ -246,6 +246,22 @@ section 9).
    path reproduces the committed artifact exactly (213/384, mean `-0.025955`,
    p `0.01814`) and the fix gives a slightly stronger 222/384 (mean `-0.034406`,
    p `0.00128`), so the depth-1 pass survives the fix. Report section 9.8.
+6. **The depth-4 mechanism is CONFIRMED out-of-sample under a pre-registered
+   design.** The section 5.6 pre-registration was committed (`b876ac1`) before
+   the run and executed once on the never-observed block 60000-60383 (384
+   seeds, depth 4, `spread`, `independent_arm_rng=True`, cap 4/2-batch,
+   steps=48). Result PASS: argmin vs uniform churn 255/384 (p `6.1e-11`),
+   paired argmin vs the identical-pool loss-blind control 236/384
+   (p `4.1e-06`), pool-matched control 209/384 (p `0.046`), validity control
+   (`argmax`) 173/384 (p `0.977`, does not pass), random-arm invariance
+   384/384. Both decision comparisons clear Bonferroni alpha/3; the pool
+   accounts for ~32% of the mean gain and the selection increment for ~68%.
+   This is now the project's Gate 3 evidence - the first pass on a pool (20
+   candidates over 4 layers) genuinely larger than the search cap, on the
+   decoupled RNG path, and out-of-sample. Report sections 5.6 and 9.9.
+   Hardware note: pin `--device cpu`; the default `auto` selects CUDA and 16
+   processes sharing one GPU made the same study >5x slower (>13 min before
+   being killed vs ~2.5 min on CPU shards).
 
 Iteration cost for these checks: ~1.5 s/seed on CPU at depth 4 (GPU measured
 slower at 2.21 s/seed for a hidden-24 model); a 128-seed study is ~85 s.
@@ -262,7 +278,7 @@ slower at 2.21 s/seed for a hidden-24 model); a 128-seed study is ~85 s.
 | 5. Importance instrumentation | DONE for the first gate | Python records routing/load, gradient norm, parameter norm, Fisher-style EMA, temporal stability, mutation count, and genome hash at structural windows. |
 | 6. Adaptive controller | PARTIAL | Python exposes a deterministic, validated budget-aware `AdaptiveController` plus Pareto frontier/population selection over quality, active parameters, and search FLOPs. The validated default reaches 10/16 wins; broader multi-generation search remains. |
 | 7. Experiment ledger | DONE for the first gate | Browser ledger and Python append-only JSONL registry store config, dataset/tokenizer hashes, code revision, hardware, tokens, FLOPs, arm metrics, mutation fossils, and architecture hashes. Deterministic evaluation summaries are available for report generation. |
-| 8. Final gate: adaptive > random | PASSED three times at depth 1 (cap-4 family at 48 and 144 steps; cheaper/cadence/narrow variants FAILED), and now **also on a non-degenerate depth-4 pool** with the arm coupling fixed: steps=48, 384 seeds, `spread` + `independent_arm_rng` gives 246/384 (p `1.9e-08`) for the registered comparison, with a loss-blind same-pool control at 217/384 (p `0.0062`) and the probe-ordering increment decisively positive (222/384, p `0.0013`). The original passes were on the shared-RNG path; a re-test of study 3's block reproduces it exactly (213/384) and gives 222/384 with the fix. See the Substrate Audit section and report sections 9.7-9.8. | Factor map (all matched budgets, objective verdicts): cap-4/2-batch, 48 steps -> PASS 213/384, p `0.0181`, at 41.9% cost. Cap-2/1-batch, 144 steps -> FAIL 181/380, p `0.8351`, at 4.13% cost. Placement (late, same seeds) -> no effect (p `0.0788`). Cap-2/1-batch, 6 events -> 137/384, significantly WORSE than random (z `-5.61`). Cap-2/4-batch -> 179/384, p `0.9159`. Horizon replication cap-4/2-batch, 144 steps -> PASS 231/384, p `4.04e-05`, t p `1.07e-08`, cost 14.0%. Richness A cap-4/1-batch, 144 steps -> PASS 228/384, p `1.4e-04`, t p `5.0e-05`, cost 7.3%; same-seed B cap-2/2-batch -> FAIL 193/384, p `0.47965`; paired A>B 225/384 (z `3.37`). Probe validity real but weak (rho `0.11`); richness is the active axis, probe batches secondary. Nine gate-style tests, three passes; Bonferroni alpha/9 ~ 0.0056 is cleared by the 144-step replication and richness-A on both statistics. Real-data diagnostic (TinyStories, seeds 9000-9007, paired): variance cap-4/4-batch 0/8 (`+0.2858`), richness cap-8/1-batch 1/8 (`+0.1661`) - neither toy axis restores the edge on real text, and the 4-batch argmin bit-reproduced the 1-batch argmin in 5/8 seeds (ranking stably misaligned, not noisy). |
+| 8. Final gate: adaptive > random | **PASSED under a pre-registered, out-of-sample depth-4 design.** Section 5.6 was registered before the run and executed once on the fresh block 60000-60383 (384 seeds, depth 4, `spread`, `independent_arm_rng=True`, cap 4/2-batch, steps=48): registered comparison 255/384 (p `6.1e-11`), controlled same-pool selection increment 236/384 (p `4.1e-06`), loss-blind same-pool control 209/384 (p `0.046`), `argmax` validity control does not pass (173/384), random-arm invariance 384/384 - all three decision rules clear Bonferroni alpha/3 where required. This is the first gate pass on a candidate pool (20 over 4 layers) genuinely larger than the cap, with the arm-RNG coupling fixed and out-of-sample. Earlier evidence: an exploratory powered depth-4 run (246/384, p `1.9e-08`; pool 217/384; increment 222/384, p `0.0013`), and three depth-1 passes on the shared-RNG path (study 3's block reproduces exactly at 213/384 and gives 222/384 with the fix) that should now be read as a degenerate 5-candidate-space instance. See the Substrate Audit section and report sections 9.7-9.9. | Factor map (all matched budgets, objective verdicts): cap-4/2-batch, 48 steps -> PASS 213/384, p `0.0181`, at 41.9% cost. Cap-2/1-batch, 144 steps -> FAIL 181/380, p `0.8351`, at 4.13% cost. Placement (late, same seeds) -> no effect (p `0.0788`). Cap-2/1-batch, 6 events -> 137/384, significantly WORSE than random (z `-5.61`). Cap-2/4-batch -> 179/384, p `0.9159`. Horizon replication cap-4/2-batch, 144 steps -> PASS 231/384, p `4.04e-05`, t p `1.07e-08`, cost 14.0%. Richness A cap-4/1-batch, 144 steps -> PASS 228/384, p `1.4e-04`, t p `5.0e-05`, cost 7.3%; same-seed B cap-2/2-batch -> FAIL 193/384, p `0.47965`; paired A>B 225/384 (z `3.37`). Probe validity real but weak (rho `0.11`); richness is the active axis, probe batches secondary. Nine gate-style tests, three passes; Bonferroni alpha/9 ~ 0.0056 is cleared by the 144-step replication and richness-A on both statistics. Real-data diagnostic (TinyStories, seeds 9000-9007, paired): variance cap-4/4-batch 0/8 (`+0.2858`), richness cap-8/1-batch 1/8 (`+0.1661`) - neither toy axis restores the edge on real text, and the 4-batch argmin bit-reproduced the 1-batch argmin in 5/8 seeds (ranking stably misaligned, not noisy). |
 
 ## Plan Sections 3-6: Compute and Kaggle Operations
 
@@ -379,14 +395,18 @@ These remain TODO or DEFERRED until the first gate passes:
   other error is fail-fast at launch and never-raising at exit. The test
   dataset was deleted after the round trip; unit tests still inject a
   fake client, so the kaggle package is never needed by the suite.
-8. NEXT: Gate 3 quality was *reported* as established for the cap-4 controller
-   family (three passes across horizons and probe-batch counts; richness the
-   active axis), and the substrate audit (see that section) now qualifies all
-   three passes: they ran at depth 1 on a 5-candidate mutation space, the toy
-   path could not build depth > 1 at all, and a loss-blind choice from the same
-   candidate pool reproduces ~40% of the effect. Re-derivation on a depth > 1
-   substrate with a pool-matched baseline is a prerequisite, not a follow-up.
-   The remaining blocker is compute-efficiency: cap-4/1-batch cuts probe cost to
+8. RESOLVED (Gate 3 re-derived and PASSED on a non-degenerate substrate): the
+   substrate audit qualified all three depth-1 passes (5-candidate single-layer
+   space, depth > 1 unbuildable, a loss-blind same-pool choice reproducing part
+   of the effect), so Gate 3 was re-derived rather than assumed. The section 5.6
+   pre-registration was committed before the run and executed once on the fresh
+   block 60000-60383: registered comparison 255/384 (p `6.1e-11`) and the
+   controlled same-pool selection increment 236/384 (p `4.1e-06`), both clearing
+   Bonferroni alpha/3, with the pool-matched control clearing only alpha
+   (209/384, p `0.046`) and the `argmax` validity control not passing. Gate 3 is
+   now established on a pool larger than the cap, out-of-sample, with the
+   arm-RNG coupling fixed (report sections 5.6, 9.9; Substrate Audit item 6).
+   NEXT (compute-efficiency): cap-4/1-batch cuts probe cost to
    7.3% at toy scale and amortizes with horizon, but real-scale measurement is
    the plan's deferred compute-efficiency milestone and gates Gate 4 (adaptive >
    static MoE). Controller default stays cap-4/2-batch; cap-4/1-batch is the
@@ -400,8 +420,10 @@ These remain TODO or DEFERRED until the first gate passes:
    launch on the current pre-registration**: the audit's proposed revision
    (`RESEARCH_REPORT.md` section 5.5) must be decided first, because the
    registered prefix controller reaches only layer 0 at the declared depth and
-   the pool-matched control arm is the missing quality check. Both designs are
-   executable from the committed code; only the decision is outstanding. The section 5.2
+   the pool-matched control arm is the missing quality check (the revision's
+   quality premise is now backed by the registered section 5.6 PASS, so only
+   the sign-off is outstanding). Both designs are executable from the committed
+   code; only the decision is outstanding. The section 5.2
    pre-launch tooling (throughput benchmark, session scheduler, deadline rules,
    working-dir ledger, versioned-dataset handoff) is now code and unit-tested,
    and the pieces are tied together by `act.training.v0_runner.run_pair_session`,
