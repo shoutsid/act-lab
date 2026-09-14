@@ -187,6 +187,40 @@ evaluations per live event, ~2% of training FLOPs. The diagnostic gained
 a `gated` variant (default `theta=0`) with accept/reject-rate and
 draw-minus-reference aggregation. NOT YET RUN.
 
+## Substrate Audit (2026-09-14, exploratory and UNREGISTERED)
+
+A code-level audit of the gate path found two structural defects and one
+confound. The runs below are exploratory diagnostics on the fresh block
+20000-20127, not pre-registered studies (full write-up: `RESEARCH_REPORT.md`
+section 9).
+
+1. **The toy path could not build depth > 1.** `StaticMoEConfig` carried a
+   single `num_experts` and `StaticMoEBlock` required
+   `len(expert_ids) == config.num_experts`, so any genome with unequal
+   per-layer expert counts - any real topology mutation at depth > 1 - raised
+   `expert_ids must match num_experts` on rebuild. Every published gate study
+   is `depth=1` (confirmed in `artifacts/study-summaries/*.json`), so the
+   whole factor map covers one layer with a 5-candidate mutation space. FIXED:
+   each block derives its expert count from its own ids.
+2. **The candidate cap truncated a layer-major list.** The bounded probe took
+   `feasible_expert_mutations(...)[:cap]`, so at depth > 1 a cap of 4 reached
+   only layer 0. `probe_candidate_policy` now selects `prefix` (historical
+   default) or `spread` (deterministic per-event subset of the whole feasible
+   set). FIXED (toy path); the V0 session still truncates and is the open item.
+3. **The arms differ in candidate distribution, not only selection.** Added
+   `probe_selection=random` (choose uniformly among the SAME probed candidates
+   at the SAME probe cost), mirroring `V0SessionConfig.probe_selection`. At
+   depth 4, 128 seeds, steps=24, cap 4/1-batch, uniform baseline: argmin
+   88/128 (p `1.3e-05`), random-within-pool 80/128 (p `0.0030`), argmax
+   64/128 (p `0.535`). The ordering is real (monotone 88 > 80 > 64), but a
+   loss-blind control on the same pool also passes, so ~40% of the argmin edge
+   is a pool/location effect. Section 2's "only the selection policy differs"
+   is corrected. The factor map needs re-derivation with a pool-matched
+   baseline before the section 5.1 cost protocol is run.
+
+Iteration cost for these checks: ~1.5 s/seed on CPU at depth 4 (GPU measured
+slower at 2.21 s/seed for a hidden-24 model); a 128-seed study is ~85 s.
+
 ## Milestone Comparison
 
 | Plan milestone | Status | Evidence / gap |
@@ -583,6 +617,17 @@ These remain TODO or DEFERRED until the first gate passes:
   Exit codes:
   0 = PASS (Gate 4 authorized only with all 12 declared seeds complete),
   1 = FAIL, 2 = PASS with qualification (band miss or harm-guard rejection).
+- `PYTHONPATH=src python -m pytest -q` -> 297 passed (adds 5 substrate-audit
+  tests: per-layer expert counts build and rebuild at depth > 1, prefix is
+  confined to the first layer while spread reaches past it, the three
+  `probe_selection` rules differ and are deterministic, and the rule is
+  recorded in the mutation history).
+- Substrate audit runs (exploratory, block 20000-20127): depth-4 cap-4 studies
+  pass on both `prefix` and `spread` (47/64 and 48/64 at steps=24); the
+  probe-rank gradient is 47/37/35 for best/middle/worst; and the pool-matched
+  random control (80/128, p `0.0030`) reproduces most of the argmin edge
+  (88/128, p `1.3e-05`) that argmax (64/128) does not. See
+  `RESEARCH_REPORT.md` section 9.
 - `PYTHONPATH=src python -m compileall -q src/act tests` -> passed.
 - `npm run typecheck` -> passed.
 - `npm run build` -> passed.

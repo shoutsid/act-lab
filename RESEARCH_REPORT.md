@@ -829,3 +829,92 @@ records. Re-runs are byte-identical. The data assembly lives in
    final ranks, each row the conditional distribution of final rank given
    probe rank; cell (probe 1, final 1) is the argmin concordance 0.281
    (chance 0.250).
+
+## 9. Substrate audit: a per-layer bug, a probe-policy axis, and a pool confound
+
+**Status: exploratory and UNREGISTERED.** These runs are not part of the gate
+family and were not pre-registered; they use the fresh block 20000-20127
+(disjoint from every prior block) and no rule was tuned against an outcome.
+They are reported because section 9.5 revises a claim section 2 makes.
+
+### 9.1 The toy path could not represent more than one layer
+
+`StaticMoEConfig` carried a single `num_experts` for every block and
+`StaticMoEBlock.__init__` required `len(expert_ids) == config.num_experts`.
+Any genome with unequal per-layer expert counts - i.e. any real topology
+mutation at depth > 1 - therefore raised `expert_ids must match num_experts`
+on rebuild. Every published gate study ran at `depth=1` (confirmed against
+`artifacts/study-summaries/*.json` and the `ExperimentConfig` defaults), so the
+entire factor map - nine studies, three passes, the richness axis, the probe
+validity analysis - was produced on a **single-layer, 4-expert, 5-candidate
+mutation space**. Each block now derives its expert count from its own ids, so
+heterogeneous layers build and evolve.
+
+### 9.2 The candidate cap truncated a layer-major list
+
+`feasible_expert_mutations` enumerates layer-major (per layer: `grow`, then
+that layer's prunes). The bounded probe took `candidates[:cap]`, so at depth
+greater than 1 a cap of 4 reached only the first layer's grow plus three of its
+prunes - the cap was a *layer* constraint, not a search budget.
+`ExperimentConfig.probe_candidate_policy` now selects `"prefix"` (the
+historical default, so published studies still reproduce) or `"spread"` (a
+deterministic per-event subset of the whole feasible set). At depth 4 / cap 4,
+prefix probes only layer 0; spread spans layers.
+
+### 9.3 Iteration cost (why the audit was cheap)
+
+Depth-4 toy studies run at ~1.5 s/seed on CPU; a 128-seed study takes ~85 s.
+GPU is *slower* for this substrate (measured 2.21 vs 1.52 s/seed at hidden 24 -
+kernel-launch overhead dominates). The historical depth-1 studies ran at
+~1.4 s/seed.
+
+### 9.4 Does the effect survive a deeper substrate?
+
+64 seeds 20000-20063, steps=24, cap 4/1-batch, uniform-random baseline:
+
+| Substrate / policy | Wins | Mean delta | Binomial p |
+|---|---|---|---|
+| depth 1, prefix (historical) | 38/64 | -0.0245 | 0.084 |
+| depth 4, prefix (cap reaches layer 0 only) | 47/64 | -0.1000 | 1.1e-04 |
+| depth 4, spread (cap spans the space) | 48/64 | -0.1133 | 3.9e-05 |
+
+So the pass is not an artifact of the depth-1 space, and the spread fix does
+not weaken it. A probe-rank gradient on the same pool and cost (64 seeds)
+confirms the ordering carries signal: probe-best 47/64, forced middle 37/64,
+probe-worst 35/64.
+
+### 9.5 The pool confound: "only selection differs" is not true
+
+The adaptive and random arms differ in **two** ways, not one: which candidates
+can be mutated (a capped pool) and how one is chosen from it. Section 2's
+method claim that "only the *selection policy* of mutations differs" is
+incorrect. `probe_selection="random"` (mirroring the V0 diagnostic's rule)
+holds pool and probe cost fixed and chooses uniformly, isolating the decision
+rule. 128 seeds 20000-20127, depth 4, steps=24, cap 4/1-batch, same uniform
+baseline (threshold 74/128):
+
+| Adaptive decision rule | Wins | Mean delta | Binomial p |
+|---|---|---|---|
+| argmin (registered) | 88/128 | -0.0813 | 1.3e-05 |
+| **random within the same pool** | **80/128** | **-0.0340** | **0.0030** |
+| argmax (inverted) | 64/128 | +0.0108 | 0.535 |
+
+The ordering is real - a monotone gradient across the full range of the rule
+(88 > 80 > 64, argmax at chance) - but a control that ignores probe loss
+entirely and picks randomly from the same pool **also passes decisively**.
+Roughly 40% of the argmin edge is therefore attributable to the candidate
+pool (at depth 4, to concentrating mutations on layer 0), not to selection.
+
+**Consequences.** (1) The factor map's passes overstate probe selection:
+part of the effect is a location policy shared by the pool, and the effect
+size, not the mechanism, is what needs correcting. (2) Any re-run must use a
+pool-matched random baseline, so the section 5.1 cost protocol should not
+proceed as though the quality edge were established at V0 scale. (3) The
+section 5.2/5.1 registered controller still truncates a layer-major list, so
+the same confound reaches the declared protocol - see
+`IMPLEMENTATION_STATUS.md`'s substrate-audit section for the V0 status.
+
+**Caveats.** Exploratory and unregistered; 128 seeds at steps=24 (shorter than
+the registered 48); one fresh block; no significance claim beyond the binomial
+reported. The formal re-registration on a fresh block, with the pool-matched
+control as the baseline, is the planned next step.
