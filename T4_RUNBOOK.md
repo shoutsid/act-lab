@@ -379,6 +379,7 @@ Secondary config (if pre-registered): same command with
 |---|---|
 | OOM in benchmark or sessions on non-T4 hardware | The decision context is a 16 GB T4. Move the run; never shrink the declared config. |
 | Exit publish fails (`remote_publish.ok=false`) | Never fatal by design. The local handoff under `artifacts/datasets/act-checkpoints/v0-5-1/` is intact; the next session's publish re-pushes it. Check `remote-publish-log.json` beside the dataset root. |
+| Local per-pair publish fails (`action: publish_failed`) | The pair is **not** recorded complete and the queue stops at that seed, so the session can still exit-publish the seeds that did complete (it would otherwise abort before publishing anything). Fix the substrate - disk space, permissions - and relaunch; the failed pair restarts from scratch. With the handoff roots on the overlay (§0.2) this should not fire. |
 | Restore fails at session start | Fix credentials / `owner/slug` / connectivity; relaunch. Nothing ran, nothing published. |
 | Session died mid-pair (reboot, timeout) | Relaunch the same command. The pair restarts from scratch; the stale `in-progress` version is ignored. |
 | Kaggle auto-extracted archives | Expected and handled: the wrapper stages per-seed tars with `seed-NNNN/...` internal paths (live-verified bit-identical round trip). Restore also extracts blobs itself as defense-in-depth. |

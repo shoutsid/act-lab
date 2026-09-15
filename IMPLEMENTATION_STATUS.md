@@ -641,6 +641,18 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   `report_resources()` now logs disk headroom and the handoff-root size at the
   start and end of every session, so the growth is measured rather than
   assumed.
+- **A failed local handoff publish no longer discards completed work.** The
+  exit publish never raises by design (a broken push must not destroy a
+  session); the per-pair local publish needed the mirror-image guarantee, since
+  it was called unguarded and any failure aborted the kernel before the exit
+  publish could push the seeds that *had* completed. A failure is now recorded
+  as `action: publish_failed` (never `completed`, so skip-completed and the
+  queue accounting stay honest), it stops the queue rather than spending more
+  GPU on a substrate that cannot publish, and the session exit-publishes
+  everything already finished; the failed pair restarts from scratch next
+  session. Pinned by a runner test that fails the second publish and asserts
+  the first seed stays `complete`, the second does not, and the third is never
+  attempted.
 - `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (272, including the
   26 report-figure data-assembly tests, 14 session-plan tests pinning the
   section 5.2 schedule/dtype tables, 10 handoff tests covering atomic

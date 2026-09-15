@@ -157,6 +157,9 @@ def run_pair_session(
             logger=logger,
         )
         pair_results.append(pair_result)
+        if pair_result.get("action") == "publish_failed":
+            # Stop rather than train a pair that cannot be published.
+            break
 
     completed = sum(1 for entry in pair_results if entry.get("action") == "completed")
     latest = latest_published_seed(dataset_root)
@@ -236,13 +239,31 @@ def _run_one_pair(
             "interrupted_step": interrupt.step,
         }
 
-    publish_seed(
-        dataset_root,
-        result,
-        session_dir=session_dir,
-        code_revision=code_revision,
-        clean_working_dir=True,
-    )
+    try:
+        publish_seed(
+            dataset_root,
+            result,
+            session_dir=session_dir,
+            code_revision=code_revision,
+            clean_working_dir=True,
+        )
+    except Exception as error:  # noqa: BLE001 - must not discard earlier seeds
+        # The same principle the exit publish follows (v0_handoff/ops: a failed
+        # push must never destroy completed work): a failed *local* publish for
+        # seed N must not abort the session before the seeds already published
+        # reach the dataset. Recorded as ``publish_failed`` - never as
+        # ``completed``, so skip-completed and the queue accounting stay honest
+        # - and the caller stops the queue rather than spending more GPU on a
+        # substrate that cannot publish.
+        logger(
+            f"seed {seed}: publish FAILED ({type(error).__name__}: {error}); "
+            "stopping the queue so the session can exit-publish completed seeds"
+        )
+        return {
+            "seed": seed,
+            "action": "publish_failed",
+            "error": f"{type(error).__name__}: {error}",
+        }
     arms = {arm.mode: arm.final_loss for arm in result.arms}
     logger(f"seed {seed}: pair complete ({arms})")
     # Single-arm sessions (gated, report section 5.4; null, report section

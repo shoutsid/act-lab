@@ -56,6 +56,50 @@ def test_declared_seed_block_matches_the_adopted_revision() -> None:
     assert 9000 not in DECLARED_SEEDS
 
 
+def test_failed_local_publish_stops_the_queue_without_losing_earlier_seeds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failed handoff publish must not discard work already published.
+
+    The exit publish never raises by design so a broken push cannot destroy a
+    session; the per-pair local publish needs the mirror-image guarantee. It
+    must not be recorded as ``completed`` (the seed is not complete-
+    restorable), and it must stop the queue rather than spend more GPU on a
+    substrate that cannot publish - while leaving the first seed's version in
+    place for the exit publish to push.
+    """
+    from act.training import v0_runner
+
+    real_publish = v0_runner.publish_seed
+    calls: list[int] = []
+
+    def flaky_publish(dataset_root, result, **kwargs):
+        calls.append(int(result.config["seed"]))
+        if len(calls) == 2:
+            raise OSError(28, "No space left on device")
+        return real_publish(dataset_root, result, **kwargs)
+
+    monkeypatch.setattr(v0_runner, "publish_seed", flaky_publish)
+    summary = run_pair_session(
+        config=_config(),
+        session_dir=tmp_path / "sessions",
+        dataset_root=tmp_path / "dataset",
+        code_revision="rev",
+        remaining_hours=8.0,
+        measured_tokens_per_second=1e9,
+        seeds=(9000, 9001, 9002),
+        output=tmp_path / "summary.json",
+    )
+
+    actions = [entry["action"] for entry in summary["pairs"]]
+    assert actions == ["completed", "publish_failed"]
+    assert summary["pairs_completed"] == 1
+    # The third seed was never attempted, and the first seed stays published.
+    assert 9002 not in calls
+    assert published_seed_status(tmp_path / "dataset", 9000) == "complete"
+    assert published_seed_status(tmp_path / "dataset", 9001) != "complete"
+
+
 def test_single_arm_null_session_publishes_one_arm(tmp_path: Path) -> None:
     """The do-nothing control publishes a single-arm seed summary.
 
