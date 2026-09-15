@@ -83,15 +83,35 @@ INPUT_ROOT = Path("/kaggle/input")
 WORK_ROOT = Path("/kaggle/working/act-lab")
 
 
+def workspace_root(mode: str = "") -> Path:
+    """Where a run's handoff roots live.
+
+    Not the kernel's working directory. In a Kaggle kernel ``/kaggle/working``
+    is a 20 GB loopback mount (measured: 19.5 GiB on ``/dev/loop1``) while the
+    container's root overlay has ~1 TB free (measured: 7.9 TB total, 1.1 TB
+    available), and a completed seed publishes its final checkpoint per arm
+    *including the AdamW moments* - ~6.4 GiB per seed, ~77 GiB over the 12-seed
+    block - so the roots cannot live in ``/kaggle/working``. Nothing here needs
+    to survive the session: the published dataset is restored at session start
+    and pushed again at exit.
+
+    The overlay is shared with the host, so the directory is scoped by mode
+    (``/tmp/act-lab-session``, ``/tmp/act-lab-verdict``, ...): concurrent
+    kernels of different modes must not share a root. Locally the roots stay
+    repo-relative, which is what the runbook prints.
+    """
+    if Path("/kaggle/working").is_dir():
+        return Path("/tmp") / (f"act-lab-{mode}" if mode else "act-lab")
+    return Path(".")
+
+
 @dataclass(frozen=True)
 class Queue:
-    """One declared queue: its Kaggle dataset and its local roots."""
+    """One declared queue: its Kaggle dataset and its handoff roots."""
 
     mode: str
     title: str
-    dataset_suffix: str
-    dataset_root: str
-    session_dir: str
+    suffix: str = ""
 
     @property
     def owner(self) -> str:
@@ -100,31 +120,27 @@ class Queue:
     @property
     def dataset(self) -> str:
         slug = os.environ.get(SLUG_ENV, DEFAULT_SLUG)
-        return f"{self.owner}/{slug}{self.dataset_suffix}"
+        return f"{self.owner}/{slug}{self.suffix}"
 
     @property
     def kernel_id(self) -> str:
         return f"{self.owner}/act-t4-{self.mode}"
 
+    @property
+    def dataset_root(self) -> str:
+        root = workspace_root(self.mode)
+        return str(root / "artifacts" / f"datasets{self.suffix}")
+
+    @property
+    def session_dir(self) -> str:
+        root = workspace_root(self.mode)
+        return str(root / "artifacts" / f"v0-sessions{self.suffix}")
+
 
 QUEUES: dict[str, Queue] = {
-    "session": Queue(
-        "session", "act-t4-session", "", "artifacts/datasets", "artifacts/v0-sessions"
-    ),
-    "control": Queue(
-        "control",
-        "act-t4-control",
-        "-control",
-        "artifacts/datasets-control",
-        "artifacts/v0-sessions-control",
-    ),
-    "null": Queue(
-        "null",
-        "act-t4-null",
-        "-null",
-        "artifacts/datasets-null",
-        "artifacts/v0-sessions-null",
-    ),
+    "session": Queue("session", "act-t4-session", ""),
+    "control": Queue("control", "act-t4-control", "-control"),
+    "null": Queue("null", "act-t4-null", "-null"),
 }
 
 
@@ -239,16 +255,29 @@ def kernel_metadata(
     }
 
 
+# Modes that are diagnostics rather than queues: (title, wants a GPU).
+# ``preflight`` measures throughput and so needs the T4; ``probe`` only asks
+# who it is on the Kaggle API, so it must not queue behind one.
+DIAGNOSTIC_MODES = {
+    "probe": ("act-t4-probe", False),
+    "preflight": ("act-t4-preflight", True),
+}
+PUSH_MODES = (*DIAGNOSTIC_MODES, "verdict", *QUEUES)
+
+
 def metadata_for(mode: str) -> dict[str, object]:
-    """The push metadata for one mode (``session``/``control``/``null``/``verdict``)."""
+    """The push metadata for one mode (queues, ``verdict``, diagnostics)."""
+    owner = os.environ.get(OWNER_ENV, DEFAULT_OWNER)
     if mode in QUEUES:
         queue = QUEUES[mode]
         return kernel_metadata(queue.kernel_id, queue.title)
     if mode == "verdict":
-        owner = os.environ.get(OWNER_ENV, DEFAULT_OWNER)
         # The verdict only downloads datasets and does arithmetic - no
         # accelerator, so it never queues behind a GPU and costs no quota.
         return kernel_metadata(f"{owner}/act-t4-verdict", "act-t4-verdict", gpu=False)
+    if mode in DIAGNOSTIC_MODES:
+        title, gpu = DIAGNOSTIC_MODES[mode]
+        return kernel_metadata(f"{owner}/{title}", title, gpu=gpu)
     raise KeyError(mode)
 
 
@@ -291,9 +320,59 @@ def _keep(path: Path) -> None:
         _log(f"kept {target}")
 
 
+def report_resources() -> None:
+    """Log disk headroom, because the dataset root grows with every seed.
+
+    A completed seed publishes its final checkpoint per arm including the
+    AdamW moments (~3.19 GB each, the constant the working-dir ledger uses),
+    so ``<dataset-root>/act-checkpoints/v0-5-1/`` reaches roughly 6.4 GB x
+    12 seeds. That root lives in the kernel's working directory, which is why
+    this is logged rather than assumed.
+    """
+    for label, path in (
+        ("working", Path("/kaggle/working")),
+        ("input", INPUT_ROOT),
+        ("tmp", Path("/tmp")),
+    ):
+        try:
+            usage = shutil.disk_usage(path)
+        except OSError as error:
+            _log(f"disk {label}: unavailable ({error})")
+            continue
+        _log(
+            f"disk {label}: total {usage.total / 2**30:.1f} GiB | "
+            f"free {usage.free / 2**30:.1f} GiB"
+        )
+    mounts = subprocess.run(
+        ["df", "-h", "/kaggle/working", "/kaggle/temp", "/tmp", "/"],
+        capture_output=True,
+        text=True,
+    )
+    _log("--- df -h ---")
+    _log((mounts.stdout or mounts.stderr).strip())
+    for candidate in ("/kaggle/working", "/kaggle/temp", "/tmp"):
+        path = Path(candidate)
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            probe = path / ".act-write-probe"
+            probe.write_bytes(b"x" * 1024)
+            probe.unlink()
+            _log(f"writable {candidate}: yes")
+        except OSError as error:
+            _log(f"writable {candidate}: no ({error})")
+    for queue in QUEUES.values():
+        root = Path(queue.dataset_root)
+        if root.is_dir():
+            total = sum(
+                path.stat().st_size for path in root.rglob("*") if path.is_file()
+            )
+            _log(f"handoff root {root}: {total / 2**30:.2f} GiB")
+
+
 def mode_probe() -> None:
     """Diagnostic: is the Kaggle dataset API usable inside a kernel?"""
     _log("=== Kaggle-in-kernel credential probe ===")
+    report_resources()
     for key in ("KAGGLE_USERNAME", "KAGGLE_KEY", "KAGGLE_CONFIG_DIR", "HOME"):
         value = os.environ.get(key)
         if value and key == "KAGGLE_KEY":
@@ -377,6 +456,7 @@ def mode_session(queue: Queue) -> None:
     if not torch.cuda.is_available():
         raise SystemExit("no CUDA device on this kernel - enable a GPU accelerator")
     _log(f"torch {torch.__version__} | device {torch.cuda.get_device_name(0)}")
+    report_resources()
 
     # The launch command reads artifacts/v0-benchmark.json and refuses a stale
     # or hand-edited one; a fresh session has no artifacts/ directory, so the
@@ -399,6 +479,7 @@ def mode_session(queue: Queue) -> None:
     # actions and the publish outcome survive without the dataset API.
     _keep(work / queue.session_dir / "session-log.json")
     _keep(work / queue.dataset_root / "remote-publish-log.json")
+    report_resources()
 
     _log(f"=== {queue.mode} session finished after {(time.time() - started) / 3600:.2f} h ===")
 
@@ -452,8 +533,7 @@ def main() -> int:
         mode_verdict()
         return 0
     raise SystemExit(
-        f"set {MODE_ENV} to one of: metadata, probe, preflight, verdict, "
-        + ", ".join(QUEUES)
+        f"set {MODE_ENV} to one of: metadata, verdict, " + ", ".join(PUSH_MODES)
     )
 
 

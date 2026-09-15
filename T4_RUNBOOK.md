@@ -37,8 +37,12 @@ no-re-tuning rule are all untouched.
    `PYTHONPATH=src`. The two persistent roots are:
    - `artifacts/datasets/` — the versioned checkpoint dataset (the Kaggle
      dataset content; ~45 GB ledger);
-   - `artifacts/v0-sessions/` — the 20 GB working-dir root (checkpoints only,
-     steady state ≈ 14.9 GB, `max_checkpoints=2` pin).
+   - `artifacts/v0-sessions/` — the session checkpoint root (steady state
+     ≈ 14.9 GB, `max_checkpoints=2` pin).
+
+   **On Kaggle those roots are not under the working directory** — see the
+   disk budget in §0.5. `scripts/kaggle_t4.py` passes absolute overlay roots
+   for them; running the launch command by hand on Kaggle must do the same.
 
 3. **Remote dataset name.** Choose one `owner/slug` for the whole run (e.g.
    `<your-account>/act-v0-5-1`) and use it identically in every session. The
@@ -110,6 +114,20 @@ cost one failed run:
    inside a kernel from the session's own identity, with no environment
    variables and no `kaggle.json` (probed 2026-09-15; `ACT_T4_MODE=probe`
    re-checks). Internet access must stay enabled for restore and publish.
+4. **`/kaggle/working` is a 20 GB mount and the handoff is tens of GB.**
+   Measured on the T4 runtime (2026-09-15): `/dev/loop1` gives `/kaggle/working`
+   19.5 GiB, while the root overlay (`/tmp`, `/kaggle/temp`) has 7.9 TB with
+   1.1 TB free. A completed seed publishes its final checkpoint per arm
+   *including the AdamW moments* — `model` + `optimizer` state is ~3.19 GiB per
+   arm, so ~6.4 GiB per seed and ~77 GiB over the declared block, and the
+   section 5.2 working-dir ledger (14.9 GiB steady state + 5.1 GiB headroom)
+   accounts for the *session* alone, not the accumulating dataset root. Left in
+   `/kaggle/working` the run dies on disk during its second pair — and because
+   the per-pair local publish is not try/guarded, an `ENOSPC` there aborts the
+   kernel *before* the exit publish, so the session publishes nothing. Hence
+   the mode-scoped overlay roots (`/tmp/act-lab-<mode>/artifacts/...`) in
+   §0.2: nothing in those roots needs to survive the session, since the
+   published dataset is restored at session start and pushed again at exit.
 
 **Session-1 inputs, measured on a Kaggle T4 (2026-09-15, `--steps 50`).** These
 replace the section 5.2 feasibility assumptions; the launch command re-derives

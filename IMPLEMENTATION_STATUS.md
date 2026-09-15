@@ -621,6 +621,26 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   Verified by executing a staged entry with no `ACT_T4_MODE` set: it resolves
   its pinned mode and reaches the mount check instead of the mode error.
   Pinned by 16 tests.
+- **Disk budget: the run as documented could not have completed.** Measured on
+  the T4 runtime (2026-09-15, `ACT_T4_MODE=probe`): `/kaggle/working` is a
+  20 GB loopback mount (19.5 GiB usable) while the container's root overlay has
+  7.9 TB with 1.1 TB free. A completed seed publishes its final checkpoint per
+  arm *including the AdamW moments* (`save_v0_checkpoint` stores `model` plus
+  `optimizer` state, ~3.19 GiB per arm), so ~6.4 GiB per seed and ~77 GiB over
+  the declared block - against a 19.5 GiB working mount, and the section 5.2
+  ledger (14.9 GiB steady state + 5.1 GiB headroom) accounts for the *session*
+  alone, not the accumulating dataset root. A session would therefore have hit
+  `ENOSPC` during its second pair, and because the per-pair local publish is
+  called unguarded the kernel would have aborted *before* the exit publish -
+  publishing nothing, despite a completed pair. Fixed by pointing the handoff
+  roots at the overlay (`/tmp/act-lab-<mode>/artifacts/...`, mode-scoped because
+  the overlay is host-shared) instead of the working directory: nothing in
+  those roots needs to survive a session, since the published dataset is
+  restored at session start and pushed again at exit, and the 20 GB working
+  directory is left holding only the code copy and the small audit files.
+  `report_resources()` now logs disk headroom and the handoff-root size at the
+  start and end of every session, so the growth is measured rather than
+  assumed.
 - `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (272, including the
   26 report-figure data-assembly tests, 14 session-plan tests pinning the
   section 5.2 schedule/dtype tables, 10 handoff tests covering atomic

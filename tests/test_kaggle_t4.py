@@ -103,6 +103,51 @@ def test_null_queue_is_policy_free_and_never_shares_roots() -> None:
     assert argv[-1] == "sid123123234/act-v0-5-1-null"
 
 
+def test_handoff_roots_are_repo_relative_outside_a_kernel() -> None:
+    # The runbook prints repo-relative roots, and a local proof run uses them.
+    queue = kaggle_t4.QUEUES["control"]
+    assert queue.dataset_root == "artifacts/datasets-control"
+    assert queue.session_dir == "artifacts/v0-sessions-control"
+
+
+def test_handoff_roots_move_off_the_working_mount_in_a_kernel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # /kaggle/working is a 20 GB loopback mount; a completed seed publishes
+    # ~6.4 GB of checkpoint, so 12 seeds cannot possibly fit there.
+    monkeypatch.setattr(
+        kaggle_t4, "workspace_root", lambda mode="": Path("/tmp") / f"act-lab-{mode}"
+    )
+    queue = kaggle_t4.QUEUES["session"]
+    assert queue.dataset_root == "/tmp/act-lab-session/artifacts/datasets"
+    assert queue.session_dir == "/tmp/act-lab-session/artifacts/v0-sessions"
+
+
+def test_concurrent_modes_get_separate_overlay_roots(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The overlay is host-shared, so two kernels that overlap in time must not
+    # land in the same directory.
+    monkeypatch.setattr(
+        kaggle_t4, "workspace_root", lambda mode="": Path("/tmp") / f"act-lab-{mode}"
+    )
+    roots = {mode: q.dataset_root for mode, q in kaggle_t4.QUEUES.items()}
+    assert len(set(roots.values())) == len(roots)
+    assert all(root.startswith("/tmp/act-lab-") for root in roots.values())
+
+
+def test_session_argv_carries_the_absolute_handoff_roots(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        kaggle_t4, "workspace_root", lambda mode="": Path("/tmp") / f"act-lab-{mode}"
+    )
+    argv = kaggle_t4.session_argv(kaggle_t4.QUEUES["null"])
+    expected = "/tmp/act-lab-null/artifacts"
+    assert argv[argv.index("--dataset-root") + 1] == f"{expected}/datasets-null"
+    assert argv[argv.index("--session-dir") + 1] == f"{expected}/v0-sessions-null"
+
+
 def test_queues_own_disjoint_datasets_and_roots() -> None:
     queues = list(kaggle_t4.QUEUES.values())
     assert len({q.dataset for q in queues}) == len(queues)
