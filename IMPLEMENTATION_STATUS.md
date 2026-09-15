@@ -615,11 +615,15 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   evidence rather than assertion. This changes no pre-registered criterion -
   it is the configuration section 5.2 prices; the sequential path remains the
   default wherever the host lacks the devices.
-  **Not yet confirmed on the target host.** The two-device path cannot be
-  exercised on the project's one-GPU box, so `--queue selfcheck` was added as a
-  one-shot job that runs the battery in a Kaggle kernel; it logs the device
-  count and the placement it verified, and pre-flight 0.4 could not detect a
-  wrong placement because no pre-flight ever checked it.
+  **Confirmed on the target host.** The two-device path cannot be exercised on
+  the project's one-GPU box, so `--queue selfcheck` was added as a one-shot job
+  that runs the battery in a Kaggle kernel. On a real two-T4 kernel
+  (`sid123123234/act-t4-selfcheck`, 2026-09-15, ~2 min of GPU) it reported
+  `host devices: 2` and `one arm per device: cuda:0, cuda:1` with every check
+  passing - the placement section 5.2 prices, measured on the hardware that has
+  it, before any session assumed it. Nothing else moved: the same tiny pairs
+  produce the same losses, FLOPs and architecture hashes however the arms are
+  scheduled.
 - The whole run is now reproducible code, not operator lore:
   `scripts/kaggle_t4.py` drives every session kind as a script kernel
   (`ACT_T4_MODE` = `metadata` / `probe` / `preflight` / `session` / `control` /

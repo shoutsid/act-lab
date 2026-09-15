@@ -254,7 +254,14 @@ run at. Measured on the T4 (`--queue dtypeprobe`, 2026-09-15):
 | dtype | tokens/s | `pair_time_hours` | `full_pairs_per_session` | `sessions_for_primary` |
 |---|---|---|---|---|
 | fp32 | 2,124.2 | 6.53 | 1 | 12 |
-| **fp16** (the decided dtype) | **5,433.2** | **2.61** | **3** | **4** |
+| **fp16** (the decided dtype), arms sequential | **5,433.2** | **2.61** | **3** | **4** |
+| **fp16, one arm per device** (what now runs) | **5,433.2** | **1.36** | **6** | **2** |
+
+The last row is what the benchmark now reports on a two-T4 host: the placement
+is part of the arithmetic, so the artifact describes the pair the session will
+train rather than the sequential one it used to. The middle row is what the
+same measurement produced before the placement was implemented, kept because
+it is the evidence the `arms`-per-wave correction is worth 2x.
 
 **Two corrections sit behind those rows, and they nearly cancel.**
 
@@ -298,19 +305,23 @@ and `scripts/v0_session_selfcheck.py` checks exactly that (bit-identical arm
 results, and the recorded placement, through both the process runner and the
 session entry point).
 
-**Before a session relies on it, confirm it on the target host:**
+**Verified on a real two-T4 kernel** (`--queue selfcheck`, 2026-09-15,
+`sid123123234/act-t4-selfcheck`, ~2 min of GPU):
 
 ```
-python scripts/kaggle_queue.py --queue selfcheck     # a few minutes, no queue
+    host devices: 2
+    one arm per device: cuda:0, cuda:1
+v0 session self-check: all checks passed
 ```
 
-On a two-T4 kernel that prints `one arm per device: cuda:0, cuda:1` and passes;
-on the project's one-GPU box it passes with `host devices: 1`, which is the
-sequential fallback rather than evidence of parallelism. It needs no GPU
-accelerator queue of its own, but it does need a T4 to be the real check. If it
-fails, launch the queues with `--device cuda` and remove the parallelism by
-training sequentially - the pair-time arithmetic follows the placement
-automatically (`arm_slots`), so both stay honest.
+That is the placement section 5.2 prices, confirmed on the hardware that has
+it, before a session spent a window assuming it. Re-run it after any change to
+the training loop or the placement code; on the project's one-GPU box it passes
+with `host devices: 1`, which is the sequential fallback rather than evidence
+of parallelism. If it ever fails, launch the queues with `--device cuda` and
+remove the parallelism by training the arms sequentially - the pair-time
+arithmetic follows the placement automatically (`arm_slots`), so the plan cannot
+describe more concurrency than the run performs.
 
 Pass `--hours 9` (the registered usable window): at the fp16 rate the deadline
 rules then place three completed pairs per session sequentially, or six with
