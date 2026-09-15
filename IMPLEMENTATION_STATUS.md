@@ -1277,6 +1277,51 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   on it before - a latent bug the new CLI tests exposed). The T4 runbook
   now has three queues (primary, control, null) and a 4-clause verdict
   command.
+- **Section 5.16 pre-registered (2026-09-15, revision `e62a732`)**: **is the
+  discovered topology a reusable artifact?** The plan's headline claim
+  (section 102: extract the topology as a "reusable computational genome")
+  has never been tested, because every Gate 3 comparison scores a topology
+  *while it is trained*, so weights and structure are confounded. Deliverable
+  10 ("Fresh-initialization results") was TODO. This is the cheapest decisive
+  version: per seed one three-arm discovery block (the registered 5.10 config,
+  depth 4 + spread, arm order keeping random/adaptive at indices 0/1 so the
+  discovery runs are the registered ones, with the never-mutating `fixed` arm
+  appended - it consumes no global RNG, pinned by test), then each arm's final
+  genome transported: rebuilt with fresh weights
+  (`initialize_retraining(mode="fresh")`) and retrained 48 steps on the same
+  per-seed data schedule with mutation FROZEN. New machinery:
+  `ArmResult.genome` (plan section 11 weight/topology separation, made usable -
+  the discovered topology is now in the record and JSON-round-trips),
+  `src/act/evolution/reuse.py` (`transport_genome`), and
+  `scripts/reusability_study.py` (run/verdict/summary, 20-way sharding); block
+  81000-81383, fresh. 13 new tests. Transport validity is the load-bearing
+  built-in check: transporting the unmutated genome must reproduce that arm's
+  own run exactly.
+- **Section 5.16 outcome (RAN 2026-09-15, revision `e62a732`, block
+  81000-81383)**: registered **branch (c) - both primaries fail**: the
+  adaptive advantage at toy fidelity lives in the trained weights and/or
+  initialization, NOT in the structure the controller chose. Transport
+  validity held perfectly (384/384 exact reproductions, max |delta| 0.0).
+  P1 transport-adaptive < transport-random: 212/384, mean -0.1016, p 2.32e-02
+  - **exactly on** the sibling studies' bar (212) but below the bar this
+  section declared (220 at the declared alpha 0.0025, see the 5.16.1
+  amendment: the declaration was internally inconsistent and was resolved
+  AGAINST the hypothesis). P2 transport-adaptive < transport-fixed: 211/384,
+  mean -0.0866, p 2.94e-02 - fails at either bar. Two by-products that matter:
+  (1) the discovery half replicates 5.10's depth-4 ordering OUT OF SAMPLE on a
+  fresh block (adaptive beats random 259/384, p 3.5e-12; beats fixed 216/384);
+  (2) discarding the weights costs the edge its *consistency* but not its
+  *mean* (win rate 259/384 -> 212/384 while the mean barely moves), and a
+  seed's discovery ranking predicts its transport ranking only 201/384 times
+  (52%). Not capacity-confounded: adaptive topologies are usually smaller
+  (lower active params in 264/384) and on the 90 capacity-matched seeds they
+  beat random only 40/90 (bar 59). Committed summary
+  `artifacts/study-summaries/reusability-depth4-384.json`
+  (`study_f0334893263366c2`), pinned by `tests/test_reusability_summary.py`
+  (which also pins the threshold resolution and the branch label).
+  Consequence: the plan's section-55 initialization-mode study
+  (evolved/rewound/fresh/teacher on one genome) is the next step, NOT the
+  section-52 scale-up.
 - `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
   `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
   deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer

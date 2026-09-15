@@ -1884,3 +1884,724 @@ the verdict uses 81000-81383 and nothing else.
 size as section 5.10's (measured ~1.5-2 s/seed/cell at depth 4 on CPU);
 sharded 20-way, minutes of wall clock.
 
+### 5.16.1 Amendment: the declared threshold was internally inconsistent
+
+Recorded after the run, before any primary was read, because the declaration
+above cannot be applied as written. It states the per-primary threshold two
+ways that disagree: "Bonferroni alpha/2 = `0.0025`" and "bar 214/384" at
+n = 384. Neither matches the other, and neither matches what every sibling
+study in this report applied. The exact one-tailed binomial bars at n = 384
+are **220 at 0.0025** and **212 at 0.025**; 214 corresponds to no threshold at
+all (it sits at alpha `0.0140`). Section 5.15's declaration carries the same
+"bar 214/384" wording - so "214" is a slip inherited from that section, whose
+own outcome paragraph records the applied bar as 212 at alpha/2 = `0.025`.
+
+The `0.0025` is unique to section 5.16 and is a factor-10 slip for `0.025`.
+Both slips happen to point the STRICT way, which makes the resolution
+load-bearing: the measured primary-1 win count is **212**, which is exactly
+the sibling bar and far below the declared one. Making this choice after
+seeing 212 would be precisely the post-hoc flexibility pre-registration
+exists to prevent, so the rule applied is: **a self-inconsistent declaration
+is read as declared, i.e. at the stricter `0.0025`/bar 220, and the looser
+reading is reported beside it rather than substituted for it.** Section 5.16's
+registered verdict is therefore scored at bar 220; the sibling-convention
+verdict is also reported, and section 5.16.2 labels both.
+
+**Outcome (run 2026-09-15, block 81000-81383, shards from revision `e62a732`;
+aggregation amended per 5.16.1): registered branch (c) - both primaries fail.**
+
+Built-in checks held in 384/384 seeds: the transported unmutated genome
+reproduces its own discovery run **exactly** (max |delta| `0.0`; 384/384 exact
+matches), every transport used `initialize_retraining(mode="fresh")` with
+zero copied parameters, and zero mutations occurred during transport. So the
+procedure is faithful and the deltas below are attributable to the topology.
+
+| comparison (n = 384) | wins | mean delta | p | bar 220 (registered) | bar 212 (sibling) |
+|---|---|---|---|---|---|
+| P1 transport adaptive < transport random | 212/384 | `-0.1016` | `2.32e-02` | **FAIL** | pass (exactly at bar) |
+| P2 transport adaptive < transport fixed | 211/384 | `-0.0866` | `2.94e-02` | **FAIL** | fail |
+| (discovery) adaptive < random | 259/384 | `-0.1036` | `3.53e-12` | pass | pass |
+| (discovery) adaptive < fixed | 216/384 | `-0.0174` | `8.18e-03` | pass | pass |
+
+Arm means: discovery `adaptive 12.3580 < fixed 12.3754 < random 12.4617`;
+transport `adaptive 12.2889 < fixed 12.3754 < random 12.3905`.
+
+Three things this licenses beyond the branch label:
+
+1. **The registered depth-4 ordering replicates out of sample.** The
+discovery half of this block is the section 5.10 config (the arm order keeps
+`random`/`adaptive` at indices 0/1), run on a fresh 384-seed block: adaptive
+beats random `259/384` (5.10: `263/384`) and fixed `216/384`. The while-training
+result is not a property of 5.10's seed block.
+2. **Discarding the weights costs the edge its consistency, not its mean.**
+adaptive-vs-random mean delta barely moves (`-0.1036` -> `-0.1016`) while the
+win rate collapses `259/384 -> 212/384`, and a seed's discovery ranking
+predicts its transport ranking only `201/384` times (52%, chance). The
+topology carries the *average* effect and none of the reliability.
+3. **The transport is not capacity-confounded in the flattering direction.**
+The adaptive topologies are usually *smaller* (lower active parameter count in
+264/384 seeds, higher in 30). On the 90 seeds where the two are
+capacity-matched, adaptive beats random `40/90` (bar 59) - i.e. not even
+at the loose bar. A structural win here would not have been bought with
+parameters, and there is no win to explain.
+
+**Reading.** Under either bar, primary 2 fails: a topology discovered by the
+probing arm is *not* a better standalone architecture than the initial,
+never-mutated one. Primary 1 is the knife edge - directionally favourable
+(mean `-0.10`) and exactly at the sibling bar, but failing the bar this
+section declared. The substantive finding is branch (c): **at toy fidelity the
+adaptive advantage lives in the trained weights and/or initialization rather
+than in the structure the controller chose.** That is the pre-registered
+prediction written in 5.16 ("primary 1 ... predicted to pass weakly or fail;
+primary 2 ... predicted to fail"), so no prediction is being repaired here -
+or is a pass on primary 2, which 5.16 declared would be the project's first
+*structural* evidence for the computational-genome claim. There is none.
+
+**Consequence for the plan.** Branch (c)'s registered next step is plan
+section 55's initialization-mode comparison on a single genome
+(evolved/rewound/fresh/teacher), not the section-52 scale-up: the scale-up
+asks whether a genome found at 300M transfers to 600M/1B, and this study's
+result gives no reason to believe the genome is doing work that would survive
+the transfer. The extraction machinery (genome in the record, fresh-init
+transport, transport validity) is now measured and reusable for that study.
+Committed summary: `artifacts/study-summaries/reusability-depth4-384.json`
+(`study_f0334893263366c2`).
+
+## 6. Reproducibility
+
+- Verdict machinery and experiment code: `src/act/evolution/`
+  (commits `d972d4c`, `d5ee330`, `838f619` and later).
+- Study commands, seed blocks, and `study_id` values are listed per record in
+  `artifacts/study-summaries/*.json`; raw JSONL dumps reproduce from config +
+  seeds via `act.evolution.cli` and are regenerable deterministically on CPU.
+- Registry records for single experiments append to `artifacts/experiments.jsonl`
+  (gitignored); the curated summaries are versioned.
+
+## 7. Deliverables checklist (plan §100)
+
+| Plan deliverable | Status |
+|---|---|
+| 1. Source repository | DONE (this repository) |
+| 2. Reproducible Kaggle notebooks | DONE for the plan section 39 set (`00_environment` + section 104's `01`-`03` and `04`-`09` per section 39's role list; deterministic builder `scripts/build_notebooks.py`, byte-identical re-runs, all ten notebooks' cells executed and verified) |
+| 3. Dataset manifests | PARTIAL (synthetic-tokenizer manifests only) |
+| 4. Baseline checkpoints | PARTIAL (local checkpoint format; no published artifacts) |
+| 5. Adaptive checkpoints | TODO |
+| 6. Architecture genomes | DONE for the gate model (serialization, hashing, fossils) |
+| 7. Topology evolution logs | PARTIAL (mutation histories and fossils in records) |
+| 8. Experiment registry | DONE for the gate (append-only JSONL + study summaries) |
+| 9. Benchmark results | PARTIAL (this report's factor map; no real-corpus benchmarks) |
+| 10. Fresh-initialization results | DONE for the toy-fidelity mechanism (section 5.16 + 5.16.1: genome extraction, fresh-initialization transport with 384/384 exact transport validity, registered branch (c)); the section-52 scaling version (300M -> 1B) is TODO |
+| 11. Qwen architecture analysis | TODO (deferred) |
+| 12. Paper-quality figures | DONE for the factor map, in **two sets** (section 8): the registered coupled-path figures, and the corrected decoupled set (`--set decoupled`) plotted from summaries emitted by `scripts/factor_map_recheck.py --summaries` and re-checked by `check_summary` at plot time. Both regenerate byte-identically. Both sets carry all nine rows (section 9.12 recovered study 1's predated config field), and figure 4's counterfactual analysis is re-run separately by `scripts/probe_validity_analysis.py`. |
+
+## 8. Figures
+
+The four pre-registered figures are generated from the versioned study
+summaries by `scripts/generate_figures.py` (`PYTHONPATH=src python
+scripts/generate_figures.py`; output under `artifacts/study-summaries/figures/`).
+Before plotting, the script recomputes every stored verdict from the raw
+per-seed records - binomial p-value, pass decision, mean paired delta, the
+probe-cost identity, and the argmin concordance - and refuses to plot on any
+mismatch, so a figure can never silently drift from the machine-checked
+records. Re-runs are byte-identical. The data assembly lives in
+`act.evolution.figures_data` (standard library only), unit-tested in
+`tests/test_report_figures.py` against scipy reference values.
+
+**Two sets, because the factor map has two records.** The figures above are the
+**registered coupled-path** record. Section 9.11 corrected every one of those
+numbers, so the corrected figures are generated separately:
+
+```bash
+PYTHONPATH=src python scripts/generate_figures.py                # coupled (above)
+PYTHONPATH=src python scripts/generate_figures.py --set decoupled  # corrected
+```
+
+The decoupled set is written to `artifacts/study-summaries/decoupled/figures/`
+and plotted from summaries in the committed schema produced by
+`scripts/factor_map_recheck.py --compare ... --summaries` - each one validated by
+`check_summary` before it is written and again at plot time, so the corrected
+figures carry the same machine check as the registered ones. The two sets plot
+the same factor map - both carry all nine rows, and section 9.12 recovered the
+field that once left study 1 out of the corrected one - so the difference is in
+what the arms' RNG regime does to the numbers, not in which studies appear. Two
+points about the corrected set are worth stating:
+
+- **Figure 3 shows studies 1, 3, 4, 5 and 6** - the per-seed delta
+  distributions - in both sets.
+- **Figure 4 is set-specific.** The counterfactual probe-rank analysis behind
+  it is not an arm comparison, so it is re-run separately
+  (`scripts/probe_validity_analysis.py`) and the decoupled set plots its own
+  analysis rather than sharing the coupled one: concordance 0.284 vs 0.25 and
+  rho 0.0776 (sections 3.2, 9.11). With that, **no figure in the corrected set
+  is plotted from coupled-path data.** Because the two analyses differ only
+  slightly in the plotted cells, figure 4's title now names its RNG regime - a
+  title-only edit that also regenerated the registered coupled figure, which is
+  the one intentional change to a published figure in this revision.
+
+Section 3's table, and the corrected win counts it quotes, come from the
+decoupled set. Both sets regenerate byte-identically, so neither can drift from
+the summaries it is plotted from.
+
+1. **`fig1-winrate-forest.png` - win-rate forest plot**: one row per study
+   (#1-#9), point estimate with the exact binomial (Clopper-Pearson) 95%
+   interval, threshold line at the 384-seed pass boundary (209/384).
+2. **`fig2-quality-vs-cost.png` - quality vs probe cost scatter**: mean delta
+   (x) against probe cost as % of treatment training FLOPs (y, log scale),
+   marker size = seed count, color = verdict. The passing cap-4 family buys
+   quality with probe FLOPs; every cheap variant is a coin flip.
+3. **`fig3-delta-distributions.png` - per-seed paired delta distributions**
+   for studies 1, 3, 4, 5, 6 (boxes colored by verdict, zero line = no
+   adaptive benefit).
+4. **`fig4-probe-rank-heatmap.png` - probe-rank vs final-rank heatmap** from
+   the 384 counterfactual branches: rows are probe ranks, columns realized
+   final ranks, each row the conditional distribution of final rank given
+   probe rank; cell (probe 1, final 1) is the argmin concordance - 0.281
+   coupled, 0.284 decoupled (chance 0.250 in both).
+
+## 9. Substrate audit: a per-layer bug, a probe-policy axis, and a pool confound
+
+**Status: exploratory and UNREGISTERED.** These runs are not part of the gate
+family and were not pre-registered; they use the fresh block 20000-20127
+(disjoint from every prior block) and no rule was tuned against an outcome.
+They are reported because section 9.5 revises a claim section 2 makes.
+
+### 9.1 The toy path could not represent more than one layer
+
+`StaticMoEConfig` carried a single `num_experts` for every block and
+`StaticMoEBlock.__init__` required `len(expert_ids) == config.num_experts`.
+Any genome with unequal per-layer expert counts - i.e. any real topology
+mutation at depth > 1 - therefore raised `expert_ids must match num_experts`
+on rebuild. Every published gate study ran at `depth=1` (confirmed against
+`artifacts/study-summaries/*.json` and the `ExperimentConfig` defaults), so the
+entire factor map - nine studies, three passes, the richness axis, the probe
+validity analysis - was produced on a **single-layer, 4-expert, 5-candidate
+mutation space**. Each block now derives its expert count from its own ids, so
+heterogeneous layers build and evolve.
+
+### 9.2 The candidate cap truncated a layer-major list
+
+`feasible_expert_mutations` enumerates layer-major (per layer: `grow`, then
+that layer's prunes). The bounded probe took `candidates[:cap]`, so at depth
+greater than 1 a cap of 4 reached only the first layer's grow plus three of its
+prunes - the cap was a *layer* constraint, not a search budget.
+`ExperimentConfig.probe_candidate_policy` now selects `"prefix"` (the
+historical default, so published studies still reproduce) or `"spread"` (a
+deterministic per-event subset of the whole feasible set). At depth 4 / cap 4,
+prefix probes only layer 0; spread spans layers.
+
+### 9.3 Iteration cost (why the audit was cheap)
+
+Depth-4 toy studies run at ~1.5 s/seed on CPU; a 128-seed study takes ~85 s.
+GPU is *slower* for this substrate (measured 2.21 vs 1.52 s/seed at hidden 24 -
+kernel-launch overhead dominates). The historical depth-1 studies ran at
+~1.4 s/seed.
+
+### 9.4 Does the effect survive a deeper substrate?
+
+64 seeds 20000-20063, steps=24, cap 4/1-batch, uniform-random baseline:
+
+| Substrate / policy | Wins | Mean delta | Binomial p |
+|---|---|---|---|
+| depth 1, prefix (historical) | 38/64 | -0.0245 | 0.084 |
+| depth 4, prefix (cap reaches layer 0 only) | 47/64 | -0.1000 | 1.1e-04 |
+| depth 4, spread (cap spans the space) | 48/64 | -0.1133 | 3.9e-05 |
+
+So the pass is not an artifact of the depth-1 space, and the spread fix does
+not weaken it. A probe-rank gradient on the same pool and cost (64 seeds)
+confirms the ordering carries signal: probe-best 47/64, forced middle 37/64,
+probe-worst 35/64.
+
+### 9.5 The pool confound: "only selection differs" is not true
+
+The adaptive and random arms differ in **two** ways, not one: which candidates
+can be mutated (a capped pool) and how one is chosen from it. Section 2's
+method claim that "only the *selection policy* of mutations differs" is
+incorrect. `probe_selection="random"` (mirroring the V0 diagnostic's rule)
+holds pool and probe cost fixed and chooses uniformly, isolating the decision
+rule. 128 seeds 20000-20127, depth 4, steps=24, cap 4/1-batch, same uniform
+baseline (threshold 74/128):
+
+| Adaptive decision rule | Wins | Mean delta | Binomial p |
+|---|---|---|---|
+| argmin (registered) | 88/128 | -0.0813 | 1.3e-05 |
+| **random within the same pool** | **80/128** | **-0.0340** | **0.0030** |
+| argmax (inverted) | 64/128 | +0.0108 | 0.535 |
+
+The ordering is real - a monotone gradient across the full range of the rule
+(88 > 80 > 64, argmax at chance) - but a control that ignores probe loss
+entirely and picks randomly from the same pool **also passes decisively**.
+Roughly 40% of the argmin edge is therefore attributable to the candidate
+pool (at depth 4, to concentrating mutations on layer 0), not to selection.
+(These runs are all on the shared-RNG path; the clean, powered re-measurement
+in section 9.7 puts the pool's share of the mean gain at ~29% - lower, and with
+selection carrying the larger, significant part.)
+
+**Consequences.** (1) The factor map's passes overstate probe selection:
+part of the effect is a location policy shared by the pool, and the effect
+size, not the mechanism, is what needs correcting. (2) Any re-run must use a
+pool-matched random baseline, so the section 5.1 cost protocol should not
+proceed as though the quality edge were established at V0 scale. (3) The
+section 5.1/5.2 registered controller truncates the same layer-major list
+(108 candidates at the declared depth, so a cap of 4 reaches layer 0 only),
+and the V0 session now carries the same `probe_candidate_policy` and
+`probe_selection` knobs - but the REGISTERED config is unchanged at the
+`prefix`/`argmin` defaults, so the pre-registered protocol still carries the
+confound until the policy is deliberately switched and re-registered. See
+`IMPLEMENTATION_STATUS.md`'s substrate-audit section for the code status.
+
+**Caveats.** Exploratory and unregistered; 128 seeds at steps=24 (shorter than
+the registered 48); one fresh block; no significance claim beyond the binomial
+reported. The formal re-registration on a fresh block, with the pool-matched
+control as the baseline, is the planned next step.
+
+### 9.6 The same structure in the declared V0 path - and no edge at reduced scale
+
+`V0SessionConfig` now exposes the same `probe_candidate_policy` and
+`probe_selection` knobs (registered defaults unchanged at `prefix`/`argmin`).
+A reduced-dim session run (depth 6 x 4 experts = 30 candidates, cap 4,
+steps=120, 12 seeds 30000-30011, both arms per seed, no real data) confirms the
+structural difference in the declared code path: prefix probes only layers
+L0-L1 (the candidate list spills into L1 once L0's prune slots empty), while
+spread probes all six.
+
+It does **not** quantify the confound, because at this fidelity there is no
+adaptive edge to confound:
+
+| Rule | Wins | Mean delta |
+|---|---|---|
+| prefix / argmin (registered) | 3/12 | +0.0005 |
+| spread / argmin | 5/12 | +0.0009 |
+| prefix / random (pool-matched) | 5/12 | -0.0003 |
+
+All three sit at noise (mean deltas ~1e-03, no rule distinguishable from
+random). This is a 12-seed unregistered check at reduced dimensions: it
+establishes nothing about V0 behaviour, and it is consistent with the
+real-data harm-guard rejection (section 5.3) - the adaptive edge has never
+been observed outside the tiny toy substrate.
+
+**Consequence for the section 5.1 protocol.** The T4 run should not be launched
+on the current pre-registration as though the quality edge were established:
+(a) the registered prefix controller cannot reach past the first one or two
+layers at the declared depth, and (b) the only positive evidence for selection
+value comes from a substrate with a demonstrated pool confound. Deciding the
+candidate policy and adding a pool-matched control arm (same candidates, same
+probe cost, loss-blind choice) is a prerequisite, and that decision belongs in
+the pre-registration, not in the analysis.
+
+### 9.7 The depth-4 mechanism, measured cleanly: the gate and the increment both pass
+
+Under the revised design (`spread`, so a cap of 4 is a real budget over 20
+candidates rather than a layer-0 prefix). Four blocks; the differences are RNG
+regime (section 9.8), sample size and horizon:
+
+| Comparison | Wins | Mean delta | Binomial p |
+|---|---|---|---|
+| **steps=24, 128 seeds, SHARED RNG** (historical default), block 40000-40127 | | | |
+| argmin vs uniform churn (the registered claim) | 65/128 | -0.0143 | 0.465 |
+| loss-blind pool vs uniform churn | 63/128 | +0.0100 | 0.604 |
+| argmin vs loss-blind pool (paired, same pool/cost) | 76/128 | -0.0243 | 0.021 |
+| **steps=24, 128 seeds, INDEPENDENT arm RNG**, block 40000-40127 | | | |
+| argmin vs uniform churn | 80/128 | -0.0609 | 0.0030 |
+| loss-blind pool vs uniform churn | 68/128 | -0.0214 | 0.268 |
+| argmin vs loss-blind pool (paired) | 72/128 | -0.0395 | 0.092 |
+| **steps=48, 64 seeds, INDEPENDENT arm RNG** (underpowered; threshold 39/64) | | | |
+| argmin vs uniform churn | 33/64 | -0.0345 | 0.450 |
+| loss-blind pool vs uniform churn | 31/64 | +0.0005 | 0.646 |
+| argmin vs loss-blind pool (paired) | 39/64 | -0.0350 | 0.052 |
+| **steps=48, 384 seeds, INDEPENDENT arm RNG - POWERED**, block 50000-50383 | | | |
+| argmin vs uniform churn (the registered claim) | **246/384** | **-0.0745** | **1.9e-08** |
+| loss-blind pool vs uniform churn | 217/384 | -0.0215 | 0.0062 |
+| argmin vs loss-blind pool (paired) | **222/384** | **-0.0529** | **0.0013** |
+
+**Withdrawn claim.** An earlier draft of this section concluded, from the
+shared-RNG rows, that "the registered Gate 3 comparison does not survive a
+non-degenerate pool". That reading is **withdrawn**: the shared-RNG path is not
+a neutral default, and fixing it moves the registered comparison from 65/128
+(p = 0.465) to 80/128 (p = 0.0030) on the same seeds.
+
+**Final reading of the clean, powered block (the one that decides).** At 384
+seeds, steps=48, independent arm RNG, on a fresh block:
+
+- The **registered comparison passes decisively**: 246/384 (64.1%), mean
+  `-0.0745`, p `1.9e-08`.
+- A **loss-blind choice from the identical pool also beats uniform churn**
+  (217/384, p `0.0062`), so the candidate pool is part of the effect - the
+  location contribution is about `0.0215 / 0.0745 ~= 29%` of the mean gain, not
+  most of it as the coupled `prefix` runs of 9.5 suggested.
+- **Probe ordering adds a decisive increment over the identical pool at
+  identical cost**: 222/384 (57.8%), mean `-0.0529`, p `0.0013`.
+- All three comparisons clear Bonferroni alpha/3 = 0.0167.
+- The underpowered steps=48/64-seed block is consistent with this rate (at
+  57.8%, 37 expected of 64, observed 33), so its null result is a power effect,
+  not a different mechanism.
+
+The random-arm invariance check is exact in this regime (384/384 seeds), which
+is what the decoupling guarantees.
+
+**Implication for Gate 3.** Once the arm coupling is fixed, the gate passes on a
+substrate that can express topology (depth 4 with a non-degenerate candidate
+pool), on both the registered comparison and the controlled increment test. The
+depth-1 passes of section 3 should be regarded as a weaker, degenerate-space
+instance of the same result rather than the project's only evidence - but the
+depth-4 result is still toy-scale and needs a pre-registered re-run before it
+is cited as the project's gate.
+
+**Caveats.** Unregistered, one fresh block (50000-50383), synthetic tokens, a
+tiny depth-4 model (24 hidden), and a claim only about the toy substrate - the
+V0 declared path has not been measured in this regime. Reproduce with
+`PYTHONPATH=src python scripts/toy_policy_ablation.py --policies spread
+--independent-arm-rng`.
+
+### 9.8 The toy arms are coupled through the global torch RNG
+
+`run_experiment` trains the arms interleaved in one step loop against a shared
+global torch RNG. A `grow` mutation constructs a new expert and draws its
+weights from that stream; a `prune` draws nothing. Two runs whose treatments
+choose a different mix of grow and prune therefore consume different numbers of
+global draws, which perturbs the *random* arm's later rebuilds. The random arm
+is consequently only approximately the same baseline across treatments.
+
+Measured on the section 9.7 block (128 seeds, spread policy): the random arm's
+final loss is bit-identical between the argmin run and the pool-random run in
+only **70/128** seeds - in 58 of 128 seeds the "uniform baseline" is a
+different control in the two runs. `scripts/toy_policy_ablation.py` prints this
+as a `[coupling]` line rather than asserting independence.
+
+Consequences:
+
+- It is not a nuisance term but a first-order effect at low power: section 9.7
+  measures the registered comparison at 65/128 (p = 0.465) under the shared RNG
+  and 80/128 (p = 0.0030) under independent arm RNG on the same seeds, and the
+  size of the swing shrinks as the sample grows. Any toy arm comparison made on
+  the shared path - which is **every published gate study**, all nine of them
+  plus the placement and probe-validity runs - carries a baseline that drifts
+  with the treatment, so the reported effect sizes are not exactly controlled.
+  The effect on the conclusions is smaller than the summary above first
+  implied: re-running study 3's own block (3000-3383) reproduces it exactly on
+  the shared path (213/384, mean `-0.025955`, p `0.01814` - bit-for-bit the
+  committed artifact) and gives a slightly **stronger** result with the fix
+  (222/384, mean `-0.034406`, p `0.00128`). The depth-1 pass therefore survives;
+  the fix should still be the default for new studies.
+- The V0 path does not share it: arms are trained sequentially with per-arm
+  seeding, which is why the real-data diagnostic checked and found every random
+  arm replicating its baseline counterpart exactly.
+
+**The fix is implemented as an opt-in flag.** `ExperimentConfig
+.independent_arm_rng` (default `False`) re-seeds the global RNG per (arm, event)
+before each mutation, so rebuild initialisation cannot leak between arms; the
+shared init identity that the pairing relies on is untouched. The default stays
+`False` so existing numbers reproduce unchanged, which is also why the historical
+studies still need an explicit re-run rather than being silently reinterpreted.
+
+**Convention for new studies (decided here, rather than by flipping a
+default).** Every new study must pin the flag explicitly and appears in the
+record with it set, as section 5.6 does. The defaults are deliberately *not*
+flipped: the CLI and `ExperimentConfig` together are the reproduction surface
+for history, and the pre-audit study summaries do not carry the field at all,
+so a flipped default would silently change the numbers a reader gets when
+reproducing a committed artifact - the exact failure this report avoids
+everywhere else. Pinning per study makes the regime visible in each record and
+leaves old reproductions honest.
+
+### 9.9 Result: the depth-4 confirmation PASSES out-of-sample
+
+The section 5.6 pre-registration was committed as `b876ac1`, *before* the run,
+and then executed once on the never-observed block 60000-60383 (384 seeds,
+depth 4, `spread`, `independent_arm_rng=True`, cap 4/2-batch, steps=48). Every
+number below is out-of-sample for the entire project.
+
+| # | Comparison | Wins | Mean delta | Exact binomial p | Threshold |
+|---|---|---|---|---|---|
+| 1 | `argmin` vs uniform churn (registered claim) | **255/384** (66.4%) | **-0.1004** | **6.1e-11** | PASS (needs 214 at alpha/3) |
+| 2 | pool-random vs uniform churn | 209/384 (54.4%) | -0.0324 | 0.046 | fails alpha/3; marginal at alpha |
+| 3 | `argmin` vs pool-random, paired (mechanism) | **236/384** (61.5%) | **-0.0680** | **4.1e-06** | PASS (needs 214 at alpha/3) |
+| V | `argmax` vs uniform churn (validity control) | 173/384 (45.1%) | +0.0355 | 0.977 | does not pass - study is not void |
+
+Random-arm invariance is **384/384** across all three decision rules, which is
+exactly what the decoupling guarantees and confirms the run is valid.
+
+**Verdict: PASS.** Comparisons 1 and 3 clear Bonferroni alpha/3 = 0.01667 by a
+wide margin (both p < 1e-05), and the inverted-signal control does not pass, so
+the signal carries real ordering information. Under section 5.6's frozen rules:
+Gate 3 is established on a substrate that can express a topology search, and
+section 5.5's justification is confirmed.
+
+**What it changes, and what it does not.**
+
+- The registered Gate 3 comparison now passes **out-of-sample** on a
+  non-degenerate pool (20 feasible candidates over 4 layers), not just on the
+  exploratory block that motivated the design. The rate is slightly stronger
+  than the exploratory run (66.4% vs 64.1% for comparison 1; 61.5% vs 57.8%
+  for the paired increment), so the effect is not a block artifact.
+- The **pool is a minority of the effect**: a loss-blind choice from the
+  identical pool clears only alpha = 0.05 (209/384, p = 0.046) and fails
+  alpha/3, contributing ~`0.0324 / 0.1004 ~= 32%` of the mean gain. The
+  selection increment is the larger share (~68%) and clears alpha/3 easily.
+  This resolves the section 9.5 question in the mechanism's favour on a
+  substrate where the pool is genuinely larger than the cap.
+- It does **not** extend the claim beyond the toy substrate. The model is
+  hidden-24 depth-4 on synthetic tokens; the V0 declared path has still not
+  been measured in this regime (section 9.6 found no edge there at reduced
+  dimension, and section 5.3 found none on real text). Gate 3 is established
+  for the toy gate, which is what the plan's gate 3 asks for; the real-scale
+  question is the section 5.1 cost protocol.
+- The absolute search cost is unchanged in character: probe search is ~93x the
+  random arm's search FLOPs here (the mechanism's price at toy scale), which is
+  precisely why section 5.1 measures the *ratio to training* rather than the
+  ratio to the churn baseline.
+
+**Reproduce.** The section 5.6 one-liners (three `act.evolution.cli` runs, one
+per decision rule, over `60000-60383`), aggregated as above; on CPU the whole
+study is ~2.5 min at 16 single-threaded shards. Hardware note worth keeping:
+`--device` must be pinned to `cpu` for this substrate. The default `auto`
+resolves to CUDA, and 16 processes contending for one GPU made the same study
+take >13 min before it was killed - the hidden-24 model is CPU-faster (section
+9.3), and a GPU-contended run is strictly worse than a CPU-sharded one.
+
+### 9.10 Declared re-run of the published factor map on the decoupled path
+
+**Why.** Section 9.8 establishes that all nine published gate studies - and the
+guided upper bound - ran with the arms coupled through the global torch RNG, so
+their "matched random churn" baseline drifts with the treatment. The depth-1
+factor map is the evidence behind section 3's narrative ("nine studies, three
+passes", "richness is the active axis", "cadence beyond three events is
+actively harmful"). Only one of those studies has been re-run since: study 3's
+own block came back 222/384 with the fix (still PASS) and saved. The rest are
+still quoted from the coupled path.
+
+**Declaration (fixed before the run).**
+
+- **Scope.** Every committed study summary that reconstructs the published
+experiment exactly from its recorded config: the eight probe-loss gate studies
+(`probe-loss`, `horizon`, `rich`, `narrow`, `cheap-probe`, `variance`,
+`cadence`, `late-placement`) plus `guided-upper-bound-96`. Each is re-run with
+its **published config, published seed block and treatment arm**, with
+`independent_arm_rng=True` as the only change, at the same probe budgets.
+- **Reconstruction: `gate3-legacy-signal-384`.** Its recorded config predates
+  the `adaptive_policy` field, so running it as recorded would silently default
+  to `probe_loss` and measure a different experiment. The recorded value is
+  recoverable (`"signal"` - see section 9.12), so the study is re-run on its
+  completed config rather than excluded.
+- **Decision rule.** A study **reproduces** if its verdict label at alpha=0.05
+  is unchanged (`gate_passed` recomputed on the same n); it **flips** otherwise.
+  A flip revises the published claim; it is not a new result to be preferred,
+  and the coupled number is not "wrong" - it is the number that path produces.
+  A reproducing study gains no strength from the recheck: it is still a
+  depth-1 toy gate.
+- **Reported either way** (so a "reproduces" label cannot hide a material
+effect-size move): win counts, exact binomial p, mean adaptive-minus-random
+delta, and the win-count delta against the committed summary.
+- **Device.** The summaries record `device: auto`; the recheck pins `cpu`
+  (section 9.3) on the strength of the section 9.9 result that this substrate
+  reproduces committed CUDA-produced numbers exactly on CPU.
+
+**Outcome contract.** No outcome is pre-judged. A clean sweep means section 3's
+narrative survives the control fix and only the effect sizes need restating; any
+flip is written into section 3 and the milestone table as a revision, with the
+coupled number kept beside it for the audit trail.
+
+**Reproduce.**
+
+```bash
+PYTHONPATH=src python scripts/factor_map_recheck.py --list
+# 16 single-threaded shards per study, then aggregate:
+PYTHONPATH=src OMP_NUM_THREADS=1 python scripts/factor_map_recheck.py \
+  --study gate3-probe-loss-384 --shard 0 --shards 16 --out /tmp/recheck
+PYTHONPATH=src python scripts/factor_map_recheck.py \
+  --compare '/tmp/recheck/*.json' --compare-out artifacts/factor-map-recheck.json
+```
+
+`--coupled` re-runs the historical shared-RNG path for a control comparison, so
+the coupled/decoupled difference is measurable per study rather than inferred.
+**Result recorded in section 9.11.**
+
+### 9.11 Result: nine of ten labels reproduce, and every effect moves toward the treatment
+
+Ran as declared (144 shards over 9 studies, ~6 min wall on 16 single-threaded
+cores; comparison artifact
+`artifacts/study-summaries/factor-map-recheck.json`). Study 1 was added
+separately by section 9.12, which recovered the field its record predates.
+
+| # | Study | Published | Recheck (decoupled) | Win shift | Verdict |
+|---|---|---|---|---|---|
+| 1 | Legacy controller | 195/384 FAIL (p 0.399) | 201/384 FAIL (p 0.193) | +6 | reproduces |
+| 2 | Guided upper bound | 59/96 PASS (p 0.0158) | 62/96 PASS (p 0.00279) | +3 | reproduces |
+| 3 | Probe-loss controller | 213/384 PASS (p 0.0181) | 222/384 PASS (p 0.00128) | +9 | reproduces |
+| 4 | Cheap probe | 181/380 FAIL (p 0.835) | 188/380 FAIL (p 0.601) | +7 | reproduces |
+| 5 | Cadence | 137/384 FAIL (p ~ 1.0) | 148/384 FAIL (p ~ 1.0) | +11 | reproduces |
+| 6 | Variance reduction | 179/384 FAIL (p 0.916) | 209/384 **PASS** (p 0.046) | +30 | **FLIPS** |
+| 7 | Horizon replication | 231/384 PASS (p 4.04e-05) | 250/384 PASS (p 1.68e-09) | +19 | reproduces |
+| 8 | Richness A | 228/384 PASS (p 1.4e-04) | 229/384 PASS (p 9.36e-05) | +1 | reproduces |
+| 9 | Richness B | 193/384 FAIL (p 0.480) | 198/384 FAIL (p 0.287) | +5 | reproduces |
+
+**What this changes.**
+
+- **The section 3 narrative survives.** Nine of ten labels reproduce, so
+  "richness is the active axis", "probe quality is secondary", "the pass is not
+  horizon-specific" and "the legacy signal controller is a coin flip" are all
+  unchanged in verdict.
+- **But every single study moved toward the treatment** (win shifts +1 to +30,
+  mean +9.2 wins ~ +2.6 points, all ten positive). The coupling was therefore
+  a *directional* bias, not symmetric noise: on the shared-RNG path every
+  published number - passes and nulls alike - understated the adaptive arm.
+  That is the strongest statement this recheck licenses, and it is a statement
+  about the previous measurements rather than about the controller.
+- **The family-level evidence strengthens.** Clearing Bonferroni alpha/9 goes
+  from **2 of 9 studies** (horizon, richness A) to **4 of 9**: probe-loss now
+  clears it (p 0.00128) where the coupled number was marginal (0.0181), and the
+  guided diagnostic does too (0.00279). Horizon also moves from 4.0e-05 to
+  1.7e-09.
+- **The one flip is a null, not a new positive.** Variance reduction moves from
+  a clear-looking FAIL (179/384) to a threshold PASS (209/384, exactly the
+  alpha=0.05 minimum). At p 0.046 it does **not** clear alpha/9, so the honest
+  reading of that study is "no probe-batch effect in either direction" - the
+  coupled baseline made a null look like a marked failure. It must not be
+  quoted as evidence that quadrupling probe batches helps.
+- **The one "actively harmful" claim survives, weakened.** Cadence stays
+  significantly worse than random on both paths, but less severely: 137/384
+  (P(X<=137) = 1.1e-08) becomes 148/384 (P(X<=148) = 4.1e-06). The claim is
+  real; its published magnitude was inflated by the baseline.
+- **Cross-validation.** The probe-loss recheck returned 222/384, bit-identical
+  to the independent running made in section 9.8 through a different entry
+  point (the CLI over the same block), which is the check that the recheck
+  harness measures the same thing.
+- **The mechanism analysis was re-run as well** - the counterfactual probe-rank
+  sweep behind section 3.2 and figure 4, which until now had **no committed
+  generator** and was therefore reproducible only in principle. It has one now
+  (`scripts/probe_validity_analysis.py`), and the first thing that script did
+  was reproduce the committed coupled results field for field from a fresh
+  4-branch x 384-seed sweep, which is what makes the decoupled re-run a
+  controlled change rather than a second opinion. Decoupled: mean per-seed
+  Spearman rho **0.1057 -> 0.0776** (one-tailed p 1.4e-04 -> 4.98e-03) and
+  pooled within-seed Pearson r 0.1041 -> 0.0809, while the avoidance statistics
+  barely move (concordance 0.281 -> 0.284 vs chance 0.25, worst-branch excess
+  avoided 0.0860 -> 0.0839, left on table 0.0601 -> 0.0592). The ranking signal
+  is weaker than published; the "value is in not choosing badly" reading is
+  confirmed and does not depend on the RNG regime. **Honesty note:** unlike
+  section 9.10 this re-run was not pre-registered. What stands in its place is
+  that the analysis has a frozen `design` string, the seed block and every
+  statistic are unchanged, the coupled path was reproduced field for field
+  first, and the only difference is the RNG regime - so it is a controlled
+  re-measurement rather than a fresh hypothesis. It should still be treated as
+  a reproduction check, not as new pre-registered evidence.
+
+**Caveats.** Nine studies at depth 1 on a five-candidate space, so this
+strengthens or corrects a degenerate-space factor map, not the project's gate
+(section 9.9 is the gate). The variance flip sits exactly on a threshold, so
+it is reported as a null rather than as a pass. The shift's magnitude tracks
+neither probe cost nor event count cleanly (richness A moves +1 while variance
+moves +30), so the coupling's dependence on the treatment's choices is
+characterised but not explained; the natural hypothesis - more probe draws give
+sharper picks, and grows draw weights where prunes do not, so sharper picking
+consumes more of the shared stream - is untested here. The
+legacy controller was initially excluded as not reconstructible; section 9.12
+recovered the predated field and its row is the first in the table above, so no
+study in the factor map now rests on the coupled path alone.
+
+**Consequence for the project.** No published *verdict* in the factor map needs
+revising except variance, and no headline claim is overturned. Every published
+*effect size* does need the recheck number beside it, and the depth-1 factor map
+should from here on be quoted from the decoupled column.
+
+### 9.12 Declared: the legacy signal study is reconstructible, not unknowable
+
+Section 9.10 excluded `gate3-legacy-signal-384` on the grounds that its
+recorded config predates the probe fields, so `ExperimentConfig(**recorded)`
+would fill them with today's defaults and "silently reproduce a different
+experiment". Inspecting the record rather than the summary shows that half of
+this is right and half is a mistake.
+
+The record does predate exactly one decision-bearing field: `adaptive_policy`
+(added by `d972d4c`, which replaced the cheap-signal controller with bounded
+probe-loss selection). Defaulting it yields `probe_loss` - a different
+experiment. But the value is *recoverable*, on three independent grounds:
+
+1. `d972d4c`'s diff inserts the probe branch **above** the legacy
+   `random.Random(seed)` chooser and does not touch the fallback body, so
+   `adaptive_policy="signal"` *is* the pre-transition controller rather than a
+   reconstruction of its behaviour.
+2. The raw record `artifacts/gate3-384.jsonl` corroborates it directly: its
+   per-arm `mutation_history` entries carry no probe fields at all, so the
+   probe controller never ran in it.
+3. It reproduces the published coupled record. One published seed
+   (1000) lands within **4.8e-7** under `signal`, against **1.1e-1** under the
+   defaulted `probe_loss` - float drift versus a different experiment. This is
+   pinned as a test (`tests/test_factor_map_recheck.py`), not left as prose.
+
+**Declared before running.** The legacy study joins the section 9.10 recheck
+set with `adaptive_policy="signal"` supplied (`RECONSTRUCTION` in
+`scripts/factor_map_recheck.py`), and its decoupled re-run is then judged by
+section 9.10's *unchanged* rule: the label reproduces when it is unchanged at
+alpha=0.05 on the same n, and flips otherwise. The validation criterion above
+is deliberately outcome-independent - it compares against the **published**
+coupled record, so the reconstruction cannot be accepted or rejected on the
+strength of what the decoupled run turns out to say. What this does *not* fix:
+the record is still missing `adaptive_policy` as a stored field, so a future
+reader who does not apply the reconstruction will still get the probe_loss
+experiment; the field is supplied at run time, not written back into the
+artifact.
+
+## 10. Synthesis: the state of the program after sections 5.8-5.15
+
+**(2026-09-15.** This section consolidates the pre-registered studies of
+sections 5.8-5.15 with the earlier factor map into the current picture.
+Every number is machine-checked against the committed study summaries in
+`artifacts/study-summaries/` by pinning tests.*)
+
+### 10.1 The two-axis picture
+
+The program now has two cleanly separated empirical axes:
+
+1. **The churn axis (substrate-general).** On real text at diagnostic
+   fidelity, EVERY topology mutation policy loses to doing nothing:
+   probe-ordered churn (5.3, all five variants), probe-gated churn at
+   every threshold (5.4, 5.11 - with a monotone dose-response of harm vs
+   acceptance rate, +0.0027 / +0.0236 / +0.0713), load-directed churn
+   (5.13, 0/10 vs null), and random churn by construction (5.8, 8/8 for
+   the null). The null arm never lost a registered comparison on real
+   text. On the toy path, churn harm (null < random) holds at every
+   measured depth (5.9-5.15, all p < 1e-9).
+
+2. **The depth axis (toy path).** Value creation by probe-ordered
+   selection is a function of substrate depth: adaptive-vs-null wins go
+   117 (d1) < 161 (d2) < 188 (d3) < 225 (d4) of 384, mean delta
+   +0.0508 > +0.0208 > +0.0046 > -0.0371 - a monotone dose-response with
+   the sign flip between depth 3 and 4 (5.15), robust to the candidate
+   policy (5.12 2x2: prefix and spread agree in every cell).
+
+Together: **selection value exists, but only where the substrate is deep
+enough to support it.** Below the onset, every mutating arm loses to doing
+nothing; the historical depth-1 passes were churn suppression measured
+against random churn (the only control they had), not value creation.
+Above it, about a quarter of the raw edge survives the strictest control
+(0.0297-0.0371 of 0.1130).
+
+### 10.2 What this means for the gates
+
+- **Gate 3 stands, narrowed.** The depth-4 confirmation (5.6) passes with
+  the null control under it (5.10): adaptive beats doing nothing
+  out-of-sample, 218/384 with spread and 225/384 with prefix (5.12b).
+  The depth-1 instances of Gate 3 are re-quoted as churn suppression.
+- **Gate 4 is prepared, amended, and unspent.** The 5.1/5.5
+  compute-efficiency protocol (block 15000-15011) now carries the 5.14
+  do-nothing clause: a null queue at declared fidelity runs alongside the
+  primary and pool-matched control queues, and Gate 4 is withheld unless
+  the adaptive arm beats doing nothing on the declared block. The
+  three-queue launch path is smoke-tested; the run needs a T4.
+- **The real-text topology program is closed** (5.13). Its residue is
+  the churn-harm mechanism and the replication-grade tooling (null arm,
+  bit-identity checks, pre-registration discipline) the toy program now
+  inherits.
+
+### 10.3 What would change this picture
+
+By pre-registration, the named open questions are: (i) the Gate 4 run -
+a pass authorizes the next gate; a null-clause rejection replicates the
+real-text ordering at declared fidelity and closes the 5.1 program's
+selection premise at its own scale; (ii) the depth-3/4 boundary - the
+onset is bracketed to (3, 4], and a finer covariate (parameter count,
+layer width, expert count) would separate depth per se from capacity;
+(iii) a real-text scale run above the diagnostic fidelity (the closed
+program says nothing about longer horizons or larger models). Nothing in
+the current picture depends on re-tuning an existing cell, and no knob
+may be moved against a measured result (the 5.5 discipline).
