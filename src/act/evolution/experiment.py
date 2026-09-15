@@ -99,6 +99,12 @@ class ExperimentConfig:
     # or "clone_body" (the same body, freshly drawn router row) - see
     # `rebuild_model_from_genome`. Report sections 5.26 and 5.27.
     new_expert_initialization: str = "random"
+    # Which expert a prune removes when the choice is not otherwise made for it
+    # (i.e. the non-adaptive arm that is not using the importance controller).
+    # "random" is the historical behaviour every published number was measured
+    # under; "busiest" and "quietest" rank the layer's experts by their recorded
+    # routing load. Report section 5.31.
+    prune_expert_policy: str = "random"
     arms: str = "fixed,random,adaptive"
     device: str = "cpu"
 
@@ -182,6 +188,7 @@ class _Arm:
     probe_batches: tuple[torch.Tensor, ...] = ()
     preserve_router: bool = False
     new_expert_initialization: str = "random"
+    prune_expert_policy: str = "random"
 
 
 def _parse_arms(spec: str) -> tuple[str, ...]:
@@ -240,6 +247,10 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
             f"new_expert_initialization={config.new_expert_initialization!r} "
             "requires preserve_router_on_rebuild=True"
         )
+    if config.prune_expert_policy not in {"random", "busiest", "quietest"}:
+        raise ValueError(
+            "prune_expert_policy must be 'random', 'busiest' or 'quietest'"
+        )
     if config.probe_batch_count < 1:
         raise ValueError("probe_batch_count must be at least 1")
     if config.probe_force_candidate is not None and config.probe_force_candidate < 0:
@@ -294,6 +305,7 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
             probe_batches,
             config.preserve_router_on_rebuild,
             config.new_expert_initialization,
+            config.prune_expert_policy,
         )
         for mode in arm_modes
     )
@@ -366,6 +378,7 @@ def _make_arm(
     probe_batches: tuple[torch.Tensor, ...],
     preserve_router: bool = False,
     new_expert_initialization: str = "random",
+    prune_expert_policy: str = "random",
 ) -> _Arm:
     cloned_model = deepcopy(model)
     cloned_genome = deepcopy(genome)
@@ -384,6 +397,7 @@ def _make_arm(
         probe_batches=probe_batches,
         preserve_router=preserve_router,
         new_expert_initialization=new_expert_initialization,
+        prune_expert_policy=prune_expert_policy,
     )
 
 
@@ -655,6 +669,17 @@ def _mutate_arm(
             expert = next(
                 candidate for candidate in layer.experts if candidate.id == decision.expert_id
             )
+        elif arm.prune_expert_policy in {"busiest", "quietest"}:
+            # Rank this layer's experts by the model's own recorded routing load.
+            # The load tuple is per-block and positional, so it lines up with
+            # ``layer.experts`` index for index.
+            loads = arm.model.routing_load[layer.index]
+            pick = (
+                max if arm.prune_expert_policy == "busiest" else min
+            )
+            expert = layer.experts[
+                pick(range(len(layer.experts)), key=lambda index: loads[index])
+            ]
         else:
             expert = chooser.choice(layer.experts)
         changed = prune_expert(arm.genome, layer.id, expert.id)

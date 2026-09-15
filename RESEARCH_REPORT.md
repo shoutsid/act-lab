@@ -4183,6 +4183,103 @@ truth and the artefact on independent blocks. The two guardrails are now in the
    where it should be one. That control is what makes the stratum boundary
    credible rather than convenient.
 
+### 5.31 Pre-registration: does it matter WHICH expert a prune removes?
+
+**Motivation.** Section 5.30 located the remaining mid-training cost precisely.
+Cloning repairs the **grow** term; the **prune** term is untouched, standing at
+`-0.055`/`-0.074` on the prune-dominated discovery path. Section 5.25 measured that
+prune cost with the expert chosen **at random within the layer**, because that is
+what `_mutate_arm` did - so whether the cost is intrinsic to removing an expert or a
+property of removing the *wrong* one has never been tested. If it is the latter, the
+controller's choice is a policy lever and the deficit section 5.30 left open is
+attributable rather than intrinsic.
+
+**Design.** New ``ExperimentConfig.prune_expert_policy`` decides which expert a
+prune removes when the choice is not otherwise made for it (the non-adaptive arm
+that is not using the importance controller): ``"random"`` - the historical
+behaviour every published number was measured under - or ``"quietest"`` /
+``"busiest"``, ranked by the model's own recorded routing load. Per seed, one
+initial model and one data schedule, ``forced_operation="prune"``,
+``preserve_router_on_rebuild=True``, ``arms="fixed,random"``, and **each seed runs
+all three policies**:
+
+| label | run |
+|---|---|
+| `F` | the fixed arm (unmutated) - identical under all three policies |
+| `R` | every event prunes the random expert (historical) |
+| `Q` | every event prunes the **quietest** expert of the chosen layer |
+| `B` | every event prunes the **busiest** expert of the chosen layer |
+| `*_own` | the frozen retrain of each fused run's own final genome |
+
+The block is section 5.25's prune block (5 experts per layer, so three prunes reach
+the 2-expert floor) with depth 2 and 3. **The controls are tight and checked:** all
+three policies pick their layer from the same seeded RNG, prune the same number of
+times, and end at the same per-layer expert counts, so they differ only in **which
+identities survive** - the initial model, data schedule, layer, count and final
+expert count are all held fixed. A built-in check requires the three final genomes
+to be distinct, so the knob cannot silently become a no-op.
+
+**Primaries per depth (n = 384), Bonferroni `alpha/4 = 0.0125` -> bar 215, on the
+FUSED loss** - the end of the run, which is the deployable quantity:
+1. **removing the quietest is cheaper** - `fused(Q)` < `fused(R)`.
+2. **removing the busiest is dearer** - `fused(R)` < `fused(B)`.
+
+**Why the primary is the fused loss and not the penalty section 5.25 measured.**
+The penalty is a *difference* between two processes, so a policy that leaves a
+final topology which is **harder to retrain** shows a *smaller* penalty even when
+its own fused run is worse. The 4-seed smoke below shows exactly that inversion, so
+registering the penalty here would have been a construct error rather than a
+disputed reading: fused losses order `Q < R < B` while the penalties order
+`B < R < Q`, and the cause is visible in the retrains (`Q_own` is the best of the
+three at 14.790, `B_own` the worst at 14.825). The construct argument, not the
+smoke, fixes this choice; the penalty is reported as a mechanism secondary and is
+**not** verdict-bearing.
+
+**Prediction (declared before the registered blocks; the smoke is disclosed).** A
+4-seed machinery smoke (depth 2, spent seeds 73000-73003) showed fused `Q` better
+than `R` by `-0.0016` and `R` better than `B` by `-0.0087`, i.e. the intuitive
+`Q < R < B` ordering, but at 2/4 and 2/4 wins - pure noise at that size. So **both
+primaries are predicted to pass**, giving **branch (a)**: the prune cost is mostly
+the removal of a *used* expert, the controller's choice is a real lever, and the
+section 5.30 deficit is not intrinsic. The reasoning is that removing the busiest
+expert discards the most-used trained function, while removing the quietest
+discards the one the router has least need of - and section 5.24's preserved router
+mean the choice is reflected in the surviving rows rather than erased. The declared
+caution is that the smoke's spread again exceeds its effect, so the direction is
+argued from the mechanism, not from those four seeds.
+
+**Pre-registered interpretation (fixed before running, in section 5.24's letter
+order: (a) means both primaries pass).**
+- (a) both pass: the prune cost is target-dependent and monotone in load, so the
+discovery controller should prefer the quietest expert and the section 5.30
+deficit is addressable by policy.
+- (b) P1 passes, P2 fails: the quietest is a good target but the busiest is not
+especially bad, so the cost is not a simple function of load.
+- (c) P2 passes, P1 fails: the busiest is a bad target but the quietest is no
+better than random, so the cost is dominated by *that some expert is removed*.
+- (d) neither passes: the prune cost does not depend on the target at all. It is
+intrinsic to removing one, the controller's choice is not a lever, and section
+5.30's deficit needs a treatment other than target selection.
+
+**Secondaries (reported, not verdict-bearing).** The penalties `own - fused` per
+policy, the retrains' own losses (which is what makes the two measures able to
+disagree), each policy against `F`, and the per-layer expert counts.
+
+**Scope limits (pre-declared).** Toy fidelity, synthetic tokens, one substrate,
+depths 2 and 3, the `random` arm only with the operation forced, cloning off
+(``new_expert_initialization="random"``, irrelevant to a prune-only block), a
+3-event budget, and load measured by the model's own recorded routing statistics
+rather than by a gradient-based importance measure - the project has a richer
+``AdaptiveController`` metric family that this knob does not use. The comparison is
+between **policies**, so the three arms necessarily end on different surviving sets;
+what is held fixed is the count, the layer and the substrate.
+
+**Cost.** Three fused runs plus three frozen retrains per seed, ~2.6 s/seed.
+
+### 5.31 Result
+
+*(pending: registered blocks 113000-113383 and 114000-114383)*
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
@@ -4190,6 +4287,17 @@ truth and the artefact on independent blocks. The two guardrails are now in the
 - Study commands, seed blocks, and `study_id` values are listed per record in
   `artifacts/study-summaries/*.json`; raw JSONL dumps reproduce from config +
   seeds via `act.evolution.cli` and are regenerable deterministically on CPU.
+- **Reproduction is bit-exact only at a fixed thread count, and this was measured
+  rather than assumed.** Re-running section 5.25's committed prune block (seed
+  98000) from the config stored in its own summary gives the identical losses at 1
+  and at 4 torch threads, but **not at 2**, where the same config moves the last
+  digits (`16.073335886001587` -> `16.073336362838745`, and `16.090655088424683` ->
+  `16.090654611587524`). Reductions are thread-count sensitive, so "reproduces"
+  is only well defined at a fixed thread count; the block runner and the study
+  scripts set `OMP_NUM_THREADS=1` for this reason, and
+  `tests/test_prune_target_policy.py` pins torch's thread count while it asserts
+  the exact reproduction. All committed numbers in this report were produced with
+  `OMP_NUM_THREADS=1`.
 - Registry records for single experiments append to `artifacts/experiments.jsonl`
   (gitignored); the curated summaries are versioned.
 
