@@ -81,14 +81,14 @@ PROFILES: dict[str, dict] = {
     "depth2": {
         "seeds": tuple(range(74000, 74384)),
         "overrides": {"depth": 2},
-        "run_revision": "PLACEHOLDER-REV",
+        "run_revision": "bbad439",
         "report_section": "5.15",
         "summary": "artifacts/study-summaries/null-control-depth2-384.json",
     },
     "depth3": {
         "seeds": tuple(range(75000, 75384)),
         "overrides": {"depth": 3},
-        "run_revision": "PLACEHOLDER-REV",
+        "run_revision": "bbad439",
         "report_section": "5.15",
         "summary": "artifacts/study-summaries/null-control-depth3-384.json",
     },
