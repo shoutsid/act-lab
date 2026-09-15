@@ -1585,6 +1585,44 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   (`study_68591d55f3a56db7`, `study_c7ec09294da043fc`), pinned by
   `tests/test_residual_attribution_summary.py` and
   `tests/test_forced_operation_control.py`.
+- **Section 5.26 RAN (2026-09-15, blocks 103000-103383 depth 2 / 104000-104383
+  depth 3, `scripts/new_expert_init_study.py`).** Answers section 5.25's closing
+  question - is the residual penalty the *freshly drawn* new expert? - with
+  something the model already contains instead of the blocked Qwen teacher: new
+  opt-in `ExperimentConfig.new_expert_initialization="clone"` gives a grown expert
+  the layer's **busiest surviving expert**, body **and router row**, so it starts
+  as a working twin rather than as noise. Cloning is defined as copying a router
+  row, so the config *refuses* `clone` with `preserve_router_on_rebuild=False`
+  rather than silently cloning nothing. Registered verdict **branch (a)**:
+  **P1 cloning helps** 315/384 (mean -0.1005, p 5.9e-39) at depth 2 and 307/384
+  (-0.1036, p 6.4e-34) at depth 3; **P2 residual penalty FAILED IN THE REVERSED
+  DIRECTION** - the penalty goes from **-0.0406/-0.0292** (fresh draw) to
+  **+0.0600/+0.0745** (cloned), so cloning does not merely remove the penalty, it
+  **inverts it**. The full ordering is the same at both depths,
+  **`C < F < C_own < R`**: the clone-grow fused run (14.2414 / 13.3819) beats the
+  unmutated fixed arm (14.2887 / 13.4362; 296/384, 291/384), the frozen retrain
+  of its own final genome (14.3014 / 13.4564; 258/384, 253/384) and the historical
+  random-grow run (14.3419 / 13.4855). The design was perfectly paired by
+  construction - the forced grow picks its layer from the seed's own RNG and
+  cloning consumes no randomness - so **the two settings chose the same final
+  genome in 384/384 seeds at both depths and `C_own == R_own` bit-identically**,
+  both asserted as built-in checks. **Consequence: section 5.22's two-stage
+  `discover -> freeze -> retrain` pipeline is a REGRESSION on this substrate**,
+  not a safeguard; the recommendation for new work is to *keep the fused run*
+  with the router preserved and new experts cloned, which also makes plan section
+  102's genome extraction unnecessary for performance and gives plan section 51's
+  teacher treatment a *bound* (it can only pay off where a teacher beats the
+  model's own busiest expert). One open mechanism, declared unresolved: cloning
+  copies a trained body *and* a router row, and this design does not separate
+  them. Sixth understated prediction (declared P2 pass, branch (b)). Summaries
+  `artifacts/study-summaries/new-expert-init-{depth2,depth3}-384.json`
+  (`study_99a12c16f910e9c0`, `study_ee833b6b284195f9`), pinned by
+  `tests/test_new_expert_init.py` and `tests/test_new_expert_init_summary.py`.
+  **Amendment 5.26.1:** the pre-registered branch list was written in the
+  opposite letter order to section 5.24's convention and to the study's own
+  script; the letters are reconciled to the script, which changes no statistic,
+  no threshold and no reading (P2 failed in the exonerating direction, so the
+  penalised reading was never available).
 - **Report-artifact link guard (2026-09-15).** Section 5.19's missing summaries
   were a defect *class*, not an incident: a result can be cited widely while its
   artifact does not exist. `tests/test_report_artifact_links.py` now fails if any

@@ -3328,6 +3328,205 @@ necessarily start at different expert counts (5 and 4 per layer), so their
 magnitudes are comparable in shape but not substrate-identical, and the
 per-operation split above inherits that.
 
+### 5.26 Pre-registration: is the residual penalty the freshly drawn expert?
+
+**Motivation.** Section 5.25 forced every event to a grow and found a grow costs
+about `1.6x` a prune (`0.0159` vs `0.0099` per event), so the residual mid-training
+penalty that survived section 5.24 is concentrated in the operation that *adds* an
+expert. A grow introduces exactly one thing a prune cannot: a **freshly drawn
+expert** - a random body and a random router row - which the model must spend
+gradient learning to route around, and which the router must learn to send tokens
+to. Section 5.25 closed by naming an initialization for new experts as the
+best-motivated untested experiment available, and noted it was blocked on the
+Qwen-derived teacher artifacts this repository does not bundle. This study tests
+the mechanism with something the model already contains: its own busiest
+surviving expert.
+
+**Design.** `ExperimentConfig.new_expert_initialization` decides what a grown
+expert starts as. `"random"` is the rebuild's own draw - the historical
+behaviour, and the only one every published number was measured under.
+`"clone"` copies the busiest surviving expert of the same layer, chosen by the
+model's own recorded routing load, **together with that expert's router row** - a
+cloned body with a fresh row would start with no routing affinity at all, so
+cloning the row is what makes it a twin rather than a coincidence of weights.
+(Cloning therefore requires `preserve_router_on_rebuild=True`, and the config
+refuses the combination that would silently clone nothing.)
+
+Each block is one fresh seed set, `forced_operation="grow"`,
+`preserve_router_on_rebuild=True`, `arms="fixed,random"`, and each seed runs
+**both** settings so the contrast is paired:
+
+| label | run |
+|---|---|
+| `F` | the fixed arm (unmutated) - identical under both settings |
+| `R` | fused grow run, new expert freshly drawn (historical) |
+| `R_own` | `R`'s final genome retrained from its own initialization |
+| `C` | fused grow run, new expert cloned from the busiest survivor |
+| `C_own` | `C`'s final genome retrained from its own initialization |
+
+**Why this is a paired contrast on one genome.** The forced operation makes the
+non-adaptive arm choose its layer from `random.Random(seed)`, which consumes the
+seed's own RNG and not the weights, and cloning consumes no randomness - so both
+settings make the **same architectural choices** and end on the same final genome.
+That is asserted as a built-in check (`same_final_genome`, and `C_own == R_own`
+exactly), not assumed: were it false, the penalties would be measured against two
+different substrates and the framing would be meaningless.
+
+**Primaries per depth (n = 384), Bonferroni `alpha/4 = 0.0125` -> bar 215.**
+1. **cloning helps** - `C` < `R`: does a grown expert that starts as a working twin
+   beat one that starts as noise, on the same seed and the same final genome?
+2. **residual penalty** - `C_own` < `C`: does a penalty remain once the new expert
+   is cloned, or does cloning remove the mid-training penalty entirely?
+
+**Prediction (declared before the registered blocks; a spent-block smoke is
+disclosed and it covered one depth).** A 4-seed machinery smoke (depths 2,
+spent seeds 73000-73003) showed clone gain `-0.0402`, fresh penalty `-0.0615`,
+cloned penalty `-0.0213`, with `C_own == R_own` bit-identical - so **P1 is
+predicted to pass and P2 to pass**, giving **branch (b): cloning helps but a
+residual penalty survives.** The reasoning is that a twin removes the transient
+cold-start cost (the new expert starts already doing useful work on tokens the
+router already sends its source), but the run still pays for a mid-flight
+architecture change: the expert count rises, the softmax denominator over routing
+weights moves, and the model renormalizes around a new lane in a fixed step
+budget. Cloning removes one term, not the physics of the change.
+
+**Pre-registered interpretation (fixed before running, in section 5.24's letter
+order: (a) means *helps, and no penalty remains*).**
+- (a) P1 passes, P2 fails: cloning helps and no penalty remains - a grown expert
+  should start as a twin, and section 5.22's two-stage delivery is qualified
+  again (any remaining cost would be the freeze/retrain overhead, not an
+  intrinsic process cost).
+- (b) both pass: cloning helps but a residual penalty survives, so the mechanism
+  is more than the fresh draw.
+- (c) P2 passes, P1 fails: cloning does not help and the penalty survives, so the
+  fresh draw is not the mechanism and section 5.25's residual is intrinsic.
+- (d) neither passes: inconclusive, recorded without either reading.
+
+*(The branch list above was written in the opposite letter order to section
+5.24's convention and to this study's script, which maps P1-pass/P2-fail to
+(a). The letters are reconciled to the script - see the 5.26.1 amendment - and
+the substance of each branch is unchanged by the reconciliation.)*
+
+**Secondaries (reported, not verdict-bearing).** `R_own - R` and `C_own - C` side
+by side (the two penalties); the fraction of the random-init penalty that cloning
+removes; and `C - R` per depth for continuity with the smoke.
+
+**Scope limits (pre-declared).** Toy fidelity, synthetic tokens, one substrate,
+`random` arm only, the operation forced rather than drawn, and cloning from the
+layer's busiest survivor rather than from a trained teacher - so what is tested is
+*self*-cloning, not plan section 51's teacher treatment. A clone that works here
+would bound how much the teacher treatment can buy, not replace it.
+
+**Cost.** Two fused runs plus two frozen retrains per seed, ~1.4 s/seed.
+
+### 5.26 Outcome: cloning does not merely remove the penalty, it inverts it (branch (a))
+
+Run on the registered fresh blocks 103000-103383 (depth 2) and 104000-104383
+(depth 3), `study_99a12c16f910e9c0` and `study_ee833b6b284195f9`. Every built-in
+check held in both blocks, including the two the design's validity rests on: the
+fixed transport reproduced the fixed arm under **both** settings, and the pairing
+claim held exactly - **the two settings chose the same final genome in 384/384
+seeds at both depths**, so `C_own == R_own` bit-identically in 384/384. The
+contrast is therefore initialization on one genome, not two substrates.
+
+| | depth 2 (n = 384) | depth 3 (n = 384) |
+|---|---|---|
+| **P1** cloning helps: `C` < `R` | **315/384**, mean −0.1005, p 5.9e-39 | **307/384**, mean −0.1036, p 6.4e-34 |
+| **P2** residual penalty: `C_own` < `C` | 126/384, mean **+0.0600**, p 1.00 - FAIL | 131/384, mean **+0.0745**, p 1.00 - FAIL |
+
+| penalty | depth 2 | depth 3 |
+|---|---|---|
+| fresh expert (`R_own − R`) | −0.0406 | −0.0292 |
+| cloned expert (`C_own − C`) | **+0.0600** | **+0.0745** |
+| gain from cloning (`C − R`) | −0.1005 | −0.1036 |
+
+**Registered verdict: branch (a) - the freshly drawn expert IS the residual
+mechanism.** The prediction (P1 pass, P2 pass, branch (b)) was half wrong: P1
+passed by a wide margin, but P2 did not merely fail - it **reversed**. With a
+cloned new expert the fused run is *better* than a clean frozen retrain of its own
+final genome, by `+0.060` and `+0.074`, where with a freshly drawn one it was
+worse by `−0.041` and `−0.029`. The mid-training penalty is not merely reduced by
+cloning; it becomes a mid-training **advantage**. This is the sixth prediction in
+the sequence to understate an effect, and the second where the miss was in the
+comparison rather than its existence.
+
+**The full ordering, on the means, is the same at both depths**
+(`C < F < C_own < R`):
+
+| | depth 2 mean | depth 3 mean |
+|---|---|---|
+| `C` clone-grow fused | **14.2414** | **13.3819** |
+| `F` unmutated fixed arm | 14.2887 | 13.4362 |
+| `C_own` frozen retrain of the final genome | 14.3014 | 13.4564 |
+| `R` random-grow fused (historical) | 14.3419 | 13.4855 |
+
+The clone-grow run beats **all three** references, including the unmutated arm
+(`C` < `F`: **296/384**, mean −0.0473, p 1.0e-27; **291/384**, mean −0.0543,
+p 3.7e-25). Section 5.25's residual is not merely attributable to the fresh draw:
+the fresh draw was the *whole* grow penalty and more.
+
+**Why this is the coherent reading rather than a surprise.** A frozen retrain of
+the final genome starts from scratch on seven experts in the same 48 steps; a
+clone-grow run carries four experts it has already trained and adds three that
+start as working twins of the busiest survivor. What the two-stage delivery of
+section 5.22 was doing was *throwing away trained function to avoid the cost of
+changing architecture mid-flight* - and section 5.24 and this result together say
+that cost was avoidable, not intrinsic. Once the routing head survives and a new
+expert starts as a twin, continuing the run dominates restarting it.
+
+**Consequences.** Section 5.22 adopted `discover -> freeze genome -> retrain from
+the original initialization`. On this substrate that pipeline is now a
+**regression**, not a safeguard: with `preserve_router_on_rebuild=True` and
+`new_expert_initialization="clone"`, the fused run beats the retrain in 258/384
+(depth 2, p 7.3e-12) and 253/384 (depth 3, p 2.4e-10) seeds. The recommendation
+for new work is therefore the reverse: **keep the fused run**, with the router
+preserved and new experts cloned - and plan section 102's genome extraction is not
+needed for performance. The best-motivated untested experiment named by section
+5.25 is thus answered by something the model already contains, which also means
+plan section 51's teacher treatment now has a *bound*: it can only pay off to the
+extent an external teacher beats the model's own busiest expert as a source for a
+new expert.
+
+**The mechanism inside "clone" is not settled, and the two candidates are worth
+naming.** Cloning does two things at once: it gives the new expert a *trained
+body* instead of noise, and it copies the survivor's *router row*, so the router
+already sends tokens to the twin and the twin pair receives the same tokens. The
+second could be doing the work - duplicating a function the data wants, in a way
+that needs no new routing decision - and this design does not separate them. A
+clone with a fresh router row, and a "copy a *random* survivor's body" arm, would
+between them separate body from routing affinity. Declared here as unresolved
+rather than attributed.
+
+**Caveats, as declared.** Toy fidelity, synthetic tokens, one substrate, depth 2
+and 3, the `random` arm only, the operation forced rather than drawn (so this is
+the cost of a forced grow, not a deployable policy), and cloning from the layer's
+busiest survivor rather than a trained teacher. The frozen retrains are of *each*
+fused run's final genome; they happen to be the same genome here, which is checked
+rather than assumed.
+
+### 5.26.1 Amendment (made after the block ran): reconciled branch letters
+
+The pre-registered branch list was written in the opposite letter order to
+section 5.24's convention and to this study's own script, which maps
+P1-pass/P2-fail to **(a)**. The letters are reconciled to the script. This
+changes no statistic, no threshold and no reading: the observed outcome is
+P1 pass / P2 fail, whose substance ("cloning helps and no penalty remains") is
+identical under either labelling, and P2 failed in the *exonerating* direction -
+`C_own > C` - so the penalised reading was never available. The same class of
+labelling trap as section 5.19's auto-label, recorded rather than quietly fixed.
+
+**A second lapse, of the same kind and worth separating.** This pre-registration
+text was written and its smoke disclosed *before* the registered blocks were run,
+as it claims - but it was **committed in the same commit as the result**, not
+beforehand. Every earlier study in this series (5.20, 5.22, 5.24, 5.25) has the
+pre-registration in a prior commit, so its order is demonstrable from history;
+here it is only asserted. The text itself is not reconstructed - the decline of
+that claim would be visible in the disclosed smoke, whose numbers (clone gain
+`-0.0402`, penalties `-0.0615`/`-0.0213`) and predicted branch (b) are unchanged
+from before the run, and the run falsified the prediction rather than confirming
+it. Recorded so that a reader who checks the history finds the lapse stated
+rather than having to notice it.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
