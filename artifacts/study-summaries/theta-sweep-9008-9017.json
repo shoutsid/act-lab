@@ -1,0 +1,269 @@
+{
+ "alpha": 0.05,
+ "arm_means": {
+  "null": 3.2829698622226715,
+  "t002": 3.2856447815895082,
+  "t01": 3.354251754283905,
+  "t05": 3.306580775976181
+ },
+ "arms": [
+  "null",
+  "t002",
+  "t01",
+  "t05"
+ ],
+ "bonferroni_alpha": 0.016666666666666666,
+ "built_in_checks": {
+  "null_zero_mutations_and_search_flops": true,
+  "zero_accept_seeds_bit_identical_to_null": true
+ },
+ "code_revision": "9bd9323",
+ "comparisons": {
+  "t002": {
+   "accept_rate": 0.06666666666666667,
+   "accepts": 2,
+   "binomial_p": 1.0,
+   "mean_delta": 0.0026749193668365477,
+   "min_wins_bonferroni": 9,
+   "passes_bonferroni": false,
+   "reject_noop": 28,
+   "theta": 0.02,
+   "wins": 0
+  },
+  "t01": {
+   "accept_rate": 0.7666666666666667,
+   "accepts": 23,
+   "binomial_p": 1.0,
+   "mean_delta": 0.07128189206123352,
+   "min_wins_bonferroni": 9,
+   "passes_bonferroni": false,
+   "reject_noop": 7,
+   "theta": 0.1,
+   "wins": 0
+  },
+  "t05": {
+   "accept_rate": 0.43333333333333335,
+   "accepts": 13,
+   "binomial_p": 1.0,
+   "mean_delta": 0.023610913753509523,
+   "min_wins_bonferroni": 9,
+   "passes_bonferroni": false,
+   "reject_noop": 17,
+   "theta": 0.05,
+   "wins": 0
+  }
+ },
+ "config": {
+  "activation_checkpointing": true,
+  "active_experts": 2,
+  "attention_heads": 8,
+  "batch_size": 8,
+  "checkpoint_interval": 150,
+  "checkpoint_max_bytes": null,
+  "context_size": 512,
+  "data_path": "/home/shoutsid/code/act-lab/artifacts/real-lm/tokens.npy",
+  "declared": false,
+  "depth": 8,
+  "device": "auto",
+  "dtype": "fp32",
+  "expert_count": 8,
+  "expert_width": 256,
+  "gate_margin": 0.0,
+  "gate_margins": {
+   "null": 0.0,
+   "t002": 0.02,
+   "t01": 0.1,
+   "t05": 0.05
+  },
+  "hidden_size": 256,
+  "learning_rate": 0.0003,
+  "max_checkpoints": 2,
+  "mutation_budget": 3,
+  "mutation_interval": 200,
+  "probe_batch_count": 1,
+  "probe_candidate_cap": 4,
+  "probe_candidate_policy": "prefix",
+  "probe_data_source": "train",
+  "probe_finetune_steps": 0,
+  "probe_landscape": false,
+  "probe_selection": "argmin",
+  "seed": 9008,
+  "total_steps": 600,
+  "val_data_path": "/home/shoutsid/code/act-lab/artifacts/real-lm/val-tokens.npy",
+  "validation_batches": 4,
+  "vocab_size": 8192
+ },
+ "config_hash": "28a5516dfc2669b0",
+ "family_verdict": "no theta clears: the probe-on-real-text program is concluded as falsified",
+ "gate_thetas": {
+  "t002": 0.02,
+  "t01": 0.1,
+  "t05": 0.05
+ },
+ "per_seed": [
+  {
+   "accepted": {
+    "t002": 1,
+    "t01": 2,
+    "t05": 2
+   },
+   "losses": {
+    "null": 3.3000112175941467,
+    "t002": 3.3238197565078735,
+    "t01": 3.357344627380371,
+    "t05": 3.357344627380371
+   },
+   "seed": 9008
+  },
+  {
+   "accepted": {
+    "t002": 0,
+    "t01": 3,
+    "t05": 0
+   },
+   "losses": {
+    "null": 3.2333728671073914,
+    "t002": 3.2333728671073914,
+    "t01": 3.3279281854629517,
+    "t05": 3.2333728671073914
+   },
+   "seed": 9009
+  },
+  {
+   "accepted": {
+    "t002": 0,
+    "t01": 2,
+    "t05": 1
+   },
+   "losses": {
+    "null": 3.3074668049812317,
+    "t002": 3.3074668049812317,
+    "t01": 3.3895917534828186,
+    "t05": 3.3120924830436707
+   },
+   "seed": 9010
+  },
+  {
+   "accepted": {
+    "t002": 0,
+    "t01": 3,
+    "t05": 2
+   },
+   "losses": {
+    "null": 3.2593770027160645,
+    "t002": 3.2593770027160645,
+    "t01": 3.3389667868614197,
+    "t05": 3.3122482895851135
+   },
+   "seed": 9011
+  },
+  {
+   "accepted": {
+    "t002": 0,
+    "t01": 3,
+    "t05": 2
+   },
+   "losses": {
+    "null": 3.2927079796791077,
+    "t002": 3.2927079796791077,
+    "t01": 3.4232643246650696,
+    "t05": 3.3197233080863953
+   },
+   "seed": 9012
+  },
+  {
+   "accepted": {
+    "t002": 0,
+    "t01": 2,
+    "t05": 1
+   },
+   "losses": {
+    "null": 3.2833820581436157,
+    "t002": 3.2833820581436157,
+    "t01": 3.3615291118621826,
+    "t05": 3.2947532534599304
+   },
+   "seed": 9013
+  },
+  {
+   "accepted": {
+    "t002": 1,
+    "t01": 3,
+    "t05": 2
+   },
+   "losses": {
+    "null": 3.29152512550354,
+    "t002": 3.2944657802581787,
+    "t01": 3.3801565766334534,
+    "t05": 3.3201146125793457
+   },
+   "seed": 9014
+  },
+  {
+   "accepted": {
+    "t002": 0,
+    "t01": 1,
+    "t05": 1
+   },
+   "losses": {
+    "null": 3.3542290329933167,
+    "t002": 3.3542290329933167,
+    "t01": 3.3656557202339172,
+    "t05": 3.3656557202339172
+   },
+   "seed": 9015
+  },
+  {
+   "accepted": {
+    "t002": 0,
+    "t01": 2,
+    "t05": 0
+   },
+   "losses": {
+    "null": 3.1957290172576904,
+    "t002": 3.1957290172576904,
+    "t01": 3.243306875228882,
+    "t05": 3.1957290172576904
+   },
+   "seed": 9016
+  },
+  {
+   "accepted": {
+    "t002": 0,
+    "t01": 2,
+    "t05": 2
+   },
+   "losses": {
+    "null": 3.3118975162506104,
+    "t002": 3.3118975162506104,
+    "t01": 3.3547735810279846,
+    "t05": 3.3547735810279846
+   },
+   "seed": 9017
+  }
+ ],
+ "protocol": "theta-sweep-vs-null",
+ "record_type": "real_text_theta_sweep",
+ "report_section": "5.11",
+ "secondary_null_vs_published_random": {
+  "9008": -0.8279219269752502,
+  "9009": -0.0945553183555603,
+  "9010": -0.16540604829788208,
+  "9011": -0.07958978414535522
+ },
+ "seeds": [
+  9008,
+  9009,
+  9010,
+  9011,
+  9012,
+  9013,
+  9014,
+  9015,
+  9016,
+  9017
+ ],
+ "study_hash": "10694147cd956b71",
+ "study_id": "study_10694147cd956b71",
+ "summary_note": "Intermediate-theta sweep on the fresh block 9008-9017 (report section 5.11): gated sessions at theta in {0.02, 0.05, 0.1} against the published null arms. Per-seed losses are embedded; statistics recompute exactly; p-values are exact one-tailed binomial against Bonferroni alpha/3."
+}

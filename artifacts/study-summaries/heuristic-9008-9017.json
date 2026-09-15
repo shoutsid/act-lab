@@ -1,0 +1,223 @@
+{
+ "alpha": 0.05,
+ "arm_means": {
+  "heuristic": 3.4047654032707215,
+  "null": 3.2829698622226715
+ },
+ "arms": [
+  "null",
+  "heuristic"
+ ],
+ "bonferroni_alpha": 0.025,
+ "built_in_checks": {
+  "heuristic_grow_only": true,
+  "heuristic_mutations_match_budget": true,
+  "null_zero_mutations_and_search_flops": true,
+  "targeting_follows_measured_load": true
+ },
+ "code_revision": "0ef29de",
+ "comparisons": {
+  "heuristic_vs_null": {
+   "binomial_p": 1.0,
+   "mean_delta": 0.12179554104804993,
+   "min_wins_bonferroni": 9,
+   "n": 10,
+   "passes_bonferroni": false,
+   "wins": 0
+  }
+ },
+ "config": {
+  "activation_checkpointing": true,
+  "active_experts": 2,
+  "attention_heads": 8,
+  "batch_size": 8,
+  "checkpoint_interval": 150,
+  "checkpoint_max_bytes": null,
+  "context_size": 512,
+  "data_path": "/home/shoutsid/code/act-lab/artifacts/real-lm/tokens.npy",
+  "declared": false,
+  "depth": 8,
+  "device": "auto",
+  "dtype": "fp32",
+  "expert_count": 8,
+  "expert_width": 256,
+  "gate_margin": 0.0,
+  "hidden_size": 256,
+  "learning_rate": 0.0003,
+  "max_checkpoints": 2,
+  "mutation_budget": 3,
+  "mutation_interval": 200,
+  "probe_batch_count": 1,
+  "probe_candidate_cap": 4,
+  "probe_candidate_policy": "prefix",
+  "probe_data_source": "train",
+  "probe_finetune_steps": 0,
+  "probe_landscape": true,
+  "probe_selection": "argmin",
+  "seed": 9008,
+  "total_steps": 600,
+  "val_data_path": "/home/shoutsid/code/act-lab/artifacts/real-lm/val-tokens.npy",
+  "validation_batches": 4,
+  "vocab_size": 8192
+ },
+ "config_hash": "565c914948575ad3",
+ "grow_layer_histogram": {
+  "L0": 4,
+  "L3": 2,
+  "L4": 5,
+  "L5": 10,
+  "L6": 3,
+  "L7": 6
+ },
+ "outcome": "falsified (0/10 wins): the heuristic loses to doing nothing on every seed - directed churn is still churn",
+ "per_seed": [
+  {
+   "losses": {
+    "heuristic": 3.359188497066498,
+    "null": 3.3000112175941467
+   },
+   "mutations": 3,
+   "seed": 9008,
+   "targeted_layers": [
+    "L7",
+    "L5",
+    "L5"
+   ]
+  },
+  {
+   "losses": {
+    "heuristic": 3.349224030971527,
+    "null": 3.2333728671073914
+   },
+   "mutations": 3,
+   "seed": 9009,
+   "targeted_layers": [
+    "L7",
+    "L5",
+    "L4"
+   ]
+  },
+  {
+   "losses": {
+    "heuristic": 3.716951072216034,
+    "null": 3.3074668049812317
+   },
+   "mutations": 3,
+   "seed": 9010,
+   "targeted_layers": [
+    "L0",
+    "L0",
+    "L0"
+   ]
+  },
+  {
+   "losses": {
+    "heuristic": 3.4080348014831543,
+    "null": 3.2593770027160645
+   },
+   "mutations": 3,
+   "seed": 9011,
+   "targeted_layers": [
+    "L7",
+    "L5",
+    "L6"
+   ]
+  },
+  {
+   "losses": {
+    "heuristic": 3.3495640754699707,
+    "null": 3.2927079796791077
+   },
+   "mutations": 3,
+   "seed": 9012,
+   "targeted_layers": [
+    "L7",
+    "L4",
+    "L6"
+   ]
+  },
+  {
+   "losses": {
+    "heuristic": 3.3320099115371704,
+    "null": 3.2833820581436157
+   },
+   "mutations": 3,
+   "seed": 9013,
+   "targeted_layers": [
+    "L5",
+    "L4",
+    "L4"
+   ]
+  },
+  {
+   "losses": {
+    "heuristic": 3.3990598917007446,
+    "null": 3.29152512550354
+   },
+   "mutations": 3,
+   "seed": 9014,
+   "targeted_layers": [
+    "L5",
+    "L0",
+    "L3"
+   ]
+  },
+  {
+   "losses": {
+    "heuristic": 3.4206129908561707,
+    "null": 3.3542290329933167
+   },
+   "mutations": 3,
+   "seed": 9015,
+   "targeted_layers": [
+    "L7",
+    "L6",
+    "L5"
+   ]
+  },
+  {
+   "losses": {
+    "heuristic": 3.309336543083191,
+    "null": 3.1957290172576904
+   },
+   "mutations": 3,
+   "seed": 9016,
+   "targeted_layers": [
+    "L5",
+    "L5",
+    "L3"
+   ]
+  },
+  {
+   "losses": {
+    "heuristic": 3.403672218322754,
+    "null": 3.3118975162506104
+   },
+   "mutations": 3,
+   "seed": 9017,
+   "targeted_layers": [
+    "L5",
+    "L7",
+    "L4"
+   ]
+  }
+ ],
+ "protocol": "heuristic-vs-null",
+ "record_type": "real_text_heuristic_study",
+ "report_section": "5.13",
+ "seeds": [
+  9008,
+  9009,
+  9010,
+  9011,
+  9012,
+  9013,
+  9014,
+  9015,
+  9016,
+  9017
+ ],
+ "study_hash": "13154de83c5b5510",
+ "study_id": "study_13154de83c5b5510",
+ "summary_note": "Routing-statistics heuristic on the theta sweep's block 9008-9017 (report section 5.13): deterministic grow at the argmax-load layer, zero probes, against the published null arms. Per-seed losses and targeted layers are embedded; statistics recompute exactly; p-value is an exact one-tailed binomial against Bonferroni alpha/2."
+}

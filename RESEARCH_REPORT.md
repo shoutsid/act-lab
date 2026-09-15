@@ -1397,8 +1397,11 @@ on the local GPU; idempotent (skip-completed), resumable.
 **Outcome (run 2026-09-14, revision `9bd9323`): NO theta clears - the
 pre-registered falsification branch fires, and the probe-on-real-text
 program is concluded as falsified in all of its usable forms.** Verdict
-machine-checked (`artifacts/real-diag/theta-sweep/verdict.json`, written
-by `scripts/theta_sweep.py`). All four sessions completed 10/10 seeds.
+machine-checked (committed study summary
+`artifacts/study-summaries/theta-sweep-9008-9017.json`, built by
+`scripts/real_text_summaries.py` from the run payloads; the working
+`artifacts/real-diag/theta-sweep/verdict.json` is written by
+`scripts/theta_sweep.py`). All four sessions completed 10/10 seeds.
 Per-theta primaries (sign test vs the null arm, bar 9/10, Bonferroni
 alpha/3 = `0.0167`):
 
@@ -1573,7 +1576,11 @@ GPU; idempotent (skip-completed), resumable.
 (b) - the heuristic loses to doing nothing on EVERY seed, and the
 real-text ladder closes at the top.** Wins 0/10 vs the published null
 arms, mean delta `+0.1218` (per-seed `+0.049` to `+0.410`, all
-positive), p `1.0000` against the 9/10 Bonferroni bar. Built-in checks
+positive), p `1.0000` against the 9/10 Bonferroni bar. Committed study
+summary `artifacts/study-summaries/heuristic-9008-9017.json` (built by
+`scripts/real_text_summaries.py` from the run payloads; per-seed losses,
+targeted layers, and the grow-layer histogram embedded, statistics
+recomputed by pinning tests). Built-in checks
 held: 30/30 mutations all grows at the measured argmax-load layer
 (histogram L5 x10, L7 x6, L4 x5, L0 x4, L6 x3, L3 x2 - L1/L2 never
 targeted), and search FLOPs carry rebuild bookings only (a single probe
