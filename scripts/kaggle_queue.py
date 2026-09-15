@@ -18,7 +18,8 @@ entries gives cumulative completion without a multi-gigabyte dataset download
 per session.
 
 Exit codes: 0 = queue complete, 1 = the session failed, 2 = the session budget
-ran out with seeds still missing (re-run it, or raise ``--max-sessions``).
+ran out with seeds still missing (re-run it, or raise ``--max-sessions``), 3 =
+the weekly quota cannot cover another session (re-run after the refresh).
 
 Usage:
 
@@ -50,6 +51,10 @@ SUCCESS_STATUS = "COMPLETE"
 EXIT_COMPLETE = 0
 EXIT_SESSION_FAILED = 1
 EXIT_BUDGET_EXHAUSTED = 2
+EXIT_QUOTA_INSUFFICIENT = 3
+
+# The weekly accelerator line the session kernels bill against.
+QUOTA_RESOURCE = "GPU"
 
 STATUS_RE = re.compile(r"KernelWorkerStatus\.([A-Z_]+)")
 SESSION_LOG_NAME = "session-log.json"
@@ -93,15 +98,19 @@ def queue_progress(session_log: Mapping[str, object]) -> tuple[int, int]:
 MAIN_GUARD = 'if __name__ == "__main__":\n    raise SystemExit(main())\n'
 
 
-def stage(directory: str | Path, queue_mode: str) -> Path:
+def stage(
+    directory: str | Path, queue_mode: str, hours: float | None = None
+) -> Path:
     """Write a push folder whose kernel body is self-contained.
 
     A Kaggle script kernel receives only ``code_file``: the CLI sends that
     file's text and nothing else from the folder, and there is no field for
     environment variables. So the entry script embeds the driver verbatim with
-    the mode pinned into its ``__main__`` guard, rather than copying
-    ``kaggle_t4.py`` and hoping ``ACT_T4_MODE`` is set on the other side.
-    Staging fails loudly if that guard ever moves, rather than pushing a
+    the mode - and the declared window, when one was given - pinned into its
+    ``__main__`` guard, rather than copying ``kaggle_t4.py`` and hoping
+    ``ACT_T4_MODE``/``ACT_T4_HOURS`` are set on the other side. Both are the
+    same trap: exporting either on the pushing side only sets it on the pushing
+    side. Staging fails loudly if that guard ever moves, rather than pushing a
     kernel that would exit on the mode check without doing any work.
     """
     folder = Path(directory)
@@ -112,11 +121,16 @@ def stage(directory: str | Path, queue_mode: str) -> Path:
             "kaggle_t4.py's __main__ guard drifted; kaggle_queue.stage cannot "
             "pin the queue mode into the pushed kernel body"
         )
-    pinned = (
-        'if __name__ == "__main__":\n'
-        f"    os.environ.setdefault(MODE_ENV, {queue_mode!r})\n"
-        "    raise SystemExit(main())\n"
-    )
+    pinned_lines = [
+        'if __name__ == "__main__":',
+        f"    os.environ.setdefault(MODE_ENV, {queue_mode!r})",
+    ]
+    if hours is not None:
+        # The quota gate below compares the same number, so letting the kernel
+        # fall back to its own default would make the gate unsound.
+        pinned_lines.append(f"    os.environ.setdefault(HOURS_ENV, {str(hours)!r})")
+    pinned_lines.append("    raise SystemExit(main())")
+    pinned = "\n".join(pinned_lines) + "\n"
     entry = folder / f"run-{queue_mode}.py"
     entry.write_text(body.replace(MAIN_GUARD, pinned), encoding="utf-8")
     metadata = kaggle_t4.metadata_for(queue_mode)
@@ -151,6 +165,66 @@ def active_status(kernel: str) -> str:
     return parse_status(result.stdout + result.stderr)
 
 
+def parse_quota(payload: str, resource: str = QUOTA_RESOURCE) -> dict[str, object] | None:
+    """One resource's line from ``kaggle quota --format json``.
+
+    Returns ``{"remaining_hours": float, "refresh_at": str}``, or ``None`` when
+    the resource is absent or the payload is not the expected shape. ``None``
+    means "cannot tell", and the caller must treat it as *do not block*: an
+    unreadable quota line is not a reason to stall a run that is otherwise
+    ready to go.
+    """
+    try:
+        rows = json.loads(payload)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(rows, list):
+        return None
+    for row in rows:
+        if not isinstance(row, dict) or row.get("resource") != resource:
+            continue
+        raw = str(row.get("remaining", "")).strip().rstrip("hH").strip()
+        try:
+            remaining = float(raw)
+        except ValueError:
+            return None
+        return {
+            "remaining_hours": remaining,
+            "refresh_at": str(row.get("refreshAt", "")),
+        }
+    return None
+
+
+def active_quota(resource: str = QUOTA_RESOURCE) -> dict[str, object] | None:
+    """The weekly quota line for ``resource``, or ``None`` when unreadable."""
+    result = _run(["kaggle", "quota", "--format", "json"])
+    return parse_quota(result.stdout or result.stderr, resource)
+
+
+def quota_shortfall(
+    quota: Mapping[str, object] | None, declared_hours: float
+) -> str | None:
+    """Why a session must not be pushed now, or ``None`` when it may be.
+
+    A session that runs out of weekly quota part-way still bills every hour it
+    used and produces nothing, so the gate is the whole declared window, not a
+    partial one. This is the one scheduling decision the driver does make, and
+    it makes it because the alternative is spending the quota: at the measured
+    rate the primary queue alone is six sessions against a 30 GPU-h week.
+    """
+    if quota is None:
+        return None
+    remaining = float(quota["remaining_hours"])
+    if remaining >= declared_hours:
+        return None
+    refresh = str(quota.get("refresh_at") or "unknown")
+    return (
+        f"only {remaining:g} {QUOTA_RESOURCE}-h of the weekly quota is left and a "
+        f"session declares {declared_hours:g} h; a partial session bills what it "
+        f"uses and produces nothing. Quota refreshes {refresh}"
+    )
+
+
 def _wait_for_terminal(kernel: str, poll: float, timeout: float) -> str:
     """Poll the kernel until a terminal status, then return it."""
     deadline = time.monotonic() + timeout
@@ -178,9 +252,10 @@ def drive(
 ) -> int:
     """Push the queue's kernel until its declared block is complete."""
     queue = kaggle_t4.QUEUES[queue_mode]
+    declared_hours = float(hours) if hours is not None else kaggle_t4.DEFAULT_HOURS
     print(f"=== driving queue {queue_mode!r}: {queue.dataset} ===", flush=True)
     work = Path(tempfile.mkdtemp(prefix=f"act-queue-{queue_mode}-"))
-    push_dir = stage(work / "push", queue_mode)
+    push_dir = stage(work / "push", queue_mode, declared_hours)
     output_dir = work / "output"
     done = declared = 0
 
@@ -196,6 +271,10 @@ def drive(
                 flush=True,
             )
         else:
+            shortfall = quota_shortfall(active_quota(), declared_hours)
+            if shortfall is not None:
+                print(f"  {shortfall}", flush=True)
+                return EXIT_QUOTA_INSUFFICIENT
             push = _run(["kaggle", "kernels", "push", "-p", str(push_dir)])
             print(push.stdout.strip() or push.stderr.strip(), flush=True)
             if push.returncode != 0:
@@ -241,7 +320,8 @@ def main(argv: list[str] | None = None) -> int:
         help="which declared queue to drive (default session)",
     )
     parser.add_argument("--hours", type=float, default=None,
-                        help="override ACT_T4_HOURS for the session kernels")
+                        help="the session window, pinned into the pushed kernel "
+                             "(default: the kernel's own ACT_T4_HOURS default)")
     parser.add_argument("--poll", type=float, default=60.0,
                         help="seconds between status polls (default 60)")
     parser.add_argument("--timeout", type=float, default=13 * 3600.0,
@@ -250,10 +330,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="push at most this many sessions (default 8)")
     args = parser.parse_args(argv)
 
-    if args.hours is not None:
-        import os
-
-        os.environ[kaggle_t4.HOURS_ENV] = str(args.hours)
+    # Deliberately *not* set in this process's environment: the kernel runs on
+    # Kaggle and would never see it. ``drive`` pins it into the staged body.
     return drive(
         args.queue,
         hours=args.hours,

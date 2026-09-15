@@ -102,10 +102,24 @@ python scripts/kaggle_queue.py --queue control --max-sessions 8
 python scripts/kaggle_queue.py --queue verdict          # after the three queues
 ```
 
+The driver exits 0 when the queue is complete, 1 on a failed session, 2 when
+the session budget ran out with seeds still missing, and **3 when the weekly
+quota cannot cover another session** - re-run it after `refreshAt` rather than
+pushing again. It reads `kaggle quota --format json` before every push and
+refuses when the remaining GPU hours are below the declared window, because a
+session stopped part-way still bills every hour it used and produces nothing.
+Over the ~12-session, ~86 GPU-hour plan against a 30 GPU-h/week quota that is
+the difference between waiting a day and losing the quota. An unreadable quota
+line never blocks (it can only ever spend less), and a session that is already
+live is adopted instead of gated.
+
 A script kernel receives **only** `code_file`: the CLI sends that file's text
 and nothing else from the push folder, and the metadata has no field for
 environment variables. The staged entry script is therefore generated with the
-mode pinned inside it (`run-session.py`, `run-verdict.py`, ...). Copying
+mode pinned inside it (`run-session.py`, `run-verdict.py`, ...) - and the
+`--hours` window pinned with it, because the kernel reads `ACT_T4_HOURS` from
+its *own* environment and would otherwise fall back to its default while the
+quota gate compared the overridden number. Copying
 `kaggle_t4.py` into a folder and exporting `ACT_T4_MODE` on the pushing side
 does **not** work - the kernel never sees that environment.
 

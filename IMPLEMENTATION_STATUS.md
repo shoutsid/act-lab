@@ -695,6 +695,22 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   change (re-derives `full_pairs_per_session` from a re-run section 5.2
   benchmark), not an assumption. Pinned by 2 tests in
   `tests/test_training_distributed.py`.
+- **The queue driver is quota-aware, and `--hours` now actually reaches the
+  kernel.** `kaggle_queue.py` reads `kaggle quota --format json` before each
+  push and refuses when remaining GPU hours are below the declared window
+  (exit 3), because a session cut off by quota still bills every hour it used
+  and produces nothing - the dominant failure mode of an ~86 GPU-hour plan
+  against a 30 GPU-h/week line. An unreadable quota line never blocks (it can
+  only spend less), and a live session is adopted rather than gated. Fixing
+  this exposed the flag it depends on: `--hours` set `ACT_T4_HOURS` in the
+  *driver's* process, which a script kernel never sees, so the kernel silently
+  used its own default (masked only because that default is also 9). The
+  window is now pinned into the staged kernel body beside the mode, so the
+  gate and the session compare the same number. Pinned by 8 tests in
+  `tests/test_kaggle_queue.py` (quota parsing incl. the TPU row and
+  cannot-tell cases, the gate's boundary, a drive-level refusal that asserts
+  no push happened, and a positive control that a coverable week still
+  pushes).
 - `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (272, including the
   26 report-figure data-assembly tests, 14 session-plan tests pinning the
   section 5.2 schedule/dtype tables, 10 handoff tests covering atomic
