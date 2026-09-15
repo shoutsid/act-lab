@@ -831,7 +831,7 @@ These remain TODO or DEFERRED until the first gate passes:
   (-0.0371). Monotone in wins and mean, sign flip just above depth 3,
   churn harm clears at every depth (p < 1e-9 everywhere). Committed
   summaries `null-control-depth2-384.json` / `null-control-depth3-384.json`
-  with a monotone dose-response pinning test (suite at 381). Also:
+  with a monotone dose-response pinning test (suite at 387). Also:
   smoke-tested the full three-queue Gate 4 launch path (primary/control/
   null through the real CLI in profile mode + the four-clause verdict) -
   clean.

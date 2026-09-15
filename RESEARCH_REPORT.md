@@ -82,6 +82,15 @@ result.
 
 ## 3. Results: the factor map — nine studies, three passes
 
+**(2026-09-15 note on scope.** This section is the ORIGINAL depth-1 factor
+map, preserved as run. Sections 5.8-5.15 later added the null control and
+re-ran the decisive comparisons against it: at depth 1 the celebrated
+passes are churn suppression (the adaptive arm loses to doing nothing),
+the depth-4 pass survives the null bar, and the dose-response places the
+suppression-to-creation onset between depth 3 and 4. The synthesis in
+section 10 consolidates all of it; the table below is the historical
+record.*)
+
 Nine pre-registered gate-style quality tests now cover the controller design
 space at toy fidelity. One configuration family - a rich candidate set - has
 passed three times, twice decisively; on the decoupled arm-RNG path of section
@@ -267,7 +276,13 @@ candidate set (cap 4) - across two horizons and two probe-batch counts, with
 two of the three passes decisive under family-wise correction. The mechanism
 is localized: richness of the candidate set is the active axis (paired
 A-vs-B p = 8e-04), probe-batch count is secondary, and cadence beyond three
-events on a weak probe is actively harmful. What remains open is
+events on a weak probe is actively harmful. **Mechanism attribution revised
+by section 5.12:** the richness-vs-batch reading above was measured at depth 1
+only; the 2x2 (depth x candidate policy, all cells against a null control)
+shows DEPTH, not the candidate policy, is the axis that separates churn
+suppression from value creation - at depth 1 the adaptive arm loses to doing
+nothing under BOTH policies, and at depth 4 it beats doing nothing under BOTH.
+What remains open is
 **compute-efficiency**: the validated cost-saving variant (cap-4/1-batch)
 cuts probe search to 7.3% of toy-scale training FLOPs and amortizes with
 horizon exactly as the fixed-per-event model predicts, but scaling stays
@@ -275,7 +290,8 @@ withheld until a real-scale measurement shows the cost becomes negligible -
 which is the plan's deferred compute-efficiency milestone - after which Gate 4
 (adaptive > static MoE) is the next universal gate. That measurement is no
 longer a vague milestone: it is pre-registered as a protocol with declared
-config, predicted cost, and decision rules (section 5.1). The controller
+config, predicted cost, and decision rules (section 5.1), now amended by the
+do-nothing clause of section 5.14. The controller
 default remains cap-4/2-batch; cap-4/1-batch is the validated cheaper option.
 
 ## 5. Pre-registered next studies
@@ -1757,7 +1773,7 @@ The dose-response is monotone in wins (117 < 161 < 188 < 225) and in mean
 harm (`+0.0508` > `+0.0208` > `+0.0046` > `-0.0371`), with the sign flip
 just above depth 3. Branch (d) non-monotonicity is excluded. Churn harm
 (primary 1) clears at every depth, extending its generality across the
-whole measured substrate range. The depth-4 depth-4-prefix margin
+whole measured substrate range. The depth-4 prefix margin
 (`-0.0371`) slightly exceeds the depth-4-spread one (`-0.0297`), so the
 series brackets the onset to (3, 4]: the sharp question for any future
 study is depth 3 vs 4 with a finer covariate, not a re-tune of the
@@ -2340,3 +2356,68 @@ the record is still missing `adaptive_policy` as a stored field, so a future
 reader who does not apply the reconstruction will still get the probe_loss
 experiment; the field is supplied at run time, not written back into the
 artifact.
+
+## 10. Synthesis: the state of the program after sections 5.8-5.15
+
+**(2026-09-15.** This section consolidates the pre-registered studies of
+sections 5.8-5.15 with the earlier factor map into the current picture.
+Every number is machine-checked against the committed study summaries in
+`artifacts/study-summaries/` by pinning tests.*)
+
+### 10.1 The two-axis picture
+
+The program now has two cleanly separated empirical axes:
+
+1. **The churn axis (substrate-general).** On real text at diagnostic
+   fidelity, EVERY topology mutation policy loses to doing nothing:
+   probe-ordered churn (5.3, all five variants), probe-gated churn at
+   every threshold (5.4, 5.11 - with a monotone dose-response of harm vs
+   acceptance rate, +0.0027 / +0.0236 / +0.0713), load-directed churn
+   (5.13, 0/10 vs null), and random churn by construction (5.8, 8/8 for
+   the null). The null arm never lost a registered comparison on real
+   text. On the toy path, churn harm (null < random) holds at every
+   measured depth (5.9-5.15, all p < 1e-9).
+
+2. **The depth axis (toy path).** Value creation by probe-ordered
+   selection is a function of substrate depth: adaptive-vs-null wins go
+   117 (d1) < 161 (d2) < 188 (d3) < 225 (d4) of 384, mean delta
+   +0.0508 > +0.0208 > +0.0046 > -0.0371 - a monotone dose-response with
+   the sign flip between depth 3 and 4 (5.15), robust to the candidate
+   policy (5.12 2x2: prefix and spread agree in every cell).
+
+Together: **selection value exists, but only where the substrate is deep
+enough to support it.** Below the onset, every mutating arm loses to doing
+nothing; the historical depth-1 passes were churn suppression measured
+against random churn (the only control they had), not value creation.
+Above it, about a quarter of the raw edge survives the strictest control
+(0.0297-0.0371 of 0.1130).
+
+### 10.2 What this means for the gates
+
+- **Gate 3 stands, narrowed.** The depth-4 confirmation (5.6) passes with
+  the null control under it (5.10): adaptive beats doing nothing
+  out-of-sample, 218/384 with spread and 225/384 with prefix (5.12b).
+  The depth-1 instances of Gate 3 are re-quoted as churn suppression.
+- **Gate 4 is prepared, amended, and unspent.** The 5.1/5.5
+  compute-efficiency protocol (block 15000-15011) now carries the 5.14
+  do-nothing clause: a null queue at declared fidelity runs alongside the
+  primary and pool-matched control queues, and Gate 4 is withheld unless
+  the adaptive arm beats doing nothing on the declared block. The
+  three-queue launch path is smoke-tested; the run needs a T4.
+- **The real-text topology program is closed** (5.13). Its residue is
+  the churn-harm mechanism and the replication-grade tooling (null arm,
+  bit-identity checks, pre-registration discipline) the toy program now
+  inherits.
+
+### 10.3 What would change this picture
+
+By pre-registration, the named open questions are: (i) the Gate 4 run -
+a pass authorizes the next gate; a null-clause rejection replicates the
+real-text ordering at declared fidelity and closes the 5.1 program's
+selection premise at its own scale; (ii) the depth-3/4 boundary - the
+onset is bracketed to (3, 4], and a finer covariate (parameter count,
+layer width, expert count) would separate depth per se from capacity;
+(iii) a real-text scale run above the diagnostic fidelity (the closed
+program says nothing about longer horizons or larger models). Nothing in
+the current picture depends on re-tuning an existing cell, and no knob
+may be moved against a measured result (the 5.5 discipline).
