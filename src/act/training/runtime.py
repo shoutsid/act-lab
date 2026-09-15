@@ -148,6 +148,29 @@ def resolve_device(requested: str) -> torch.device:
     return torch.device(requested)
 
 
+def gpu_inventory() -> dict[str, object]:
+    """Every CUDA device the host exposed, not just the one training uses.
+
+    ``resolve_device("auto")`` resolves to plain ``cuda``, i.e. device 0, so a
+    second GPU is invisible in a throughput measurement unless the inventory is
+    recorded beside it. Kaggle's free T4 offering is exactly that case: the
+    ``machine_shape`` string is ``NvidiaTeslaT4`` for both the single-GPU and
+    the account's "T4 x2" notebooks, so the artifact - not the kernel metadata
+    - has to say how many devices the measured rate came from.
+
+    This deliberately reports only what the host offers: which device training
+    actually ran on is the caller's ``device``, and stating it here would let
+    the two disagree (``--device cpu`` on a CUDA host).
+    """
+    if not torch.cuda.is_available():
+        return {"count": 0, "names": []}
+    count = torch.cuda.device_count()
+    return {
+        "count": count,
+        "names": [torch.cuda.get_device_name(index) for index in range(count)],
+    }
+
+
 def move_optimizer_state(
     optimizer: torch.optim.Optimizer,
     device: torch.device,

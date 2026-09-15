@@ -25,7 +25,7 @@ from pathlib import Path
 import torch
 
 from act.model import V0MoECausalLM, estimated_parameter_count
-from act.training.runtime import resolve_device
+from act.training.runtime import gpu_inventory, resolve_device
 from act.training.session_plan import (
     FP32_FLOOR_TOKENS_PER_SECOND,
     MAX_CHECKPOINTS,
@@ -173,6 +173,10 @@ def main() -> int:
         "profile": "declared-285M" if not args.profile else "smoke-profile",
         "device": str(device),
         "device_name": torch.cuda.get_device_name(0) if device.type == "cuda" else platform.processor(),
+        # The rate above is single-device (resolve_device -> cuda:0); how many
+        # devices the host actually offered is the difference between a
+        # measured rate and a measured rate with idle hardware next to it.
+        "gpu_inventory": gpu_inventory(),
         "torch_version": torch.__version__,
         "steps": args.steps,
         "warmup_steps": args.warmup,

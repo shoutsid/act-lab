@@ -678,6 +678,23 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   versioned form raises in argument parsing and the API has no version
   parameter). Prevented in code now: `kaggle_queue.should_adopt` makes the
   driver adopt a live session instead of adding a second, pinned by a test.
+- **The measured rate was not tied to a device count, and that is now fixed.**
+  Pre-flight logged `nvidia-smi` as `stdout[-800:]`, which is the *processes*
+  table, so the GPU inventory table never reached the log; `machine_shape`
+  cannot settle it either (free-form string, no SDK enum, and the account's own
+  "T4 x2" notebook declares the same `NvidiaTeslaT4`), and training reaches the
+  GPU only through `resolve_device("auto")` - plain `cuda`, i.e. device 0 - so
+  a second device would be idle and invisible. `act.training.runtime
+  .gpu_inventory()` now reports every visible device (`count` + `names`); the
+  benchmark writes it into `artifacts/v0-benchmark.json` beside the rate and
+  pre-flight logs it, so the next session settles how many T4s the shape hands
+  out. It deliberately reports only host facts, not which device trained, so
+  it cannot contradict the artifact's own `device` (a `--device cpu` smoke run
+  on a CUDA host). If `count` is 2, the registered pairs are two independent
+  arms and could train one per device for the same tokens - a *schedule*
+  change (re-derives `full_pairs_per_session` from a re-run section 5.2
+  benchmark), not an assumption. Pinned by 2 tests in
+  `tests/test_training_distributed.py`.
 - `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (272, including the
   26 report-figure data-assembly tests, 14 session-plan tests pinning the
   section 5.2 schedule/dtype tables, 10 handoff tests covering atomic

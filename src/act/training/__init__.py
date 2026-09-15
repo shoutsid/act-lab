@@ -3,6 +3,7 @@
 from .runtime import (
     TrainingConfig,
     TrainingState,
+    gpu_inventory,
     load_checkpoint,
     make_optimizer,
     make_scheduler,
@@ -60,6 +61,7 @@ __all__ = [
 	"make_scheduler",
 	"move_optimizer_state",
 	"resolve_device",
+	"gpu_inventory",
 	"save_checkpoint",
 	"train_steps",
 	"validate_checkpoint_payload",

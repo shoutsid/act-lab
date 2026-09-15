@@ -464,11 +464,17 @@ def mode_preflight() -> None:
     _log("=== ACT lab: T4 pre-flight ===")
     work, env = _bootstrap()
 
+    from act.training.runtime import gpu_inventory
+
+    # The head of ``nvidia-smi`` is the GPU inventory table; its tail is the
+    # process table. Logging only the tail is why the measured rate could not
+    # be tied to a device count afterwards, so log the device list explicitly.
     nvidia = subprocess.run(["nvidia-smi"], capture_output=True, text=True)
-    _log(nvidia.stdout[-800:] if nvidia.returncode == 0 else "nvidia-smi unavailable")
+    _log(nvidia.stdout if nvidia.returncode == 0 else "nvidia-smi unavailable")
     if not torch.cuda.is_available():
         raise SystemExit("no CUDA device on this kernel - enable a GPU accelerator")
     _log(f"torch {torch.__version__} | device {torch.cuda.get_device_name(0)}")
+    _log(f"gpu inventory: {gpu_inventory()}")
 
     from act.model.v0_moe import estimated_parameter_count
     from act.training.session_plan import (
@@ -516,9 +522,12 @@ def mode_session(queue: Queue) -> None:
     _log(f"dataset={queue.dataset} hours={hours:g} seeds={SEED_BLOCK}")
     work, env = _bootstrap()
 
+    from act.training.runtime import gpu_inventory
+
     if not torch.cuda.is_available():
         raise SystemExit("no CUDA device on this kernel - enable a GPU accelerator")
     _log(f"torch {torch.__version__} | device {torch.cuda.get_device_name(0)}")
+    _log(f"gpu inventory: {gpu_inventory()}")
     report_resources()
 
     # The launch command reads artifacts/v0-benchmark.json and refuses a stale

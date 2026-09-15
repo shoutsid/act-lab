@@ -152,10 +152,30 @@ cost one failed run:
    `delete <owner>/<slug>/<version>` but raises in argument parsing before it
    calls anything, and the API has no version parameter, so stopping one
    version is not possible.
+6. **The device count was never recorded.** Pre-flight logged `nvidia-smi` as
+   `stdout[-800:]`, which is the *processes* table, so the GPU inventory table
+   never reached the log; the benchmark recorded `device`/`device_name` but not
+   `device_count`. Kaggle's shape string does not settle it either - the
+   account's "T4 x2" notebook declares the same `machine_shape:
+   NvidiaTeslaT4` as this run, and `machine_shape` is a free-form server-side
+   string with no enum in the SDK. Meanwhile training reaches the GPU only
+   through `resolve_device("auto")`, which resolves to plain `cuda` = **device
+   0**, so a second device would sit idle for the whole run without appearing
+   in any number. The benchmark now writes `gpu_inventory` (`count` + `names`)
+   beside the rate and pre-flight logs it, so the next session settles it. If
+   `count` is 2, the measured 1,958.7 tok/s is a one-device rate and the pairs
+   - two independent arms - could train one arm per device for the same
+   tokens, halving wall-clock and (since one session bills ~1.0x of the quota
+   line regardless of devices, measured above) plausibly halving the ~86
+   GPU-hour plan; that is a *schedule* change, so it re-runs the section 5.2
+   benchmark and re-derives `full_pairs_per_session` rather than being assumed.
 
 **Session-1 inputs, measured on a Kaggle T4 (2026-09-15, `--steps 50`).** These
 replace the section 5.2 feasibility assumptions; the launch command re-derives
-the schedule decisions from the artifact rather than from the table.
+the schedule decisions from the artifact rather than from the table. `1,958.7`
+is a rate on the device training used (`device_name: Tesla T4`); the artifact's
+`gpu_inventory` is what says how many devices the host offered next to it (item
+6 - recorded from the next run onward, absent from this one).
 
 | Field | Section 5.2 assumption | Measured on T4 |
 |---|---|---|
