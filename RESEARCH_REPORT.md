@@ -3918,9 +3918,178 @@ needed to do that.
 
 **Cost.** Two discovery runs plus two frozen retrains per seed, ~2.4 s/seed.
 
-### 5.29 Result
+### 5.29 Outcome: branch (c) as registered - but both primaries are an artifact of prune-dominance
 
-*(pending: registered blocks 109000-109383 and 110000-110383)*
+Run on the registered fresh blocks 109000-109383 (depth 2) and 110000-110383
+(depth 3), `study_59e969bbd7767f2d` and `study_c28ad3ce4784f3b9`. Every built-in
+check held and the pairing was recorded rather than assumed: identical final
+genome in **339/384** and **344/384** - so the pre-registered 12.5% divergence rate
+was real, at 11.7% and 10.4%, and the design's decision not to assume the pairing
+was the right one.
+
+| | depth 2 (n = 384) | depth 3 (n = 384) |
+|---|---|---|
+| **P1** clone helps: `C` < `R` | 134/384, mean −0.0281, p 1.00 — **FAIL** | 131/384, mean −0.0280, p 1.00 — **FAIL** |
+| **P2** residual penalty: `C_own` < `C` | **221/384**, mean −0.0164, p 1.8e-03 — **PASS** | **232/384**, mean −0.0334, p 2.6e-05 — **PASS** |
+| historical penalty: `R_own` < `R` | **259/384**, mean −0.0431, p 3.5e-12 | **266/384**, mean −0.0646, p 1.5e-14 |
+| primary on the agreeing subset | 103/339, mean −0.0250 — FAIL | 103/344, mean −0.0236 — FAIL |
+
+**Registered verdict: branch (c)** - P1 fails and P2 passes, so as registered the
+clone result does not extend to the discovery path. The prediction (branch (a)) was
+wrong: this is the fourth miss in a row after three correct ones.
+
+**But branch (c)'s pre-registered interpretation is not what the data says, and the
+reason is mechanical.** The adaptive arm is not a 50/50 mix: it drew only **211 of
+1152 events as grows (18.3%)** at depth 2 and 213 at depth 3, because
+probe-loss selection overwhelmingly prefers pruning. So in **205/384** seeds there
+is **no grow at all**, and cloning is then a literal no-op - `C - R` is exactly
+`+0.0000` with **0/205 wins**, which is the cleanest possible positive control that
+the setting does nothing when nothing is grown.
+
+Two consequences follow, and both registered verdicts fall out of them:
+
+1. **P1 failed because 53% of the block could not respond to the treatment.** A
+   sign test counts a no-op seed as a non-win, and a structural tie can only ever
+   be a non-win - the same asymmetry section 5.20.1 had to reason about, here at
+   three times the scale.
+2. **P2 passed for the same reason.** On a no-grow seed the two runs are identical,
+   so `C_own - C` **is** the historical penalty; those 205 seeds carried the
+   registered pass. The clone-specific quantity was never measured by P2.
+
+**Stratifying on whether a grow actually occurred reverses both readings.** The
+stratification variable is the drawn operation mix, which the clone setting does
+not determine:
+
+| | depth 2 | depth 3 |
+|---|---|---|
+| seeds with **≥1 grow** | 179 | 177 |
+| `C` < `R` on those seeds | **134/179 (75%)**, mean −0.0602, p 9.1e-12 | **131/177 (74%)**, mean −0.0608, p 6.0e-11 |
+| `C_own` < `C` on those seeds | 84/179, mean **+0.0126**, p 0.82 | 84/177, mean **+0.0016**, p 0.77 |
+| seeds with **0 grows** | 205 | 207 |
+| `C` < `R` on those seeds | 0/205, mean +0.0000 | 0/207, mean +0.0000 |
+| `C_own` < `C` on those seeds | 137/205, mean −0.0416, p 8.2e-07 | 148/207, mean −0.0633, p 2.6e-10 |
+
+**Where cloning can act at all, it behaves exactly as in sections 5.26 and 5.28:**
+it helps by `−0.060` (three quarters of grow-containing seeds) and the residual
+penalty is **gone** (P2 fails in the exonerating direction, `+0.0126`/`+0.0016`).
+Not one of the 205 no-grow seeds contributed to that. So the substantive answer is
+the opposite of the registered branch (c) reading: the effect **does** extend to
+discovery, and the registered failure is a property of the statistic, not of the
+mechanism.
+
+**The full ordering is a different shape on this arm, and one part of section 5.28
+is now qualified.** Means are `own < C < R < F` at both depths:
+
+| | depth 2 mean | depth 3 mean |
+|---|---|---|
+| `C_own` / `R_own` (frozen retrain) | 14.1102 / 14.1115 | 13.3191 / 13.3223 |
+| `C` clone-fused | 14.1266 | 13.3557 |
+| `R` historical-fused | 14.1546 | 13.3837 |
+| `F` unmutated | 14.1756 | 13.4237 |
+
+Both fused runs beat not mutating (`C` < `F` at **252/384**, p 4.6e-10 and
+**279/384**, p 1.3e-19), so mutating the discovery way pays - but **the frozen
+retrain still beats both**, and it does so because of the prune term, not the grow
+term: on no-grow seeds the fused run loses to its own retrain by `−0.0416`/`−0.0633`,
+which is section 5.25's prune cost (about `−0.0099` per forced prune, times three)
+with the grow term removed. Section 5.28's "keep the fused run" therefore holds
+cleanly for the `random` arm, whose mix is half grows, and **does not hold as
+stated for discovery, which prunes 82% of the time**: cloning repairs the grow term
+and leaves the prune term untouched.
+
+| | depth 2 | depth 3 |
+|---|---|---|
+| `C` < `F` | **252/384**, −0.0491, p 4.6e-10 | **279/384**, −0.0681, p 1.3e-19 |
+| `R` < `F` | 210/384, −0.0210, p 0.037 (misses the bar) | **244/384**, −0.0400, p 6.2e-08 |
+| `R_own` < `F` | **261/384**, −0.0641, p 7.9e-13 | **284/384**, −0.1046, p 7.9e-22 |
+
+### 5.29.1 Amendment (made after the block ran): the primaries are diluted, not the mechanism
+
+Both registered primaries are functions of a statistic that a 53%-no-op block
+destroys: a full-block sign test, where a seed that cannot respond is scored as a
+non-win for P1 and contributes the historical penalty to P2. The stratified numbers
+above are **post-hoc** and are recorded as such. Two things bound how much they can
+be trusted:
+
+- **The stratification variable is not outcome-dependent** in the way a subgroup
+  split usually is. Whether a seed contains a grow is decided by the drawn
+  operation mix, which the `new_expert_initialization` setting does not determine -
+  the clone setting changes the *weights*, not the enumeration or the probe's
+  scoring. The `C - R == 0` exactly on all 205 no-grow seeds is direct evidence the
+  setting had no channel through which to move the mix. On the 19/13 seeds whose
+  operation mixes did differ, however, the assignment is not perfectly
+  pre-treatment, which is a real if small impurity.
+- **It was not pre-registered**, and the fix is a pre-registered test on fresh
+  blocks rather than a post-hoc reading. That is section 5.30, registered below.
+
+**The lesson worth keeping.** This is the project's first statistic whose *validity*
+was destroyed by a structural no-op rather than by noise, and it produced two
+confident, opposite-to-the-truth verdicts from a mechanism that is working. A
+future block that tests a treatment should record how often the treatment could
+bind before choosing a majority test over all seeds.
+
+### 5.30 Pre-registration: the stratified test, registered before it runs
+
+**Motivation.** Section 5.29's registered verdicts are artifacts of a block in
+which 53% of seeds cannot respond to the treatment. The stratified reading is that
+cloning helps discovery wherever a grow occurs, and that the residual penalty is
+gone there - the same result as sections 5.26 and 5.28. That reading is post-hoc,
+so it is tested on fresh blocks with the statistic fixed in advance.
+
+**Design.** Identical to section 5.29 - `arms="fixed,adaptive"`, drawn operations,
+`preserve_router_on_rebuild=True`, same probe configuration - plus the
+stratification declared up front:
+
+- the **grow stratum** is the seeds where the **historical (`random`
+  initialization) run** drew at least one grow. Using the historical run's mix, not
+each run's own, keeps the stratum a pre-treatment covariate: the clone setting
+  cannot influence which seeds enter it, at the cost of diluting the stratum on the
+  few seeds where the mixes differ.
+- the **no-grow stratum** is the rest, and is reported as the prune-domain penalty.
+
+**Primaries (Bonferroni `alpha/4 = 0.0125`; two depths), evaluated on the grow
+stratum.**
+1. **cloning helps where it can act** - `C` < `R` on the grow stratum.
+2. **no residual penalty in the grow stratum** - `C_own` < `C` there, i.e. the
+   predicted **failure** of P2.
+
+**Prediction.** Both blocks are expected to land at roughly 179/384 grow-stratum
+seeds with `C` < `R` at about 75% and mean `~-0.060`, and P2 to fail in the
+exonerating direction - **branch (a)**: section 5.29's stratification is confirmed
+and its registered branch (c) is explained as a statistic artefact.
+
+**Pre-registered interpretation.**
+- (a) P1 passes, P2 fails on the grow stratum: the clone result extends to
+discovery where the treatment binds, and section 5.29's branch (c) is recorded as
+superseded for interpretation (its registered numbers stand as measured).
+- (b) both pass: cloning helps discovery but a residual penalty survives in the grow
+  stratum, so the discovery path keeps a real mid-flight cost the `random` arm does
+  not have.
+- (c) P2 passes, P1 fails: the stratified reading does not replicate and section
+  5.29's branch (c) stands on its merits.
+- (d) neither passes: inconclusive.
+
+**Decision rule (declared, because the stratum size is itself a random draw).** The
+primary is the **exact one-sided binomial p on the grow stratum** against
+`alpha/4 = 0.0125`. A fixed min-wins bar cannot be pre-committed the way section
+5.29's bar of 215 was, because the number of seeds that enter the stratum is
+determined by the drawn operation mix. The bar is therefore reported **for the
+realized stratum size** as a convenience (`_gate_min_wins(n_grow, 0.0125)`):
+**105** wins at the expected `n = 179`, **104** at `n = 177`, and the decision is
+made on `p <= 0.0125` in every case. `bar_and_p_agree` is asserted for the realized
+sizes so the two can never silently diverge. Section 5.29's observed grow strata
+were 179 and 177, so 104-105 is the expected region and the expected effect size
+(75% of the stratum, p ~1e-11) clears it by a wide margin.
+
+**Scope limits.** As section 5.29, plus: the no-grow stratum is reported but is not
+verdict-bearing, and the grow stratum is expected to be under half the block, so
+both primaries are evaluated on roughly 177-179 seeds rather than 384.
+
+**Cost.** Two discovery runs plus two frozen retrains per seed, ~2.4 s/seed.
+
+### 5.30 Result
+
+*(pending: registered blocks 111000-111383 and 112000-112383)*
 
 ## 6. Reproducibility
 
