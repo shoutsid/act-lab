@@ -24,6 +24,13 @@ The job file carries ``mode``, ``config`` (``V0SessionConfig`` fields),
 ``session_root``, ``device`` (``cuda:N``), ``deadline_seconds`` (how long the
 arm may run, or ``null`` for no deadline) and ``output`` (where to write the
 arm result as JSON).
+
+A child that stops at its **deadline** exits ``INTERRUPTED_EXIT_CODE`` and
+writes where it stopped to ``output`` instead of an arm result. The parent
+cannot tell a deadline stop from a crash by exit status alone, and the two are
+handled very differently - a stop publishes an in-progress snapshot and is not
+recorded as a failure, while a crash must stop the queue - so the distinction
+is carried explicitly rather than inferred.
 """
 
 from __future__ import annotations
@@ -36,7 +43,15 @@ from pathlib import Path
 from typing import Callable
 
 from act.training.runtime import resolve_device
-from act.training.v0_session import V0SessionConfig, _train_arm
+from act.training.v0_session import (
+    V0SessionConfig,
+    V0SessionInterrupted,
+    _train_arm,
+)
+
+# Distinct from any ordinary failure status, so the parent can recognise a
+# cooperative deadline stop without parsing the child's stderr.
+INTERRUPTED_EXIT_CODE = 10
 
 
 def _deadline_check(budget: object) -> Callable[[], bool] | None:
@@ -91,19 +106,32 @@ def main(argv: list[str] | None = None) -> int:
     settings["arms"] = tuple(settings["arms"])
     config = V0SessionConfig(**settings)
     mode = str(job["mode"])
-    arm = _train_arm(
-        mode,
-        config,
-        Path(str(job["session_root"])),
-        resolve_device(str(job["device"])),
-        log=lambda line: print(f"[{mode}] {line}", flush=True),
-        deadline_check=_deadline_check(job.get("deadline_seconds")),
-    )
+    output = Path(str(job["output"]))
+    try:
+        arm = _train_arm(
+            mode,
+            config,
+            Path(str(job["session_root"])),
+            resolve_device(str(job["device"])),
+            log=lambda line: print(f"[{mode}] {line}", flush=True),
+            deadline_check=_deadline_check(job.get("deadline_seconds")),
+        )
+    except V0SessionInterrupted as interrupt:
+        # The same cooperative stop the sequential path raises through the
+        # caller's own clock - just reported as a status the parent can read.
+        output.write_text(
+            json.dumps(
+                {"mode": mode, "interrupted_at_step": interrupt.step},
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        print(f"[{mode}] {interrupt}", flush=True)
+        return INTERRUPTED_EXIT_CODE
     payload = asdict(arm)
     payload["mutation_history"] = list(payload["mutation_history"])
-    Path(str(job["output"])).write_text(
-        json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    output.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
     return 0
 
 

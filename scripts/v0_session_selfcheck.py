@@ -23,9 +23,13 @@ Checks, on a tiny non-declared config:
   4. checkpoints carry the version-5 payload contract;
   5. training the pair's arms in separate processes - one per device, the way
      section 5.2 prices a pair - reproduces the sequential run's arm results
-     exactly. The arms share nothing but the seed, so this must hold on any
-     device count; it is checked here rather than in the suite because it
-     spawns processes.
+     exactly, and records the placement it used;
+  6. a deadline stop survives that process boundary as a deadline stop rather
+     than a failure: it is what publishes the in-progress snapshot, and a crash
+     and a stop are handled in opposite ways.
+
+The last two are checked here rather than in the suite because they spawn
+processes.
 """
 
 import argparse
@@ -99,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
     with tempfile.TemporaryDirectory(prefix="v0-selfcheck-") as tmp:
         root = Path(tmp)
 
-        print("[1/5] reference session ...", flush=True)
+        print("[1/6] reference session ...", flush=True)
         reference = run_v0_session(_config(), checkpoint_dir=root / "ref")
         adaptive, random_arm = reference.arms[1], reference.arms[0]
         if adaptive.mutation_count != random_arm.mutation_count:
@@ -130,7 +134,7 @@ def main(argv: list[str] | None = None) -> int:
             if arm.parameter_count <= 0 or arm.tokens_per_second <= 0 or not arm.architecture_hash:
                 failures.append(f"arm {arm.mode} recorded degenerate metrics")
 
-        print("[2/5] resume equivalence ...", flush=True)
+        print("[2/6] resume equivalence ...", flush=True)
         run_v0_session(_config(), checkpoint_dir=root / "resume")
         for mode in ("random", "adaptive"):
             arm_dir = root / "resume" / "seed-11" / f"arm-{mode}"
@@ -154,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
             ):
                 failures.append(f"{before.mode}: resumed mutation history diverged")
 
-        print("[3/5] fp16 resume equivalence ...", flush=True)
+        print("[3/6] fp16 resume equivalence ...", flush=True)
         fp16_config = _config(dtype="fp16")
         fp16_reference = run_v0_session(fp16_config, checkpoint_dir=root / "fp16-ref")
         for mode in ("random", "adaptive"):
@@ -185,7 +189,7 @@ def main(argv: list[str] | None = None) -> int:
                     "(dtype must book operations, not time)"
                 )
 
-        print("[4/5] checkpoint contract ...", flush=True)
+        print("[4/6] checkpoint contract ...", flush=True)
         run_v0_session(
             _config(
                 arms=("adaptive",),
@@ -211,7 +215,7 @@ def main(argv: list[str] | None = None) -> int:
             if payload["training"]["step"] != 10:
                 failures.append("checkpoint did not record the training step")
 
-        print("[5/5] per-arm processes reproduce the sequential arms ...", flush=True)
+        print("[5/6] per-arm processes reproduce the sequential arms ...", flush=True)
         from act.training.v0_session import (
             _train_arms,
             _train_arms_in_processes,
@@ -299,6 +303,36 @@ def main(argv: list[str] | None = None) -> int:
                         f"{before.mode}: parallel arms changed {key} "
                         f"({value!r} -> {asdict(after)[key]!r})"
                     )
+
+        print("[6/6] a deadline stop survives the process boundary ...", flush=True)
+        from act.training.v0_session import V0SessionInterrupted
+
+        # The parent cannot read a child's exit status as "stopped" or "died"
+        # without being told, and the two are handled in opposite directions: a
+        # stop publishes an in-progress snapshot and is not a failure, a crash
+        # must stop the queue. A zero budget stops each arm at its first
+        # checkpoint boundary, so this is the real stop, one process away.
+        try:
+            _train_arms_in_processes(
+                _config(seed=37, checkpoint_interval=5),
+                root / "arms-deadline",
+                devices,
+                0.0,
+            )
+        except V0SessionInterrupted as interrupt:
+            if not 0 < interrupt.step <= 20:
+                failures.append(
+                    f"deadline stop reported an implausible step {interrupt.step}"
+                )
+            else:
+                print(
+                    f"    deadline stop reported at step {interrupt.step}",
+                    flush=True,
+                )
+        else:
+            failures.append(
+                "a zero-budget parallel pair did not report a deadline stop"
+            )
 
         assert isinstance(reference, V0SessionResult)
 

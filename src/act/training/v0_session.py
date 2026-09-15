@@ -1390,7 +1390,7 @@ def _train_arms_in_processes(
     import subprocess
     import tempfile
 
-    from act.training.arm_worker import arm_job
+    from act.training.arm_worker import INTERRUPTED_EXIT_CODE, arm_job
 
     workdir = Path(tempfile.mkdtemp(prefix=f"act-arms-seed-{config.seed}-"))
     pending: list[tuple[str, Path, subprocess.Popen[bytes]]] = []
@@ -1434,13 +1434,29 @@ def _train_arms_in_processes(
         )
 
     failures = []
-    for mode, _output, process in pending:
+    interrupted_steps = []
+    for mode, output, process in pending:
         status = process.wait()
-        if status != 0:
+        if status == INTERRUPTED_EXIT_CODE:
+            # A cooperative deadline stop, not a crash. Both arms are waited on
+            # first (each enforces the same budget, applied from its own
+            # start), and the pair is then reported at the earliest step both
+            # reached - which is what makes a deadline stop still publish an
+            # in-progress snapshot through the fully sequential path.
+            try:
+                marker = json.loads(output.read_text(encoding="utf-8"))
+            except (OSError, ValueError):  # pragma: no cover - defensive
+                marker = {}
+            interrupted_steps.append(int(marker.get("interrupted_at_step") or 0))
+        elif status != 0:
             failures.append(f"{mode} exited {status}")
     if failures:
         raise RuntimeError(
             "parallel arm training failed: " + "; ".join(failures)
+        )
+    if interrupted_steps:
+        raise V0SessionInterrupted(
+            "arms stopped at the pair deadline", min(interrupted_steps)
         )
 
     results = []

@@ -606,12 +606,18 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   arms - so the plan, the runner's own deadline arithmetic and the execution all
   read the placement from one definition instead of three copies.
   A process per arm rather than threads because model init consumes global
-  torch RNG and `torch.manual_seed` is global. A pair that raises while
-  training is now recorded as `training_failed` and stops the queue instead of
-  crashing the session: the durable copy is the exit publish, which a crash
-  never reaches, so an OOM at seed 6 would otherwise discard the five pairs
-  before it. The driver reads that action from the session log and exits 1
-  rather than pushing a session that would repeat the failure. Correctness is equivalence: the
+  torch RNG and `torch.manual_seed` is global. A **deadline stop crosses the
+  boundary as a stop**, not as a failure: the child exits a distinct status and
+  records the step it stopped at, and the parent re-raises
+  `V0SessionInterrupted`, so the sequential path's in-progress snapshot still
+  happens (`[6/6]` in the battery checks this). Without it a stop would have
+  been recorded as `training_failed`, losing the snapshot and reporting an
+  orderly deadline as a crash. A pair that raises for any *other* reason is
+  recorded as `training_failed` and stops the queue instead of crashing the
+  session: the durable copy is the exit publish, which a crash never reaches,
+  so an OOM at seed 6 would otherwise discard the five pairs before it. The
+  driver reads that action from the session log and exits 1 rather than
+  pushing a session that would repeat the failure. Correctness is equivalence: the
   arms share nothing but the seed, so `scripts/v0_session_selfcheck.py`'s fifth
   check runs both paths and requires bit-identical arm results (losses,
   architecture hashes, FLOPs, mutation histories) through the process runner
