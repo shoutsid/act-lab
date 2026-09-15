@@ -635,6 +635,21 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   it, before any session assumed it. Nothing else moved: the same tiny pairs
   produce the same losses, FLOPs and architecture hashes however the arms are
   scheduled.
+- **A checkpoint is never left truncated at the name retention finds.**
+  `save_v0_checkpoint` wrote straight to `checkpoint-NNNNNN.pt`. A declared
+  checkpoint is ~3.4 GB, so the write takes seconds, and a process killed
+  inside it (the OOM killer, a 12-hour kernel timeout) would leave a truncated
+  file at the final name - which `retain_checkpoints` takes for the newest,
+  `publish_seed` checksums into a `complete` version, and restore's checksum
+  verification cannot distinguish from a good one. Then the seed's published
+  state is unrestorable while every check says it is a complete version, and
+  nothing downstream loads checkpoints (the verdict reads summaries), so no
+  reader would notice. The write now goes to a sibling `.partial` name and is
+  renamed into place, and a test kills the write and asserts the final name is
+  still the intact checkpoint (teeth-checked: reverting the rename fails it).
+  The battery's newest-checkpoint helper now calls the production
+  `newest_arm_checkpoint` instead of ordering by mtime, so a resume check
+  cannot compare a different file than the run would resume from.
 - **A provisional verdict on a partial block is not the driver's exit code.**
   The verdict script deliberately computes a provisional verdict on an
   incomplete declared block (it records `seeds_missing`, prints a warning and

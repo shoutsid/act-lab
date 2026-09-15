@@ -1273,6 +1273,61 @@ def test_spread_policy_resume_is_bit_identical(tmp_path: Path) -> None:
     )
 
 
+def test_a_checkpoint_killed_mid_write_never_takes_the_final_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A torn write must not become the newest checkpoint retention finds.
+
+    A declared checkpoint is ~3.4 GB, so the write takes seconds and a process
+    killed inside it (the OOM killer, a kernel timeout) would otherwise leave a
+    *truncated* file at the final name - which the retention policy takes for
+    the newest, `publish_seed` checksums into a `complete` version, and
+    restore's checksum verification cannot tell from a good one. Invisible
+    from every reader, so the write goes to a sibling and is renamed.
+    """
+    from act.training.v0_handoff import newest_arm_checkpoint
+    from act.training.v0_session import (
+        V0SessionConfig,
+        _SessionState,
+        save_v0_checkpoint,
+    )
+
+    config = V0SessionConfig(
+        declared=False,
+        vocab_size=64,
+        context_size=256,
+        hidden_size=64,
+        depth=2,
+        attention_heads=4,
+        expert_count=4,
+        expert_width=32,
+        active_experts=2,
+    )
+    model = V0MoECausalLM(config.model_config())
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+    arm_dir = tmp_path / "arm-random"
+    intact = arm_dir / "checkpoint-000004.pt"
+    save_v0_checkpoint(intact, model, optimizer, _SessionState(step=4))
+    original = intact.read_bytes()
+
+    def torn_save(payload: object, path: object) -> None:
+        Path(str(path)).write_bytes(b"half a checkpoint")  # then the process dies
+        raise RuntimeError("killed mid-write")
+
+    monkeypatch.setattr(torch, "save", torn_save)
+    with pytest.raises(RuntimeError):
+        save_v0_checkpoint(
+            arm_dir / "checkpoint-000008.pt", model, optimizer, _SessionState(step=8)
+        )
+
+    assert not (arm_dir / "checkpoint-000008.pt").exists()
+    assert [path.name for path in arm_dir.glob("checkpoint-*.pt")] == [
+        "checkpoint-000004.pt"
+    ]
+    assert newest_arm_checkpoint(arm_dir) == intact
+    assert intact.read_bytes() == original  # the good checkpoint is untouched
+
+
 def test_arm_device_indices_places_one_arm_per_device(monkeypatch) -> None:
     """One arm per GPU when the host has them, device 0 otherwise.
 

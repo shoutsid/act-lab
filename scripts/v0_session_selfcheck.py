@@ -80,7 +80,18 @@ def _config(**overrides) -> V0SessionConfig:
 
 
 def _newest_checkpoint(arm_dir: Path) -> Path:
-    return max(arm_dir.glob("checkpoint-*.pt"), key=lambda p: p.stat().st_mtime_ns)
+    """The checkpoint the run itself would use.
+
+    Deliberately the production definition (``newest_arm_checkpoint``:
+    step-ordered by filename) rather than a local one: a battery that picked
+    its own newest file could compare a different checkpoint than the session
+    resumes from, and would pass while checking the wrong artifact. The
+    handoff publish uses this same function, so `--profile`'s resume checks
+    and the published version cannot disagree about which file is newest.
+    """
+    from act.training.v0_handoff import newest_arm_checkpoint
+
+    return newest_arm_checkpoint(arm_dir)
 
 
 def main(argv: list[str] | None = None) -> int:

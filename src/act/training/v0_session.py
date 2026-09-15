@@ -26,6 +26,7 @@ cost identity calibrated on the toy studies applies unchanged.
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 import json
+import os
 import random
 import sys
 import time
@@ -404,9 +405,18 @@ def save_v0_checkpoint(
     Version 5 adds the GradScaler state for fp16 sessions (``scaler`` is
     None in fp32 mode). Version-4 payloads remain loadable: they simply have
     no scaler entry, which a resumed fp32 session never needs.
+
+    Written beside the target and renamed into place. A declared checkpoint is
+    ~3.4 GB, so the write takes seconds, and a process killed inside it (the
+    OOM killer, a kernel timeout, a deadline) would otherwise leave a
+    *truncated* file at the final name - where the retention policy takes it
+    for the newest checkpoint, ``publish_seed`` checksums it into a `complete`
+    version, and restore's checksum verification cannot tell the difference.
+    A partial write is invisible from every reader; a rename is atomic.
     """
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_name(target.name + ".partial")
     torch.save(
         {
             "version": 5,
@@ -427,8 +437,9 @@ def save_v0_checkpoint(
                 "mutation_history": state.mutation_history,
             },
         },
-        target,
+        temporary,
     )
+    os.replace(temporary, target)
 
 
 def _state_from_payload(
