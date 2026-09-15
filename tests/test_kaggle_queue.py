@@ -9,6 +9,7 @@ own prose rather than a machine-readable field.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -93,6 +94,71 @@ def test_progress_of_a_first_session_is_the_latest_published_seed() -> None:
 
 def test_progress_handles_an_empty_log() -> None:
     assert kaggle_queue.queue_progress({}) == (0, 0)
+
+
+def _run_smoke_session(root: Path, output: str) -> dict:
+    """Run the registered launch path at reduced fidelity, on CPU.
+
+    ``--tokens-per-second`` above the fp32 floor because the measured artifact
+    decides fp16, and ``_autocast_context`` refuses fp16 on CPU.
+    """
+    session_dir = root / "session"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "act.training.cli",
+            "--mode",
+            "pair-session",
+            "--profile",
+            "--device",
+            "cpu",
+            "--seeds",
+            "15000-15001",
+            "--session-dir",
+            str(session_dir),
+            "--dataset-root",
+            str(root / "datasets"),
+            "--hours",
+            "1",
+            "--tokens-per-second",
+            "1000000",
+            "--output",
+            str(session_dir / output),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+        env={**os.environ, "PYTHONPATH": str(ROOT / "src")},
+    )
+    assert completed.returncode == 0, completed.stderr
+    return json.loads((session_dir / output).read_text())
+
+
+def test_a_smoke_session_round_trips_through_the_progress_reader(tmp_path: Path) -> None:
+    """The driver's completion signal is a contract with a real session log.
+
+    Every unit test above feeds ``queue_progress`` a hand-built log; this one
+    runs the registered launch command and feeds it the log that command
+    actually writes, then re-runs it against the published version. A resumed
+    session must still read as complete - if skipped seeds did not count, the
+    driver would re-push a session that had nothing left to do.
+    """
+    fresh = _run_smoke_session(tmp_path, "session-log.json")
+    assert [pair["action"] for pair in fresh["pairs"]] == ["completed", "completed"]
+    assert kaggle_queue.queue_progress(fresh) == (2, len(fresh["declared_seed_queue"]))
+
+    resumed = _run_smoke_session(tmp_path, "session-log-2.json")
+    assert [pair["action"] for pair in resumed["pairs"]] == [
+        "skipped_complete",
+        "skipped_complete",
+    ]
+    assert kaggle_queue.queue_progress(resumed) == (2, len(resumed["declared_seed_queue"]))
+    # The published version is what makes the resume possible, and it is the
+    # same directory a Kaggle dataset version would carry.
+    published = tmp_path / "datasets" / "act-checkpoints" / "v0-5-1"
+    assert (published / "seed-15000" / "manifests" / "manifest.json").is_file()
 
 
 def test_stage_writes_a_self_contained_mode_pinned_kernel(tmp_path: Path) -> None:

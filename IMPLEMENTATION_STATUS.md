@@ -729,6 +729,18 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   excluding the web side (`public/`, `server/`, vite/ts configs) which the
   kernel never imports. Pinned by 5 tests in `tests/test_kaggle_queue.py`,
   including that `artifacts/` never ships.
+- **The session pipeline is proven end to end, not just in pieces.** The
+  registered launch command was run at reduced fidelity on CPU
+  (`--profile --seeds 15000-15001`) and its own `session-log.json` fed back
+  through the driver: a fresh session logs `completed` per pair, a re-run
+  against the published version logs `skipped_complete`, and both read as
+  `(2, 12)` cumulative progress. That round trip is what the driver's
+  "is this queue finished?" decision rests on - if a resumed session did not
+  count, the driver would re-push sessions with nothing left to do - and it
+  also exercises the new overlay dataset root, the atomic publish (a real
+  `seed-*/manifests/manifest.json` and checksum-verified restore), and the
+  resume lookup. Pinned by 1 integration test in `tests/test_kaggle_queue.py`
+  (plus the 12 hand-built `queue_progress` cases).
 - `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (272, including the
   26 report-figure data-assembly tests, 14 session-plan tests pinning the
   section 5.2 schedule/dtype tables, 10 handoff tests covering atomic
