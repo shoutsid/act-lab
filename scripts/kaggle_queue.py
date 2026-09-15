@@ -672,6 +672,13 @@ def report_verdict(output_dir: str | Path) -> int:
     return code
 
 
+def _print_log_tail(output_dir: Path, kernel: str, limit: int = 4000) -> None:
+    """Print the end of a one-shot kernel's log, where its result lives."""
+    log = output_dir / f"{kernel.split('/')[-1]}.log"
+    if log.is_file():
+        print(log.read_text(encoding="utf-8")[-limit:], flush=True)
+
+
 def run_once(mode: str, *, poll: float, timeout: float) -> int:
     """Push a single-job kernel and report what it produced.
 
@@ -698,12 +705,15 @@ def run_once(mode: str, *, poll: float, timeout: float) -> int:
     _run(["kaggle", "kernels", "output", kernel, "-p", str(output_dir)])
     if status != SUCCESS_STATUS:
         print(f"{mode} ended with {status}; kernel log follows", flush=True)
-        log = output_dir / f"{kernel.split('/')[-1]}.log"
-        if log.is_file():
-            print(log.read_text(encoding="utf-8")[-4000:], flush=True)
+        _print_log_tail(output_dir, kernel)
         return EXIT_SESSION_FAILED
     if mode == "verdict":
         return report_verdict(output_dir)
+    # The diagnostics *are* the result here - the measured rate, the device
+    # count, the placement a battery verified - so report the kernel log rather
+    # than only the fact that the kernel succeeded, which is what an operator
+    # driving this from a terminal would otherwise have to fetch by hand.
+    _print_log_tail(output_dir, kernel)
     print(f"=== {mode} complete ({kernel}) ===", flush=True)
     return EXIT_COMPLETE
 

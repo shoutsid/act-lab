@@ -512,6 +512,37 @@ def test_run_once_pushes_the_verdict_and_returns_its_decision(monkeypatch) -> No
     assert ensured == [1]
 
 
+def test_run_once_reports_a_diagnostic_kernels_log(monkeypatch, capsys) -> None:
+    """A diagnostic's result is its log - the device count and the placement.
+
+    Reporting only "the kernel succeeded" would hide the measurement an
+    operator ran the job for, and fetching it by hand afterwards is exactly
+    the step this tool exists to remove.
+    """
+
+    def fake_run(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        if argv[1:3] == ["kernels", "status"]:
+            return subprocess.CompletedProcess(
+                argv, 0, 'has status "KernelWorkerStatus.COMPLETE"', ""
+            )
+        if argv[1:3] == ["kernels", "output"]:
+            target = Path(argv[argv.index("-p") + 1])
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "act-t4-selfcheck.log").write_text(
+                "[5/5] per-arm processes ...\n    one arm per device: cuda:0, cuda:1\n"
+                "v0 session self-check: all checks passed\n"
+            )
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(kaggle_queue, "_run", fake_run)
+    monkeypatch.setattr(kaggle_queue, "ensure_code_dataset", lambda *a, **k: "")
+
+    assert kaggle_queue.run_once("selfcheck", poll=0.0, timeout=1.0) == 0
+    printed = capsys.readouterr().out
+    assert "one arm per device: cuda:0, cuda:1" in printed
+    assert "all checks passed" in printed
+
+
 def test_the_documented_verdict_command_is_accepted(monkeypatch) -> None:
     """The runbook tells operators to run this; it must not be a usage error."""
     seen: list[str] = []
