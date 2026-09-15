@@ -268,6 +268,7 @@ def test_drive_refuses_to_push_when_quota_cannot_cover_the_session(monkeypatch) 
         return subprocess.CompletedProcess(argv, 0, "", "")
 
     monkeypatch.setattr(kaggle_queue, "_run", fake_run)
+    monkeypatch.setattr(kaggle_queue, "ensure_code_dataset", lambda *a, **k: "")
 
     code = kaggle_queue.drive("session", hours=9.0, poll=0.0, timeout=1.0, max_sessions=1)
 
@@ -290,9 +291,85 @@ def test_drive_still_pushes_when_the_week_can_cover_the_session(monkeypatch) -> 
         return subprocess.CompletedProcess(argv, 0, "", "")
 
     monkeypatch.setattr(kaggle_queue, "_run", fake_run)
+    monkeypatch.setattr(kaggle_queue, "ensure_code_dataset", lambda *a, **k: "")
 
     code = kaggle_queue.drive("session", hours=9.0, poll=0.0, timeout=1.0, max_sessions=1)
 
     assert [argv for argv in calls if argv[1:3] == ["kernels", "push"]]
     # The push happened, then it stopped on the missing session log.
     assert code == kaggle_queue.EXIT_SESSION_FAILED
+
+
+def test_code_files_ship_the_package_and_not_the_artifacts(monkeypatch) -> None:
+    """The kernel runs this code, so what ships is load-bearing.
+
+    ``artifacts/`` must not ship: a session has to start with no ``artifacts/``
+    directory so the launch command cannot read a benchmark artifact that this
+    session did not measure itself.
+    """
+    monkeypatch.delenv("ACT_T4_OWNER", raising=False)
+    files = kaggle_queue.code_files(ROOT)
+
+    assert "pyproject.toml" in files
+    assert "src/act/training/runtime.py" in files
+    assert "scripts/kaggle_t4.py" in files
+    assert not [name for name in files if name.split("/")[0] in {"artifacts", "public", "server"}]
+    assert "vite.config.ts" not in files
+
+
+def test_code_revision_refuses_an_unpublishable_tree(monkeypatch) -> None:
+    """A dirty tree has no reproducible revision, and the handoff records one."""
+    def clean(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        if "--porcelain" in argv:
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        return subprocess.CompletedProcess(argv, 0, "deadbeef\n", "")
+
+    monkeypatch.setattr(kaggle_queue, "_run", clean)
+    assert kaggle_queue.code_revision(ROOT) == "deadbeef"
+
+    def dirty(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        if "--porcelain" in argv:
+            return subprocess.CompletedProcess(argv, 0, " M src/act/x.py\n", "")
+        return subprocess.CompletedProcess(argv, 0, "deadbeef\n", "")
+
+    monkeypatch.setattr(kaggle_queue, "_run", dirty)
+    with pytest.raises(SystemExit, match="uncommitted"):
+        kaggle_queue.code_revision(ROOT)
+
+    monkeypatch.setattr(
+        kaggle_queue,
+        "_run",
+        lambda argv: subprocess.CompletedProcess(argv, 128, "", "not a git repository"),
+    )
+    with pytest.raises(SystemExit, match="not a git checkout"):
+        kaggle_queue.code_revision(ROOT)
+
+
+def test_stage_code_dataset_marks_the_revision(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        kaggle_queue, "code_files", lambda repo: ["pyproject.toml", "src/act/__init__.py"]
+    )
+    folder = kaggle_queue.stage_code_dataset(ROOT, tmp_path / "code", "cafe1234")
+
+    assert (folder / kaggle_queue.REVISION_MARKER).read_text().strip() == "cafe1234"
+    metadata = json.loads((folder / "dataset-metadata.json").read_text())
+    assert metadata["id"].endswith("/act-lab-code")
+    assert (folder / "src" / "act" / "__init__.py").is_file()
+
+
+def test_stage_code_dataset_fails_loudly_without_the_package(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(kaggle_queue, "code_files", lambda repo: ["pyproject.toml"])
+    with pytest.raises(SystemExit, match="pyproject.toml"):
+        kaggle_queue.stage_code_dataset(ROOT, tmp_path / "code", "cafe1234")
+
+
+def test_published_code_revision_is_none_when_the_marker_is_absent(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        kaggle_queue,
+        "_run",
+        lambda argv: subprocess.CompletedProcess(argv, 0, "", ""),
+    )
+    assert kaggle_queue.published_code_revision("owner/ds", work=tmp_path) is None
+
+    (tmp_path / kaggle_queue.REVISION_MARKER).write_text("cafe1234\n")
+    assert kaggle_queue.published_code_revision("owner/ds", work=tmp_path) == "cafe1234"

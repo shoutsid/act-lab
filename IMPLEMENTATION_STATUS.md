@@ -711,6 +711,24 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   cannot-tell cases, the gate's boundary, a drive-level refusal that asserts
   no push happened, and a positive control that a coverable week still
   pushes).
+- **The kernel runs the mounted code dataset, and nothing checked it.** The
+  staged kernel body is embedded from the working tree, but `src/`, `scripts/`
+  and `tests/` are copied from the attached `act-lab-code` dataset, so a lagging
+  dataset silently executes old training code while the handoff manifest
+  records a `code_revision` that did not run. Measured 2026-09-15: the dataset
+  was last published at 13:14, a commit behind everything fixed afterwards - so
+  the running session did not contain `c84b27b`'s guarded handoff publish, and
+  2040ab1's `gpu_inventory` import would have crashed the next session against
+  the older dataset. `kaggle_queue.ensure_code_dataset` runs before any push:
+  it pins the dataset to `git rev-parse HEAD`, refuses a dirty or non-git tree
+  (no reproducible revision), republishes when the dataset's `revision.txt`
+  marker differs, and is checked before quota is spent rather than after.
+  The staged dataset is the tracked Python side only - deliberately excluding
+  `artifacts/`, because a session must start with no `artifacts/` directory so
+  the launch command cannot read a benchmark artifact it did not measure, and
+  excluding the web side (`public/`, `server/`, vite/ts configs) which the
+  kernel never imports. Pinned by 5 tests in `tests/test_kaggle_queue.py`,
+  including that `artifacts/` never ships.
 - `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (272, including the
   26 report-figure data-assembly tests, 14 session-plan tests pinning the
   section 5.2 schedule/dtype tables, 10 handoff tests covering atomic

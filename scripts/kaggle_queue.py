@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -96,6 +97,163 @@ def queue_progress(session_log: Mapping[str, object]) -> tuple[int, int]:
 
 
 MAIN_GUARD = 'if __name__ == "__main__":\n    raise SystemExit(main())\n'
+
+# What the kernel actually executes: the package, the scripts it drives, their
+# tests, the notebooks the report cites, and the docs the runbook references.
+# Deliberately **not** ``artifacts/`` - a session must start with no
+# ``artifacts/`` directory, so the launch command cannot read a benchmark
+# artifact this session did not measure - and not the web side
+# (``public/``, ``server/``, the vite/ts configs), which the kernel never
+# imports.
+CODE_PATHS = (
+    "pyproject.toml",
+    "README.md",
+    "T4_RUNBOOK.md",
+    "IMPLEMENTATION_STATUS.md",
+    "RESEARCH_REPORT.md",
+    "src",
+    "scripts",
+    "tests",
+    "notebooks",
+)
+CODE_DATASET_SLUG = "act-lab-code"
+REVISION_MARKER = "revision.txt"
+
+
+def code_dataset_id() -> str:
+    owner = os.environ.get(kaggle_t4.OWNER_ENV, kaggle_t4.DEFAULT_OWNER)
+    return f"{owner}/{CODE_DATASET_SLUG}"
+
+
+def code_revision(repo: str | Path) -> str:
+    """The commit the code dataset must match.
+
+    The kernel runs the *mounted dataset*, not this working tree, while the
+    staged kernel body is embedded from this working tree - and the handoff
+    manifest records ``code_revision``. So a tree that is not a clean commit
+    cannot be published reproducibly, and a dataset that lags the tree runs
+    different code than the run claims.
+    """
+    head = _run(["git", "-C", str(repo), "rev-parse", "HEAD"])
+    if head.returncode != 0:
+        raise SystemExit(
+            f"{repo} is not a git checkout, so the code dataset cannot be pinned "
+            "to a revision"
+        )
+    dirty = _run(["git", "-C", str(repo), "status", "--porcelain"])
+    if dirty.stdout.strip():
+        raise SystemExit(
+            "the working tree has uncommitted changes; the published code dataset "
+            "must equal the revision the handoff records, so commit first"
+        )
+    return head.stdout.strip()
+
+
+def code_files(repo: str | Path) -> list[str]:
+    """Tracked files under :data:`CODE_PATHS`, in git's order."""
+    listed = _run(["git", "-C", str(repo), "ls-files"])
+    if listed.returncode != 0:
+        raise SystemExit(f"git ls-files failed in {repo}: {listed.stderr.strip()}")
+    paths = []
+    for line in listed.stdout.splitlines():
+        name = line.strip()
+        if not name:
+            continue
+        if name == CODE_PATHS[0] or any(
+            name == prefix or name.startswith(f"{prefix}/")
+            for prefix in CODE_PATHS[1:]
+        ):
+            paths.append(name)
+    return paths
+
+
+def stage_code_dataset(repo: str | Path, directory: str | Path, revision: str) -> Path:
+    """Copy the code the kernel runs into a pushable dataset folder."""
+    import shutil
+
+    root = Path(repo)
+    folder = Path(directory)
+    folder.mkdir(parents=True, exist_ok=True)
+    for name in code_files(root):
+        target = folder / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(root / name, target)
+    if not (folder / "pyproject.toml").is_file() or not (folder / "src" / "act").is_dir():
+        raise SystemExit(
+            "staged code dataset lacks pyproject.toml + src/act, which is exactly "
+            "what the kernel's mount search looks for"
+        )
+    (folder / REVISION_MARKER).write_text(f"{revision}\n", encoding="utf-8")
+    (folder / "dataset-metadata.json").write_text(
+        json.dumps(
+            {
+                "title": CODE_DATASET_SLUG,
+                "id": code_dataset_id(),
+                "licenses": [{"name": "CC0-1.0"}],
+                "isPrivate": True,
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return folder
+
+
+def published_code_revision(
+    dataset: str, *, work: str | Path | None = None
+) -> str | None:
+    """The revision marker in the published dataset, or ``None`` if unknown.
+
+    The marker is a few hundred KB of download, which is cheap enough to check
+    before every push and is the only way to know what the kernel will run.
+    """
+    here = Path(work) if work is not None else Path(tempfile.mkdtemp(prefix="act-code-check-"))
+    download = _run(["kaggle", "datasets", "download", "-d", dataset, "-p", str(here), "--unzip"])
+    marker = here / REVISION_MARKER
+    if download.returncode != 0 or not marker.is_file():
+        return None
+    return marker.read_text(encoding="utf-8").strip() or None
+
+
+def ensure_code_dataset(repo: str | Path, *, log=print) -> str:
+    """Publish the code dataset when it lags the committed tree, or refuse.
+
+    Nothing else in the tooling notices this: the kernel body is embedded from
+    the working tree while ``src/`` is copied from the mount, so a stale
+    dataset makes the run silently execute old training code - measured
+    2026-09-15, the dataset was a commit behind and every fix in between
+    (including the guarded handoff publish) was absent from the session that
+    was running.
+    """
+    dataset = code_dataset_id()
+    revision = code_revision(repo)
+    probe = Path(tempfile.mkdtemp(prefix="act-code-check-"))
+    published = published_code_revision(dataset, work=probe)
+    if published == revision:
+        log(f"  code dataset {dataset} is at {revision[:12]}", flush=True)
+        return revision
+    log(
+        f"  code dataset {dataset} is at {(published or 'unknown')[:12]}, "
+        f"republishing from {revision[:12]}",
+        flush=True,
+    )
+    staging = Path(tempfile.mkdtemp(prefix="act-code-publish-"))
+    folder = stage_code_dataset(repo, staging / "code", revision)
+    message = f"code at {revision[:12]}"
+    result = _run(["kaggle", "datasets", "version", "-p", str(folder), "-m", message])
+    if result.returncode != 0:
+        created = _run(["kaggle", "datasets", "create", "-p", str(folder)])
+        if created.returncode != 0:
+            raise SystemExit(
+                f"could not publish the code dataset {dataset}: "
+                f"{(result.stderr or result.stdout).strip()} / "
+                f"{(created.stderr or created.stdout).strip()}"
+            )
+    log(f"  published code dataset {dataset} at {revision[:12]}", flush=True)
+    return revision
+
+
 
 
 def stage(
@@ -254,6 +412,9 @@ def drive(
     queue = kaggle_t4.QUEUES[queue_mode]
     declared_hours = float(hours) if hours is not None else kaggle_t4.DEFAULT_HOURS
     print(f"=== driving queue {queue_mode!r}: {queue.dataset} ===", flush=True)
+    # The kernel runs the mounted code, so what it executes has to be the
+    # committed tree - checked before any quota is spent, not after.
+    ensure_code_dataset(Path(__file__).resolve().parent.parent)
     work = Path(tempfile.mkdtemp(prefix=f"act-queue-{queue_mode}-"))
     push_dir = stage(work / "push", queue_mode, declared_hours)
     output_dir = work / "output"

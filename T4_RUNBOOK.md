@@ -183,6 +183,20 @@ cost one failed run:
    line regardless of devices, measured above) plausibly halving the ~86
    GPU-hour plan; that is a *schedule* change, so it re-runs the section 5.2
    benchmark and re-derives `full_pairs_per_session` rather than being assumed.
+7. **The kernel runs the mounted dataset, not this working tree.** The staged
+   kernel body is embedded from the tree, but `src/`, `scripts/` and `tests/`
+   are copied from the attached `act-lab-code` dataset, so a dataset that lags
+   the tree runs different code than the run claims - and the handoff manifest
+   records `code_revision`, so the provenance would be wrong too. Measured
+   2026-09-15: the dataset was a commit behind, and every fix in between
+   (including the guarded handoff publish) was absent from the session that was
+   running. `kaggle_queue.ensure_code_dataset` now compares the dataset's
+   `revision.txt` marker with `git rev-parse HEAD` before any quota is spent,
+   republishes when they differ, and refuses outright on a dirty or non-git
+   tree (a tree that is not a clean commit has no reproducible revision).
+   `artifacts/` is deliberately **not** shipped: a session must start with no
+   `artifacts/` directory, so the launch command cannot read a benchmark
+   artifact that this session did not measure itself.
 
 **Session-1 inputs, measured on a Kaggle T4 (2026-09-15, `--steps 50`).** These
 replace the section 5.2 feasibility assumptions; the launch command re-derives
