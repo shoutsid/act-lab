@@ -257,15 +257,16 @@ def code_payload_defect(directory: str | Path) -> str | None:
     The revision marker alone is not evidence: it is a loose top-level file,
     so it survives the uploader's silent drop of subdirectories while the
     package tree does not - which is exactly how a code dataset with no
-    ``src/`` was read as current. The kernel's mount search looks for
-    ``src/act`` beside ``pyproject.toml``, so the check is the same one.
+    ``src/`` was read as current.
+
+    The check is the kernel's own mount search, called directly rather than
+    re-implemented: the service wraps an uploaded archive in a directory named
+    after it, so the tree is nested differently from the pushed folder and only
+    that search gets the layout right.
     """
-    folder = Path(directory)
-    if not (folder / "pyproject.toml").is_file():
-        return "pyproject.toml"
-    if not (folder / "src" / "act").is_dir():
-        return "src/act"
-    return None
+    if kaggle_t4.find_code_root(directory) is not None:
+        return None
+    return "a pyproject.toml with a sibling src/act"
 
 
 def published_code_revision(
@@ -306,7 +307,7 @@ def ensure_code_dataset(repo: str | Path, *, log=print) -> str:
     why = (
         f"is at {(published or 'unknown')[:12]}"
         if defect is None
-        else f"carries no {defect}"
+        else f"carries {defect}"
     )
     log(
         f"  code dataset {dataset} {why}, republishing from {revision[:12]}",
@@ -334,7 +335,7 @@ def ensure_code_dataset(repo: str | Path, *, log=print) -> str:
             raise SystemExit(
                 f"published {dataset} is not usable: "
                 f"{'missing ' + still if still else f'at {marker}'} "
-                f"(expected {revision[:12]} with a package tree)"
+                f"(expected {revision[:12]} with a findable package tree)"
             )
     log(f"  published code dataset {dataset} at {revision[:12]}", flush=True)
     return revision

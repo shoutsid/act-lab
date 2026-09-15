@@ -601,17 +601,26 @@ def test_stage_code_dataset_archives_the_package(tmp_path: Path, monkeypatch) ->
 
 
 def test_code_payload_defect_catches_the_subdirectory_drop(tmp_path: Path) -> None:
-    """A marker alone is not evidence the code is there."""
+    """A marker alone is not evidence the code is there.
+
+    This is the published state that slipped through: ``revision.txt`` and the
+    top-level files present, the package tree gone.
+    """
     (tmp_path / kaggle_queue.REVISION_MARKER).write_text("cafe1234\n")
-    assert kaggle_queue.code_payload_defect(tmp_path) == "pyproject.toml"
+    assert kaggle_queue.code_payload_defect(tmp_path) is not None
 
     (tmp_path / "pyproject.toml").write_text("[project]\n")
-    # Exactly the published state that slipped through: the marker and the
-    # top-level files are present, the package tree is not.
-    assert kaggle_queue.code_payload_defect(tmp_path) == "src/act"
+    assert kaggle_queue.code_payload_defect(tmp_path) is not None
 
     (tmp_path / "src" / "act").mkdir(parents=True)
     assert kaggle_queue.code_payload_defect(tmp_path) is None
+
+    # The service wraps an uploaded archive in a directory named after it, so
+    # a nested tree is fine - the kernel searches for it either way.
+    wrapped = tmp_path / "wrapped" / "code" / "nested"
+    (wrapped / "src" / "act").mkdir(parents=True)
+    (wrapped / "pyproject.toml").write_text("[project]\n")
+    assert kaggle_queue.code_payload_defect(tmp_path / "wrapped") is None
 
 
 def test_ensure_code_dataset_republishes_a_marker_current_but_empty_dataset(
@@ -635,8 +644,9 @@ def test_ensure_code_dataset_republishes_a_marker_current_but_empty_dataset(
         # Defective on the pre-publish probe (the marker is there, the tree is
         # not), healthy afterwards, so the post-publish read-back passes.
         if served["count"]:
-            (here / "pyproject.toml").write_text("[project]\n")
-            (here / "src" / "act").mkdir(parents=True, exist_ok=True)
+            (here / "code").mkdir(parents=True, exist_ok=True)
+            (here / "code" / "pyproject.toml").write_text("[project]\n")
+            (here / "code" / "src" / "act").mkdir(parents=True, exist_ok=True)
         served["count"] += 1
         return here
 
