@@ -8,7 +8,9 @@ verdict number may be hand-computed and no rule may drift from the
 registration, so these tests pin every branch of T4_RUNBOOK.md section 4's
 exit-code contract: 0 = PASS (Gate 4 authorized only on a complete queue),
 1 = FAIL (primary cost miss), 2 = PASS with qualification (band miss) or
-the harm-guard rejection. Stray complete seeds (e.g. smoke-test leftovers)
+the harm-guard rejection, 3 = no verdict (malformed invocation - kept
+distinct from 1 so an operator error is never read as a cost FAIL). Stray
+complete seeds (e.g. smoke-test leftovers)
 must be excluded from the aggregate, and missing declared seeds must keep
 ``gate_4_authorized`` false.
 """
@@ -515,6 +517,28 @@ def test_harm_guard_rejects_at_ten_losses(
 
 
 # --- fail-fast guards ------------------------------------------------------
+
+
+def test_malformed_inputs_exit_3_and_write_no_verdict(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An operator error must never be readable as the pre-registered FAIL.
+
+    Exit 1 is reserved for ``FAIL`` (primary cost above the criterion); a
+    wrong ``--dataset-root`` is a different event and gets its own code, so an
+    unattended multi-session run cannot record "the amortization hypothesis is
+    false" when the command simply pointed somewhere else.
+    """
+    exit_code = _run_main(monkeypatch, tmp_path)  # no handoff dataset at all
+
+    assert exit_code == v0_verdict.INPUT_ERROR_EXIT_CODE
+    assert exit_code != 1
+    assert not (tmp_path / "v0-5-1-verdict.json").exists()
+
+
+def test_input_error_code_is_distinct_from_every_verdict_branch() -> None:
+    assert v0_verdict.INPUT_ERROR_EXIT_CODE == 3
+    assert v0_verdict.INPUT_ERROR_EXIT_CODE not in (0, 1, 2)
 
 
 def test_absent_handoff_dataset_aborts(tmp_path: Path) -> None:

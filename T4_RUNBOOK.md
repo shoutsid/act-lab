@@ -305,6 +305,16 @@ PYTHONPATH=src python scripts/v0_verdict.py \
   --probe-batch-count 1
 ```
 
+After a Kaggle run these three roots are **empty locally**: the queues live in
+the published datasets, and no local session ever held more than one session's
+pairs. Each session publishes the whole handoff directory, so the newest
+published version of each queue is cumulative - restores it and the queue is
+reconstructed. `ACT_T4_MODE=verdict` does exactly that (restore all three,
+then the command above, with the verdict JSON and its inputs kept in the kernel
+output); it is a CPU kernel and needs no accelerator, so it never queues behind
+a GPU. Running the command by hand locally is only correct if the roots were
+actually populated (e.g. after a local proof run).
+
 Exit codes and meanings (the two control rows are the adopted §5.5 clause;
 the two null rows are the pre-registered §5.14 clause):
 
@@ -318,6 +328,7 @@ the two null rows are the pre-registered §5.14 clause):
 | 2 | `PASS_COST_ONLY_CONTROL_MISSING` | no `--control-root` given → the clause could not be evaluated; running the control is part of the protocol, so Gate 4 is withheld |
 | 2 | `PASS_COST_ONLY_NULL_REJECTS` | adaptive failed to beat the null arm on ≥ 10 of 12 seeds → doing nothing is at least as good as the adaptive arm at declared fidelity; the cost PASS stands but the selection claim does not; **never** treat this as a tunable miss (no new block, no knob changes) |
 | 2 | `PASS_COST_ONLY_NULL_MISSING` | no `--null-root` given (or the null queue is incomplete on the declared block) → running the do-nothing queue is part of the protocol, so Gate 4 is withheld |
+| 3 | *no verdict* | the invocation was malformed (missing handoff, incomplete seed, unmatched budgets, a `--null-root` that is not a null queue). Nothing is written. This code is deliberately **not** 1: over an unattended multi-session run, an operator error must never be recordable as the pre-registered `FAIL` |
 
 The verdict JSON is written to `<dataset-root>/v0-5-1-verdict.json` and prints
 the aggregate cost, predicted value, band, harm-guard tally, the

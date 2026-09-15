@@ -1,26 +1,36 @@
-"""Kaggle T4 driver for the section 5.1 run (``T4_RUNBOOK.md`` sections 0-2c).
+"""Kaggle T4 driver for the section 5.1 run (``T4_RUNBOOK.md`` sections 0-4).
 
-The runbook describes the commands an operator runs *inside* a Kaggle GPU
+The runbook describes the commands an operator runs *inside* a Kaggle
 session. This module is the thing that is actually pushed: a single script
-kernel whose behaviour is selected by ``ACT_T4_MODE``, so the four session
-kinds cannot drift apart from each other or from the registered commands.
+kernel whose behaviour is selected by ``ACT_T4_MODE``, so the session kinds
+cannot drift apart from each other or from the registered commands.
 
 Modes (``ACT_T4_MODE=<mode>``):
 
-- ``metadata``   write ``kernel-metadata.json`` for the selected queue;
-- ``probe``      is the Kaggle dataset API authenticated inside a kernel?
-                 (measured: yes, from the kernel's own identity - see below);
-- ``preflight``  runbook 0.4 + 1: environment check, declared-parameter
-                 assertion, and the session-1 throughput benchmark;
-- ``session``    runbook 2: the primary pair queue;
-- ``control``    runbook 2b: the pool-matched (loss-blind) control queue;
-- ``null``       runbook 2c: the do-nothing null queue.
+- ``metadata``  write ``kernel-metadata.json`` for the selected queue
+                (``ACT_T4_QUEUE`` = session / control / null / verdict);
+- ``probe``     is the Kaggle dataset API authenticated inside a kernel?
+                (measured: yes, from the kernel's own identity);
+- ``preflight`` runbook 0.4 + 1: environment check, declared-parameter
+                assertion, and the session-1 throughput benchmark;
+- ``session``   runbook 2: the primary pair queue;
+- ``control``   runbook 2b: the pool-matched (loss-blind) control queue;
+- ``null``      runbook 2c: the do-nothing null queue;
+- ``verdict``   runbook 4: restore all three queues from Kaggle and compute
+                the pre-registered verdict.
 
 Push each mode as a script kernel with the metadata this module writes, then
 re-push the *same* kernel until its queue reports complete: restore latest,
 skip seeds with ``complete`` versions, train the next incomplete pair, exit
 publish. Nothing here re-tunes a protocol knob; the modes only arrange for
 the registered command to run on a T4 with its input artifact present.
+
+The verdict mode exists because the runbook's section 4 command reads *local*
+dataset roots, and after a Kaggle run the queues live in published datasets:
+each session pushes the whole handoff directory, so the newest published
+version of each queue is cumulative and restoring it reconstructs the queue.
+Its 0/1/2 exit codes are outcomes rather than failures - 1 (cost FAIL) and 2
+(a withholding clause fired) are both legitimate final answers.
 
 Two gotchas this module exists to absorb, both learned the hard way:
 
@@ -51,6 +61,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 MODE_ENV = "ACT_T4_MODE"
+QUEUE_ENV = "ACT_T4_QUEUE"
 HOURS_ENV = "ACT_T4_HOURS"
 OWNER_ENV = "ACT_T4_OWNER"
 SLUG_ENV = "ACT_T4_SLUG"
@@ -65,6 +76,8 @@ BENCHMARK_STEPS = 50
 # block, primary candidate policy is ``spread``.
 SEED_BLOCK = "15000-15011"
 PRIMARY_POLICY = "spread"
+# v0_verdict.py exit codes are the pre-registered verdict, not failures.
+VERDICT_EXIT_CODES = {0: "PASS", 1: "FAIL", 2: "PASS with qualification"}
 
 INPUT_ROOT = Path("/kaggle/input")
 WORK_ROOT = Path("/kaggle/working/act-lab")
@@ -72,41 +85,46 @@ WORK_ROOT = Path("/kaggle/working/act-lab")
 
 @dataclass(frozen=True)
 class Queue:
-    """One declared queue: its Kaggle dataset, its roots, its arm flags."""
+    """One declared queue: its Kaggle dataset and its local roots."""
 
     mode: str
     title: str
-    extra: tuple[str, ...] = ()
-
-    @property
-    def dataset(self) -> str:
-        slug = os.environ.get(SLUG_ENV, DEFAULT_SLUG)
-        suffix = {"session": "", "control": "-control", "null": "-null"}[self.mode]
-        return f"{self.owner}/{slug}{suffix}"
-
-    @property
-    def kernel_id(self) -> str:
-        return f"{self.owner}/act-t4-{self.mode}"
+    dataset_suffix: str
+    dataset_root: str
+    session_dir: str
 
     @property
     def owner(self) -> str:
         return os.environ.get(OWNER_ENV, DEFAULT_OWNER)
 
     @property
-    def dataset_root(self) -> str:
-        suffix = {"session": "", "control": "-control", "null": "-null"}[self.mode]
-        return f"artifacts/datasets{suffix}"
+    def dataset(self) -> str:
+        slug = os.environ.get(SLUG_ENV, DEFAULT_SLUG)
+        return f"{self.owner}/{slug}{self.dataset_suffix}"
 
     @property
-    def session_dir(self) -> str:
-        suffix = {"session": "", "control": "-control", "null": "-null"}[self.mode]
-        return f"artifacts/v0-sessions{suffix}"
+    def kernel_id(self) -> str:
+        return f"{self.owner}/act-t4-{self.mode}"
 
 
 QUEUES: dict[str, Queue] = {
-    "session": Queue("session", "act-t4-session"),
-    "control": Queue("control", "act-t4-control"),
-    "null": Queue("null", "act-t4-null"),
+    "session": Queue(
+        "session", "act-t4-session", "", "artifacts/datasets", "artifacts/v0-sessions"
+    ),
+    "control": Queue(
+        "control",
+        "act-t4-control",
+        "-control",
+        "artifacts/datasets-control",
+        "artifacts/v0-sessions-control",
+    ),
+    "null": Queue(
+        "null",
+        "act-t4-null",
+        "-null",
+        "artifacts/datasets-null",
+        "artifacts/v0-sessions-null",
+    ),
 }
 
 
@@ -169,41 +187,84 @@ def session_argv(queue: Queue, hours: float = DEFAULT_HOURS) -> list[str]:
     return argv
 
 
-def kernel_metadata(queue: Queue, code_file: str = "kaggle_t4.py") -> dict[str, object]:
-    """Metadata for pushing one queue's kernel.
+def verdict_argv(
+    python: str,
+    *,
+    primary: str,
+    control: str,
+    null: str,
+    probe_batch_count: int = 1,
+) -> list[str]:
+    """Runbook section 4: the pre-registered verdict over all three queues."""
+    return [
+        python,
+        "scripts/v0_verdict.py",
+        "--dataset-root",
+        primary,
+        "--control-root",
+        control,
+        "--null-root",
+        null,
+        "--probe-batch-count",
+        str(probe_batch_count),
+    ]
+
+
+def kernel_metadata(
+    kernel_id: str,
+    title: str,
+    *,
+    gpu: bool = True,
+    code_file: str = "kaggle_t4.py",
+) -> dict[str, object]:
+    """Metadata for pushing one mode's kernel.
 
     ``machine_shape`` is the only honoured accelerator key; ``gpu_type`` is
     silently ignored by the CLI. Internet stays on for the dataset API.
     """
     return {
-        "id": queue.kernel_id,
-        "title": queue.title,
+        "id": kernel_id,
+        "title": title,
         "code_file": code_file,
         "language": "python",
         "kernel_type": "script",
         "is_private": True,
-        "enable_gpu": True,
+        "enable_gpu": gpu,
         "enable_tpu": False,
-        "machine_shape": "NvidiaTeslaT4",
+        "machine_shape": "NvidiaTeslaT4" if gpu else "",
         "enable_internet": True,
-        "dataset_sources": [f"{queue.owner}/act-lab-code"],
+        "dataset_sources": [f"{os.environ.get(OWNER_ENV, DEFAULT_OWNER)}/act-lab-code"],
         "competition_sources": [],
         "kernel_sources": [],
     }
+
+
+def metadata_for(mode: str) -> dict[str, object]:
+    """The push metadata for one mode (``session``/``control``/``null``/``verdict``)."""
+    if mode in QUEUES:
+        queue = QUEUES[mode]
+        return kernel_metadata(queue.kernel_id, queue.title)
+    if mode == "verdict":
+        owner = os.environ.get(OWNER_ENV, DEFAULT_OWNER)
+        # The verdict only downloads datasets and does arithmetic - no
+        # accelerator, so it never queues behind a GPU and costs no quota.
+        return kernel_metadata(f"{owner}/act-t4-verdict", "act-t4-verdict", gpu=False)
+    raise KeyError(mode)
 
 
 def _log(message: str) -> None:
     print(message, flush=True)
 
 
-def _run(argv: list[str], env: dict[str, str]) -> None:
+def _run(argv: list[str], env: dict[str, str], allowed: tuple[int, ...] = (0,)) -> int:
     _log(f"$ {' '.join(argv)}")
     proc = subprocess.run(argv, env=env, capture_output=True, text=True)
     _log(proc.stdout[-8000:])
-    if proc.returncode != 0:
+    if proc.returncode not in allowed:
         _log("--- stderr ---")
         _log(proc.stderr[-6000:])
         raise SystemExit(f"command failed with exit {proc.returncode}: {argv[1:3]}")
+    return proc.returncode
 
 
 def _bootstrap() -> tuple[Path, dict[str, str]]:
@@ -220,6 +281,14 @@ def _bootstrap() -> tuple[Path, dict[str, str]]:
     shutil.copytree(source, WORK_ROOT)
     os.chdir(WORK_ROOT)
     return WORK_ROOT, dict(os.environ, PYTHONPATH=str(WORK_ROOT / "src"))
+
+
+def _keep(path: Path) -> None:
+    """Copy an audit-trail file into the kernel output."""
+    if path.is_file():
+        target = Path("/kaggle/working") / path.name
+        shutil.copy(path, target)
+        _log(f"kept {target}")
 
 
 def mode_probe() -> None:
@@ -279,7 +348,7 @@ def mode_preflight() -> None:
     _run(benchmark_argv(sys.executable), env)
     artifact_path = work / "artifacts" / "v0-benchmark.json"
     data = json.loads(artifact_path.read_text())
-    shutil.copy(artifact_path, "/kaggle/working/v0-benchmark.json")
+    _keep(artifact_path)
     _log(f"measured_tokens_per_second: {data['measured_tokens_per_second']}")
     _log(f"dtype_decision: {data['dtype_decision']}")
     for key in (
@@ -321,33 +390,54 @@ def mode_session(queue: Queue) -> None:
         f"dtype {data['dtype_decision']} | "
         f"pair_time {data['schedule']['pair_time_hours']:.2f} h"
     )
-    shutil.copy(artifact_path, "/kaggle/working/v0-benchmark.json")
+    _keep(artifact_path)
 
     _log(f"--- {queue.mode} queue (--hours {hours:g}) ---")
     _run(session_argv(queue, hours), env)
 
     # Runbook 6: keep the audit trail in the kernel output, so the per-pair
     # actions and the publish outcome survive without the dataset API.
-    for relative in (
-        f"{queue.session_dir}/session-log.json",
-        f"{queue.dataset_root}/remote-publish-log.json",
-    ):
-        path = work / relative
-        if path.is_file():
-            target = Path("/kaggle/working") / Path(relative).name
-            shutil.copy(path, target)
-            _log(f"kept {target}")
+    _keep(work / queue.session_dir / "session-log.json")
+    _keep(work / queue.dataset_root / "remote-publish-log.json")
 
     _log(f"=== {queue.mode} session finished after {(time.time() - started) / 3600:.2f} h ===")
+
+
+def mode_verdict() -> None:
+    """Runbook 4: restore all three queues from Kaggle and compute the verdict."""
+    work, env = _bootstrap()
+    from act.ops.kaggle_remote import default_client, restore_latest
+
+    client = default_client()
+    for queue in QUEUES.values():
+        restored = restore_latest(
+            queue.dataset_root, dataset=queue.dataset, client=client, log=_log
+        )
+        _log(f"{queue.mode}: {len(restored)} seed version(s) restored")
+
+    argv = verdict_argv(
+        sys.executable,
+        primary=QUEUES["session"].dataset_root,
+        control=QUEUES["control"].dataset_root,
+        null=QUEUES["null"].dataset_root,
+    )
+    code = _run(argv, env, allowed=tuple(VERDICT_EXIT_CODES))
+    _log(f"verdict exit code {code}: {VERDICT_EXIT_CODES[code]}")
+
+    verdict_path = work / QUEUES["session"].dataset_root / "v0-5-1-verdict.json"
+    _keep(verdict_path)
+    if verdict_path.is_file():
+        _log(json.dumps(json.loads(verdict_path.read_text()), indent=2, sort_keys=True))
+    _log("=== VERDICT COMPLETE ===")
 
 
 def main() -> int:
     mode = os.environ.get(MODE_ENV, "")
     if mode == "metadata":
-        queue_mode = os.environ.get("ACT_T4_QUEUE", "session")
+        queue_mode = os.environ.get(QUEUE_ENV, "session")
         path = Path("kernel-metadata.json")
-        path.write_text(json.dumps(kernel_metadata(QUEUES[queue_mode]), indent=2) + "\n")
-        _log(f"wrote {path} for queue {queue_mode!r}")
+        path.write_text(json.dumps(metadata_for(queue_mode), indent=2) + "\n")
+        _log(f"wrote {path} for mode {queue_mode!r}")
         return 0
     if mode == "probe":
         mode_probe()
@@ -358,8 +448,11 @@ def main() -> int:
     if mode in QUEUES:
         mode_session(QUEUES[mode])
         return 0
+    if mode == "verdict":
+        mode_verdict()
+        return 0
     raise SystemExit(
-        f"set {MODE_ENV} to one of: metadata, probe, preflight, "
+        f"set {MODE_ENV} to one of: metadata, probe, preflight, verdict, "
         + ", ".join(QUEUES)
     )
 

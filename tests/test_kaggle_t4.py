@@ -111,7 +111,7 @@ def test_queues_own_disjoint_datasets_and_roots() -> None:
 
 
 def test_kernel_metadata_pins_the_t4_and_keeps_internet_on() -> None:
-    metadata = kaggle_t4.kernel_metadata(kaggle_t4.QUEUES["session"])
+    metadata = kaggle_t4.metadata_for("session")
     # ``gpu_type`` is silently ignored by the CLI; only machine_shape counts.
     assert metadata["machine_shape"] == "NvidiaTeslaT4"
     assert "gpu_type" not in metadata
@@ -121,6 +121,59 @@ def test_kernel_metadata_pins_the_t4_and_keeps_internet_on() -> None:
     assert metadata["kernel_type"] == "script"
     assert metadata["is_private"] is True
     assert metadata["dataset_sources"] == ["sid123123234/act-lab-code"]
+
+
+def test_every_queue_mode_has_push_metadata() -> None:
+    for mode in ("session", "control", "null"):
+        metadata = kaggle_t4.metadata_for(mode)
+        assert metadata["id"] == kaggle_t4.QUEUES[mode].kernel_id
+        assert metadata["enable_gpu"] is True
+
+
+def test_verdict_metadata_asks_for_no_accelerator() -> None:
+    # The verdict only downloads datasets and does arithmetic, so it must not
+    # queue behind a GPU or spend accelerator quota.
+    metadata = kaggle_t4.metadata_for("verdict")
+    assert metadata["id"] == "sid123123234/act-t4-verdict"
+    assert metadata["enable_gpu"] is False
+    assert metadata["machine_shape"] == ""
+    assert metadata["enable_internet"] is True
+
+
+def test_unknown_metadata_mode_fails_closed() -> None:
+    with pytest.raises(KeyError):
+        kaggle_t4.metadata_for("not-a-mode")
+
+
+def test_verdict_command_covers_all_three_queues() -> None:
+    assert kaggle_t4.verdict_argv(
+        "python",
+        primary="artifacts/datasets",
+        control="artifacts/datasets-control",
+        null="artifacts/datasets-null",
+    ) == [
+        "python",
+        "scripts/v0_verdict.py",
+        "--dataset-root",
+        "artifacts/datasets",
+        "--control-root",
+        "artifacts/datasets-control",
+        "--null-root",
+        "artifacts/datasets-null",
+        "--probe-batch-count",
+        "1",
+    ]
+
+
+def test_verdict_exit_codes_are_outcomes_not_failures() -> None:
+    # 1 (cost FAIL) and 2 (a withholding clause fired) are pre-registered
+    # verdicts, so the driver must not treat them as command failures.
+    assert set(kaggle_t4.VERDICT_EXIT_CODES) == {0, 1, 2}
+    assert kaggle_t4.VERDICT_EXIT_CODES[1] == "FAIL"
+    # 3 (no verdict produced) is NOT an outcome: the driver must fail loudly,
+    # because a malformed invocation recorded as a verdict is exactly the
+    # failure mode the distinct code exists to prevent.
+    assert 3 not in kaggle_t4.VERDICT_EXIT_CODES
 
 
 def test_benchmark_argv_is_the_registered_step_count() -> None:

@@ -40,8 +40,13 @@ Exit code 0 = PASS (cost + band + harm guard + control + null clauses clear),
 1 = FAIL (primary cost miss), 2 = PASS with qualification (cost passes but the
 measured C lands outside the tolerance band, the harm guard rejects, the
 pool-matched control also passes, the null clause rejects, or a required
-control queue was not supplied). The JSON verdict is printed and written
-beside the dataset root for the artifact trail.
+control queue was not supplied), 3 = no verdict (the invocation was malformed:
+missing handoff, incomplete seed, unmatched budgets, a null root that is not a
+null queue). Code 3 exists so an operator error can never be read as the
+pre-registered FAIL, which over a multi-session run is the difference between
+"the amortization hypothesis is false" and "the command pointed somewhere
+else". The JSON verdict is printed and written beside the dataset root for the
+artifact trail, and is only ever written when a verdict was produced.
 """
 
 from __future__ import annotations
@@ -49,6 +54,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sys
 from pathlib import Path
 
 from act.training.session_plan import expected_probe_cost_percent, tolerance_band
@@ -68,6 +74,26 @@ POOL_CONTROL_WIN_LIMIT = 10
 # value over doing nothing; Gate 4 is withheld and the cost PASS stands.
 NULL_WIN_LIMIT = 10
 
+# No verdict was produced (malformed invocation). Distinct from 1 = FAIL so
+# the two are never confused by an unattended operator or a wrapper script.
+INPUT_ERROR_EXIT_CODE = 3
+
+
+class InputError(SystemExit):
+    """Malformed or incomplete inputs: no verdict was produced (exit 3).
+
+    ``pytest.raises(SystemExit, match=...)`` still sees the message, because
+    ``__str__`` returns it; the process exit code is the distinct 3.
+    """
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+        self.code = INPUT_ERROR_EXIT_CODE
+
+    def __str__(self) -> str:
+        return self.message
+
 
 def parse_seeds(spec: str) -> tuple[int, ...]:
     """Parse ``A-B`` (inclusive range) or a comma-separated seed list.
@@ -82,16 +108,16 @@ def parse_seeds(spec: str) -> tuple[int, ...]:
         return tuple(range(int(start), int(end) + 1))
     seeds = tuple(int(value.strip()) for value in spec.split(",") if value.strip())
     if not seeds:
-        raise SystemExit("empty seed specification")
+        raise InputError("empty seed specification")
     if len(set(seeds)) != len(seeds):
-        raise SystemExit("seed specification contains duplicates")
+        raise InputError("seed specification contains duplicates")
     return seeds
 
 
 def _seed_numbers(dataset_root: Path) -> list[int]:
     handoff = dataset_root / HANDOFF_DATASET
     if not handoff.is_dir():
-        raise SystemExit(f"no handoff dataset under {handoff}")
+        raise InputError(f"no handoff dataset under {handoff}")
     seeds = []
     for path in handoff.glob("seed-*"):
         stem = path.stem.split("-")[-1]
@@ -103,10 +129,10 @@ def _seed_numbers(dataset_root: Path) -> list[int]:
 def _load_seed(dataset_root: Path, seed: int) -> dict:
     path = dataset_root / HANDOFF_DATASET / f"seed-{seed:04d}" / "reports" / "seed-summary.json"
     if not path.is_file():
-        raise SystemExit(f"missing seed summary: {path}")
+        raise InputError(f"missing seed summary: {path}")
     summary = json.loads(path.read_text())
     if summary.get("status") != "complete":
-        raise SystemExit(f"seed {seed} is not a complete version")
+        raise InputError(f"seed {seed} is not a complete version")
     return summary
 
 
@@ -116,7 +142,7 @@ def _arm_pairs(dataset_root: Path, seeds: list[int]) -> list[dict[str, object]]:
     for seed in seeds:
         arms = _load_seed(dataset_root, seed)["arms"]
         if "random" not in arms or "adaptive" not in arms:
-            raise SystemExit(f"seed {seed} is missing the random/adaptive pair")
+            raise InputError(f"seed {seed} is missing the random/adaptive pair")
         pairs.append(
             {
                 "seed": seed,
@@ -201,9 +227,9 @@ def _null_block(
     for seed in [seed for seed in seeds if seed in primary_summaries]:
         arms = _load_seed(null_root, seed)["arms"]
         if "null" not in arms:
-            raise SystemExit(f"null queue seed {seed} is missing the null arm")
+            raise InputError(f"null queue seed {seed} is missing the null arm")
         if "adaptive" in arms or "random" in arms:
-            raise SystemExit(
+            raise InputError(
                 f"null queue seed {seed} must be a single-arm null session "
                 "(adaptive/random arms found; is --null-root pointed at a "
                 "pair-session dataset?)"
@@ -213,7 +239,7 @@ def _null_block(
         # queue - the null sessions carry no adaptive arm of their own.
         primary_arms = primary_summaries[seed]["arms"]
         if "adaptive" not in primary_arms:
-            raise SystemExit(
+            raise InputError(
                 f"seed {seed}: the primary dataset has no adaptive arm to pair "
                 "against the null queue"
             )
@@ -236,7 +262,7 @@ def _null_block(
         )
     for pair in pairs:
         if pair["null_search_flops"] != 0 or pair["null_mutation_count"] != 0:
-            raise SystemExit(
+            raise InputError(
                 f"null queue seed {pair['seed']}: the null arm must book zero "
                 "search FLOPs and zero mutations"
             )
@@ -274,10 +300,10 @@ def compute_verdict(
     null sessions over the same block); same rule: required for Gate 4.
     """
     if not declared_seeds:
-        raise SystemExit("declared seed block must not be empty")
+        raise InputError("declared seed block must not be empty")
     complete = _seed_numbers(dataset_root)
     if not complete:
-        raise SystemExit("no complete seed versions found; nothing to judge")
+        raise InputError("no complete seed versions found; nothing to judge")
     # The pre-registered analysis is over the declared queue exactly; stray
     # complete seeds (e.g. smoke tests) must not pollute the aggregate.
     strays = sorted(set(complete) - set(declared_seeds))
@@ -293,9 +319,9 @@ def compute_verdict(
     for seed in seeds:
         arms = summaries[seed]["arms"]
         if "random" not in arms or "adaptive" not in arms:
-            raise SystemExit(f"seed {seed} is missing the random/adaptive pair")
+            raise InputError(f"seed {seed} is missing the random/adaptive pair")
         if int(arms["adaptive"]["mutation_count"]) != int(arms["random"]["mutation_count"]):
-            raise SystemExit(f"seed {seed}: unmatched mutation budgets")
+            raise InputError(f"seed {seed}: unmatched mutation budgets")
         search += int(arms["adaptive"]["search_flops"])
         training += int(arms["adaptive"]["training_flops"])
         pairs.append(
@@ -432,14 +458,20 @@ def main() -> int:
         help="verdict JSON path (default <dataset-root>/v0-5-1-verdict.json)",
     )
     args = parser.parse_args()
-    declared_seeds = parse_seeds(args.seeds) if args.seeds else DECLARED_SEEDS
-    verdict = compute_verdict(
-        Path(args.dataset_root),
-        probe_batch_count=args.probe_batch_count,
-        declared_seeds=declared_seeds,
-        control_root=args.control_root,
-        null_root=args.null_root,
-    )
+    try:
+        declared_seeds = parse_seeds(args.seeds) if args.seeds else DECLARED_SEEDS
+        verdict = compute_verdict(
+            Path(args.dataset_root),
+            probe_batch_count=args.probe_batch_count,
+            declared_seeds=declared_seeds,
+            control_root=args.control_root,
+            null_root=args.null_root,
+        )
+    except InputError as error:
+        # No verdict was produced, so nothing is written and the exit code is
+        # the distinct 3 - never 1, which means a real cost FAIL.
+        print(f"no verdict produced: {error}", file=sys.stderr)
+        return INPUT_ERROR_EXIT_CODE
     output = args.output or Path(args.dataset_root) / "v0-5-1-verdict.json"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(verdict, indent=2, sort_keys=True) + "\n")

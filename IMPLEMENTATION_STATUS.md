@@ -585,6 +585,25 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   weeks of sessions. The primary queue launched 2026-09-15 with `--hours 9`
   (the registered usable window), which at the measured rate places exactly
   two completed pairs per session.
+- **The section 4 verdict is reachable after a Kaggle run, and its exit codes
+  are now unambiguous.** That command reads *local* dataset roots, which are
+  empty once the queues live in published Kaggle datasets, so
+  `ACT_T4_MODE=verdict` restores all three queues (each session publishes the
+  whole handoff directory, so the newest published version is cumulative) and
+  then runs the registered verdict, keeping the verdict JSON in the kernel
+  output; it is a CPU kernel, so it never queues behind a GPU. Auditing that
+  path exposed a real defect: `scripts/v0_verdict.py` exited **1** both for
+  the pre-registered `FAIL` (primary cost > 5%) and for every
+  input-validation error (`raise SystemExit("...")` defaults to 1), so over
+  an unattended multi-session run a wrong `--dataset-root` would have been
+  recorded as "the amortization hypothesis is false". Validation errors now
+  raise `InputError` and exit the distinct code **3**, writing no verdict;
+  0/1/2 keep their registered meanings exactly. Verified end-to-end: a
+  nonexistent root exits 3 with `no verdict produced: no handoff dataset
+  under ...` and no JSON written, while the three-queue command composes over
+  the reduced-fidelity `real-diag` roots (`rich` / `argmax` / `null`) and
+  writes a coherent verdict. Pinned by 2 new verdict tests and a driver test
+  asserting exit 3 is not treated as a verdict code.
 - `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (272, including the
   26 report-figure data-assembly tests, 14 session-plan tests pinning the
   section 5.2 schedule/dtype tables, 10 handoff tests covering atomic
