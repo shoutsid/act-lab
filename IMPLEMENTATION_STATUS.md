@@ -1482,6 +1482,30 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   ties* and *rare*, which changes no statistic - the declared reading passes with
   the tie counted as a non-win. Architecture hashes are carried per seed so the
   guard is recomputable from the artifact.
+- **Sections 5.21 (observation) and 5.22 (RAN 2026-09-15, blocks 92000-92383
+  depth 2 / 93000-93383 depth 3).** Reanalysing three committed blocks showed
+  each mutating arm's fused run losing to a frozen retrain of its own final
+  genome at every depth, and - the part section 5.17.2 could not see, since it
+  checked only the adaptive arm - losing for the **random** arm too (292/384,
+  293/384, 258/384). That makes the ~0.1 nat penalty a property of *mutating a
+  live run*, about twice the size of the topology signal these studies measure,
+  which is a sufficient explanation for the weak-to-negative fused comparison at
+  shallow depth. Recorded as 5.21 explicitly **unregistered** (a reanalysis of
+  blocks run for other reasons), then 5.22 pre-registered, committed, and run:
+  **branch (a), both primaries passing at both depths** (296/384 and 291/384
+  adaptive; 286/384 and 300/384 random). **Adopted consequence: two-stage
+  delivery (discover -> freeze the genome -> retrain from the original
+  initialization) is the project's pipeline**, and section 5.15's depth
+  dose-response is re-read as being about the *fused* process. Two fresh blocks
+  also replicated 5.20's primaries (256/255 and 257/272). Unseparated mechanism:
+  a frozen retrain has a fresh optimizer and trains a pruned topology, so
+  neither optimizer history nor per-step FLOPs are matched - declared in the
+  pre-registration as uncontrolled. Summaries
+  `artifacts/study-summaries/frozen-delivery-depth{2,3}-384.json`
+  (`study_bc1a4fdfe99fde63`, `study_f23d93bf49e18a57`), pinned by
+  `tests/test_specificity_summary.py`; the observation is pinned to its source
+  summaries by `tests/test_fused_vs_frozen_observation.py`, which also fails if
+  the report drops the "unregistered" label.
 - **Report-artifact link guard (2026-09-15).** Section 5.19's missing summaries
   were a defect *class*, not an incident: a result can be cited widely while its
   artifact does not exist. `tests/test_report_artifact_links.py` now fails if any

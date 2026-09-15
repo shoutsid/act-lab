@@ -59,6 +59,21 @@ PROFILES: dict[str, dict] = {
         "report_section": "5.20",
         "summary": "artifacts/study-summaries/specificity-depth3-384.json",
     },
+    # Section 5.22: the mid-training process penalty, on the design of section
+    # 5.20 exactly. Same three transports; the declared primaries are the
+    # fused-versus-frozen contrasts rather than the topology contrasts.
+    "confirm2": {
+        "seeds": tuple(range(92000, 92384)),
+        "overrides": {"depth": 2},
+        "report_section": "5.22",
+        "summary": "artifacts/study-summaries/frozen-delivery-depth2-384.json",
+    },
+    "confirm3": {
+        "seeds": tuple(range(93000, 93384)),
+        "overrides": {"depth": 3},
+        "report_section": "5.22",
+        "summary": "artifacts/study-summaries/frozen-delivery-depth3-384.json",
+    },
     "smoke": {
         "seeds": tuple(range(73000, 73004)),
         "overrides": {"depth": 2},
@@ -200,6 +215,57 @@ def _comparison(deltas: list[float]) -> dict:
         "passes": p <= PER_PRIMARY_ALPHA,
         "bar_and_p_agree": (wins >= bar) == (p <= PER_PRIMARY_ALPHA),
     }
+
+
+#: Section 5.22's profiles run the same design for a different question, so the
+#: shipped defaults must stay section 5.20's.
+CONFIRM_PROFILES = ("confirm2", "confirm3")
+
+
+def _frozen_delivery(experiments: list[dict]) -> dict:
+    """Section 5.22's primaries: does the fused run lose to its own frozen retrain?
+
+    Negative deltas mean the frozen retrain won. Both rows are directional - the
+    frozen path must WIN - so neither can be satisfied by the discounted sign.
+    """
+    return {
+        "A_own_vs_fused_adaptive": _comparison(
+            [
+                exp["transport"]["A_own"]["loss"]
+                - exp["discovery"]["losses"]["adaptive"]
+                for exp in experiments
+            ]
+        ),
+        "R_own_vs_fused_random": _comparison(
+            [
+                exp["transport"]["R_own"]["loss"]
+                - exp["discovery"]["losses"]["random"]
+                for exp in experiments
+            ]
+        ),
+    }
+
+
+def _frozen_delivery_outcome(comparisons: dict) -> str:
+    adaptive = comparisons["A_own_vs_fused_adaptive"]["passes"]
+    random_arm = comparisons["R_own_vs_fused_random"]["passes"]
+    if adaptive and random_arm:
+        return (
+            "branch (a) both PASS: the penalty is a PROCESS property, not a "
+            "topology one - the fused run is the wrong instrument for selection "
+            "value and two-stage delivery (discover, freeze, retrain) is adopted"
+        )
+    if adaptive:
+        return (
+            "branch (b) adaptive PASS / random FAIL: the penalty is "
+            "TOPOLOGY-specific after all - section 5.21's arm-generic reading is "
+            "withdrawn and the fused comparison stands as the right instrument"
+        )
+    return (
+        "branch (c) neither PASSES: REPLICATION FAILURE - section 5.17.2's "
+        "observation and section 5.21's extension are both unconfirmed and no "
+        "delivery-path change is adopted"
+    )
 
 
 def _coincident_arm_seeds(experiments: list[dict]) -> int:
@@ -355,6 +421,13 @@ def summarize(profile: str) -> dict:
             "exactly from per_seed; p-values are exact one-tailed binomial."
         ),
     }
+    if profile in CONFIRM_PROFILES:
+        # Section 5.22's own block, emitted only for its own profiles so each
+        # record carries exactly the study it belongs to (the section-5.20
+        # profiles' committed payloads stay as they were written).
+        frozen = _frozen_delivery(experiments)
+        payload["frozen_delivery"] = frozen
+        payload["frozen_delivery_outcome"] = _frozen_delivery_outcome(frozen)
     payload["study_hash"] = _stable_hash(
         {
             "config": payload["config"],
@@ -392,6 +465,17 @@ def verdict(profile: str) -> int:
         f"topology the same size as the initial one in "
         f"{payload['random_matches_initial_size_seeds']}/{n}"
     )
+    if "frozen_delivery" not in payload:
+        return 0
+    print("\n--- section 5.22: fused run versus its own frozen retrain ---")
+    for name, comparison in payload["frozen_delivery"].items():
+        print(
+            f"{name}: wins {comparison['wins']}/{comparison['n']}, "
+            f"mean {comparison['mean_delta']:+.6f}, p {comparison['binomial_p']:.2e} "
+            f"(bar {comparison['min_wins']}): "
+            f"{'PASS' if comparison['passes'] else 'FAIL'}"
+        )
+    print(f"OUTCOME: {payload['frozen_delivery_outcome']}")
     return 0
 
 

@@ -35,14 +35,42 @@ QUOTED = {
         "A_own_vs_F_own": (265, -0.082889, 3.43e-14, True),
         "R_own_vs_F_own": (197, -0.001231, 3.23e-01, False),
     },
+    # Section 5.22's blocks run the same design; its own primaries are pinned
+    # separately below, and these rows are the section-5.20 replication it carried.
+    "frozen-delivery-depth2-384.json": {
+        "A_own_vs_R_own": (256, -0.060794, 3.06e-11, True),
+        "A_own_vs_F_own": (257, -0.065004, 1.50e-11, True),
+        "R_own_vs_F_own": (195, -0.004210, 3.99e-01, False),
+    },
+    "frozen-delivery-depth3-384.json": {
+        "A_own_vs_R_own": (255, -0.084959, 6.13e-11, True),
+        "A_own_vs_F_own": (272, -0.105366, 8.92e-17, True),
+        "R_own_vs_F_own": (214, -0.020406, 1.40e-02, False),
+    },
 }
 SEED_BLOCKS = {
     "specificity-depth2-384.json": (89000, 89384),
     "specificity-depth3-384.json": (91000, 91384),
+    "frozen-delivery-depth2-384.json": (92000, 92384),
+    "frozen-delivery-depth3-384.json": (93000, 93384),
 }
 STUDY_IDS = {
     "specificity-depth2-384.json": "study_f10d1b1cd3812bc1",
     "specificity-depth3-384.json": "study_b6455e54f8801fd8",
+    "frozen-delivery-depth2-384.json": "study_bc1a4fdfe99fde63",
+    "frozen-delivery-depth3-384.json": "study_f23d93bf49e18a57",
+}
+#: Section 5.22: profile -> comparison -> (wins, mean, p, passes). The delta here
+#: is a TRANSPORT minus a DISCOVERY loss, not transport minus transport.
+FROZEN = {
+    "frozen-delivery-depth2-384.json": {
+        "A_own_vs_fused_adaptive": (296, -0.079466, 1.02e-27, True),
+        "R_own_vs_fused_random": (286, -0.099580, 9.45e-23, True),
+    },
+    "frozen-delivery-depth3-384.json": {
+        "A_own_vs_fused_adaptive": (291, -0.093629, 3.69e-25, True),
+        "R_own_vs_fused_random": (300, -0.121876, 7.00e-30, True),
+    },
 }
 
 
@@ -124,3 +152,35 @@ def test_specificity_registered_branch_is_a_selection_specific() -> None:
         comparisons = _load(name)["comparisons"]
         assert comparisons["A_own_vs_R_own"]["passes"] is True, name
         assert comparisons["A_own_vs_F_own"]["passes"] is True, name
+
+
+@pytest.mark.parametrize("name", sorted(FROZEN))
+def test_section_5_22_frozen_delivery_recomputes_and_keeps_branch_a(name: str) -> None:
+    """The fused run must lose to its own frozen retrain, for BOTH arms.
+
+    Branch (a) - the penalty is a process property - is the reading adopted, and
+    it rests on the random arm passing too. If only the adaptive row passed, the
+    registered verdict would be branch (b) and the delivery-path change would not
+    follow, so both rows are pinned together.
+    """
+    summary = _load(name)
+    quoted = FROZEN[name]
+    assert summary["record_type"] == "specificity_study"
+    assert summary["report_section"] == "5.22"
+    assert summary["per_primary_alpha"] == PER_PRIMARY_ALPHA
+    assert summary["declared_bar"] == DECLARED_BAR
+    for comparison_name, (wins, mean, p, passes) in quoted.items():
+        # A_own_vs_fused_adaptive -> transport A_own minus discovery adaptive
+        transport, fused = comparison_name.split("_vs_fused_")
+        deltas = [
+            row["transport_losses"][transport] - row["discovery_losses"][fused]
+            for row in summary["per_seed"]
+        ]
+        assert sum(delta < 0 for delta in deltas) == wins, comparison_name
+        assert sum(deltas) / len(deltas) == pytest.approx(mean, abs=5e-6)
+        assert _binomial_survival(wins, len(deltas)) == pytest.approx(p, rel=1e-2)
+        assert summary["frozen_delivery"][comparison_name]["passes"] is passes
+    assert summary["frozen_delivery_outcome"].startswith("branch (a)"), (
+        "section 5.22's registered verdict is branch (a); the stored outcome "
+        "string must keep that label"
+    )

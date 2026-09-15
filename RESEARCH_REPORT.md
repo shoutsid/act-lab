@@ -2855,6 +2855,52 @@ control). The teacher treatment remains untested.
 **Cost.** Identical to section 5.20: 2 blocks x (1 discovery + 3 transports) per
 seed, ~3.5 s/seed, ~45 min CPU across 20 shards per block.
 
+### 5.22 Outcome: the penalty is a process property (branch (a), both depths)
+
+Run on the registered fresh blocks 92000-92383 (depth 2) and 93000-93383 (depth
+3), `study_bc1a4fdfe99fde63` and `study_f23d93bf49e18a57`. The design is section
+5.20's exactly, so the validity check carries over: the unmutated genome rewound
+to the seed's own initial model reproduced the fixed arm's own run exactly in
+384/384 seeds at both depths.
+
+| | depth 2 (n = 384) | depth 3 (n = 384) |
+|---|---|---|
+| **P1** frozen adaptive retrain beats fused adaptive run | **296/384**, mean −0.0795, p 1.02e-27 | **291/384**, mean −0.0936, p 3.69e-25 |
+| **P2** frozen random retrain beats fused random run | **286/384**, mean −0.0996, p 9.45e-23 | **300/384**, mean −0.1219, p 7.00e-30 |
+
+Bar 215 at `alpha/4 = 0.0125`; both primaries pass at both depths.
+
+**Registered verdict: branch (a) - the penalty is a process property, not a
+topology one.** The random arm's frozen retrain beats its own fused run by *more*
+than the adaptive arm's does at both depths, exactly as section 5.21 predicted
+from the reanalysis. Section 5.21 is therefore confirmed, and section 5.17.2's
+narrower reading (an observation about the discovered topology) is superseded.
+
+**The pre-registered consequence is adopted:** the fused run is the wrong
+instrument for selection value, and the two-stage delivery path (discover ->
+freeze the genome -> retrain from the original initialization) becomes the
+project's pipeline. Plan section 102's genome extraction and section 11's
+weight/topology separation are thereby a performance requirement, not bookkeeping,
+and section 5.15's depth dose-response is re-read as a statement about the
+**fused** process rather than about where value becomes discoverable.
+
+**Both of this block family's other readings replicated**, which is what makes it
+a usable family. Section 5.20's primaries: `A_own` < `R_own` at `256/384` and
+`255/384`, `A_own` < `F_own` at `257/384` and `272/384` - a fourth and fifth
+independent block agreeing with section 5.20's branch (a). And the random-churn
+control came back neutral again at depth 2 (`195/384`, mean −0.0042, p 0.399) and
+near-neutral at depth 3 (`214/384`, mean −0.0204, p 0.014, failing the
+Bonferroni bar), matching section 5.20's control rows rather than contradicting
+them.
+
+**What this does not settle.** The mechanism inside "the process" is unseparated:
+a frozen retrain starts a fresh optimizer and trains a pruned topology, so
+neither optimizer history nor per-step FLOPs are matched, and the pre-registration
+declared both as uncontrolled. Two candidate mechanisms - mid-flight optimizer
+resets, and capacity loss from pruning - remain live, and the frozen path is
+*different work* rather than strictly less. The teacher treatment is still
+untested.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
