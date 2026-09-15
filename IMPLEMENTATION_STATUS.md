@@ -1482,6 +1482,13 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   ties* and *rare*, which changes no statistic - the declared reading passes with
   the tie counted as a non-win. Architecture hashes are carried per seed so the
   guard is recomputable from the artifact.
+- **Report-artifact link guard (2026-09-15).** Section 5.19's missing summaries
+  were a defect *class*, not an incident: a result can be cited widely while its
+  artifact does not exist. `tests/test_report_artifact_links.py` now fails if any
+  `study_...` id cited in `RESEARCH_REPORT.md` has no committed summary, or if
+  any committed summary is referenced by neither the report nor this file
+  (teeth-checked both ways). Full audit at the time of writing: **0 cited but
+  missing, 0 orphaned** - section 5.19 was the only occurrence.
 - `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
   `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
   deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer
