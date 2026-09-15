@@ -93,6 +93,11 @@ class ExperimentConfig:
     # opposite operation, so a profile that silently stops mutating fails its
     # budget check instead of measuring the wrong thing.
     forced_operation: str | None = None
+    # What a grown expert starts as: "random" (the rebuild's own draw, the
+    # historical behaviour every published number was measured under) or
+    # "clone" (a copy of the busiest surviving expert in the same layer, router
+    # row included - see `rebuild_model_from_genome`). Report section 5.26.
+    new_expert_initialization: str = "random"
     arms: str = "fixed,random,adaptive"
     device: str = "cpu"
 
@@ -175,6 +180,7 @@ class _Arm:
     device: torch.device = torch.device("cpu")
     probe_batches: tuple[torch.Tensor, ...] = ()
     preserve_router: bool = False
+    new_expert_initialization: str = "random"
 
 
 def _parse_arms(spec: str) -> tuple[str, ...]:
@@ -217,6 +223,17 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
         raise ValueError("unsupported probe_selection")
     if config.forced_operation not in {None, "grow", "prune"}:
         raise ValueError("forced_operation must be None, 'grow' or 'prune'")
+    if config.new_expert_initialization not in {"random", "clone"}:
+        raise ValueError("new_expert_initialization must be 'random' or 'clone'")
+    if config.new_expert_initialization == "clone" and not config.preserve_router_on_rebuild:
+        # Cloning is defined as copying a surviving expert's body AND its router
+        # row, so it has no meaning while the mutated layer's router is being
+        # discarded. Silently doing nothing would let a study read a clone arm
+        # that never cloned; refuse instead.
+        raise ValueError(
+            "new_expert_initialization='clone' requires "
+            "preserve_router_on_rebuild=True"
+        )
     if config.probe_batch_count < 1:
         raise ValueError("probe_batch_count must be at least 1")
     if config.probe_force_candidate is not None and config.probe_force_candidate < 0:
@@ -270,6 +287,7 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
             device,
             probe_batches,
             config.preserve_router_on_rebuild,
+            config.new_expert_initialization,
         )
         for mode in arm_modes
     )
@@ -341,6 +359,7 @@ def _make_arm(
     device: torch.device,
     probe_batches: tuple[torch.Tensor, ...],
     preserve_router: bool = False,
+    new_expert_initialization: str = "random",
 ) -> _Arm:
     cloned_model = deepcopy(model)
     cloned_genome = deepcopy(genome)
@@ -358,6 +377,7 @@ def _make_arm(
         mutation_history=[],
         probe_batches=probe_batches,
         preserve_router=preserve_router,
+        new_expert_initialization=new_expert_initialization,
     )
 
 
@@ -507,6 +527,7 @@ def _mutate_by_probe(
         context_size=arm.model.config.context_size,
         num_heads=arm.model.config.num_heads,
         preserve_router=arm.preserve_router,
+        new_expert_initialization=arm.new_expert_initialization,
     )
     if not isinstance(rebuilt, StaticMoECausalLM):
         raise TypeError("mutation changed the baseline model family")
@@ -649,6 +670,7 @@ def _mutate_arm(
         context_size=arm.model.config.context_size,
         num_heads=arm.model.config.num_heads,
         preserve_router=arm.preserve_router,
+        new_expert_initialization=arm.new_expert_initialization,
     )
     if not isinstance(rebuilt, StaticMoECausalLM):
         raise TypeError("mutation changed the baseline model family")

@@ -63,6 +63,7 @@ def rebuild_model_from_genome(
     context_size: int = 32,
     num_heads: int | None = None,
     preserve_router: bool = False,
+    new_expert_initialization: str = "random",
 ) -> DenseCausalLM | StaticMoECausalLM:
     """Build a mutated model while retaining every compatible parameter.
 
@@ -76,6 +77,19 @@ def rebuild_model_from_genome(
     ``preserve_router`` the surviving experts' rows are copied by id and only
     genuinely new experts (a grow) keep the fresh draw - the treatment used to
     test whether the mid-training penalty is this discard (report section 5.24).
+
+    ``new_expert_initialization`` decides what a genuinely NEW expert (a grow)
+    starts as:
+
+    - ``"random"``: the rebuild's own draw - the historical behaviour, and the
+      only one any published number was measured under.
+    - ``"clone"``: a copy of the busiest surviving expert in the same layer, by
+      the model's own recorded routing load, with that expert's router row copied
+      too. The new expert therefore starts as a working twin of an expert the
+      router already sends tokens to, instead of as noise the model must first
+      learn to route around (report section 5.26). Cloning the router row is what
+      makes it a twin: a cloned expert body with a freshly drawn row would start
+      with no routing affinity at all.
     """
     rebuilt = model_from_genome(genome, context_size=context_size, num_heads=num_heads)
     source_state = previous.state_dict()
@@ -113,6 +127,48 @@ def rebuild_model_from_genome(
                 target_state[router_key][target_index].copy_(
                     source_state[router_key][source_index]
                 )
+            if new_expert_initialization != "clone":
+                continue
+            new_indices = [
+                target_index
+                for target_index, expert_id in enumerate(target_block.expert_ids)
+                if expert_id not in source_ids
+            ]
+            survivors = sorted(
+                source_index
+                for expert_id, source_index in source_ids.items()
+                if expert_id in set(target_block.expert_ids)
+            )
+            if not new_indices or not survivors:
+                continue
+            loads = getattr(previous, "routing_load", None)
+            layer_loads = (
+                loads[layer_index]
+                if loads is not None and layer_index < len(loads)
+                else None
+            )
+            # The busiest survivor is the one whose function is most in demand,
+            # so duplicating it is the cheapest place to add capacity. Falls back
+            # to the lowest-index survivor when no load has been recorded (a
+            # model that has not trained yet).
+            source_index = (
+                max(survivors, key=lambda index: float(layer_loads[index]))
+                if layer_loads is not None
+                else survivors[0]
+            )
+            for target_index in new_indices:
+                for suffix in ("0.weight", "0.bias", "2.weight", "2.bias"):
+                    target_key = (
+                        f"blocks.{layer_index}.experts.{target_index}.{suffix}"
+                    )
+                    source_key = f"blocks.{layer_index}.experts.{source_index}.{suffix}"
+                    if target_key in target_state and source_key in source_state:
+                        target_state[target_key].copy_(source_state[source_key])
+                if router_key in target_state and router_key in source_state:
+                    handled.add(router_key)
+                    target_state[router_key][target_index].copy_(
+                        source_state[router_key][source_index]
+                    )
 
     for key, value in target_state.items():
         if key in handled:
