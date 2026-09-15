@@ -556,28 +556,40 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   +5.12. The artifact is `artifacts/v0-benchmark.json` (gitignored) and was
   downloaded from the kernel output, so the launch command's input exists and
   is not a hand-edited file.
-- **The schedule was built on the wrong dtype's rate (found and fixed
-  2026-09-15).** Section 5.2's rule reads the *fp32* rate to choose a dtype,
-  but the schedule was parameterized from that same fp32 number while the
-  sessions train fp16. Measured on the T4 with `--queue dtypeprobe`: fp32
-  **2,066.3** tokens/s -> pair 3.404 h / 2 pairs/session / 6 sessions, fp16
-  **4,694.9** -> pair **1.554 h / 5 pairs/session / 3 sessions**. Scheduling
-  from fp32 was therefore 2.27x too pessimistic: every session's deadline rule
-  stops with usable clock left, so the run buys roughly twice the sessions and
-  twice the ~86 GPU-h quota plan. The benchmark now measures the decided dtype
-  as well and records `schedule_tokens_per_second` + `tokens_per_second_by_dtype`
-  beside the fp32 `measured_tokens_per_second`, and the launch command
-  schedules from the former while still enforcing the pre-committed rule
-  against the latter. This changes session packing only: the seeds, the steps,
-  the probe cost and the section 4 verdict are untouched, which section 5.2
-  already pre-registered ("dtype is an execution detail touching no
-  pre-registered criterion"). The benchmark also refuses to write an artifact
-  whose schedule fits no pair at all. That is not hypothetical: on a non-T4 GPU
-  the decided fp16 measured 4.2x *slower* than fp32, and the artifact described
-  a session with `full_pairs_per_session: 0` - billing a whole window to
-  publish nothing, silently, because the deadline rules never start a pair the
-  clock cannot finish. The refusal names the cause and the rule's decision
-  context (a T4 with tensor cores).
+- **Two schedule defects found and fixed 2026-09-15; they nearly cancel, so
+  the recorded total was accidentally right for the wrong reasons.**
+  (a) *The schedule was built on the rule's input, not the runtime dtype.*
+  Section 5.2's rule reads the **fp32** rate to choose a dtype, and the
+  schedule was parameterized from that same number while the sessions train
+  fp16. Measured on the T4 (`--queue dtypeprobe`): fp32 **2,066.3** tokens/s
+  against fp16 **4,694.9**, i.e. 2.27x. The benchmark now measures the decided
+  dtype too and records `schedule_tokens_per_second` +
+  `tokens_per_second_by_dtype` beside the fp32 `measured_tokens_per_second`,
+  and the launch command schedules from the former while still enforcing the
+  pre-committed rule against the latter.
+  (b) *A pair's arms are trained sequentially, not one per GPU.*
+  `pair_time_hours` was documented as "one per GPU in parallel ... the wall
+  time is one arm's training time", and `PairSchedule.arms` was left unused in
+  that formula - the arithmetic tell. `run_v0_session` trains `config.arms`
+  with a sequential generator on one device, measured on a real pair (arm wall
+  times 0.531 s + 0.298 s added rather than overlapping), so every pair cost
+  twice what the clock believed. That is the dangerous direction: the deadline
+  rule would start pairs it could not finish, and section 5.2 restarts an
+  interrupted pair from scratch. The multiplicity is now in the formula and in
+  the runner's own deadline arithmetic.
+  Corrected plan: primary 12 x 3.01 h = ~36 GPU-h, control ~36, null (one arm)
+  12 x 1.554 = ~19, so ~90 GPU-h - the recorded "2c ~0.3" does not follow from
+  the runner, since an arm's token budget is `batch x context x steps`
+  independent of arm count. Dtype stays an execution detail touching no
+  pre-registered criterion; the arm multiplicity is not mere arithmetic, and
+  recovering it (one arm per device) is the remaining change that halves the
+  plan to ~45 GPU-h, needing a two-device shape and a per-arm runner that is
+  not written or validated. The benchmark also refuses to write an artifact
+  whose schedule fits no pair: on a non-T4 GPU the decided fp16 measured 4.2x
+  *slower* than fp32, and the artifact described a session with
+  `full_pairs_per_session: 0` - billing a whole window to publish nothing,
+  silently, because the deadline rules never start a pair the clock cannot
+  finish.
 - The whole run is now reproducible code, not operator lore:
   `scripts/kaggle_t4.py` drives every session kind as a script kernel
   (`ACT_T4_MODE` = `metadata` / `probe` / `preflight` / `session` / `control` /

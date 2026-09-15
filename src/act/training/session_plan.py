@@ -74,13 +74,24 @@ class PairSchedule:
 
     @property
     def pair_time_hours(self) -> float:
-        """Wall time for both arms of one seed, running one per GPU in parallel.
+        """Wall time for one seed's pair, trained the way the runner trains it.
 
-        Section 5.2: pair time = tokens / per-arm throughput + fixed
-        event/rebuild overhead. Both arms finish together, so the wall time
-        is one arm's training time plus the overhead.
+        Section 5.2: pair time = tokens / throughput + the fixed event/rebuild
+        overhead - for **every** arm in the pair. ``run_v0_session`` trains
+        ``config.arms`` sequentially on one device, so the pair costs ``arms``
+        arm-times rather than one. Measured 2026-09-15 on a real pair: the two
+        arms' wall times added (0.531 s + 0.298 s), they did not overlap.
+
+        The formula's earlier single-arm form assumed one arm per GPU, a
+        parallelism no runner implements; this field was left unused there,
+        which is the arithmetic tell. Dividing by ``arms`` again - running each
+        arm on its own device - is the outstanding change that halves this and
+        the whole quota plan with it.
         """
-        return self.tokens_per_arm / self.tokens_per_second / 3600.0 + PAIR_OVERHEAD_HOURS
+        return (
+            self.arms * self.tokens_per_arm / self.tokens_per_second / 3600.0
+            + PAIR_OVERHEAD_HOURS
+        )
 
     @property
     def full_pairs_per_session(self) -> int:

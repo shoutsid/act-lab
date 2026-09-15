@@ -31,14 +31,21 @@ def test_recorded_t4_measurements_derive_the_recorded_schedule() -> None:
     """The 2026-09-15 T4 dtype probe, re-derived from its measured rates.
 
     fp32 is the pre-committed rule's input; fp16 is the dtype the sessions
-    train, so it is the one the schedule is built on.
+    train, so it is the one the schedule is built on. Both rows are for the
+    declared two-arm pair, trained sequentially as the runner does it.
     """
     fp32 = PairSchedule(tokens_per_second=2_066.3)
-    assert (fp32.full_pairs_per_session, fp32.sessions_for_primary) == (2, 6)
+    assert round(fp32.pair_time_hours, 2) == 6.71
+    assert (fp32.full_pairs_per_session, fp32.sessions_for_primary) == (1, 12)
 
     fp16 = PairSchedule(tokens_per_second=4_694.9)
-    assert round(fp16.pair_time_hours, 3) == 1.554
-    assert (fp16.full_pairs_per_session, fp16.sessions_for_primary) == (5, 3)
+    assert round(fp16.pair_time_hours, 2) == 3.01
+    assert (fp16.full_pairs_per_session, fp16.sessions_for_primary) == (2, 6)
+
+    # The dtype rule's win survives the arm multiplicity: the same pair costs
+    # 2.2x less at the rate the arms actually run, which is what justifies
+    # scheduling from the decided dtype rather than the fp32 rule input.
+    assert fp32.pair_time_hours / fp16.pair_time_hours > 2.0
 
 
 def test_unusable_schedule_reason_flags_a_plan_that_cannot_start_a_pair() -> None:
@@ -53,7 +60,7 @@ def test_unusable_schedule_reason_flags_a_plan_that_cannot_start_a_pair() -> Non
     assert infeasible.full_pairs_per_session == 0
     reason = unusable_schedule_reason(infeasible)
     assert reason is not None
-    assert "does not fit" in reason and "16.54 h" in reason
+    assert "does not fit" in reason and "32.98 h" in reason
 
     # Every runnable plan passes, including opposite ends of the range.
     assert unusable_schedule_reason(PairSchedule(tokens_per_second=10_000.0)) is None
@@ -73,9 +80,14 @@ def test_decide_dtype_follows_precommitted_floor() -> None:
 @pytest.mark.parametrize(
     "tokens_per_second,pair_hours,pairs_per_session,sessions_primary,sessions_total",
     [
-        (10_000.0, 0.78, 11, 2, 4),
-        (5_000.0, 1.47, 6, 2, 4),
-        (2_500.0, 2.83, 3, 4, 8),
+        # Amended 2026-09-15: the section 5.2 rows were computed for one arm per
+        # GPU, which no runner implements. At an assumed 10k tokens/s the
+        # single-arm row was 0.78 h -> 11 pairs/session; a two-arm pair trained
+        # sequentially on one device costs 1.465 h -> 6. The rates themselves
+        # are unchanged assumptions; only the arm multiplicity was missing.
+        (10_000.0, 1.47, 6, 2, 4),
+        (5_000.0, 2.83, 3, 4, 8),
+        (2_500.0, 5.56, 1, 12, 24),
     ],
 )
 def test_schedule_table_matches_section_5_2(
@@ -90,6 +102,14 @@ def test_schedule_table_matches_section_5_2(
     assert schedule.full_pairs_per_session == pairs_per_session
     assert schedule.sessions_for_primary == sessions_primary
     assert schedule.sessions_total == sessions_total
+
+
+def test_a_single_arm_pair_costs_one_arm_time() -> None:
+    """The null queue runs one arm, so its pairs are not doubled."""
+    one = PairSchedule(tokens_per_second=4_694.9, arms=1)
+    two = PairSchedule(tokens_per_second=4_694.9, arms=2)
+    assert round(one.pair_time_hours, 3) == 1.554
+    assert math.isclose(two.pair_time_hours, 2 * one.pair_time_hours - 0.1, abs_tol=1e-9)
 
 
 def test_schedule_rejects_invalid_input() -> None:
@@ -168,11 +188,12 @@ def test_deadline_rules_order_and_thresholds() -> None:
 
 
 def test_deadline_never_starts_unfinishable_pair() -> None:
-    # A 6.89-hour pair (1,000 tokens/s) must not start with 7.0 h left:
-    # pair + 45 min reserve = 7.64 h > 7.0 h.
+    # A 13.75-hour two-arm pair (1,000 tokens/s) must not start with 14.0 h
+    # left: pair + 45 min reserve = 14.50 h > 14.0 h, but it does fit 15.0 h.
     slow = PairSchedule(tokens_per_second=1_000.0).pair_time_hours
-    assert deadline_decision(7.0, slow).action == "stop_at_boundary"
-    assert deadline_decision(8.0, slow).action == "start_pair"
+    assert round(slow, 2) == 13.75
+    assert deadline_decision(14.0, slow).action == "stop_at_boundary"
+    assert deadline_decision(15.0, slow).action == "start_pair"
 
 
 def test_session_decisions_expose_reasons() -> None:

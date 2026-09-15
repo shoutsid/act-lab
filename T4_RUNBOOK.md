@@ -246,23 +246,43 @@ run at. Measured on the T4 (`--queue dtypeprobe`, 2026-09-15):
 
 | dtype | tokens/s | `pair_time_hours` | `full_pairs_per_session` | `sessions_for_primary` |
 |---|---|---|---|---|
-| fp32 | 2,066.3 | 3.404 | 2 | 6 |
-| **fp16** (the decided dtype) | **4,694.9** | **1.554** | **5** | **3** |
+| fp32 | 2,066.3 | 6.71 | 1 | 12 |
+| **fp16** (the decided dtype) | **4,694.9** | **3.01** | **2** | **6** |
 
-Scheduling from the fp32 rate while the sessions train fp16 is 2.27x too
-pessimistic: each session's deadline rule stops with usable clock left and the
-run buys about twice the sessions it needs. The consequence is a quota plan,
-not a knob change - the same seeds, the same steps, the same probe cost, and no
-pre-registered criterion or verdict, since section 5.2 makes dtype an execution
-detail. At 1.554 h per pair the primary queue is ~19 GPU-hours, the 2b control
-queue ~19 more, and 2c ~0.3 - about 38 GPU-hours against the free tier's 30
-GPU-h/week, i.e. roughly two weeks of sessions instead of three.
+**Two corrections sit behind those rows, and they nearly cancel.**
+
+1. *The schedule was built on the rule's input, not the runtime dtype.*
+   Scheduling from the fp32 number while the arms train fp16 is 2.27x too
+   pessimistic. The benchmark now measures the decided dtype too and records
+   both (`schedule_tokens_per_second`, `tokens_per_second_by_dtype`), and the
+   launch command schedules from the former while still enforcing the
+   pre-committed rule against the latter.
+2. *A pair's two arms are trained sequentially, not one per GPU.* The pair-time
+   formula assumed the arms ran concurrently on separate devices; no runner
+   implements that, and `run_v0_session` trains `config.arms` one after the
+   other on one device (measured on a real pair, the arms' wall times added -
+   0.531 s + 0.298 s - they did not overlap). The formula was missing the arm
+   multiplicity, so every pair cost twice what the clock believed and the
+   deadline rule would start pairs it could not finish - which section 5.2
+   answers by restarting the pair from scratch, never resuming it.
+
+Because the rate correction (2.27x) and the arm correction (2x) nearly cancel,
+the *recorded* total was accidentally about right for the wrong reasons. The
+corrected plan is: primary 12 pairs x 3.01 h = **~36 GPU-hours**, the 2b control
+queue the same ~36, and 2c 12 pairs x 1.554 h (one arm) = **~19**, so about
+**90 GPU-hours** against the free tier's 30/week - roughly four weeks. The
+recorded "2c ~0.3" does not follow from the runner: an arm's token budget is
+`batch x context x steps`, independent of how many arms run, so the null queue
+cannot be cheap.
+
+Dtype remains an execution detail touching no pre-registered criterion, but the
+arm multiplicity is **not** merely arithmetic: recovering it (each arm on its
+own device) is the one change that still halves this plan, to roughly 45
+GPU-hours. It needs the machine shape to hand out two T4s and a per-arm runner
+that has not been written or validated.
 
 Pass `--hours 9` (the registered usable window): at the fp16 rate the deadline
-rules then place five completed pairs per session. The benchmark now measures
-the decided dtype and records both numbers (`schedule_tokens_per_second`,
-`tokens_per_second_by_dtype`), and the launch command schedules from the former
-while still enforcing the pre-committed rule against the latter.
+rules then place two completed pairs per session.
 
 A kernel that requests a GPU accelerator queues when no T4 is free (status
 `QUEUED`, which consumes no quota); the queue clears on its own.

@@ -111,11 +111,19 @@ def run_pair_session(
     )
     tokens_per_arm = seed_config.training_tokens()
 
-    pair_time = tokens_per_arm / measured_tokens_per_second / 3600.0 + PAIR_OVERHEAD_HOURS
+    # Every arm of the pair trains sequentially on one device, so the pair
+    # costs one arm-time per arm - the multiplicity ``PairSchedule`` applies.
+    # Omitting it made the deadline rule start pairs the clock could not
+    # finish, and section 5.2 restarts an interrupted pair from scratch.
+    arms = len(seed_config.arms)
+    pair_time = (
+        arms * tokens_per_arm / measured_tokens_per_second / 3600.0
+        + PAIR_OVERHEAD_HOURS
+    )
     logger(
         f"pair time {pair_time:.2f} h "
-        f"({tokens_per_arm} tokens at {measured_tokens_per_second:.0f} tokens/s + "
-        f"{PAIR_OVERHEAD_HOURS} h event overhead)"
+        f"({arms} x {tokens_per_arm} tokens at {measured_tokens_per_second:.0f} "
+        f"tokens/s + {PAIR_OVERHEAD_HOURS} h event overhead)"
     )
 
     pair_results: list[dict[str, object]] = []
