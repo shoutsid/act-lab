@@ -1322,6 +1322,46 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   Consequence: the plan's section-55 initialization-mode study
   (evolved/rewound/fresh/teacher on one genome) is the next step, NOT the
   section-52 scale-up.
+- **Section 5.17 pre-registered (2026-09-15, revision `e62a732`)** and
+  **outcome (RAN 2026-09-15, block 82000-82383)**: plan RQ6 / section 55 - **is
+  initialization or topology the important artifact?** Registered **branch (d):
+  both the structure AND its initialization carry value.** Five transports per
+  seed of three discovered genomes under both section-55 treatments
+  (`rewound` = restore every component that existed at initialization to its
+  initial weights **by MoE expert id**; grown experts keep the fresh draw;
+  `fresh` = transfer nothing). P1 rewound < fresh `215/384` (mean -0.0806,
+  p 1.08e-02, PASS); P2 rewound-adaptive < rewound-fixed `274/384`
+  (mean -0.1123, p 1.46e-17, PASS). **This revises section 5.16's branch (c):**
+  the topology has standalone value only as the *pair* (structure + the
+  initialization its components actually had) - the same P2 comparison with a
+  fresh draw fails again on this independent block (`198/384`, mean -0.0317,
+  reproducing 5.16's `211/384`). Plan section 11's "final topology + original
+  initialization ... without ambiguity" is empirically load-bearing, and the
+  section-52 scale-up is triggered with the initialization policy as part of the
+  declared artifact. Two pre-registered checks keep it honest: rewinding the
+  *random* arm's topology does nothing (`189/384`, mean +0.0424), so the effect
+  is specific to the chosen topology rather than a generic "restore good
+  weights" procedure; and P1 concentrates where rewinding is total (pure-prune
+  seeds `123/213`, p 1.4e-02, vs seeds with grown experts `92/171`, p 0.18),
+  while P2 holds in both subgroups. Not capacity-confounded: the adaptive
+  topology is *smaller* in 352/384 seeds. Unregistered observation (labelled as
+  such in the report): the discovery run itself is worse than a clean retrain of
+  its own topology from the original initialization (clean retrain wins
+  `271/384`, mean A-B +0.0961). NEW MACHINERY: identity-aware rewinding -
+  `initialize_retraining(..., renames=...)` and
+  `reuse.expert_renames`/`initial_model`/`transport_genome(initialization=...)`.
+  This fixes a latent bug: the pre-existing `rewound`/`evolved` copy matched
+  parameters by name and shape, so rewinding a pruned topology would have handed
+  a survivor the *pruned* expert's initialization (shape-compatible, silent); a
+  test now asserts survivor identity on parameter values and fails if the
+  mapping is dropped. A pre-run correction (report section 5.17.1) fixed
+ 5.17's own built-in check, which claimed B == C for pure-prune genomes - false,
+  because a pruned architecture is a different architecture, so its fresh draw
+  differs; B == C holds only where the topology is unchanged. Caught by the
+  smoke test on a spent block before the registered block ran. Committed summary
+  `artifacts/study-summaries/initialization-depth4-384.json`
+  (`study_aef9c55774ab2c04`), pinned by `tests/test_initialization_summary.py`
+  (suite at 517).
 - `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
   `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
   deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer

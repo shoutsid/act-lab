@@ -1967,6 +1967,241 @@ transport, transport validity) is now measured and reusable for that study.
 Committed summary: `artifacts/study-summaries/reusability-depth4-384.json`
 (`study_f0334893263366c2`).
 
+### 5.17 Pre-registration: is initialization or topology the important artifact? (plan RQ6 / section 55, toy fidelity)
+
+**Motivation.** Section 5.16 discarded the trained weights and the adaptive
+arm lost its edge, which is exactly the question plan RQ6 asks in the other
+direction: given a discovered topology, does the *initialization* matter? Plan
+section 55 ("one of the project's headline experiments") registers four
+treatments on one genome - evolved weights, rewound initial weights, fresh
+random initialization, teacher initialization - and plan section 11 requires
+the machinery for it to be unambiguous ("we need to be able to do *final
+topology + original initialization*" so the Lottery Ticket experiments are
+interpretable). Section 5.16 built the fresh half; this study builds the
+rewound half and compares them on the same topology.
+
+**What "rewound" means here, declared precisely.** Build the final genome with
+the block's fresh draw, then restore every component that *existed in the
+initial genome* to its initial weights, identified by component identity (MoE
+expert id), not by tensor position. Components that did not exist at
+initialization - grown experts - keep the fresh draw, because they have no
+original initialization to be rewound to. On an unmutated genome this makes
+rewound and fresh **identical by construction**, which is the study's first
+built-in check; on a pruned genome the two differ only in whose random weights
+the survivors hold.
+
+**Design.** One discovery block per seed on the section-5.16/5.10 registered
+config (`arms="random,adaptive,fixed"`, depth 4, `probe_candidate_policy="spread"`,
+cap-4/2-batch probes, 48 steps, interval 12, budget 3, `independent_arm_rng=True`,
+cpu), fresh block **82000-82383** (384 seeds), 20-way sharding as in 5.9-5.16.
+Per seed, five transports of three discovered genomes:
+
+| label | genome | initialization |
+|---|---|---|
+| `B_adaptive` | adaptive final | rewound |
+| `C_adaptive` | adaptive final | fresh |
+| `B_random` | random final | rewound |
+| `C_random` | random final | fresh |
+| `B_fixed` | fixed (initial) | rewound = fresh = the block's initial model |
+
+All transports train the same 48 steps on the same per-seed data schedule with
+mutation disabled, and are scored on the same four held-out batches. `A` (plan
+section 55's evolved-weights treatment) is the discovery arm's own run, already
+measured by the block; `D` (teacher) is **out of scope at toy fidelity** and is
+not faked - the plan's teacher is Qwen-derived (section 51) and
+`IMPLEMENTATION_STATUS` records that no external Qwen artifacts are bundled or
+claimed.
+
+**Primaries** (exact one-tailed sign test, n = 384, per-primary threshold
+`alpha/2 = 0.025` - the section 5.9-5.15 convention - which at n = 384 is the
+exact bar **212 wins**; the script asserts the declared bar equals
+`_gate_min_wins(n, alpha/2)` at run time so the section-5.16 inconsistency
+cannot recur silently):
+1. **Initialization carries value.** `B_adaptive` beats `C_adaptive` on final
+   held-out loss, in >= 212 seeds: with the topology held fixed, the original
+   initialization of its surviving components is worth something.
+2. **The topology alone, with initialization held level.** `B_adaptive` beats
+   `B_fixed`, in >= 212 seeds. Both arms carry their original initialization
+   (`B_fixed` *is* the initial model), so this is the cleanest available test
+   of whether the discovered structure has standalone value: it removes the
+   section-5.16 confound where the adaptive side got wholly new weights while
+   the fixed side kept its own.
+
+**Predictions (declared before measurement).** Section 5.16 found the
+while-training edge survives fresh initialization in the mean (`-0.1016`) but
+not in per-seed consistency (`212/384`, and a seed's discovery ranking predicts
+its transported ranking only `201/384` times). Rewinding cannot restore a
+*grown* expert's lucky draw, and the toy's prune decisions are made on probe
+loss after the prune rather than on survivor luck, so: **primary 1 is predicted
+to fail** (a pass would mean surviving components' particular random draws are
+load-bearing, i.e. a lottery-ticket-like effect at this scale); **primary 2 is
+predicted to fail on wins while staying directionally favourable** (mean < 0),
+matching section 5.16's P2 shape (`211/384`, mean `-0.0866`).
+
+**Secondaries (reported, not verdict-bearing).**
+- **Transport validity.** `B_fixed` must reproduce the fixed arm's own
+  discovery run *exactly*, and `B_adaptive`/`C_adaptive` must be identical to
+  each other whenever the adaptive topology has no grown experts (pure-prune
+  genomes). Both are checked per seed, not assumed.
+- **How much the trained weights are worth.** `A_adaptive - B_adaptive` per
+  seed: the part of the arm's advantage that only exists in the weights it
+  trained (section 5.16's branch-(c) claim, quantified).
+- **Procedure control.** `B_random` vs `C_random` - does rewinding help random
+  churn's topology too? A pass there means rewinding is a generic procedure
+effect rather than something specific to the adaptive arm's survivors.
+- **Capacity.** transported parameter/active-parameter counts, and primary 2
+  re-run on the subset where the adaptive and initial topologies are
+  capacity-matched (section 0's equivalent-capacity requirement).
+
+**Pre-registered interpretation (fixed before running).**
+- (a) Both primaries fail: neither the topology nor its original initialization
+  is a standalone artifact at toy fidelity - the adaptive arm's advantage is
+  the trained weights, full stop, and the plan's "computational genome" framing
+  has no support at this fidelity. Next registered step becomes measuring how
+  far that weight-borne advantage survives *within* a run (the plan's
+  compute-efficiency protocol, Gate 4), not further extraction studies.
+- (b) Primary 1 passes, primary 2 fails: reusing the original initialization is
+  what preserves the advantage while the structure alone does not - a
+  lottery-ticket-like reading, and the trigger for a reward-signal study (does
+  the probe select components that were lucky at init?).
+- (c) Primary 1 fails, primary 2 passes: the discovered topology is a real
+  standalone artifact once initialization is held level. This would REVISE
+  section 5.16's branch-(c) verdict - its P2 failure would be attributable to
+  the fresh draw rather than to the structure - and it triggers the section-52
+  scaling version.
+- (d) Both primaries pass: both the structure and its initialization carry
+  value; the strongest reading, and the section-52 scale-up is triggered with
+  the initialization policy fixed as part of the artifact.
+
+**Scope limits (pre-declared).** Toy fidelity, one seed block, one substrate.
+The teacher treatment (D) is untested, not tested-and-failed. This study does
+not test whether a fresh controller re-discovers the topology. Machinery
+smoke-tests run on already-spent blocks (73000-73383) only; the verdict uses
+82000-82383 and nothing else.
+
+**Cost.** 1 discovery block (3 arms) + 5 transports per seed, ~6 arm-runs of
+the section-5.16 size; measured ~5 s/seed single-process at depth 4, so
+~30 min of CPU across 20 shards.
+
+### 5.17.1 Pre-run correction: the rewind identity is not what 5.17 declares
+
+Caught by the machinery smoke test on spent block 73000-73003, **before the
+registered block was run and before any primary was read**. Section 5.17's
+transport-validity clause claims that `B_adaptive` and `C_adaptive` "must be
+identical to each other whenever the adaptive topology has no grown experts
+(pure-prune genomes)". That is false, and the smoke test failed on it, which is
+how it was found.
+
+The fresh draw depends on the *shapes being drawn*: a genome that only pruned
+experts is still a different architecture, so rebuilding it consumes the RNG
+differently and no surviving component gets the value the initial model's draw
+gave it. ``B == C`` therefore holds exactly when the **architecture is
+unchanged** - which only the unmutated `fixed` genome satisfies - and not when
+"nothing grew". Measured on the smoke block: 3/4 seeds had no grown adaptive
+experts, yet `B != C` on all of them.
+
+The correction runs *against* the study's interest in the sense that it removes
+a free identity, and *for* it in the sense that it is what makes primary 1 a
+real comparison: rewinding changes the adaptive topology's starting point even
+when no expert was ever grown, because the survivors keep their own original
+initialization instead of a redrawn one. The primaries, the threshold
+(`alpha/2 = 0.025`, bar 212 at n = 384) and the four interpretation branches are
+**unchanged**; only the built-in pre-conditions are restated:
+
+1. the declared bar equals `_gate_min_wins(384, 0.025)` - asserted at runtime,
+   so section 5.16's inconsistency cannot recur silently;
+2. the registered block's seed count equals the declared n = 384;
+3. `B_fixed` reproduces the `fixed` arm's own discovery run **exactly** (loss and
+   training FLOPs) on every seed - the load-bearing validity check;
+4. `B == C` exactly where the topology is unchanged, and `B != C` everywhere it
+   is not;
+5. every rewound transport copied at least one parameter, and every transport's
+   recorded initialization mode is the one it was asked for.
+
+### 5.17.2 Outcome: registered branch (d) - both the structure and its initialization carry value
+
+Run 2026-09-15, block 82000-82383 (fresh), 20 shards, revision `e62a732`.
+Built-in checks held on every seed: the declared bar equals the exact binomial
+bar, `B_fixed` reproduces the `fixed` arm's own discovery run **exactly** (loss
+and training FLOPs, 384/384), `B == C` exactly where the topology is unchanged
+and never where it is not, and every rewound transport transferred parameters.
+Substrate inventory: 213/384 seeds had no grown experts (pure-prune
+topologies), 171/384 grew at least one (201 grown experts total), and no
+adaptive topology was unchanged. **Transport validity is exact, which is what
+makes the deltas below attributable to the initializations rather than to the
+procedure - and this time the arm that must be reproduced is the one whose
+architecture is unchanged, which the pre-run correction (5.17.1) fixed before
+the block was run.**
+
+| comparison (n = 384, bar 212) | wins | mean delta | p | verdict |
+|---|---|---|---|---|
+| **P1** `B_adaptive` < `C_adaptive` (rewound < fresh) | 215/384 | `-0.0806` | `1.08e-02` | **PASS** |
+| **P2** `B_adaptive` < `B_fixed` (topology, init level) | 274/384 | `-0.1123` | `1.46e-17` | **PASS** |
+| control `B_random` < `C_random` (does rewinding help any topology?) | 189/384 | `+0.0424` | `6.40e-01` | fail |
+| replication `C_adaptive` < `B_fixed` (section 5.16's P2, fresh init) | 198/384 | `-0.0317` | `2.87e-01` | fail |
+| (discovery) adaptive < random | 255/384 | `-0.0941` | `6.13e-11` | pass |
+| (discovery) adaptive < fixed | 205/384 | `-0.0162` | `1.01e-01` | fail |
+
+Transport arm means: `B_adaptive 12.3101 < C_random 12.3776 < C_adaptive 12.3907
+< B_random 12.4200 < B_fixed 12.4224`. Discovery means: `adaptive 12.4062 <
+fixed 12.4224 < random 12.5003`.
+
+**What this says.** With the initialization held as level as the topology
+allows - both sides carry their original initialization, one as the unmutated
+initial model and the other as its survivors rewound to their initial weights -
+the discovered topology beats the never-mutated one `274/384` with mean
+`-0.1123` (P2). The same comparison with a *fresh* draw on the adaptive side
+fails `198/384` (mean `-0.0317`), reproducing section 5.16's P2 on an
+independent block (`211/384`, mean `-0.0866`). The difference between those two
+rows is one variable: whose random weights the surviving experts hold. So
+section 5.16's branch (c) is **revised, and narrowed**: the topology is a
+standalone artifact, but only as the *pair* (discovered structure + the
+initialization its components actually had). Plan section 11's insistence on
+`final topology + original initialization` "without ambiguity" is empirically
+load-bearing rather than a bookkeeping preference, and plan section 102's
+"computational genome" is supported only in that paired form. That is this
+run's registered branch (d), and it also carries branch (c)'s consequence: the
+section-52 scale-up is triggered, with the initialization policy declared as
+part of the artifact.
+
+Three checks keep the reading honest, and each was pre-registered:
+
+1. **The control rejects the generic explanation.** Rewinding the *random*
+churn arm's topology does nothing (`189/384`, mean `+0.0424`; on the pure-prune
+subset `109/213`). If rewinding were a general "restore good weights"
+procedure, this is where it would show; it does not. The effect is specific to
+the topology the adaptive controller chose.
+2. **P1 is concentrated exactly where rewinding is total.** Splitting by growth:
+pure-prune seeds `123/213` (p `1.4e-02`, bar 122) versus seeds with grown
+experts `92/171` (p `1.8e-01`). A grown expert has no original initialization to
+be rewound to, so the treatment is partial there - the effect is strongest
+where the mechanism can actually act, which is the shape a real mechanism has
+and not the shape a confound has. P2, by contrast, holds in both subgroups
+(`163/213` and `111/171`, p `1.8e-15` and `5.9e-05`): the topology's value does
+not depend on how it was reached.
+3. **Not a capacity effect.** The adaptive topology is *smaller* than the initial
+one in `352/384` seeds (higher in 32), so P2 is a win with fewer active
+parameters - the opposite of the confound section 0 warns about. P1 also clears
+at the bar on the subset whose active-parameter counts match (`194/348`,
+bar 193).
+
+**One unregistered observation, flagged as such.** The discovery arm's own run
+is *worse* than retraining the same topology cleanly from the original
+initialization: `A_adaptive - B_adaptive` is positive (mean `+0.0961`; the
+clean retrain wins `271/384`). The training run that discovers a topology is not
+the best use of that topology - it pays for three mid-flight rebuilds and three
+optimizer resets on the way. This was not pre-registered, it is a `p = 1.0`
+one-tailed artifact of the sign, and it is recorded as an observation for a
+future registered study rather than as a finding.
+
+**Consequence for the plan.** Both section-55 treatments that can be built at
+toy fidelity pass, so the plan's RQ6 has a toy answer: **the topology and its
+initialization are jointly the artifact; neither alone is.** The teacher
+treatment (D) remains untested - it needs the Qwen-derived artifacts section 51
+describes, which this project does not bundle. The committed summary is
+`artifacts/study-summaries/initialization-depth4-384.json`
+(`study_aef9c55774ab2c04`).
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
@@ -1990,7 +2225,7 @@ Committed summary: `artifacts/study-summaries/reusability-depth4-384.json`
 | 7. Topology evolution logs | PARTIAL (mutation histories and fossils in records) |
 | 8. Experiment registry | DONE for the gate (append-only JSONL + study summaries) |
 | 9. Benchmark results | PARTIAL (this report's factor map; no real-corpus benchmarks) |
-| 10. Fresh-initialization results | DONE for the toy-fidelity mechanism (section 5.16 + 5.16.1: genome extraction, fresh-initialization transport with 384/384 exact transport validity, registered branch (c)); the section-52 scaling version (300M -> 1B) is TODO |
+| 10. Fresh-initialization results | DONE for the toy-fidelity mechanism (sections 5.16-5.17.2: genome extraction, fresh AND rewound transport with 384/384 exact transport validity, registered branches (c) then (d) - the topology and its initialization are jointly the artifact); the section-52 scaling version (300M -> 1B) is TODO and is now triggered |
 | 11. Qwen architecture analysis | TODO (deferred) |
 | 12. Paper-quality figures | DONE for the factor map, in **two sets** (section 8): the registered coupled-path figures, and the corrected decoupled set (`--set decoupled`) plotted from summaries emitted by `scripts/factor_map_recheck.py --summaries` and re-checked by `check_summary` at plot time. Both regenerate byte-identically. Both sets carry all nine rows (section 9.12 recovered study 1's predated config field), and figure 4's counterfactual analysis is re-run separately by `scripts/probe_validity_analysis.py`. |
 

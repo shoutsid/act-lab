@@ -23,10 +23,20 @@ import math
 
 import pytest
 
+import torch
+
 from act.evolution.experiment import ExperimentConfig, run_experiment
 from act.evolution.figures_data import summaries_dir
-from act.evolution.reuse import transport_genome
-from act.topology import ArchitectureGenome, create_genome, genome_hash
+from act.evolution.reuse import expert_renames, initial_model, transport_genome
+from act.model import StaticMoECausalLM, model_from_genome
+from act.training.retraining import initialize_retraining
+from act.topology import (
+    ArchitectureGenome,
+    create_genome,
+    genome_hash,
+    grow_expert,
+    prune_expert,
+)
 
 SPENT_SEEDS = (73000, 73001)
 BASE = dict(
@@ -146,6 +156,111 @@ def test_transport_rejects_a_mixed_family_genome() -> None:
     dense = create_genome(config.seed, hidden_size=24, vocab_size=32, depth=2, ffn="dense")
     with pytest.raises(TypeError):
         transport_genome(dense, config)
+
+
+def test_rewound_equals_fresh_on_an_unmutated_genome() -> None:
+    """Every component existed at initialization, so rewinding has nothing to do."""
+    arms, config = _discover(SPENT_SEEDS[0])
+    genome = ArchitectureGenome.from_dict(arms["fixed"].genome)
+    fresh = transport_genome(genome, config, initialization="fresh")
+    rewound = transport_genome(genome, config, initialization="rewound")
+    assert fresh.final_loss == rewound.final_loss
+    assert rewound.initialization["mode"] == "rewound"
+    assert rewound.initialization["skipped_parameters"] == 0
+    assert rewound.initialization["copied_parameters"] == 104  # the whole model
+
+
+def test_rewound_reproduces_the_unmutated_arm_exactly() -> None:
+    """Plan section 11's "final topology + original initialization", checked."""
+    arms, config = _discover(SPENT_SEEDS[0])
+    rewound = transport_genome(
+        ArchitectureGenome.from_dict(arms["fixed"].genome),
+        config,
+        initialization="rewound",
+    )
+    assert rewound.final_loss == arms["fixed"].final_loss
+    assert rewound.training_flops == arms["fixed"].training_flops
+
+
+def test_rewound_restores_survivors_by_expert_id_not_by_position() -> None:
+    """The identity bug a name-and-shape copy would hide.
+
+    Pruning expert 1 of layer 0 shifts experts 2 and 3 down a position. A copy
+    that matches tensor names would hand survivor ``L0E2`` the *pruned* expert's
+    initialization; matching by id hands it its own. Both are shape-compatible,
+    so nothing downstream would notice - which is why this is asserted on
+    parameter values rather than on the copy report.
+    """
+    config = ExperimentConfig(**BASE, seed=SPENT_SEEDS[0], arms=ARMS)
+    source = initial_model(config)
+    genome = create_genome(
+        config.seed,
+        hidden_size=config.hidden_size,
+        vocab_size=config.vocab_size,
+        depth=config.depth,
+        ffn="moe",
+        expert_count=config.expert_count,
+        active_experts=config.active_experts,
+    )
+    assert prune_expert(genome, "L0", "L0E1") is True
+    target = model_from_genome(genome, context_size=config.sequence_length)
+    assert isinstance(target, StaticMoECausalLM)
+    assert target.blocks[0].expert_ids == ("L0E0", "L0E2", "L0E3")
+    own_initial = source.blocks[0].experts[2][0].weight.detach()
+    pruned_initial = source.blocks[0].experts[1][0].weight.detach()
+    # The fixture discriminates: position-matching and id-matching differ here.
+    assert not torch.equal(own_initial, pruned_initial)
+    report = initialize_retraining(
+        target,
+        mode="rewound",
+        rewind_state=source.state_dict(),
+        renames=expert_renames(target, source),
+    )
+    assert report.copied_parameters > 0
+    survivor = target.blocks[0].experts[1][0].weight.detach()
+    assert torch.equal(survivor, own_initial)
+    assert not torch.equal(survivor, pruned_initial)
+    renames = expert_renames(target, source)
+    assert renames["blocks.0.experts.1.0.weight"] == "blocks.0.experts.2.0.weight"
+    # The router has no stable identity across a topology change and is skipped.
+    assert renames.get("blocks.0.router.weight") is None
+    assert not torch.equal(
+        target.blocks[0].router.weight.detach(), source.blocks[0].router.weight.detach()
+    )
+
+
+def test_grown_experts_have_no_original_initialization_to_rewind_to() -> None:
+    config = ExperimentConfig(**BASE, seed=SPENT_SEEDS[0], arms=ARMS)
+    source = initial_model(config)
+    genome = create_genome(
+        config.seed,
+        hidden_size=config.hidden_size,
+        vocab_size=config.vocab_size,
+        depth=config.depth,
+        ffn="moe",
+        expert_count=config.expert_count,
+        active_experts=config.active_experts,
+    )
+    grown = grow_expert(genome, "L1", 12)
+    assert grown == "L1E4"
+    target = model_from_genome(genome, context_size=config.sequence_length)
+    assert isinstance(target, StaticMoECausalLM)
+    renames = expert_renames(target, source)
+    for suffix in ("0.weight", "0.bias", "2.weight", "2.bias"):
+        assert renames[f"blocks.1.experts.4.{suffix}"] is None
+    before = target.blocks[1].experts[4][0].weight.detach().clone()
+    initialize_retraining(
+        target, mode="rewound", rewind_state=source.state_dict(), renames=renames
+    )
+    # Keeps the fresh draw: it is not silently seeded from another component.
+    assert torch.equal(target.blocks[1].experts[4][0].weight.detach(), before)
+
+
+def test_retraining_rejects_a_rename_map_for_fresh_mode() -> None:
+    config = ExperimentConfig(**BASE, seed=SPENT_SEEDS[0], arms=ARMS)
+    model = initial_model(config)
+    with pytest.raises(ValueError, match="fresh"):
+        initialize_retraining(model, mode="fresh", renames={})
 
 
 def test_registered_discovery_config_reproduces_its_own_summary() -> None:
