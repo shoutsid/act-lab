@@ -2730,6 +2730,131 @@ ambiguity is conservative in the direction of the primary. The per-seed data is
 committed in both summaries, so the differ-only statistics recompute from the
 artifact. The depth-3 block was unaffected (0/384 coincident).
 
+### 5.21 Observation (unregistered, cross-study): the fused run is dominated by its own final topology, at every depth and for *both* mutating arms
+
+**This is not a pre-registered result.** It is a reanalysis of three blocks that
+were run for other reasons (depth 2 and 3 for section 5.20, depth 4 for section
+5.17), found while checking section 5.17.2's unregistered observation for
+recurrence. Section 5.17.2 already reported the depth-4 case and did not check
+the random arm; the new content here is that the effect **replicates at depths 2
+and 3 and holds for the random arm as well**, which changes the reading.
+
+**The comparison.** Every one of these blocks measured, per seed, the arm's own
+fused run (48 steps, three mutations applied in place) and a *frozen retrain* of
+that arm's final genome from the same initialization on the same data schedule.
+The frozen path differs in exactly the ways "freeze it" implies: no mid-flight
+architecture changes, no optimizer resets, and the final topology present from
+step 0. Positive deltas below mean the fused run lost.
+
+| depth | arm | frozen retrain wins | mean delta (fused − frozen) | p |
+|---|---|---|---|---|
+| 2 | adaptive | **314/384** | +0.1027 | 2.66e-38 |
+| 2 | random | **292/384** | +0.1050 | 1.17e-25 |
+| 3 | adaptive | **288/384** | +0.0913 | 1.07e-23 |
+| 3 | random | **293/384** | +0.1248 | 3.65e-26 |
+| 4 | adaptive | **271/384** | +0.0961 | 2.16e-16 |
+| 4 | random | **258/384** | +0.0803 | 7.33e-12 |
+
+Validity: at all three depths the *unmutated* genome transported to its own
+initialization reproduces that arm's own run with max |delta| **exactly 0.0**,
+which is the identity the transport is built to satisfy and the reason a
+topology effect can be separated from a transport artifact at all.
+
+**Why this matters more than the depth-4 original did.** Section 5.17.2's
+version could be read as a fact about the *discovered* topology. It is not: the
+**random** arm's frozen retrain beats its own fused run by as much or more
+(depth 3: +0.1248 vs the adaptive arm's +0.0913). The penalty is therefore a
+property of the **process** - mutating a live training run in place - not of
+which topology the controller picked. Two consequences follow.
+
+1. **The ~0.10 nat process penalty is roughly twice the topology effect**
+   sections 5.17-5.20 spend their power measuring (means of −0.05 to −0.13). The
+   fused while-training comparison is not a sensitive instrument for selection
+   value: it measures the topology signal *through* a process penalty of
+   comparable size, which is a sufficient explanation of why that comparison is
+   weak-to-negative at shallow depth while section 5.20 shows the topology value
+   is real and selection-specific there.
+2. **Two-stage delivery is not an analysis convenience, it is a requirement.**
+   Plan section 102's "extract the genome" and section 11's weight/topology
+   separation, and the `07_extract` -> `08_retrain` notebook pair, describe the
+   pipeline that this measurement says is *better*, not merely tidier.
+
+**Caveats, stated plainly.** Equal step budget and identical data schedule, but
+neither equal FLOPs nor equal optimizer history - the frozen path trains a
+pruned topology (the random-churn topology is never the initial size in 0/384
+seeds at every depth), so it likely does *less* per-step work, which if anything
+strengthens the direction. The frozen path also starts a fresh optimizer rather
+than carrying state across mutations, and that difference is inside "the
+process" as defined here, so it is named as a mechanism candidate rather than
+controlled out. Toy fidelity, synthetic tokens, one substrate throughout. The
+sign of this effect was visible in section 5.17.2 before any of today's blocks
+ran, so this is a replication of an existing observation, not a discovery.
+
+### 5.22 Pre-registration: is the mid-training process penalty real and arm-generic?
+
+**Motivation.** Section 5.21 is an unregistered reanalysis - three blocks, chosen
+after the fact, on which the desired contrast happens to be computable. Its
+claim (the fused run is dominated by its own frozen final topology, and the
+penalty is arm-generic rather than topology-specific) needs a block that was
+collected for *this* question, with the threshold declared before the run.
+
+**Design.** Section 5.20's registered design exactly - the registered toy config
+(`spread` policy, cap-4/2-batch probes, 48 steps, interval 12, budget 3,
+`independent_arm_rng`, arms `random,adaptive,fixed`), three rewound transports
+per seed on the seed's own initial model. No new machinery: the frozen retrain of
+each arm's final genome is already computed as `A_own` / `R_own` / `F_own`, and
+`F_own` reproducing the fixed arm's own run exactly remains the validity check.
+Fresh depth-2 and depth-3 blocks, 20-way sharding:
+
+| block | seeds | depth |
+|---|---|---|
+| depth 2 | 92000-92383 | 2 |
+| depth 3 | 93000-93383 | 3 |
+
+**Primaries (per depth, n = 384), Bonferroni `alpha/4 = 0.0125` -> bar 215.**
+1. **process penalty, adaptive** - fused adaptive run *loses* to `A_own`.
+2. **process penalty, random** - fused random run *loses* to `R_own`.
+
+Both primaries are directional (the frozen retrain must win), so neither can be
+satisfied by the sign that section 5.21 discounts.
+
+**Predictions (declared before measurement).** Both pass at both depths. This is
+a *replication* pre-registration and is declared as such: the effect was visible
+at 384-seed scale on three separate blocks with p below 1e-11 everywhere, so a
+failure here would be more informative than a pass, and the diagnostic value is
+in the asymmetry between the two primaries rather than in either alone.
+
+**Pre-registered interpretation (fixed before running).**
+- (a) Both primaries pass at both depths: the penalty is a **process** property.
+  The fused run is recorded as the wrong instrument for selection value, the
+two-stage pipeline (discover -> freeze -> retrain) is adopted as the project's
+delivery path, and section 5.15's depth dose-response is re-read as a statement
+about the *fused* process rather than about where value becomes discoverable.
+- (b) Only the adaptive row passes: the penalty is **topology-specific** after
+  all, section 5.21's arm-generic reading is withdrawn, and the adaptive arm's
+  mutations are the disruptive ones - a materially different conclusion that
+  would restore the fused comparison as the right instrument.
+- (c) Neither passes at a depth where section 5.21 found it: **replication
+  failure**. Section 5.17.2's observation and section 5.21's extension are both
+  marked unconfirmed, and no delivery-path change is adopted.
+
+**Secondaries (reported, not verdict-bearing).** The same contrast at depth 4 on
+this block family is *not* run (depth 4's evidence is section 5.17's block); the
+fused-to-frozen delta split by whether the frozen topology is pure-prune or has
+grown experts; the active-parameter ratio between fused and frozen, so the
+unequal-FLOPs caveat is quantified rather than asserted; and the frozen-vs-fixed
+rows (`A_own` vs `F_own`), which section 5.20 already measured, as the check that
+this block family behaves like its predecessor.
+
+**Scope limits (pre-declared).** Toy fidelity, one substrate, synthetic tokens,
+`spread` policy. Equal step budget, unequal FLOPs and unequal optimizer history
+are properties of the contrast, not controlled out - if the effect survives here
+the *mechanism* still needs its own study (fresh-optimizer control, matched-FLOPs
+control). The teacher treatment remains untested.
+
+**Cost.** Identical to section 5.20: 2 blocks x (1 discovery + 3 transports) per
+seed, ~3.5 s/seed, ~45 min CPU across 20 shards per block.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
