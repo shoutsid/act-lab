@@ -1360,8 +1360,38 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   differs; B == C holds only where the topology is unchanged. Caught by the
   smoke test on a spent block before the registered block ran. Committed summary
   `artifacts/study-summaries/initialization-depth4-384.json`
-  (`study_aef9c55774ab2c04`), pinned by `tests/test_initialization_summary.py`
-  (suite at 517).
+  (`study_aef9c55774ab2c04`), pinned by `tests/test_initialization_summary.py`.
+- **Section 5.18 pre-registered and outcome (RAN 2026-09-15, block 83000-83383,
+  donor block 84000-84383, revision `137f6d0`)**: **is the genome portable, or
+  irreducibly paired with its own initialization?** Registered **branch (d):
+  BOTH** - and both predictions recorded before the run were wrong in the same,
+  informative way. Three transports per seed: `O` = adaptive genome rewound to
+  its own initial model; `D` = adaptive genome rewound to a **donor** initial
+  model (seed+1000, a declared donor block); `F` = unmutated genome rewound to
+  the donor's initial model, which copies every tensor and so **is** the donor
+  model trained on this seed. `D` and `F` therefore share one initialization and
+  differ only in topology. P1 pairing (difference-in-differences) `237/384`
+  (mean -0.0830, p 2.54e-06, PASS); P2 portability (`D` < `F`) `234/384`
+  (mean -0.0465, p 1.06e-05, PASS) - **the project's first support at any
+  fidelity for plan section 102's "reusable computational genome" claim**.
+  **The synthesis across 5.16-5.18.2: every initialization-MATCHED
+  topology-vs-initial comparison wins** (own/own `293/384` here and `274/384` in
+  5.17; donor/donor `234/384`) **while both MISMATCHED ones fail** (5.16 P2
+  `211/384`, 5.17 `C_adaptive_vs_B_fixed` `198/384`). Sections 5.16's branch (c)
+  and 5.17's failure rows were not measuring a weak topology but a control whose
+  initialization was not matched to the treatment's: the seed-level
+  quality difference between two draws has stdev `0.86`, five times the `~0.1`
+  topology effect, which is what swamps the comparison. A pre-run correction
+  (**5.18.1**, chosen from the spent smoke block for variance reasons, and whose
+  smoke-block mean pointed *against* the hypothesis) replaced the contaminated
+  raw contrast with the difference-in-differences; the raw contrast is still
+  reported and still fails (`199/384`, mean -0.1452, p 0.254). NEW MACHINERY:
+  `transport_genome(..., rewind_source=...)` for donor initializations, plus a
+  test pinning that rewinding an unmutated genome to a donor yields the donor's
+  state dict exactly. Committed summary
+  `artifacts/study-summaries/portability-depth4-384.json`
+  (`study_757e78b90de8a510`), pinned by `tests/test_portability_summary.py`
+  (suite at 523).
 - `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
   `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
   deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer

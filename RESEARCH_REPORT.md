@@ -2202,6 +2202,239 @@ describes, which this project does not bundle. The committed summary is
 `artifacts/study-summaries/initialization-depth4-384.json`
 (`study_aef9c55774ab2c04`).
 
+### 5.18 Pre-registration: is the genome portable, or irreducibly paired with its own initialization?
+
+**Motivation.** Section 5.16 found the discovered topology worthless once its
+weights were discarded; section 5.17 found it *valuable* when its surviving
+components kept their original initialization, and found that replacing that
+initialization with a fresh draw removes the value (`C_adaptive_vs_B_fixed`
+fails `198/384`, reproducing 5.16). So the artifact is at least a *pair*. Two
+readings survive that result and they have opposite consequences for the plan:
+
+- **Paired**: these specific initial values are what the topology is worth. The
+  genome is not a portable object, and plan section 102's "reusable
+  computational genome" claim - which explicitly requires the topology to
+  remain advantageous "when freshly initialized and trained independently" - is
+  unsupported at toy fidelity in its own terms.
+- **Portable**: the topology carries value under *any* initialization drawn
+  like the original, and the fresh-draw failure of 5.16 has some other cause
+  (the draw is a *different* sample, not a *foreign* one). Then the genome is
+  transferable, and section 52's scale-up is the right next rung.
+
+Distinguishing them needs one variable that 5.16 and 5.17 never varied: **whose
+initialization the survivors hold, holding the topology fixed.**
+
+**Design.** Same discovery block and registered config as 5.16/5.17
+(`arms="random,adaptive,fixed"`, depth 4, `probe_candidate_policy="spread"`,
+cap-4/2-batch probes, 48 steps, interval 12, budget 3, `independent_arm_rng`,
+cpu), fresh block **83000-83383**, 20-way sharding. A declared **donor block
+84000-84383** supplies foreign initializations (used for nothing else): seed
+`s`'s donor is `s + 1000`, so the donor's initial model is a same-shape,
+same-distribution draw that is foreign to the topology. Three transports per
+seed:
+
+| label | genome | initialization |
+|---|---|---|
+| `O` | adaptive final | **own** initial model - the section-5.17 `B_adaptive` treatment |
+| `D` | adaptive final | **donor** initial model (id-aware rewind to the donor's initial weights) |
+| `F` | fixed (initial) | **donor** initial model |
+
+`F` is the control that makes `D` readable: rewinding the *unmutated* genome to
+a donor's initial model copies every tensor, so `F` is exactly *the donor's
+initial model itself*, trained and scored on this seed's data schedule. `D` and
+`F` therefore have **identical initialization** - the donor's - and differ only
+in topology (plus the adaptive genome's grown experts, which have no donor
+counterpart and take the fresh draw in both). That is the cleanest available
+test of the topology's standalone value, and unlike section 5.16's it is not
+confounded by the two sides holding different kinds of weights.
+
+**Primaries** (exact one-tailed sign test, n = 384, per-primary threshold
+`alpha/2 = 0.025`, the section 5.9-5.17 convention, which at n = 384 is the
+exact bar **212 wins**; the declared bar is asserted against `_gate_min_wins` at
+run time):
+1. **The pairing matters.** `O` beats `D`, in >= 212 seeds: the topology does
+   better with the initialization it was found with than with a foreign one of
+   the same shape and distribution.
+2. **The genome is portable.** `D` beats `F`, in >= 212 seeds: under an
+   initialization that is equally foreign to both sides, the discovered
+   topology beats the never-mutated one.
+
+**Predictions (declared before measurement).** Primary 1 is predicted to
+**pass weakly or marginally** - it is the section-5.17 P1 comparison
+(`215/384`, p `1.08e-02`) with a different non-own initialization on the far
+side, and a donor draw is exchangeable with the fresh draw, so it should land
+near that. Primary 2 is predicted to **fail**: two independent blocks have
+already failed this comparison under own-init-and-fresh (`211/384`, `198/384`),
+and nothing about a foreign initialization suggests it would rescue the
+topology. A pass on primary 2 would be the first support for plan section 102's
+reusability claim at any fidelity, so the prediction is recorded to make sure a
+pass is not later read as a fluke or vice versa.
+
+**Secondaries (reported, not verdict-bearing).**
+- **Transport validity.** `F` must equal the *donor's* initial model trained on
+  this seed's schedule; the script asserts `O` on the unmutated genome
+  reproduces the `fixed` arm's own run exactly (the 5.16/5.17 identity) and that
+  the donor-initialized transports copied parameters.
+- **Donor exchangeability.** `D` vs the section-5.17 `C_adaptive` treatment is
+  not re-run here, but `D` vs `O` and `F` vs the fixed arm's own run are both
+  recorded so a reader can see whether a foreign init behaves like a fresh one.
+- **Capacity.** transported parameter/active-parameter counts; adaptive
+  topologies are smaller than the initial one, so a win is not bought with
+  parameters.
+
+**Pre-registered interpretation (fixed before running).**
+- (a) Both primaries fail: the artifact is **irreducibly paired** - neither the
+  topology alone nor a same-distribution reinitialization carries it. Plan
+  section 102's reusability claim is unsupported at toy fidelity in its own
+  terms ("freshly initialized and trained independently"), and the section-52
+  scale-up is NOT triggered; the next registered step becomes measuring how
+  much of the paired advantage is the discovery *procedure* rather than the
+  artifact (the unregistered observation in 5.17.2).
+- (b) P1 passes, P2 fails: the initialization is paired with the topology, and
+  the genome is not portable. Same consequence as (a) with a stronger
+  mechanism - the pairing is measurable, not inferred.
+- (c) P1 fails, P2 passes: the pairing is not what 5.17 was measuring, and the
+  topology is portable under any initialization. This would REVISE 5.17's P1
+  reading (its `215/384` would be a marginal artifact) and trigger the
+  section-52 scale-up.
+- (d) Both pass: both the pairing and portability hold - the strongest reading,
+  and section 52's scale-up is triggered with both properties declared.
+
+**Scope limits (pre-declared).** Toy fidelity, one substrate, one donor map
+(`s + 1000`, declared here). The teacher treatment remains untested for want of
+Qwen artifacts. Machinery smoke-tests run on already-spent blocks
+(73000-73383) only; the verdict uses 83000-83383 and nothing else.
+
+**Cost.** 1 discovery block (3 arms) + 3 transports per seed, ~4 arm-runs of the
+5.16 size; measured ~4 s/seed single-process at depth 4, so ~25 min of CPU
+across 20 shards.
+
+### 5.18.1 Pre-run correction: primary 1 must be a difference-in-differences
+
+Recorded before the registered block was run and before any primary was read,
+from the machinery smoke test on spent block 73000-73003.
+
+As declared, primary 1 compares `O` against `D`, which differ in initialization
+source but share the adaptive topology. That contrast is dominated by something
+else: this seed's own-versus-donor initialization *quality*, which has nothing
+to do with the topology and is large. On the smoke seeds:
+
+| seed | `O - D` (adaptive topology) | own(initial) `- F` (unmutated topology) | difference |
+|---|---|---|---|
+| 73000 | `-0.0546` | `+0.0674` | `-0.1220` |
+| 73001 | `+0.2216` | `-0.0247` | `+0.2463` |
+| 73002 | `+1.5949` | `+1.6336` | `-0.0387` |
+| 73003 | `-0.2080` | `-0.2288` | `+0.0208` |
+| mean | `+0.3885` | `+0.3619` | `+0.0266` |
+
+Columns 2 and 3 are nearly identical - both are mostly measuring *the same* draw
+quality difference, with a standard deviation of `0.86`, roughly five times the
+`~0.1` topology effect this study is chasing. Primary 1 as declared would
+largely test which seed got the luckier pair of initializations.
+
+The correction: primary 1 becomes the **difference-in-differences**, the
+quantity columns 2 and 3 differ by. It subtracts the same seed-level
+initialization-quality term on the never-mutated topology, so what remains is
+the *extra* own-initialization advantage the discovered topology earns - the
+pairing effect itself. `D_vs_F` (primary 2) already holds initialization
+identical on both sides and needs no correction. The raw `O - D` is still
+reported, as a secondary.
+
+Two things about this correction are worth stating plainly, because it changes a
+pre-registered primary. First, it was chosen from a *spent* block, for variance
+reasons, before the registered block ran - and the smoke block's own
+DiD mean, `+0.0266`, points **against** the pairing hypothesis, so this is not a
+choice in the study's favour; a design picked to flatter the hypothesis would
+have kept the raw column. Second, the prediction for the amended primary 1 is
+weaker than for the original, and is recorded as such:
+
+> Section 5.17's `215/384` was itself a raw own-versus-non-own contrast of the
+> contaminated kind, so removing the seed-level initialization term may leave a
+> smaller residual. Amended primary 1 is predicted to **fail**; a pass means the
+> pairing survives the subtraction, i.e. the discovered topology earns
+> materially more from its own initialization than the unmutated one does.
+
+Primary 2 (`D` < `F`) is unchanged, and its prediction is unchanged: **fail**.
+The four interpretation branches are restated over the amended primary 1
+(pairing) and primary 2 (portability); nothing else in section 5.18 changes.
+
+### 5.18.2 Outcome: registered branch (d) - the genome IS portable, and its own initialization adds value
+
+Run 2026-09-15, block 83000-83383 (fresh), donor block 84000-84383, 20 shards,
+revision `137f6d0`. All built-in checks held on every seed: own-initialization
+rewinding reproduces the `fixed` arm's own run **exactly** (loss and FLOPs,
+384/384), the donor rewind replaces **every** tensor of the unmutated genome
+(`skipped_parameters == 0`, so `F` really is the donor's model), and every
+depicted transport transferred parameters.
+
+| comparison (n = 384, bar 212) | wins | mean delta | p | prediction | verdict |
+|---|---|---|---|---|---|
+| **P1** pairing, difference-in-differences | 237/384 | `-0.0830` | `2.54e-06` | fail | **PASS** |
+| **P2** `D` < `F` (topology portable) | 234/384 | `-0.0465` | `1.06e-05` | fail | **PASS** |
+| raw `O` < `D` (contaminated, secondary) | 199/384 | `-0.1452` | `2.54e-01` | n/a | fail |
+| topologies matched on *own* init: `O` < `O_fixed` | 293/384 | `-0.1295` | `3.65e-26` | n/a | pass |
+| donor init on *both* sides: `D` < `O_fixed` | 194/384 | `+0.0156` | `4.39e-01` | n/a | fail |
+| was the donor init better for the initial topology? `F` vs own | 190/384 | `+0.0621` | `6.01e-01` | n/a | fail (exchangeable) |
+| (discovery) adaptive < random | 264/384 | `-0.1084` | `7.64e-14` | | pass |
+| (discovery) adaptive < fixed | 218/384 | `-0.0306` | `4.58e-03` | | pass |
+
+Transport means: `O 12.2707 < O_fixed 12.4003 < D 12.4159 < F 12.4624`.
+
+**Both pre-registered predictions were wrong, and the correction in 5.18.1 is
+what made the measurement able to show it.** The amended primary 1 was
+predicted to fail; it passes at p `2.5e-06` - the discovered topology earns
+materially *more* from its own initialization than the never-mutated topology
+does, which is the pairing effect measured cleanly. Primary 2 was predicted to
+fail on the strength of two earlier blocks; it passes at p `1.1e-05` - and that
+is the first support this project has for plan section 102's reusability claim
+at any fidelity.
+
+**The synthesis across 5.16-5.18, which is the point of running all three.** Put
+the topology-versus-initial-topology comparisons side by side by what the two
+sides are initialized with:
+
+| initialization | comparison | wins | reading |
+|---|---|---|---|
+| both own (matched) | 5.17 `B_adaptive` vs `B_fixed`; 5.18 `O` vs `O_fixed` | 274/384, 293/384 | topology wins |
+| both donor (matched) | 5.18 `D` vs `F` | 234/384 | topology wins |
+| adaptive fresh, control own (mismatched) | 5.16 P2; 5.17 `C_adaptive` vs `B_fixed` | 211/384, 198/384 | fails |
+
+Every **matched-initialization** comparison wins and both **mismatched** ones
+fail. So sections 5.16's branch (c) and 5.17's failure rows were not measuring a
+weak topology: they were measuring a **control whose initialization was not
+matched to the treatment's** - the adaptive side carried a redrawn
+initialization while the control carried its original one, and the seed-level
+quality difference between those two draws (standard deviation `0.86` on the
+smoke block) swamps the topology effect (~`0.1`). That is exactly the term the
+difference-in-differences removes, and with it removed the pairing effect is
+`p = 2.5e-06` rather than invisible.
+
+**What the artifact is, then, at toy fidelity.** The discovered topology has
+standalone value - it beats the never-mutated topology when both are given the
+*same* initialization, whether that initialization is their own (293/384) or a
+foreign donor's (234/384). It also extracts *additional* value from its own
+initialization, beyond what the never-mutated topology extracts from it
+(237/384 on the differenced contrast). So the plan's two claims are both
+supported, and they are not competitors: **section 102's reusable genome is real
+when the comparison is initialization-matched, and section 11's "final topology
++ original initialization" is real as a further gain on top.**
+
+**Limits, recorded rather than glossed.** (i) Primary 1's prediction was wrong
+in the direction of *understating* the effect, so the amended statistic should
+not be read as having been chosen because it worked - 5.18.1 records that it was
+chosen before the run, on a spent block, and that the smoke block's own DiD mean
+pointed against the hypothesis. (ii) In `D` the adaptive topology's *grown*
+experts (and its resized routers) still hold fresh draws, because no donor
+component corresponds to them, so "donor-initialized" is exact for components
+that existed at initialization and fresh for the rest; the grown-expert subgroup
+split is therefore not reported for this block. (iii) The donor map (`s+1000`)
+is one declared choice; a different donor distribution is untested. (iv) The
+teacher treatment remains untested for want of the Qwen artifacts section 51
+describes.
+
+The committed summary is `artifacts/study-summaries/portability-depth4-384.json`
+(`study_757e78b90de8a510`).
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
@@ -2225,7 +2458,7 @@ describes, which this project does not bundle. The committed summary is
 | 7. Topology evolution logs | PARTIAL (mutation histories and fossils in records) |
 | 8. Experiment registry | DONE for the gate (append-only JSONL + study summaries) |
 | 9. Benchmark results | PARTIAL (this report's factor map; no real-corpus benchmarks) |
-| 10. Fresh-initialization results | DONE for the toy-fidelity mechanism (sections 5.16-5.17.2: genome extraction, fresh AND rewound transport with 384/384 exact transport validity, registered branches (c) then (d) - the topology and its initialization are jointly the artifact); the section-52 scaling version (300M -> 1B) is TODO and is now triggered |
+| 10. Fresh-initialization results | DONE for the toy-fidelity mechanism (sections 5.16-5.18.2: genome extraction, fresh/rewound/donor transport with 384/384 exact transport validity; the topology has standalone value under a *matched* initialization - own 293/384, donor 234/384 - and gains extra from its own initialization, 237/384 on the differenced contrast); the section-52 scaling version (300M -> 1B) is TODO and is triggered |
 | 11. Qwen architecture analysis | TODO (deferred) |
 | 12. Paper-quality figures | DONE for the factor map, in **two sets** (section 8): the registered coupled-path figures, and the corrected decoupled set (`--set decoupled`) plotted from summaries emitted by `scripts/factor_map_recheck.py --summaries` and re-checked by `check_summary` at plot time. Both regenerate byte-identically. Both sets carry all nine rows (section 9.12 recovered study 1's predated config field), and figure 4's counterfactual analysis is re-run separately by `scripts/probe_validity_analysis.py`. |
 

@@ -63,6 +63,18 @@ BASE = dict(
 ARMS = "random,adaptive,fixed"
 
 
+def _initial_genome_for(config: ExperimentConfig) -> ArchitectureGenome:
+    return create_genome(
+        config.seed,
+        hidden_size=config.hidden_size,
+        vocab_size=config.vocab_size,
+        depth=config.depth,
+        ffn="moe",
+        expert_count=config.expert_count,
+        active_experts=config.active_experts,
+    )
+
+
 def _discover(seed: int, **overrides) -> tuple[dict, ExperimentConfig]:
     config = ExperimentConfig(**{**BASE, **overrides}, seed=seed, arms=ARMS)
     result = run_experiment(config)
@@ -254,6 +266,61 @@ def test_grown_experts_have_no_original_initialization_to_rewind_to() -> None:
     )
     # Keeps the fresh draw: it is not silently seeded from another component.
     assert torch.equal(target.blocks[1].experts[4][0].weight.detach(), before)
+
+
+def test_donor_rewind_makes_an_unmutated_genome_the_donor_model() -> None:
+    """Section 5.18's control leans on this: `F` *is* the donor's own model.
+
+    Rewinding the unmutated genome to a donor initial model copies every
+    tensor, so the target becomes the donor model exactly - which is what makes
+    `D` vs `F` a comparison with initialization held identical on both sides.
+    """
+    config = ExperimentConfig(**BASE, seed=SPENT_SEEDS[0], arms=ARMS)
+    donor = ExperimentConfig(**BASE, seed=SPENT_SEEDS[0] + 1000, arms=ARMS)
+    initial = create_genome(
+        config.seed,
+        hidden_size=config.hidden_size,
+        vocab_size=config.vocab_size,
+        depth=config.depth,
+        ffn="moe",
+        expert_count=config.expert_count,
+        active_experts=config.active_experts,
+    )
+    target = model_from_genome(initial, context_size=config.sequence_length)
+    assert isinstance(target, StaticMoECausalLM)
+    donor_model = initial_model(donor)
+    report = initialize_retraining(
+        target,
+        mode="rewound",
+        rewind_state=donor_model.state_dict(),
+        renames=expert_renames(target, donor_model),
+    )
+    assert report.skipped_parameters == 0
+    target_state = target.state_dict()
+    for name, value in donor_model.state_dict().items():
+        assert torch.equal(target_state[name], value), name
+    # A donor transport of the unmutated genome therefore equals the donor
+    # model retrained on this seed's data schedule.
+    transported = transport_genome(
+        initial, config, initialization="rewound", rewind_source=donor
+    )
+    assert transported.initialization["skipped_parameters"] == 0
+    assert transported.training_flops == (
+        transported.parameter_count
+        * config.steps
+        * config.batch_size
+        * config.sequence_length
+        * 2
+    )
+
+
+def test_transport_rejects_a_rewind_source_for_fresh_mode() -> None:
+    config = ExperimentConfig(**BASE, seed=SPENT_SEEDS[0], arms=ARMS)
+    donor = ExperimentConfig(**BASE, seed=SPENT_SEEDS[0] + 1000, arms=ARMS)
+    with pytest.raises(ValueError, match="rewind_source"):
+        transport_genome(
+            _initial_genome_for(config), config, rewind_source=donor
+        )
 
 
 def test_retraining_rejects_a_rename_map_for_fresh_mode() -> None:

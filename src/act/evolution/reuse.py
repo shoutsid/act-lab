@@ -128,6 +128,7 @@ def transport_genome(
     config: ExperimentConfig,
     *,
     initialization: TransportMode = "fresh",
+    rewind_source: ExperimentConfig | None = None,
 ) -> TransportResult:
     """Rebuild ``genome`` and retrain it on ``config``'s seed.
 
@@ -148,6 +149,11 @@ def transport_genome(
       experts - keep the fresh draw. On an unmutated genome, where every
       component existed at initialization, this is *identical by construction*
       to ``fresh``.
+
+    ``rewind_source`` chooses *whose* initialization is restored, which is the
+    variable that decides whether a discovered topology is paired with the
+    initialization it was found with or portable to a foreign one (report
+    section 5.18). It defaults to ``config`` - the block's own initial model.
     """
     if isinstance(genome, dict):
         genome = ArchitectureGenome.from_dict(genome)
@@ -155,6 +161,8 @@ def transport_genome(
         raise ValueError("steps must be positive")
     if initialization not in {"fresh", "rewound"}:
         raise ValueError(f"unsupported transport initialization: {initialization}")
+    if rewind_source is not None and initialization != "rewound":
+        raise ValueError("rewind_source is only meaningful for rewound initialization")
     device = resolve_device(config.device)
     # Same seed and same construction call as ``run_experiment``'s initial
     # model, which is what the ``fixed`` arm trains unmutated.
@@ -164,7 +172,7 @@ def transport_genome(
         raise TypeError("transport requires a static MoE genome")
     model.to(device)
     if initialization == "rewound":
-        source = initial_model(config)
+        source = initial_model(config if rewind_source is None else rewind_source)
         report: InitializationReport = initialize_retraining(
             model,
             mode="rewound",
