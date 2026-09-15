@@ -237,6 +237,15 @@ PYTHONPATH=src python scripts/v0_throughput_benchmark.py --steps 50
 
 Writes `artifacts/v0-benchmark.json` (the artifact the launch command reads).
 
+Before launching the queues, run the session self-check on the **declared
+pairing** - the seed queues train fp16 on CUDA, and every session after the
+first resumes a CUDA fp16 checkpoint, so the resume-determinism claim is only
+verified for the device/dtype it has actually been run on:
+
+```bash
+PYTHONPATH=src python scripts/v0_session_selfcheck.py --device cuda
+```
+
 Read from the printed JSON and record:
 
 | Field | Meaning |

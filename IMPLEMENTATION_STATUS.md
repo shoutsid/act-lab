@@ -801,6 +801,21 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   and after the fp16 path landed (step [3/4] verifies fp16 resume is
   bit-identical with scaler state restored, and that fp16 books the same
   FLOPs counters as fp32).
+- `PYTHONPATH=src python scripts/v0_session_selfcheck.py --device cuda` ->
+  **the declared pairing now has coverage.** Every fp16 check above ran on CPU
+  (where `GradScaler("cpu")` is the native configuration) and the documented
+  local-GPU pair-session run was fp32, so nothing had ever trained fp16 on
+  CUDA - while the declared run does exactly that, and every session after the
+  first resumes a CUDA fp16 checkpoint. The self-check now takes `--device`
+  (a module constant, so no call site can compare a checkpoint from one device
+  against a resume on another and pass while testing nothing) and the whole
+  battery passes on CUDA: fp32 and fp16 resumes both bit-identical, fp16 FLOPs
+  counters unchanged, checkpoint contract intact. The hardcoded
+  `GradScaler("cpu")` in `run_v0_session` was also probed directly and is
+  behaviourally identical to `GradScaler("cuda")` on CUDA tensors - infs
+  detected, step skipped, scale backed off 65536 -> 32768 - so it is not a
+  defect and was deliberately left alone rather than changing the numeric path
+  mid-run.
 - `PYTHONPATH=src python -m act.training.cli --mode pair-session --profile ...`
   -> the launch command runs the whole chain end-to-end on the local GPU:
   it consumed a real benchmark artifact (smoke profile, 26,987 tokens/s,

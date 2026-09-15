@@ -6,6 +6,12 @@ Run this once before launching the declared protocol, after any change to
 
     PYTHONPATH=src python scripts/v0_session_selfcheck.py
 
+The declared run trains on CUDA in fp16, so run it against that pairing at
+least once - the resume checks are the pre-registered determinism claim, and
+they are only guaranteed for a device/dtype they have actually been run on:
+
+    PYTHONPATH=src python scripts/v0_session_selfcheck.py --device cuda
+
 Checks, on a tiny non-declared config:
   1. a reference session matches budgets and books search/training FLOPs;
   2. deleting the final checkpoint and resuming from the step-15 snapshot
@@ -17,6 +23,7 @@ Checks, on a tiny non-declared config:
   4. checkpoints carry the version-5 payload contract.
 """
 
+import argparse
 import json
 import sys
 import tempfile
@@ -25,6 +32,14 @@ from pathlib import Path
 import torch
 
 from act.training import V0SessionConfig, run_v0_session, validate_checkpoint_payload
+from act.training.runtime import resolve_device
+
+
+# Set once by ``--device`` in main. A module constant rather than a parameter
+# so no call site can forget it: a battery that compared a checkpoint produced
+# on one device against a resume on another would still pass while testing
+# nothing, and every check in here is a resume comparison.
+DEVICE = "cpu"
 
 
 def _config(**overrides) -> V0SessionConfig:
@@ -32,7 +47,7 @@ def _config(**overrides) -> V0SessionConfig:
         seed=11,
         arms=("random", "adaptive"),
         declared=False,
-        device="cpu",
+        device=DEVICE,
         batch_size=2,
         vocab_size=64,
         context_size=256,
@@ -58,8 +73,18 @@ def _newest_checkpoint(arm_dir: Path) -> Path:
     return max(arm_dir.glob("checkpoint-*.pt"), key=lambda p: p.stat().st_mtime_ns)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     from act.training.v0_session import V0SessionResult
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--device", choices=("auto", "cpu", "cuda"), default="cpu",
+        help="device for the battery (default cpu; the declared run is cuda)",
+    )
+    args = parser.parse_args(argv)
+    global DEVICE
+    DEVICE = str(resolve_device(args.device))
+    print(f"v0 session self-check on {DEVICE}", flush=True)
 
     failures: list[str] = []
     with tempfile.TemporaryDirectory(prefix="v0-selfcheck-") as tmp:
