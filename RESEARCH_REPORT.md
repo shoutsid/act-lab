@@ -3746,9 +3746,79 @@ the next axis and is not carried here.
 
 **Cost.** Two fused runs plus two frozen retrains per seed, ~2.1 s/seed.
 
-### 5.28 Result
+### 5.28 Outcome: the inversion survives the deployed regime (branch (a))
 
-*(pending: registered blocks 107000-107383 and 108000-108383)*
+Run on the registered fresh blocks 107000-107383 (depth 2) and 108000-108383
+(depth 3), `study_5ece35fb3fbc8724` and `study_f8bc02ca0f048a79`. Every built-in
+check held, and the regime claim was met: the blocks are genuinely drawn mixes
+(**622 grows / 530 prunes** at depth 2, **548 / 604** at depth 3), not forced
+blocks in disguise.
+
+| | depth 2 (n = 384) | depth 3 (n = 384) |
+|---|---|---|
+| **P1** clone helps: `C` < `R` | **276/384**, mean −0.0720, p 2.3e-18 | **252/384**, mean −0.0651, p 4.6e-10 |
+| **P2** residual penalty: `C_own` < `C` | 170/384, mean **+0.0243** — FAIL | 178/384, mean **+0.0113** — FAIL |
+| historical penalty: `R_own` < `R` | 255/384, mean −0.0477, p 6.1e-11 | 256/384, mean −0.0538, p 3.1e-11 |
+
+**Registered verdict: branch (a).** Cloning helps in the drawn regime and no
+penalty remains - P2 fails in the exonerating direction again, so the fused run
+with a cloned new expert beats a clean retrain of its own final genome. The
+prediction was right, third in a row.
+
+**The pre-declared divergence channel did not fire.** Identical final genome in
+**384/384** and identical operation mix in **384/384**, at both depths, with
+`C_own == R_own` bit-identically - so the load-based fallback never took the two
+settings down different paths, even though a layer sits at the 2-expert floor in
+69 (depth 2) and 72 (depth 3) seeds. The pairing held without being assumed; the
+design was built to survive it failing and it did not fail.
+
+**The result is sharper than "cloning helps", in a way the forced blocks could not
+show.** In this regime the historical path is not merely worse than cloning - it
+is worse than **doing nothing**:
+
+| | depth 2 | depth 3 |
+|---|---|---|
+| `F` < `R` (mutating the historical way costs vs not mutating) | **251/384**, −0.0444, p 8.9e-10 | **236/384**, −0.0403, p 4.1e-06 |
+| `C` < `F` (cloning makes mutating *pay*) | **238/384**, −0.0275, p 1.5e-06 | **237/384**, −0.0248, p 2.5e-06 |
+| `R_own` < `F` (the retrain vs not mutating) | 186/384, −0.0033, p 0.75 | 207/384, −0.0135, p 0.069 |
+
+The sign of the whole pipeline flips. Under the historical initialisation, running
+the mutation process leaves you **worse off than never mutating** - significantly,
+at both depths. Under cloning, the same process leaves you significantly better
+off. The frozen retrain, meanwhile, is statistically indistinguishable from the
+unmutated arm (p 0.75 and 0.069), which is what a mixed draw should do: its net
+topology change is a wash. Section 5.22 recommended freeze-and-retrain because the
+fused run was worse than the retrain; here the retrain buys nothing over never
+mutating, and cloning beats both.
+
+| | depth 2 mean | depth 3 mean |
+|---|---|---|
+| `C` clone-grow fused | **14.2630** | **13.3864** |
+| `own` frozen retrain of the final genome | 14.2873 | 13.3977 |
+| `F` unmutated fixed arm | 14.2905 | 13.4112 |
+| `R` fresh draw (historical) | 14.3350 | 13.4515 |
+
+Note the ordering differs from section 5.26's: there `F < own` held significantly,
+here `own` and `F` tie. That is the regime difference showing up honestly - a
+run of forced grows ends at a topology worse than the initial one, a mixed draw
+ends at one that is a wash, and either way cloning is the term that decides the
+sign.
+
+**Consequences.** Section 5.22's `discover -> freeze genome -> retrain` is now
+contradicted in the regime it was adopted from, not only in the forced blocks of
+sections 5.26-5.27. The pipeline recommendation is **clone-and-preserve, keeping
+the fused run**: it beats the historical path in 276/384 (depth 2) and 252/384
+(depth 3) seeds, beats the retrain in 214/384 and 206/384, and beats not mutating
+at all in 238/384 and 237/384. That is a stronger claim than section 5.26 could
+make, because "mutating pays" is a property a delivery pipeline can be built on,
+and "mutating costs less than it used to" is not.
+
+**Caveats, as declared.** Toy fidelity, synthetic tokens, one substrate, depths 2
+and 3, the `random` arm only - arm-genericity of the process penalty is **cited**
+from section 5.22, not re-measured here - a 3-event budget, and cloning from the
+layer's busiest survivor rather than a trained teacher. The probe-based **adaptive**
+selection path, which is what the project actually uses to discover genomes, is not
+tested by this study and is the next axis; nothing here speaks to it.
 
 ## 6. Reproducibility
 

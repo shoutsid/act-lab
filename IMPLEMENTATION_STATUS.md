@@ -1653,6 +1653,36 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   this 1070 at this shape (5.26 vs 2.04 s/seed), and every committed number in
   sections 5.16-5.27 was measured on CPU, so a device switch would stop the record
   reproducing. The real-data legs do use the GPU.
+- **Section 5.28 RAN (2026-09-15, blocks 107000-107383 depth 2 / 108000-108383
+  depth 3, `scripts/unforced_clone_study.py`).** Closes the gap that mattered most:
+  sections 5.24/5.26/5.27 all measured on **forced** operations, but section 5.22's
+  freeze-and-retrain pipeline was adopted from the **mixed, unforced** regime. Here
+  `forced_operation` is left None, so the mix is drawn (622 grows / 530 prunes at
+  depth 2, 548 / 604 at depth 3 - checked, so this cannot be a forced block in
+  disguise). Registered verdict **branch (a)**: **P1 clone helps** 276/384 (mean
+  -0.0720, p 2.3e-18) and 252/384 (-0.0651, p 4.6e-10); **P2 no residual penalty**
+  FAILS in the exonerating direction again (**+0.0243** / **+0.0113**), against a
+  historical penalty of -0.0477 / -0.0538. **The claim is sharper than the forced
+  blocks could make it: the historical path leaves the run worse than NEVER
+  MUTATING** (`F` < `R`: 251/384, -0.0444, p 8.9e-10; 236/384, -0.0403,
+  p 4.1e-06), while **cloning makes mutating pay** (`C` < `F`: 238/384, -0.0275,
+  p 1.5e-06; 237/384, -0.0248, p 2.5e-06). The frozen retrain ties the unmutated
+  arm (186/384, p 0.75; 207/384, p 0.069), as a mixed draw should. Means
+  **`C` < `own` ≈ `F` < `R`** at both depths. **Pairing was recorded, not assumed**
+  - a drawn prune can fall back to a load-based grow, which reads weights cloning
+  changes - and it held anyway: identical final genome **384/384**, identical
+  operation mix **384/384**, `C_own == R_own` bit-identically, even though 69/72
+  seeds had a layer at the 2-expert floor. Third correct prediction in a row.
+  **Consequence: section 5.22's pipeline is contradicted in the regime it was
+  adopted from**, and this is now a requirement rather than a preference - the
+  recommended pipeline is **clone-and-preserve, keeping the fused run**
+  (beats retrain 214/384 and 206/384, beats not mutating 238/384 and 237/384).
+  Not tested and named as the next axis: the probe-based **adaptive** selection
+  path; arm-genericity of the process penalty is cited from section 5.22, not
+  re-measured. Summaries
+  `artifacts/study-summaries/unforced-clone-{depth2,depth3}-384.json`
+  (`study_5ece35fb3fbc8724`, `study_f8bc02ca0f048a79`), pinned by
+  `tests/test_unforced_clone_summary.py`.
 - **Report-artifact link guard (2026-09-15).** Section 5.19's missing summaries
   were a defect *class*, not an incident: a result can be cited widely while its
   artifact does not exist. `tests/test_report_artifact_links.py` now fails if any
