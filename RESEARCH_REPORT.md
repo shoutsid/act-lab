@@ -3835,6 +3835,93 @@ layer's busiest survivor rather than a trained teacher. The probe-based **adapti
 selection path, which is what the project actually uses to discover genomes, is not
 tested by this study and is the next axis; nothing here speaks to it.
 
+### 5.29 Pre-registration: does clone-and-preserve hold on the discovery path?
+
+**Motivation.** Section 5.28 confirmed the clone inversion in the drawn, unforced
+regime - but on the **`random`** arm, whose mutation choices come from the seed's
+own RNG. The arm the project actually uses to discover genomes is the **probe-guided
+`adaptive`** arm: it enumerates feasible mutation candidates, scores each by
+rebuilding the model and measuring held-out probe loss, and applies the best. That
+is a different process, and the pre-registered consequence of section 5.28 is only
+usable if it survives it.
+
+**Design.** One seed set per depth, `arms="fixed,adaptive"`, `forced_operation`
+left None so the mix is drawn, `preserve_router_on_rebuild=True`:
+
+| label | run |
+|---|---|
+| `F` | the fixed arm (unmutated) - identical under both settings |
+| `R` | adaptive discovery, new experts freshly drawn (historical) |
+| `R_own` | `R`'s final genome retrained from its own initialization |
+| `C` | adaptive discovery, new experts cloned from their layer's busiest survivor |
+| `C_own` | `C`'s final genome retrained from its own initialization |
+
+**The pairing is NOT assumed, and on this path it does not always hold - measured
+before the design was fixed.** Reading the probe path shows that `_mutate_by_probe`
+scores candidates with `rebuild_model_from_genome` called **without** the arm's
+`preserve_router` / `new_expert_initialization` flags, while the *selected* candidate
+is applied with them. So scoring is init-independent at a given set of weights,
+but once the two runs' weights differ a later probe can rank candidates
+differently. A 16-seed spent-seed measurement (seeds 73000-73015) found **divergent
+final genomes in 2/16 seeds (12.5%)**, with clone gain `-0.0682` and 9/16 wins.
+Roughly a tenth of the registered block is therefore expected to diverge. Unlike
+sections 5.26 and 5.27, identical genomes are **recorded and reported, never
+asserted**, each penalty uses its own frozen retrain, and the primary is also
+reported on the subset where the two runs agreed so a reader can see whether the
+divergent seeds carry it. Primary 1 is consequently a comparison of two
+**processes**, not a paired contrast on one genome - the right shape for a
+deployable question and the wrong shape for a mechanism question.
+
+**Primaries per depth (n = 384), Bonferroni `alpha/4 = 0.0125` -> bar 215.**
+1. **clone helps on the discovery path** - `C` < `R`: does switching the new-expert
+   initialization improve the discovery pipeline end to end?
+2. **no residual penalty under cloning** - `C_own` < `C`, i.e. the predicted
+   **failure** of P2, as in sections 5.26 and 5.28.
+
+**Prediction (declared before the registered blocks; the measurements above are
+disclosed).** A 4-seed machinery smoke (depth 2, spent seeds 73000-73003) showed
+clone gain `-0.0721`, cloned penalty `+0.0255` and `C` < `F` by `-0.0357`, with
+**1/4** divergent genomes. So **P1 is predicted to pass and P2 to fail**, giving
+**branch (a): the recommendation survives the discovery path.** The reasoning is
+that the *application* of a mutation is what section 5.26's mechanism acts on - a
+cloned expert starts as a working twin whether a probe or a coin flip chose the
+grow - while the probe's *scoring* is unchanged by the setting by construction, so
+cloning adds its benefit without disturbing which candidates get chosen. The
+disclosed caution is that the smoke's per-seed spread again exceeds the effect, and
+that the 12.5% divergence rate means a tenth of the block compares two different
+architectures.
+
+**Pre-registered interpretation (fixed before running, in section 5.24's letter
+order: (a) means helps, and no penalty remains).**
+- (a) P1 passes, P2 fails: the pipeline recommendation extends to the arm the
+  project actually uses, so clone-and-preserve is the pipeline for real discovery
+  and not only for the random arm.
+- (b) both pass: cloning helps discovery but a residual penalty survives under
+  adaptive selection, so freeze-and-retrain keeps a justification there.
+- (c) P2 passes, P1 fails: the section 5.26-5.28 result is **confined to the random
+  arm**, and the recommendation does **not** extend to discovery.
+- (d) neither passes: inconclusive, recorded without a reading.
+
+**Secondaries (reported, not verdict-bearing).** The divergence rate in final
+genomes and in operation mix; the primary recomputed on the agreeing subset; the
+operation mix; `R_own - R`, `C_own - C`, and both paths against `F` (the sharp
+section 5.28 contrast, so it can be checked on this arm); and the fixed arm's loss.
+
+**Scope limits (pre-declared).** Toy fidelity, synthetic tokens, one substrate,
+depths 2 and 3, a 3-event budget, `probe_candidate_cap=4` with `spread` policy and
+`argmin` selection (the project's registered discovery configuration), and cloning
+from the layer's busiest survivor rather than a trained teacher. Because the two
+settings can diverge, this measures the **end-to-end** effect of the setting on
+discovery; it does not separate "better mutations applied" from "better candidates
+chosen", and a design that matched the probe's scoring to the application would be
+needed to do that.
+
+**Cost.** Two discovery runs plus two frozen retrains per seed, ~2.4 s/seed.
+
+### 5.29 Result
+
+*(pending: registered blocks 109000-109383 and 110000-110383)*
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
