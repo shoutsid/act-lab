@@ -4276,9 +4276,246 @@ what is held fixed is the count, the layer and the substrate.
 
 **Cost.** Three fused runs plus three frozen retrains per seed, ~2.6 s/seed.
 
-### 5.31 Result
+### 5.31 Outcome: branch (d) as registered - the sign test is what failed, and here is the power
 
-*(pending: registered blocks 113000-113383 and 114000-114383)*
+Run on the registered fresh blocks 113000-113383 (depth 2) and 114000-114383
+(depth 3), `study_41bbf67d9ae9bce2` and `study_131929958f11abc2`.
+
+| | depth 2 (n = 384) | depth 3 (n = 384) |
+|---|---|---|
+| **P1** `fused(Q)` < `fused(R)` | 209/384 (54.4%), mean −0.0151, p 0.046 — **FAIL** | 202/384 (52.6%), mean −0.0205, p 0.166 — **FAIL** |
+| **P2** `fused(R)` < `fused(B)` | 207/384 (53.9%), mean −0.0091, p 0.069 — **FAIL** | 206/384 (53.6%), mean −0.0172, p 0.084 — **FAIL** |
+
+**Registered verdict: branch (d)** - neither primary passes, so as registered the
+prune cost does not depend on which expert is removed, the controller's choice is
+not a lever, and section 5.30's deficit is intrinsic. The prediction (branch (a))
+was wrong.
+
+> **Superseded by section 5.32, which replaced this branch with branch (a) on a
+> properly powered block.** Branch (d) is retained only as the record of what this
+> registered block licensed; do not act on it. Section 5.32's mechanism subsection
+> also corrects a sign-convention over-read in this section's penalty column.
+
+**But branch (d)'s interpretation is not what the data says, and the failure is a
+power failure rather than an absence of effect.** The means order exactly as
+predicted at **both** depths, and the win rates sit at 53-54% - a real but small
+effect that the registered statistic cannot resolve at this block size:
+
+| | depth 2 | depth 3 |
+|---|---|---|
+| fused means | `Q` **14.3053** < `R` 14.3204 < `B` 14.3295 | `Q` **13.4383** < `R` 13.4588 < `B` 13.4760 |
+| penalties `own - fused` | `Q` **−0.0297** > `R` −0.0392 > `B` **−0.0498** | `Q` **−0.0237** > `R` −0.0400 > `B` **−0.0578** |
+
+Both orderings are the predicted `Q` better / `B` worse, replicated at both depths,
+on both measures. **What this block can and cannot resolve** (one-sided paired mean
+test on the same deltas, reported as a post-hoc diagnostic and not as a verdict):
+
+| contrast | depth 2 | depth 3 |
+|---|---|---|
+| `fused(Q) < fused(R)` | t −2.43, one-sided p **0.0075** | t −3.23, one-sided p **0.0006** |
+| `fused(R) < fused(B)` | t −1.34, p 0.090 | t −2.21, p 0.0137 |
+| `pen(Q) - pen(R)` (quietest penalty less bad) | t +1.67, p 0.048 | t +2.29, p 0.011 |
+| `pen(B) - pen(R)` (busiest penalty worse) | t −2.01, p 0.022 | t −2.59, p 0.0048 |
+
+So on the mean, P1 would pass at both depths and P2 would fail at both - **branch
+(b)**, "the quietest is a good target but the busiest is not especially bad". The
+registered sign test and the mean test disagree on the whole verdict while the
+direction is identical, and the reason is arithmetic: at a 53% win rate the paired
+sign test needs **n ~ 1396** to clear the Bonferroni bar, and at 54% it needs
+**n ~ 785**. This block has 384. The registered statistic is underpowered by
+roughly a factor of four for the effect actually present.
+
+**Two things this does not license.** First, the post-hoc mean test is not a
+verdict - it was not registered, and using it after seeing the data is exactly the
+freedom section 5.30 was written to remove. Second, the ordering being consistent
+does not make the effect large: `Q` beats `R` by `0.015`-`0.021` against a prune
+penalty of `0.039`-`0.040`, so even if real it is a modest fraction of the deficit,
+not an explanation of it. Whether it is real is section 5.32's question, on fresh
+blocks with the mean declared in advance and a block powered for it.
+
+**One control worth recording.** On depth 3, `fused(Q) < fused(F)` passes the
+registered test (**231/384**, mean −0.0212, p 4.0e-05) while `fused(R) < fused(F)`
+does not (196/384, mean −0.0008). So on a prune-only block, removing the quietest
+expert leaves mutation **worth doing** where removing a random one does not - the
+same shape as section 5.30's grow term, on the prune side.
+
+**Correction (added with section 5.32, and it concerns this section's own prose).** The
+sentence above treats the two orderings as pointing the same way. On the fused column they do,
+and on the penalty column they *cannot*, because `penalty = own - fused` is a difference that
+contains the fused term: a better fused loss mechanically makes the penalty less negative. At
+section 5.32's four-times-larger block the two columns separate cleanly and the penalty column
+turns out to be **essentially null** - `own(Q) - own(R)` is **+0.0034** (depth 2) and **+0.0008**
+(depth 3) against `fused(Q) - fused(R)` of **-0.0113** and **-0.0125** - so the whole effect is
+in the fused term and the "both measures agree" reading was an artifact of a 384-seed sample in
+which the own column happened to point the same way. Section 5.32 carries the corrected reading,
+including what it does to the penalty secondary: that secondary **fails** (p 1.00 at both depths)
+precisely because the delivered artifact does not improve.
+
+### 5.31.1 The protocol's statistic is the binding constraint, and it is now measured
+
+This is the third study in a row where the registered statistic, not the mechanism,
+decided the outcome: section 5.29 produced two artifacts, section 5.30 reproduced
+both the truth and the artifact, and this one is underpowered by ~4x. The general
+form of the problem is worth stating once, because it will recur:
+
+- **A paired sign test throws away magnitude.** It is robust and needs no
+distributional assumption, which is why the protocol adopted it, but for a
+heavy-tailed paired difference - the norm here, with per-seed spread 5-10x the
+effect - it is drastically less efficient than a mean test. At a 53% win rate it
+needs 1396 seeds for what a mean test resolves with ~380.
+- **The remedy is not to switch statistics after the fact.** It is to declare the
+statistic and the power *before* the block, which is what section 5.32 does. Every
+comparison this project stores should record, alongside the registered statistic,
+the mean and its standard error - not as a verdict, but so that a reader can see
+whether a failure means "no effect" or "no resolution".
+
+### 5.32 Pre-registration: the prune-target question re-registered with power
+
+**Motivation.** Section 5.31 registered a sign test, which failed, while the mean
+direction replicated at both depths. The substantive question - is the prune target
+a policy lever? - is therefore open, and was left open by a statistic rather than by
+a measurement.
+
+**Design.** Identical to section 5.31 - same config, three policies, forced prune,
+`preserve_router_on_rebuild=True`, one initial model and data schedule per seed -
+with two changes, both declared before the run:
+
+1. **A mean-based statistic, fixed in advance.** The primary is a one-sided **paired
+   sign-flip permutation test on the mean of the per-seed deltas** (20,000
+   permutations, seeded from the study hash), against `alpha/4 = 0.0125`. It is
+   permutation-based rather than a t-test because the deltas are heavy-tailed, and
+   seeded so the p-value is reproducible to the digit.
+2. **A block sized for the effect, not for tradition.** At an effect of ~0.015 with
+   a per-seed sd of ~0.12, resolving it needs roughly `n ~ 4x` the section 5.31
+   block; the registered blocks are **1536 seeds per depth**, giving ~4x the power
+   for the smaller of the two effects and ample power for the larger.
+
+**Primaries per depth**, unchanged in substance and changed in statistic:
+1. **removing the quietest is cheaper** - `fused(Q)` < `fused(R)`.
+2. **removing the busiest is dearer** - `fused(R)` < `fused(B)`.
+
+**Prediction.** Both primaries are predicted to **pass**, giving **branch (a)**: the
+prune target is a policy lever and section 5.30's deficit is partly addressable by
+target selection. The basis is the replicated direction at both depths on both
+measures (means `Q < R < B` twice), with the declared caution that the effect is
+small (`0.015`-`0.021`) relative to the `0.04` prune penalty and that the post-hoc
+mean tests were marginal for P2 (`p 0.090` and `0.0137`) even at n = 384 - so P2
+remains the less certain of the two.
+
+**Pre-registered interpretation.**
+- (a) both pass: the target is a lever, monotone in load, and the discovery
+  controller should prefer the quietest expert.
+- (b) P1 passes, P2 fails: the quietest is a good target but the busiest is not
+  especially bad - the cost is not monotone in load, and the lever is one-sided.
+- (c) P2 passes, P1 fails: the busiest is a bad target but the quietest is no better
+  than random.
+- (d) neither passes: with ~4x the power of section 5.31, a failure here is
+  evidence of absence rather than an absence of resolution, and the prune cost is
+  then intrinsic to removing an expert at all.
+
+**Secondaries.** The penalties and the retrains' own losses, both as in section
+5.31; each policy against `F`; and both the sign-test and mean-test readings of
+every comparison, stored together so the two can be compared rather than
+substituted for one another.
+
+**Scope limits.** As section 5.31. The larger block does not remove the substratum
+caveats: toy fidelity, synthetic tokens, depths 2 and 3, the `random` arm with the
+operation forced, and load measured by recorded routing statistics rather than a
+gradient-based importance metric.
+
+**Cost.** Three fused runs plus three frozen retrains per seed, ~2.6 s/seed;
+1536 seeds x 2 depths, ~7 minutes wall over 20 cores.
+
+### 5.32 Result
+
+**Branch (a) at both depths, as predicted, and the power diagnosis is confirmed by the sign
+test passing too.** Blocks `115000-116535` (depth 2) and `117000-118535` (depth 3), 1536 seeds
+each, summaries `prune-target-powered-depth2-1536.json` (`study_ab45f014e8cb5e50`) and
+`prune-target-powered-depth3-1536.json` (`study_55d7527c71843ced`).
+
+**Primaries** (fused loss, one-sided sign-flip permutation test on the per-seed mean,
+`alpha/4 = 0.0125`):
+
+| | depth 2 | depth 3 |
+|---|---|---|
+| **P1** `fused(Q)` < `fused(R)` | −0.01133 (t −3.53), p **2.5e-04** — **PASS** | −0.01250 (t −3.88), p **1.0e-04** — **PASS** |
+| **P2** `fused(R)` < `fused(B)` | −0.01678 (t −4.76), p **5.0e-05** — **PASS** | −0.02435 (t −6.51), p **5.0e-05** — **PASS** |
+
+**Every comparison in both blocks gives the same verdict under both statistics.** The sign test,
+which section 5.31 failed at n = 384, passes at n = 1536 with the identical effect and the
+identical direction (P1 813/1536 and 823/1536 against a bar of 813; P2 845/1536 and 846/1536).
+That is the power claim of section 5.31.1 measured rather than argued: **the effect was always
+there, and section 5.31's branch (d) was its statistic, not its measurement.**
+
+The ordering is monotone in load at both depths and on all three loss columns:
+
+| mean loss | depth 2 | depth 3 |
+|---|---|---|
+| `F` (never mutate) | 14.32961 | 13.46907 |
+| `Q` (quietest target) | 14.33570 | 13.45304 |
+| `R` (historical, random) | 14.34703 | 13.46553 |
+| `B` (busiest target) | 14.36381 | 13.48988 |
+
+The block is live rather than degenerate: three distinct surviving expert sets in 1422/1536
+(depth 2) and 1460/1536 (depth 3) seeds, with the residuum a chance collision between policies
+(the section 5.31.1 reconciliation); the fixed arm is bit-identical across all three policies and
+all three used the full 3-event budget, checked in-block rather than assumed.
+
+#### The mechanism, which is not the one the penalty framing implies
+
+**The lever acts on the fused trajectory, not on the retrained topology.** The final genomes of
+the three policies retrain to almost exactly the same loss - `own(Q) - own(R)` is **+0.00342**
+(depth 2) and **+0.00083** (depth 3), the quietest target's deployed artifact being very slightly
+*worse*, not better - while `own(B) - own(R)` is +0.00708 and +0.00983. So the penalty
+`own - fused` moves in the *opposite* direction to the fused loss, which is why
+`penalty_quietest_less_than_random` fails (p 1.00 at both depths) while P1 passes. The lever buys
+its whole effect on the training run that is doing the pruning, and buys nothing on the artifact
+that run leaves behind:
+
+| as a share of the historical prune penalty | depth 2 | depth 3 |
+|---|---|---|
+| recovered by targeting the quietest | **27.6%** | **41.6%** |
+| added by targeting the busiest | **40.8%** | **81.0%** |
+
+**This makes the lever conditional on the delivery pipeline, and only one of the two pipelines
+wants it.** Under section 5.28's recommendation - clone and preserve, *keep the fused run*, whose
+loss is the deployed number - the prune target is a free 27.6-41.6% of the penalty. Under the
+older freeze-and-retrain pipeline the delivered artifact is `own`, and there the target selection
+is worth nothing (slightly negative). The same knob that helps one pipeline is inert for the
+other, which is a sharper statement than "the target matters".
+
+#### What it does not do: close the gap to never mutating
+
+The section 5.30 residual is partly addressable, as the pre-registration said, and the
+"partly" is now measured. Against `F`:
+
+| | depth 2 | depth 3 |
+|---|---|---|
+| `fused(Q)` vs `F` | +0.00609, p 0.996 — still worse | **−0.01603, p 5.0e-05 — better** |
+| `fused(R)` vs `F` | +0.01743, p 1.00 — worse | −0.00354, p 0.105 — indistinguishable |
+
+At depth 3 a discovery controller that prunes the quietest expert ends up **better than never
+mutating at all**; at depth 2 it does not, and the target choice narrows the gap without closing
+it. So the depth-2 prune deficit is not a target-selection problem, and section 5.30's open
+problem survives here - reduced at depth 3, intact at depth 2. One knob is not the answer.
+
+#### Declared limits, unchanged and one new
+
+All of section 5.31's scope limits hold: toy fidelity, synthetic tokens, depths 2 and 3, the
+`random` arm with the operation forced, and load measured by recorded routing statistics rather
+than a gradient-based importance metric. Two additions: the effect is **small in absolute terms**
+(0.011-0.024 against a per-seed sd of ~0.12), so the seed cost is real; and the mechanism result
+depends on `own` being a fair measure of the delivered artifact, which is what section 5.22's
+freeze-and-retrain pipeline does and what the `_own` transport measures.
+
+#### Prediction
+
+Correct, and the fourth of the last five. It is also the least informative kind of correct: this
+is section 5.31's prediction re-made on a bigger block, so being right now mostly confirms that
+section 5.31's failure was a power failure - which is the thing the sign test already showed
+directly. The one prediction in this run that mattered was that both statistics would agree, and
+that one was made because the power arithmetic was written down before the block rather than
+estimated after it.
 
 ## 6. Reproducibility
 

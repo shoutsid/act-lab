@@ -1737,6 +1737,53 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   (5.30.1):** record how often a treatment can bind before choosing the statistic,
   stratify on a pre-treatment variable, and include a positive control that the
   treatment is a no-op where it should be.
+- **Section 5.31 RAN (2026-09-15, blocks 113000-113383 depth 2 / 114000-114383
+  depth 3, `scripts/prune_target_study.py`).** Asks whether *which* expert a prune
+  removes is a lever. New opt-in `ExperimentConfig.prune_expert_policy`
+  (`"random"` default / `"busiest"` / `"quietest"`, ranked by the model's own
+  recorded routing load). Registered verdict **branch (d)** - the sign test failed
+  both primaries while the means ordered `Q < R < B` at both depths at 53-54% win
+  rates. Summaries `artifacts/study-summaries/prune-target-depth{2,3}-384.json`
+  (`study_41bbf67d9ae9bce2`, `study_131929958f11abc2`), pinned by
+  `tests/test_prune_target_policy.py`, which also re-runs a committed section 5.25
+  block from its own stored config and requires **bit-identical** losses - the
+  guarantee that adding a defaulted knob did not move the published record.
+  **Reproducibility finding recorded there and in the report:** reproduction is
+  bit-exact at 1 and 4 torch threads but **not at 2** (last digits move), so
+  "reproduces" is only defined at a fixed thread count and all committed numbers
+  are `OMP_NUM_THREADS=1`. **5.31.1:** the binding constraint was the *statistic* -
+  at a 53% win rate the paired sign test needs ~1396 seeds for what a mean test
+  resolves with ~380, and this block had 384.
+- **Section 5.32 RAN (2026-09-15, blocks 115000-116535 depth 2 / 117000-118535
+  depth 3, `scripts/prune_target_powered_study.py`).** Section 5.31's question
+  re-registered with the statistic declared in advance (one-sided paired sign-flip
+  permutation test on the mean, 20k permutations, `alpha/4 = 0.0125`) on a ~4x
+  block sized from 5.31's observed effect and spread. Registered verdict **branch
+  (a), both primaries pass at both depths**: `fused(Q) < fused(R)` **-0.01133
+  p 2.5e-04** and **-0.01250 p 1.0e-04**; `fused(R) < fused(B)` **-0.01678
+  p 5.0e-05** and **-0.02435 p 5.0e-05**. **Both statistics agree everywhere in
+  both blocks** (sign tests 813/1536, 823/1536, 845/1536, 846/1536 against a bar of
+  813), which is 5.31.1's power claim measured rather than argued - the effect was
+  always there, and 5.31's branch (d) was its statistic. Loss means order `Q < R <
+  B` on the fused column and `F` sits between at depth 2 / above at depth 3.
+  **Mechanism, and it is not the penalty framing's:** the lever acts on the fused
+  trajectory, not the retrained topology - `own(Q) - own(R)` is **+0.0034 / +0.0008**
+  (slightly *worse*) against fused -0.0113 / -0.0125, so the penalty secondary
+  **fails** (p 1.00 both depths). Recovered share of the historical prune penalty
+  is **27.6% / 41.6%** by targeting the quietest, and targeting the busiest *adds*
+  **40.8% / 81.0%**. **Consequence: the lever is conditional on the delivery
+  pipeline** - under 5.28's keep-the-fused-run recommendation it is free gain;
+  under freeze-and-retrain the delivered artifact is unchanged. Against `F`,
+  `fused(Q)` beats never mutating at depth 3 (`-0.01603`, p 5.0e-05) but not at
+  depth 2 (`+0.00609`), so 5.30's depth-2 deficit survives. Summaries
+  `artifacts/study-summaries/prune-target-powered-depth{2,3}-1536.json`
+  (`study_ab45f014e8cb5e50`, `study_55d7527c71843ced`), pinned by
+  `tests/test_prune_target_powered_summary.py` (which also pins the statistic's
+  own calibration on symmetric heavy-tailed noise, and re-derives the stored
+  comparisons from the stored per-seed rows). **5.32
+  correction:** 5.31's prose read the sign-flipped `penalty = own - fused` column
+  as agreeing with the fused column; it cannot, and 5.32's null own-column
+  measurement is the corrected reading.
 - **Report-artifact link guard (2026-09-15).** Section 5.19's missing summaries
   were a defect *class*, not an incident: a result can be cited widely while its
   artifact does not exist. `tests/test_report_artifact_links.py` now fails if any
