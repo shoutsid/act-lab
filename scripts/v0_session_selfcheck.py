@@ -20,10 +20,16 @@ Checks, on a tiny non-declared config:
   3. an fp16 session (autocast + GradScaler) also resumes bit-identically
      with its scaler state restored, and books the same FLOPs counters as
      fp32 (dtype books operations, not time);
-  4. checkpoints carry the version-5 payload contract.
+  4. checkpoints carry the version-5 payload contract;
+  5. training the pair's arms in separate processes - one per device, the way
+     section 5.2 prices a pair - reproduces the sequential run's arm results
+     exactly. The arms share nothing but the seed, so this must hold on any
+     device count; it is checked here rather than in the suite because it
+     spawns processes.
 """
 
 import argparse
+from dataclasses import asdict
 import json
 import sys
 import tempfile
@@ -78,8 +84,11 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--device", choices=("auto", "cpu", "cuda"), default="cpu",
-        help="device for the battery (default cpu; the declared run is cuda)",
+        "--device", default="cpu",
+        help=(
+            "device for the battery: auto, cpu, cuda, or an indexed cuda:N "
+            "(default cpu; the declared run trains on cuda)"
+        ),
     )
     args = parser.parse_args(argv)
     global DEVICE
@@ -90,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
     with tempfile.TemporaryDirectory(prefix="v0-selfcheck-") as tmp:
         root = Path(tmp)
 
-        print("[1/4] reference session ...", flush=True)
+        print("[1/5] reference session ...", flush=True)
         reference = run_v0_session(_config(), checkpoint_dir=root / "ref")
         adaptive, random_arm = reference.arms[1], reference.arms[0]
         if adaptive.mutation_count != random_arm.mutation_count:
@@ -121,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
             if arm.parameter_count <= 0 or arm.tokens_per_second <= 0 or not arm.architecture_hash:
                 failures.append(f"arm {arm.mode} recorded degenerate metrics")
 
-        print("[2/4] resume equivalence ...", flush=True)
+        print("[2/5] resume equivalence ...", flush=True)
         run_v0_session(_config(), checkpoint_dir=root / "resume")
         for mode in ("random", "adaptive"):
             arm_dir = root / "resume" / "seed-11" / f"arm-{mode}"
@@ -145,7 +154,7 @@ def main(argv: list[str] | None = None) -> int:
             ):
                 failures.append(f"{before.mode}: resumed mutation history diverged")
 
-        print("[3/4] fp16 resume equivalence ...", flush=True)
+        print("[3/5] fp16 resume equivalence ...", flush=True)
         fp16_config = _config(dtype="fp16")
         fp16_reference = run_v0_session(fp16_config, checkpoint_dir=root / "fp16-ref")
         for mode in ("random", "adaptive"):
@@ -176,7 +185,7 @@ def main(argv: list[str] | None = None) -> int:
                     "(dtype must book operations, not time)"
                 )
 
-        print("[4/4] checkpoint contract ...", flush=True)
+        print("[4/5] checkpoint contract ...", flush=True)
         run_v0_session(
             _config(
                 arms=("adaptive",),
@@ -201,6 +210,95 @@ def main(argv: list[str] | None = None) -> int:
                 failures.append("checkpoint did not record the mutation count")
             if payload["training"]["step"] != 10:
                 failures.append("checkpoint did not record the training step")
+
+        print("[5/5] per-arm processes reproduce the sequential arms ...", flush=True)
+        from act.training.v0_session import (
+            _train_arms,
+            _train_arms_in_processes,
+            arm_devices,
+        )
+
+        # The arms are independent by construction - each seeds itself from the
+        # session seed and writes only its own arm directory - so scheduling
+        # them concurrently must not change one number. That is the property
+        # section 5.2's pair time depends on, and it is checked on whatever
+        # device count this host has: the placement is real on a two-GPU host
+        # and the process boundary is what is under test on a one-GPU one.
+        parallel_config = _config(seed=29)
+        parallel_device = torch.device(DEVICE)
+        devices = arm_devices(len(parallel_config.arms), parallel_device)
+        if parallel_device.type == "cuda":
+            # Logged next to the placement: a one-device host is a valid
+            # sequential pass, and the count is how a reader tells the two
+            # apart without knowing which machine ran this.
+            print(f"    host devices: {torch.cuda.device_count()}", flush=True)
+        sequential = _train_arms(
+            parallel_config,
+            root / "arms-seq",
+            parallel_device,
+            None,
+            deadline_check=None,
+            deadline_budget_seconds=None,
+        )
+        concurrent = _train_arms_in_processes(
+            parallel_config,
+            root / "arms-par",
+            devices,
+            None,
+        )
+        # Placement and timing fields, not results: the concurrent run names
+        # its device per arm (cuda:0, cuda:1) where the sequential run names
+        # one device for both. That difference is the parallelism working.
+        volatile = {"wall_time_seconds", "tokens_per_second", "device"}
+        if [arm.mode for arm in concurrent] != [arm.mode for arm in sequential]:
+            failures.append("parallel arms came back in a different order")
+        # The placement itself, read back from the arms: this is the only
+        # durable evidence that section 5.2's "one arm per GPU" is what ran,
+        # and it is the check that can only be made on the target host - two
+        # arms on two devices, not two arms queued on one.
+        expected_devices = [str(arm_device) for arm_device in devices]
+        if [arm.device for arm in concurrent] != expected_devices:
+            failures.append(
+                "parallel arms recorded unexpected devices "
+                f"({[arm.device for arm in concurrent]} != {expected_devices})"
+            )
+        elif len(set(expected_devices)) > 1:
+            print(
+                f"    one arm per device: {', '.join(expected_devices)}",
+                flush=True,
+            )
+
+        # The same property through the session entry point, so the dispatch
+        # that chooses sequential or concurrent arms is covered rather than
+        # only the process runner it calls - and a two-device session is the
+        # configuration section 5.2 prices.
+        placed = run_v0_session(parallel_config, checkpoint_dir=root / "arms-session")
+        if [arm.device for arm in placed.arms] != expected_devices:
+            failures.append(
+                "session-run arms recorded unexpected devices "
+                f"({[arm.device for arm in placed.arms]} != {expected_devices})"
+            )
+        for before, after in zip(sequential, placed.arms):
+            for key, value in asdict(before).items():
+                if key in volatile:
+                    continue
+                if asdict(after)[key] != value:
+                    failures.append(
+                        f"{before.mode}: session-run arms changed {key} "
+                        f"({value!r} -> {asdict(after)[key]!r})"
+                    )
+        for before, after in zip(sequential, concurrent):
+            if asdict(before).keys() != asdict(after).keys():
+                failures.append(f"{before.mode}: arm result shape changed")
+                continue
+            for key, value in asdict(before).items():
+                if key in volatile:
+                    continue
+                if asdict(after)[key] != value:
+                    failures.append(
+                        f"{before.mode}: parallel arms changed {key} "
+                        f"({value!r} -> {asdict(after)[key]!r})"
+                    )
 
         assert isinstance(reference, V0SessionResult)
 

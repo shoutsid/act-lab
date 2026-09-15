@@ -86,6 +86,10 @@ def test_publish_seed_writes_checksummed_layout(tmp_path: Path) -> None:
     assert summary["arms"]["adaptive"]["checkpoint"] == (
         "checkpoints/adaptive/checkpoint-000012.pt"
     )
+    # Section 5.2 prices a pair with its arms running on separate devices, so
+    # the published summary has to record where each arm trained: without it a
+    # completed two-device pair reads exactly like a sequential two-arm one.
+    assert summary["arms"]["adaptive"]["device"] == "cpu"
 
 
 def test_publish_refuses_unmatched_mutation_budgets(tmp_path: Path) -> None:

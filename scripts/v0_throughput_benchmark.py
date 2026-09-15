@@ -18,7 +18,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import platform
+import sys
 import time
 from pathlib import Path
 
@@ -37,9 +39,14 @@ from act.training.session_plan import (
     unusable_schedule_reason,
     working_dir_headroom_gb,
 )
-from act.training.v0_session import V0SessionConfig
+from act.training.v0_session import V0SessionConfig, arm_slots
 
 DECLARED_CHECKPOINT_INTERVAL = 500
+# The declared pair is ``--session-arms``' default (runbook 2). Read from the
+# registered config rather than restated as a number, so the plan cannot drift
+# from the command that will run it - the schedule needs the arm count as well
+# as the rate, because pair time is charged per wave of arms.
+DECLARED_ARMS = len(V0SessionConfig().arms)
 
 
 def build_declared_model(device: torch.device) -> tuple[V0MoECausalLM, int, int]:
@@ -204,7 +211,21 @@ def main() -> int:
     if fp16_rate is not None:
         rates["fp16"] = fp16_rate
     schedule_rate = fp16_rate if fp16_rate is not None else rate
-    schedule = PairSchedule(tokens_per_second=schedule_rate)
+    # Pair time also depends on how many arms this host can train at once - one
+    # per device when it has them, which is the parallelism section 5.2 prices.
+    slots = arm_slots(DECLARED_ARMS, device)
+    schedule = PairSchedule(
+        tokens_per_second=schedule_rate,
+        arms=DECLARED_ARMS,
+        arm_slots=slots,
+    )
+    # Progress goes to stderr: stdout carries the JSON artifact alone, so a
+    # reader can pipe this command straight into a parser.
+    print(
+        f"arm placement: {DECLARED_ARMS} arm(s) in "
+        f"{math.ceil(DECLARED_ARMS / slots)} wave(s) of slots={slots}",
+        file=sys.stderr,
+    )
 
     # An artifact is launch input, so it must describe a plan that can start a
     # pair. A pair time above the usable window silently yields zero pairs per
@@ -250,6 +271,10 @@ def main() -> int:
         "declared_active_parameter_count": active,
         "timing": timing,
         "schedule": {
+            "arms": schedule.arms,
+            # States the placement the plan assumes, so a session that runs the
+            # arms differently is visible rather than merely implied.
+            "arm_slots": schedule.arm_slots,
             "pair_time_hours": schedule.pair_time_hours,
             "full_pairs_per_session": schedule.full_pairs_per_session,
             "sessions_for_primary": schedule.sessions_for_primary,

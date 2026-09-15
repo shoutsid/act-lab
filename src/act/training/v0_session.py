@@ -25,7 +25,9 @@ cost identity calibrated on the toy studies applies unchanged.
 
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
+import json
 import random
+import sys
 import time
 from pathlib import Path
 from typing import Callable
@@ -308,6 +310,12 @@ class V0ArmResult:
     mutation_history: tuple[dict[str, object], ...]
     wall_time_seconds: float
     tokens_per_second: float
+    # Where this arm trained. Section 5.2 prices a pair with the arms running
+    # concurrently, one per device, so the published summary is the durable
+    # evidence that the parallelism actually engaged - without it a reader
+    # cannot tell a two-device pair from a two-arm sequential one. Placement
+    # metadata, like the timing fields beside it: it is not part of the result.
+    device: str = ""
 
 
 @dataclass(frozen=True)
@@ -1318,7 +1326,163 @@ def _train_arm(
         mutation_history=tuple(arm_state.mutation_history),
         wall_time_seconds=wall_time,
         tokens_per_second=arm_state.tokens / wall_time if wall_time > 0 else 0.0,
+        device=str(device),
     )
+
+
+def arm_device_indices(arms: int, device: torch.device) -> tuple[int, ...]:
+    """The CUDA index each arm should run on, one per arm when the host has them.
+
+    Section 5.2's pair time is defined with the arms running concurrently, one
+    per GPU. This returns device 0 for every arm when the host is not CUDA,
+    when a pair has a single arm, or when fewer devices exist than arms - and
+    the caller then trains them sequentially.
+    """
+    if device.type != "cuda" or arms < 2:
+        return tuple(0 for _ in range(arms))
+    available = torch.cuda.device_count()
+    if available < arms:
+        return tuple(0 for _ in range(arms))
+    return tuple(range(arms))
+
+
+def arm_devices(arms: int, device: torch.device) -> tuple[torch.device, ...]:
+    """The device each arm trains on, for either path.
+
+    One definition for the placement, so the sequential and concurrent paths
+    cannot disagree about it - and so every arm records a device with its
+    index, rather than ``cuda`` on one path and ``cuda:0`` on the other. The
+    recorded device is the published evidence that a two-device pair really
+    ran on two devices.
+    """
+    return tuple(
+        torch.device(f"cuda:{index}") if device.type == "cuda" else device
+        for index in arm_device_indices(arms, device)
+    )
+
+
+def arm_slots(arms: int, device: torch.device) -> int:
+    """How many arms this placement trains at once (1, or one per arm).
+
+    The same placement :func:`arm_devices` decides, expressed as the
+    concurrency the schedule arithmetic needs - so the plan and the execution
+    cannot disagree about how many arms are in flight.
+    """
+    return len(set(arm_device_indices(arms, device)))
+
+
+def _train_arms_in_processes(
+    config: V0SessionConfig,
+    root: Path,
+    devices: tuple[torch.device, ...],
+    deadline_budget_seconds: float | None,
+) -> tuple[V0ArmResult, ...]:
+    """One subprocess per arm, joined in the declared order.
+
+    Each child inherits stdout, so its ``[mode]`` lines land in the session log
+    interleaved with the others - the honest record of two arms running at
+    once. A child that fails is not a missing arm: the exit status is checked
+    and the arm result must exist before the pair is assembled, because a pair
+    published with a silently absent arm would corrupt the comparison the run
+    exists to make.
+    """
+    import os
+    import subprocess
+    import tempfile
+
+    from act.training.arm_worker import arm_job
+
+    workdir = Path(tempfile.mkdtemp(prefix=f"act-arms-seed-{config.seed}-"))
+    pending: list[tuple[str, Path, subprocess.Popen[bytes]]] = []
+    environment = dict(os.environ)
+    # A spawned child does not inherit this process's sys.path, and the kernel
+    # runs the copied tree rather than an installed package, so whatever roots
+    # the parent imported ``act`` from have to be passed on explicitly.
+    roots = [entry for entry in sys.path if entry and (Path(entry) / "act").is_dir()]
+    if roots:
+        inherited = environment.get("PYTHONPATH", "")
+        environment["PYTHONPATH"] = os.pathsep.join(
+            [*roots, inherited] if inherited else roots
+        )
+    for mode, arm_device in zip(config.arms, devices, strict=True):
+        job_path = workdir / f"job-{mode}.json"
+        output = workdir / f"result-{mode}.json"
+        job_path.write_text(
+            json.dumps(
+                arm_job(
+                    mode=mode,
+                    config=config,
+                    session_root=root,
+                    device=str(arm_device),
+                    deadline_seconds=deadline_budget_seconds,
+                    output=output,
+                ),
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        pending.append(
+            (
+                mode,
+                output,
+                subprocess.Popen(
+                    [sys.executable, "-m", "act.training.arm_worker", str(job_path)],
+                    env=environment,
+                ),
+            )
+        )
+
+    failures = []
+    for mode, _output, process in pending:
+        status = process.wait()
+        if status != 0:
+            failures.append(f"{mode} exited {status}")
+    if failures:
+        raise RuntimeError(
+            "parallel arm training failed: " + "; ".join(failures)
+        )
+
+    results = []
+    for mode, output, _process in pending:
+        payload = json.loads(output.read_text(encoding="utf-8"))
+        payload["mutation_history"] = tuple(payload["mutation_history"])
+        results.append(V0ArmResult(**payload))
+    return tuple(results)
+
+
+def _train_arms(
+    config: V0SessionConfig,
+    root: Path,
+    device: torch.device,
+    log: Callable[[str], None] | None,
+    deadline_check: Callable[[], bool] | None,
+    deadline_budget_seconds: float | None,
+) -> tuple[V0ArmResult, ...]:
+    """Train the pair's arms: one per device when the host has them.
+
+    The sequential path is the fallback for a one-device host, and it is also
+    what runs when the deadline cannot be expressed as a duration for a child
+    process (a caller that supplies only a bare ``deadline_check``).
+    """
+    devices = arm_devices(len(config.arms), device)
+    parallel = len(set(devices)) > 1 and (
+        deadline_check is None or deadline_budget_seconds is not None
+    )
+    if not parallel:
+        # Named per arm even here, so a sequential pair records the same kind
+        # of placement evidence a concurrent one does.
+        return tuple(
+            _train_arm(mode, config, root, arm_device, log, deadline_check)
+            for mode, arm_device in zip(config.arms, devices, strict=True)
+        )
+    if log is not None:
+        placement = ", ".join(
+            f"{mode} -> {arm_device}"
+            for mode, arm_device in zip(config.arms, devices, strict=True)
+        )
+        log(f"arms in parallel ({placement})")
+    return _train_arms_in_processes(config, root, devices, deadline_budget_seconds)
 
 
 def run_v0_session(
@@ -1327,21 +1491,31 @@ def run_v0_session(
     checkpoint_dir: str | Path = "artifacts/v0-sessions",
     log: Callable[[str], None] | None = None,
     deadline_check: Callable[[], bool] | None = None,
+    deadline_budget_seconds: float | None = None,
 ) -> V0SessionResult:
     """Run (or resume) the declared protocol session for one seed.
 
     ``deadline_check`` is consulted only at checkpoint boundaries; when it
     returns True the run stops cooperatively by raising
     ``V0SessionInterrupted`` with every checkpoint up to the stop step saved.
+
+    ``deadline_budget_seconds`` is the same deadline as a duration. It is only
+    needed to run the arms concurrently, because a closure over the caller's
+    clock cannot cross a process boundary - so a caller that has a clock should
+    pass both, and one that passes neither gets sequential arms.
     """
     if config.declared:
         validate_declared_v0_config(config.model_config())
     device = resolve_device(config.device)
     root = Path(checkpoint_dir) / f"seed-{config.seed}"
     root.mkdir(parents=True, exist_ok=True)
-    arms = tuple(
-        _train_arm(mode, config, root, device, log, deadline_check)
-        for mode in config.arms
+    arms = _train_arms(
+        config,
+        root,
+        device,
+        log,
+        deadline_check=deadline_check,
+        deadline_budget_seconds=deadline_budget_seconds,
     )
     return V0SessionResult(
         config=asdict(config),

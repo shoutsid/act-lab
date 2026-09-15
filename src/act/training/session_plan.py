@@ -63,6 +63,13 @@ class PairSchedule:
     tokens_per_arm: int = SEED_TOKENS_PER_ARM
     tokens_per_second: float = FP32_FLOOR_TOKENS_PER_SECOND
     arms: int = 2
+    # How many arms train at once: 1 when they run one after the other on one
+    # device, ``arms`` when each gets its own GPU. Section 5.2's original rows
+    # were computed for full concurrency; that is only reachable when the host
+    # really has a device per arm (Kaggle's T4 shape does - two, measured
+    # 2026-09-15). Defaulting to 1 keeps the arithmetic honest on a one-device
+    # host instead of quietly assuming hardware nobody checked for.
+    arm_slots: int = 1
 
     def __post_init__(self) -> None:
         if self.tokens_per_arm < 1:
@@ -71,25 +78,28 @@ class PairSchedule:
             raise ValueError("tokens_per_second must be positive")
         if self.arms < 1:
             raise ValueError("arms must be positive")
+        if not 1 <= self.arm_slots <= self.arms:
+            raise ValueError(
+                f"arm_slots must be between 1 and {self.arms}, got {self.arm_slots}"
+            )
 
     @property
     def pair_time_hours(self) -> float:
-        """Wall time for one seed's pair, trained the way the runner trains it.
+        """Wall time for one seed's pair at this placement.
 
         Section 5.2: pair time = tokens / throughput + the fixed event/rebuild
-        overhead - for **every** arm in the pair. ``run_v0_session`` trains
-        ``config.arms`` sequentially on one device, so the pair costs ``arms``
-        arm-times rather than one. Measured 2026-09-15 on a real pair: the two
-        arms' wall times added (0.531 s + 0.298 s), they did not overlap.
-
-        The formula's earlier single-arm form assumed one arm per GPU, a
-        parallelism no runner implements; this field was left unused there,
-        which is the arithmetic tell. Dividing by ``arms`` again - running each
-        arm on its own device - is the outstanding change that halves this and
-        the whole quota plan with it.
+        overhead, counted once per *wave* of arms. With ``arm_slots == arms``
+        every arm has its own device and the waves overlap completely, so the
+        pair costs one arm-time - the form section 5.2's rows were written for.
+        With ``arm_slots == 1`` the arms queue up on one device and the pair
+        costs one arm-time each. Measured 2026-09-15: sequencing the arms added
+        their wall times (0.531 s + 0.298 s) rather than overlapping them, and
+        ignoring that made the deadline rule start pairs it could not finish -
+        which section 5.2 answers by restarting the pair from scratch.
         """
+        waves = math.ceil(self.arms / self.arm_slots)
         return (
-            self.arms * self.tokens_per_arm / self.tokens_per_second / 3600.0
+            waves * self.tokens_per_arm / self.tokens_per_second / 3600.0
             + PAIR_OVERHEAD_HOURS
         )
 

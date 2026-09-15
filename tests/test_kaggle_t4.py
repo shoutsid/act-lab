@@ -292,6 +292,56 @@ def test_unknown_metadata_mode_fails_closed() -> None:
         kaggle_t4.metadata_for("not-a-mode")
 
 
+def test_selfcheck_metadata_wants_a_gpu_and_is_pushed() -> None:
+    """The placement check is about devices, so it needs the accelerator."""
+    metadata = kaggle_t4.metadata_for("selfcheck")
+    assert metadata["id"] == "sid123123234/act-t4-selfcheck"
+    assert metadata["enable_gpu"] is True
+    assert "selfcheck" in kaggle_t4.PUSH_MODES
+
+
+def test_selfcheck_mode_runs_the_battery_on_cuda(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """It must run the shipped battery, not a copy of it, on the GPU device.
+
+    A battery that drifted from the one in the tree would pass while checking
+    nothing - and the per-arm placement check only means something on a host
+    that really has two T4s, which is what this mode exists to reach.
+    """
+    calls: list[list[str]] = []
+    monkeypatch.setattr(kaggle_t4, "_bootstrap", lambda: (tmp_path, {}))
+    monkeypatch.setattr(kaggle_t4, "_run", lambda argv, env, **_: calls.append(argv) or 0)
+    monkeypatch.setenv(kaggle_t4.MODE_ENV, "selfcheck")
+    import torch
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "get_device_name", lambda index: "Tesla T4")
+
+    assert kaggle_t4.main() == 0
+    assert len(calls) == 1
+    battery = calls[0]
+    assert battery[1] == "scripts/v0_session_selfcheck.py"
+    assert (ROOT / battery[1]).is_file()
+    assert battery[-2:] == ["--device", "cuda"]
+
+
+def test_a_failed_selfcheck_fails_the_kernel(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """A battery that fails must not be reported as a passing check."""
+
+    def failing_run(argv: list[str], env: dict[str, str], **_: object) -> int:
+        raise SystemExit("command failed with exit 1: ['selfcheck']")
+
+    monkeypatch.setattr(kaggle_t4, "_bootstrap", lambda: (tmp_path, {}))
+    monkeypatch.setattr(kaggle_t4, "_run", failing_run)
+    monkeypatch.setenv(kaggle_t4.MODE_ENV, "selfcheck")
+    import torch
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "get_device_name", lambda index: "Tesla T4")
+
+    with pytest.raises(SystemExit):
+        kaggle_t4.main()
+
+
 def test_verdict_command_covers_all_three_queues() -> None:
     assert kaggle_t4.verdict_argv(
         "python",

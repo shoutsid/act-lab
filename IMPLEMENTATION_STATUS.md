@@ -596,6 +596,30 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   `full_pairs_per_session: 0` - billing a whole window to publish nothing,
   silently, because the deadline rules never start a pair the clock cannot
   finish.
+- **Section 5.2's "one arm per GPU" is implemented (2026-09-15).** The two-T4
+  measurement above made the registered parallelism reachable, so a pair whose
+  host has a device per arm now trains each arm in its own process
+  (`src/act/training/arm_worker.py`, driven by `v0_session._train_arms`):
+  `arm_devices` places arm *i* on `cuda:i` when the host has that many devices
+  and on one device otherwise, `arm_slots` reports the same placement as a
+  concurrency, and `PairSchedule.pair_time_hours` is charged per *wave* of
+  arms - so the plan, the runner's own deadline arithmetic and the execution all
+  read the placement from one definition instead of three copies.
+  A process per arm rather than threads because model init consumes global
+  torch RNG and `torch.manual_seed` is global. Correctness is equivalence: the
+  arms share nothing but the seed, so `scripts/v0_session_selfcheck.py`'s fifth
+  check runs both paths and requires bit-identical arm results (losses,
+  architecture hashes, FLOPs, mutation histories) through the process runner
+  *and* through `run_v0_session`. Every arm now records the device it used in
+  its result, so the published per-seed summary carries the placement as
+  evidence rather than assertion. This changes no pre-registered criterion -
+  it is the configuration section 5.2 prices; the sequential path remains the
+  default wherever the host lacks the devices.
+  **Not yet confirmed on the target host.** The two-device path cannot be
+  exercised on the project's one-GPU box, so `--queue selfcheck` was added as a
+  one-shot job that runs the battery in a Kaggle kernel; it logs the device
+  count and the placement it verified, and pre-flight 0.4 could not detect a
+  wrong placement because no pre-flight ever checked it.
 - The whole run is now reproducible code, not operator lore:
   `scripts/kaggle_t4.py` drives every session kind as a script kernel
   (`ACT_T4_MODE` = `metadata` / `probe` / `preflight` / `session` / `control` /

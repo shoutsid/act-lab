@@ -70,7 +70,10 @@ VERDICT_NAME = "v0-5-1-verdict.json"
 # Single-job kernels that are pushed once and reported, rather than queues that
 # are re-pushed until a block completes. ``verdict`` is the section 4 decision
 # - the reason the queues were run at all.
-ONE_SHOT_MODES = ("preflight", "verdict", "dtypeprobe")
+# ``selfcheck`` is the session battery: it trains tiny non-declared pairs, so
+# unlike the verdict it wants a GPU - but only for a few minutes, and it is
+# what confirms the target host really does place one arm per device.
+ONE_SHOT_MODES = ("preflight", "verdict", "dtypeprobe", "selfcheck")
 
 
 def parse_status(text: str) -> str:

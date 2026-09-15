@@ -30,18 +30,22 @@ The runner never trains here; it decides, delegates, publishes, and reports.
 from __future__ import annotations
 
 import json
+import math
 import shutil
 import time
 from dataclasses import asdict
 from pathlib import Path
 from typing import Callable
 
+from act.training.runtime import resolve_device
 from act.training.session_plan import (
     PAIR_OVERHEAD_HOURS,
     PUBLISH_RESERVE_MINUTES,
     SEED_TOKENS_PER_ARM,
+    PairSchedule,
     deadline_decision,
 )
+from act.training.v0_session import arm_slots
 from act.training.v0_handoff import (
     COMPLETE_STATUS,
     IN_PROGRESS_STATUS,
@@ -111,19 +115,26 @@ def run_pair_session(
     )
     tokens_per_arm = seed_config.training_tokens()
 
-    # Every arm of the pair trains sequentially on one device, so the pair
-    # costs one arm-time per arm - the multiplicity ``PairSchedule`` applies.
-    # Omitting it made the deadline rule start pairs the clock could not
-    # finish, and section 5.2 restarts an interrupted pair from scratch.
+    # Pair time comes from the registered arithmetic, parameterized by how many
+    # arms this host can actually train at once - one per device when it has
+    # them, otherwise one at a time. Deriving it here instead of keeping a
+    # second copy of the formula is what stopped the two from disagreeing: a
+    # copy that ignored the arm multiplicity made the deadline rule start pairs
+    # the clock could not finish, and section 5.2 restarts such a pair from
+    # scratch rather than resuming it.
     arms = len(seed_config.arms)
-    pair_time = (
-        arms * tokens_per_arm / measured_tokens_per_second / 3600.0
-        + PAIR_OVERHEAD_HOURS
-    )
+    slots = arm_slots(arms, resolve_device(seed_config.device))
+    pair_time = PairSchedule(
+        tokens_per_arm=tokens_per_arm,
+        tokens_per_second=measured_tokens_per_second,
+        arms=arms,
+        arm_slots=slots,
+    ).pair_time_hours
     logger(
         f"pair time {pair_time:.2f} h "
-        f"({arms} x {tokens_per_arm} tokens at {measured_tokens_per_second:.0f} "
-        f"tokens/s + {PAIR_OVERHEAD_HOURS} h event overhead)"
+        f"({arms} arm(s) in {math.ceil(arms / slots)} wave(s) of {tokens_per_arm} "
+        f"tokens at {measured_tokens_per_second:.0f} tokens/s + "
+        f"{PAIR_OVERHEAD_HOURS} h event overhead)"
     )
 
     pair_results: list[dict[str, object]] = []
@@ -164,6 +175,7 @@ def run_pair_session(
             dataset_root=dataset_root,
             code_revision=code_revision,
             hours_left=hours_left,
+            remaining_at_start=remaining,
             tokens_per_arm=tokens_per_arm,
             logger=logger,
         )
@@ -208,6 +220,7 @@ def _run_one_pair(
     dataset_root: Path,
     code_revision: str,
     hours_left: Callable[[], float],
+    remaining_at_start: float,
     tokens_per_arm: int,
     logger: Callable[[str], None],
 ) -> dict[str, object]:
@@ -230,12 +243,21 @@ def _run_one_pair(
     def deadline_reached() -> bool:
         return hours_left() < 45.0 / 60.0
 
+    # The same floor as a duration, so a per-arm child process can enforce it:
+    # a closure over this session's clock cannot cross a process boundary. This
+    # is what lets the pair's arms run one per device, which is how section
+    # 5.2 prices a pair. Taken from the clock reading that approved this pair's
+    # start rather than a fresh read: the budget is that approval's, and an
+    # extra read would also shift the intra-pair burn-down by one tick.
+    arm_budget_seconds = max(0.0, remaining_at_start - 45.0 / 60.0) * 3600.0
+
     try:
         result = run_v0_session(
             pair_config,
             checkpoint_dir=session_dir,
             log=logger,
             deadline_check=deadline_reached,
+            deadline_budget_seconds=arm_budget_seconds,
         )
     except V0SessionInterrupted as interrupt:
         logger(f"seed {seed}: {interrupt}; publishing in-progress snapshot")

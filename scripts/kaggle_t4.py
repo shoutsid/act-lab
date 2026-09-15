@@ -13,6 +13,9 @@ Modes (``ACT_T4_MODE=<mode>``):
                 (measured: yes, from the kernel's own identity);
 - ``preflight`` runbook 0.4 + 1: environment check, declared-parameter
                 assertion, and the session-1 throughput benchmark;
+- ``selfcheck`` the V0 session battery (``scripts/v0_session_selfcheck.py``),
+                including the per-arm placement check that needs the real
+                two-T4 shape to mean anything;
 - ``session``   runbook 2: the primary pair queue;
 - ``control``   runbook 2b: the pool-matched (loss-blind) control queue;
 - ``null``      runbook 2c: the do-nothing null queue;
@@ -280,6 +283,9 @@ DIAGNOSTIC_MODES = {
     "probe": ("act-t4-probe", False),
     "dtypeprobe": ("act-t4-dtypeprobe", True),
     "preflight": ("act-t4-preflight", True),
+    # The battery trains tiny non-declared pairs, so it wants a GPU (the
+    # placement check is about devices) but costs a few minutes, not a window.
+    "selfcheck": ("act-t4-selfcheck", True),
 }
 PUSH_MODES = (*DIAGNOSTIC_MODES, "verdict", *QUEUES)
 
@@ -522,6 +528,34 @@ def mode_preflight() -> None:
     _log("=== PRE-FLIGHT COMPLETE: /kaggle/working/v0-benchmark.json ===")
 
 
+def mode_selfcheck() -> None:
+    """Run the V0 session battery on the target host.
+
+    Its last check trains a pair's arms in their own processes and reads back
+    the device each used, so on the two-T4 shape this is what confirms section
+    5.2's "one arm per GPU" is what a session will actually do - before a
+    session spends a window finding out. A one-device host passes too (that is
+    the sequential fallback), which is why the device count is logged.
+    """
+    import torch
+
+    _log("=== ACT lab: V0 session self-check ===")
+    work, env = _bootstrap()
+
+    from act.training.runtime import gpu_inventory
+
+    if not torch.cuda.is_available():
+        raise SystemExit("no CUDA device on this kernel - enable a GPU accelerator")
+    _log(f"torch {torch.__version__} | device {torch.cuda.get_device_name(0)}")
+    _log(f"gpu inventory: {gpu_inventory()}")
+
+    _run(
+        [sys.executable, "scripts/v0_session_selfcheck.py", "--device", "cuda"],
+        env,
+    )
+    _log("=== SELF-CHECK COMPLETE (all checks passed) ===")
+
+
 def mode_session(queue: Queue) -> None:
     """Runbook 2 / 2b / 2c: one session's worth of one declared queue."""
     import torch
@@ -687,6 +721,9 @@ def main() -> int:
     if mode == "dtypeprobe":
         mode_dtypeprobe()
         return 0
+    if mode == "selfcheck":
+        mode_selfcheck()
+        return 0
     if mode in QUEUES:
         mode_session(QUEUES[mode])
         return 0
@@ -694,7 +731,7 @@ def main() -> int:
         mode_verdict()
         return 0
     raise SystemExit(
-        f"set {MODE_ENV} to one of: metadata, verdict, " + ", ".join(PUSH_MODES)
+        f"set {MODE_ENV} to one of: metadata, " + ", ".join(PUSH_MODES)
     )
 
 

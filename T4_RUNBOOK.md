@@ -102,11 +102,13 @@ python scripts/kaggle_queue.py --queue control --max-sessions 8
 python scripts/kaggle_queue.py --queue verdict          # after the three queues
 python scripts/kaggle_queue.py --queue preflight        # one-shot diagnostics
 python scripts/kaggle_queue.py --queue dtypeprobe       # fp32 vs fp16 rate (T4)
+python scripts/kaggle_queue.py --queue selfcheck        # session battery + arm placement (T4)
 ```
 
-`preflight`, `dtypeprobe` and `verdict` are one-shot jobs rather than queues:
-they are pushed once and reported, with no re-push loop and no quota gate (the
-verdict runs on CPU and bills nothing). All three run the mounted code
+`preflight`, `dtypeprobe`, `selfcheck` and `verdict` are one-shot jobs rather
+than queues: they are pushed once and reported, with no re-push loop and no
+quota gate (the verdict runs on CPU and bills nothing; the other three are a
+few minutes of GPU each). All three run the mounted code
 dataset, so the driver publishes it if it lags the tree before pushing - a
 one-shot that ran older code would report on a run it did not measure. `--queue verdict` returns the registered
 section 4 decision as its exit code - **0 PASS, 1 FAIL, 2 PASS with
@@ -286,6 +288,29 @@ device takes the pair to one arm-time - 24.576M / 5,433 / 3600 + 0.1 = **1.36 h,
 6 pairs per session, 2 sessions for the primary queue**, and roughly **47
 GPU-hours** for the whole run instead of 79. That is the registered design, not
 a new one: it is the parallelism section 5.2 already describes.
+
+**Implemented 2026-09-15** (`arm_worker.py` + `_train_arms`): a pair whose
+host has a device per arm trains each arm in its own process, one per device,
+and every arm records the device it used in its result, so the published
+summary shows the placement. Nothing new is measured - the arms share nothing
+but the seed, so the same numbers must come out however they are scheduled,
+and `scripts/v0_session_selfcheck.py` checks exactly that (bit-identical arm
+results, and the recorded placement, through both the process runner and the
+session entry point).
+
+**Before a session relies on it, confirm it on the target host:**
+
+```
+python scripts/kaggle_queue.py --queue selfcheck     # a few minutes, no queue
+```
+
+On a two-T4 kernel that prints `one arm per device: cuda:0, cuda:1` and passes;
+on the project's one-GPU box it passes with `host devices: 1`, which is the
+sequential fallback rather than evidence of parallelism. It needs no GPU
+accelerator queue of its own, but it does need a T4 to be the real check. If it
+fails, launch the queues with `--device cuda` and remove the parallelism by
+training sequentially - the pair-time arithmetic follows the placement
+automatically (`arm_slots`), so both stay honest.
 
 Pass `--hours 9` (the registered usable window): at the fp16 rate the deadline
 rules then place three completed pairs per session sequentially, or six with

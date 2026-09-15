@@ -1271,3 +1271,25 @@ def test_spread_policy_resume_is_bit_identical(tmp_path: Path) -> None:
     assert json.dumps(arm.mutation_history, sort_keys=True) == json.dumps(
         before.mutation_history, sort_keys=True
     )
+
+
+def test_arm_device_indices_places_one_arm_per_device(monkeypatch) -> None:
+    """One arm per GPU when the host has them, device 0 otherwise.
+
+    Section 5.2 prices a pair with its arms running concurrently, one per GPU,
+    so this placement decides whether that model is reachable at all - and a
+    one-device host must still get the sequential fallback rather than a
+    second device it does not have.
+    """
+    from act.training.v0_session import arm_device_indices
+
+    cuda = torch.device("cuda")
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 2)
+    assert arm_device_indices(2, cuda) == (0, 1)
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 1)
+    assert arm_device_indices(2, cuda) == (0, 0)
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 8)
+    assert arm_device_indices(2, cuda) == (0, 1)
+    # Never parallelise a single-arm pair (the null queue), and never off CUDA.
+    assert arm_device_indices(1, cuda) == (0,)
+    assert arm_device_indices(2, torch.device("cpu")) == (0, 0)
