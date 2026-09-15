@@ -94,9 +94,10 @@ class ExperimentConfig:
     # budget check instead of measuring the wrong thing.
     forced_operation: str | None = None
     # What a grown expert starts as: "random" (the rebuild's own draw, the
-    # historical behaviour every published number was measured under) or
-    # "clone" (a copy of the busiest surviving expert in the same layer, router
-    # row included - see `rebuild_model_from_genome`). Report section 5.26.
+    # historical behaviour every published number was measured under), "clone" (a
+    # copy of the busiest surviving expert in the same layer, router row included)
+    # or "clone_body" (the same body, freshly drawn router row) - see
+    # `rebuild_model_from_genome`. Report sections 5.26 and 5.27.
     new_expert_initialization: str = "random"
     arms: str = "fixed,random,adaptive"
     device: str = "cpu"
@@ -223,16 +224,21 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
         raise ValueError("unsupported probe_selection")
     if config.forced_operation not in {None, "grow", "prune"}:
         raise ValueError("forced_operation must be None, 'grow' or 'prune'")
-    if config.new_expert_initialization not in {"random", "clone"}:
-        raise ValueError("new_expert_initialization must be 'random' or 'clone'")
-    if config.new_expert_initialization == "clone" and not config.preserve_router_on_rebuild:
-        # Cloning is defined as copying a surviving expert's body AND its router
-        # row, so it has no meaning while the mutated layer's router is being
-        # discarded. Silently doing nothing would let a study read a clone arm
-        # that never cloned; refuse instead.
+    if config.new_expert_initialization not in {"random", "clone", "clone_body"}:
         raise ValueError(
-            "new_expert_initialization='clone' requires "
-            "preserve_router_on_rebuild=True"
+            "new_expert_initialization must be 'random', 'clone' or 'clone_body'"
+        )
+    if (
+        config.new_expert_initialization in {"clone", "clone_body"}
+        and not config.preserve_router_on_rebuild
+    ):
+        # Both clone variants copy a surviving expert's body - `clone` its router
+        # row too - so neither has any meaning while the mutated layer's router is
+        # being discarded. Silently doing nothing would let a study read a clone
+        # arm that never cloned; refuse instead.
+        raise ValueError(
+            f"new_expert_initialization={config.new_expert_initialization!r} "
+            "requires preserve_router_on_rebuild=True"
         )
     if config.probe_batch_count < 1:
         raise ValueError("probe_batch_count must be at least 1")

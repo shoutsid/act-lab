@@ -3527,6 +3527,85 @@ from before the run, and the run falsified the prediction rather than confirming
 it. Recorded so that a reader who checks the history finds the lapse stated
 rather than having to notice it.
 
+### 5.27 Pre-registration: is a cloned expert's benefit its body or its routing row?
+
+**Motivation.** Section 5.26 showed that cloning the layer's busiest survivor
+into a grown expert does not merely remove the mid-training penalty but inverts
+it: the clone-grow fused run beat the unmutated arm, the frozen retrain of its own
+final genome and the historical random-grow run, at both depths. It also declared
+the mechanism **unresolved**, because cloning does two things at once - it gives
+the new expert a trained **body**, and it copies the survivor's **router row**, so
+the router already sends the twin pair the same tokens. Either could be doing the
+work, and the two imply different minimal changes.
+
+**Design.** `new_expert_initialization="clone_body"` is identical to `"clone"` in
+every respect except that the grown expert keeps its **freshly drawn router row**.
+Per seed, one initial model, one data schedule, every event forced to a grow,
+`preserve_router_on_rebuild=True`, `arms="fixed,random"`:
+
+| label | run |
+|---|---|
+| `F` | the fixed arm (unmutated) - identical under all three settings |
+| `R` | fused grow run, new expert freshly drawn (historical) |
+| `B` | fused grow run, body cloned from the busiest survivor, **fresh router row** |
+| `C` | fused grow run, body cloned **and** the survivor's router row copied |
+| `*_own` | the frozen retrain of each fused run's own final genome |
+
+All three settings choose the same layer from the seed's own RNG and none of them
+consumes randomness, so they end on the **same final genome** and all three frozen
+references are bit-identical - both asserted as built-in checks, as in section
+5.26. `B - R` is therefore the trained body's contribution and `C - B` is the
+routing affinity's, on one genome.
+
+**Primaries per depth (n = 384), Bonferroni `alpha/4 = 0.0125` -> bar 215.**
+1. **the body helps** - `B` < `R`: does a trained body alone, conferring no
+   routing affinity, beat a fresh draw?
+2. **routing affinity adds** - `C` < `B`: does copying the router row on top of
+   that body add anything?
+
+**Prediction (declared before the registered blocks; a spent-block smoke is
+disclosed and it covered one depth).** A 4-seed machinery smoke (depth 2, spent
+seeds 73000-73003) showed body gain `-0.0231`, row gain `-0.0172` and total clone
+gain `-0.0403`, with all three frozen references identical - nearly additive, and
+body-weighted. So **both primaries are predicted to pass**, giving **branch (a):
+both contribute, the body more than the row.** The reasoning is that a trained
+body removes the cold-start transient (the twin is already doing useful work from
+step 0), while a copied row removes the transient in the *routing* too (the router
+need not learn to send the new lane tokens before the body can help). They attack
+different halves of the same cost, which is why near-additivity is predicted and a
+clean one-or-the-other is not. I record the obvious caution: the smoke's per-seed
+spread is larger than the effect it measures, so it is a machinery check with a
+direction, not evidence.
+
+**Pre-registered interpretation (fixed before running, in section 5.24's letter
+order: (a) means both primaries pass).**
+- (a) both pass: cloning is two effects. The minimal change is the full clone;
+  neither body cloning nor row copying alone reproduces section 5.26.
+- (b) P1 passes, P2 fails: the **trained body is the whole effect** and the copied
+  row adds nothing - the minimal change is body cloning alone, and section 5.26's
+  "twin" framing (which leans on the row) is wrong about why it works.
+- (c) P2 passes, P1 fails: **routing affinity is the whole effect**; a cloned body
+  with a fresh row does not help, so the row must be copied.
+- (d) neither passes: inconclusive, recorded without a reading.
+
+**Secondaries (reported, not verdict-bearing).** `B - R`, `C - B` and `C - R` side
+by side per depth, so the additivity of the two contributions is checkable; the
+fixed arm's own loss; and each arm's penalty against its (identical) frozen
+reference.
+
+**Scope limits (pre-declared).** Toy fidelity, synthetic tokens, one substrate,
+depth 2 and 3, `random` arm only, the operation forced rather than drawn, and
+cloning from the layer's busiest survivor rather than a trained teacher. This
+separates *body* from *routing affinity* only; it does not test whether a **random**
+survivor would clone as well as the busiest one, which is a third arm this design
+does not carry.
+
+**Cost.** Three fused runs plus three frozen retrains per seed, ~3.7 s/seed.
+
+### 5.27 Result
+
+*(pending: registered blocks 105000-105383 and 106000-106383)*
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

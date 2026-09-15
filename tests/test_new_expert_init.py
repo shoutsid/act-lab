@@ -82,6 +82,51 @@ def test_clone_copies_the_busiest_survivors_body_and_router_row() -> None:
     ), "the cloned expert's router row must be copied too"
 
 
+def test_clone_body_copies_the_body_but_leaves_the_row_fresh() -> None:
+    """Section 5.27's arm: the body is cloned and the router row is NOT.
+
+    This is the whole contrast the mechanism study rests on, so the two settings
+    must differ in exactly that one respect.
+    """
+    source_genome = _genome()
+    model = model_from_genome(source_genome, context_size=32, num_heads=4)
+    with torch.no_grad():
+        for index, expert in enumerate(model.blocks[0].experts):
+            expert[0].weight.fill_(float(index) + 1.0)
+        model.blocks[0].last_load = torch.tensor([0.1, 0.4, 0.05, 0.45])
+        for block in model.blocks:
+            block.router.weight.fill_(0.25)
+
+    target, new_id = _grown_target()
+    source_state = model.state_dict()
+    new_index = [expert.id for expert in target.layers[0].experts].index(new_id)
+    for setting, row_cloned in (("clone_body", False), ("clone", True)):
+        rebuilt = rebuild_model_from_genome(
+            model,
+            target,
+            context_size=32,
+            num_heads=4,
+            preserve_router=True,
+            new_expert_initialization=setting,
+        )
+        state = rebuilt.state_dict()
+        for suffix in BODY_SUFFIXES:
+            assert torch.equal(
+                state[f"blocks.0.experts.{new_index}.{suffix}"],
+                source_state[f"blocks.0.experts.3.{suffix}"],
+            ), f"{setting}: the body must be cloned"
+        assert (
+            torch.equal(
+                state["blocks.0.router.weight"][new_index],
+                source_state["blocks.0.router.weight"][3],
+            )
+            is row_cloned
+        ), f"{setting}: the router row must be {'' if row_cloned else 'left fresh'}"
+        # Surviving experts keep their rows under both settings, so the only
+        # difference between the two arms is the grown expert's own row.
+        assert bool((state["blocks.1" + ".router.weight"] == 0.25).all())
+
+
 def test_random_initialization_leaves_the_grown_expert_fresh() -> None:
     source_genome = _genome()
     model = model_from_genome(source_genome, context_size=32, num_heads=4)
@@ -151,29 +196,31 @@ _BASE = dict(
 
 
 def test_clone_requires_the_router_to_survive() -> None:
-    """Cloning is copying a router row, so the combination that clones nothing
-    must be refused rather than silently accepted."""
-    with pytest.raises(ValueError, match="clone"):
+    """Cloning copies a router row, so the combination that clones nothing must
+    be refused rather than silently accepted - for both clone variants."""
+    for setting in ("clone", "clone_body"):
+        with pytest.raises(ValueError, match=setting):
+            run_experiment(
+                ExperimentConfig(
+                    **_BASE,
+                    new_expert_initialization=setting,
+                    preserve_router_on_rebuild=False,
+                )
+            )
+    # Every legitimate setting runs.
+    for setting in ("random", "clone", "clone_body"):
         run_experiment(
             ExperimentConfig(
                 **_BASE,
-                new_expert_initialization="clone",
-                preserve_router_on_rebuild=False,
+                new_expert_initialization=setting,
+                preserve_router_on_rebuild=True,
             )
         )
-    # Both legitimate settings run.
-    run_experiment(
-        ExperimentConfig(
-            **_BASE,
-            new_expert_initialization="clone",
-            preserve_router_on_rebuild=True,
-        )
-    )
     run_experiment(ExperimentConfig(**_BASE, new_expert_initialization="random"))
 
 
 def test_new_expert_initialization_validation() -> None:
-    for bad in ("Clone", "teacher", ""):
+    for bad in ("Clone", "clone-body", "teacher", ""):
         with pytest.raises(ValueError, match="new_expert_initialization"):
             run_experiment(
                 ExperimentConfig(

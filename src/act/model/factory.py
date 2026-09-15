@@ -90,6 +90,11 @@ def rebuild_model_from_genome(
       learn to route around (report section 5.26). Cloning the router row is what
       makes it a twin: a cloned expert body with a freshly drawn row would start
       with no routing affinity at all.
+    - ``"clone_body"``: the same copy of the busiest survivor's body, but the new
+      expert keeps its **freshly drawn router row**. Identical to ``"clone"`` in
+      every other respect, so comparing the two separates a trained *body* from
+      the *routing affinity* that copying the row confers - the mechanism section
+      5.26 declared unresolved (report section 5.27).
     """
     rebuilt = model_from_genome(genome, context_size=context_size, num_heads=num_heads)
     source_state = previous.state_dict()
@@ -127,7 +132,7 @@ def rebuild_model_from_genome(
                 target_state[router_key][target_index].copy_(
                     source_state[router_key][source_index]
                 )
-            if new_expert_initialization != "clone":
+            if new_expert_initialization not in {"clone", "clone_body"}:
                 continue
             new_indices = [
                 target_index
@@ -164,7 +169,11 @@ def rebuild_model_from_genome(
                     source_key = f"blocks.{layer_index}.experts.{source_index}.{suffix}"
                     if target_key in target_state and source_key in source_state:
                         target_state[target_key].copy_(source_state[source_key])
-                if router_key in target_state and router_key in source_state:
+                if (
+                    new_expert_initialization == "clone"
+                    and router_key in target_state
+                    and router_key in source_state
+                ):
                     handled.add(router_key)
                     target_state[router_key][target_index].copy_(
                         source_state[router_key][source_index]
