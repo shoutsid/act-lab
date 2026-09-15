@@ -17,6 +17,7 @@ from torch import nn
 
 from act.model import (
     DECLARED_V0_CONFIG,
+    DEV_V0_CONFIG,
     V0MoECausalLM,
     V0MoEConfig,
     estimated_parameter_count,
@@ -33,6 +34,7 @@ from act.training import (
     V0SessionConfig,
     V0SessionResult,
     aggregate_arm_cost_ratio,
+    declared_session_config,
     harm_guard_rejects,
     predicted_cost_ratio,
     run_v0_session,
@@ -61,6 +63,44 @@ def test_declared_v0_config_reproduces_protocol_parameters() -> None:
     assert 256_000_000 <= total <= 350_000_000  # plan section 8 V0 target
 
 
+def test_session_default_is_the_fast_dev_config_not_the_declared_target() -> None:
+    """The default must be the fast iteration shape, by measurement.
+
+    A 285M default made every development cycle an hour-long protocol run. The
+    dev shape and its budget are pinned here so a future edit cannot quietly
+    restore the expensive default; the declared target stays reachable through
+    ``declared_session_config()``.
+    """
+    default = V0SessionConfig()
+    assert default.declared is False
+    assert default.model_config() == DEV_V0_CONFIG
+    total, active = estimated_parameter_count(DEV_V0_CONFIG)
+    assert total < 20_000_000 and active < 10_000_000
+    # ...and validated by the sizing probe on the dev GPU, not by preference.
+    assert 14_000_000 < total < 15_500_000
+    assert (default.batch_size, default.context_size, default.total_steps) == (8, 512, 400)
+    assert default.training_tokens() == 1_638_400
+    # The declared cadence has four interval slots for a budget of three
+    # (6000/1500 with E=3); the dev horizon mirrors that shape exactly.
+    assert default.total_steps // default.mutation_interval == 4
+    assert default.mutation_budget == 3
+    # The dev budget is not the protocol's probe-cost question and must not be
+    # read as one: at dev scale the probe is 1.5% of training FLOPs, not the
+    # declared 0.0942%.
+    assert 100.0 * predicted_cost_ratio(default) == pytest.approx(1.5184, abs=5e-3)
+
+
+def test_declared_session_config_builds_the_protocol_target() -> None:
+    declared = declared_session_config()
+    assert declared.declared is True
+    assert declared.model_config() == DECLARED_V0_CONFIG
+    assert declared.training_tokens() == 24_576_000
+    total, active = estimated_parameter_count(declared.model_config())
+    assert total == 285_336_576 and active == 134_341_632
+    # The declared config doubles as the protocol's cost-ratio input.
+    assert 100.0 * predicted_cost_ratio(declared) == pytest.approx(0.0942, abs=5e-4)
+
+
 def test_v0_moe_materialized_counts_match_estimator() -> None:
     config = V0MoEConfig(**TINY)
     model = V0MoECausalLM(config)
@@ -72,8 +112,8 @@ def test_v0_moe_materialized_counts_match_estimator() -> None:
 
 
 def test_v0_session_predicts_protocol_cost_ratios() -> None:
-    primary = 100.0 * predicted_cost_ratio(V0SessionConfig())
-    secondary = 100.0 * predicted_cost_ratio(V0SessionConfig(probe_batch_count=2))
+    primary = 100.0 * predicted_cost_ratio(declared_session_config())
+    secondary = 100.0 * predicted_cost_ratio(declared_session_config(probe_batch_count=2))
     assert primary == pytest.approx(0.0942, abs=5e-4)
     assert secondary == pytest.approx(0.1883, abs=5e-3)
 
@@ -567,7 +607,9 @@ def test_v0_session_config_rejects_negative_probe_finetune_steps() -> None:
 def test_predicted_cost_ratio_books_lookahead_steps() -> None:
     """R > 0 books R full-model training steps per probed candidate."""
     total, active = estimated_parameter_count(DECLARED_V0_CONFIG)
-    config = V0SessionConfig(probe_finetune_steps=1)
+    # The lookahead guardrail is a declared-scale statement: it must use the
+    # declared session config, not the fast dev default.
+    config = declared_session_config(probe_finetune_steps=1)
     probe_tokens = config.batch_size * config.context_size * config.probe_batch_count
     expected = (
         3
@@ -576,7 +618,7 @@ def test_predicted_cost_ratio_books_lookahead_steps() -> None:
         / (2 * total * config.training_tokens())
     )
     assert predicted_cost_ratio(config) == pytest.approx(expected)
-    assert predicted_cost_ratio(config) > predicted_cost_ratio(V0SessionConfig())
+    assert predicted_cost_ratio(config) > predicted_cost_ratio(declared_session_config())
     # Criterion guardrail at the proof configuration: each lookahead step
     # adds exactly one full-model training step per candidate (3x the probe
     # forward), so R=1 lands at ~3% (clean) and R=2 sits exactly at the 5%

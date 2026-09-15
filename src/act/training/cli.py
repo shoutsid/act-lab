@@ -25,7 +25,11 @@ from act.training.runtime import (
 from act.training.session_plan import MAX_CHECKPOINTS, decide_dtype
 from act.training.v0_protocol import aggregate_arm_cost_ratio, harm_guard_rejects, sign_pairs
 from act.training.v0_runner import DECLARED_SEEDS, run_pair_session
-from act.training.v0_session import V0SessionConfig, run_v0_session
+from act.training.v0_session import (
+    V0SessionConfig,
+    declared_session_config,
+    run_v0_session,
+)
 
 
 def _run_dense_baseline(args: argparse.Namespace) -> None:
@@ -216,7 +220,12 @@ def _run_pair_session(args: argparse.Namespace) -> None:
     )
     if not arms:
         raise SystemExit("--session-arms resolved to an empty tuple")
-    config = V0SessionConfig(
+    # The launch command is the DECLARED protocol run unless --profile asks for
+    # the tiny smoke shape, so it must name the declared target explicitly:
+    # V0SessionConfig's defaults are the fast dev shape (dev cycle time, not
+    # protocol fidelity), and inheriting them here would train a 14.9M model
+    # while labelling the run declared.
+    config = declared_session_config(
         arms=arms,
         probe_batch_count=args.probe_batch_count,
         probe_candidate_policy=args.probe_candidate_policy,

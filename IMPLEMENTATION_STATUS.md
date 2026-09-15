@@ -9,6 +9,44 @@ The narrative companion covering the six-study factor map (six gate-style
 quality tests, one pass) is `RESEARCH_REPORT.md`; all quoted statistics there
 are machine-checked against `artifacts/study-summaries/`.
 
+## Training target: dev-fast by default (2026-09-15)
+
+The pre-registered 285M-parameter section 5.1 target is no longer the default
+model. It was the default because it was the *declared* model, and the effect
+was that every development cycle was a protocol-scale run (285M parameters,
+24.6M tokens per arm, an hour-plus per arm on the development GPU). The declared
+target is unchanged and still what a declared run uses; it is now built
+explicitly:
+
+```python
+V0SessionConfig()                 # fast dev shape: ~14.9M / 7.6M active
+V0SessionConfig(declared=True)    # rejected unless it IS the declared config
+declared_session_config()         # the pre-registered 285M target, validated
+```
+
+``DEV_V0_CONFIG`` (vocab 8k, context 512, hidden 320, depth 6, 8 experts of 2
+active, expert width 320; ~14.9M total / 7.6M active) was chosen by measurement
+on the GTX 1070, not by preference, and the measurement is the interesting part:
+**at these sizes the MoE block is latency-bound, not FLOP-bound** (one kernel per
+expert per pass), so the smallest candidate was the *slowest* - 10.0M parameters
+ran at 3.6k tokens/s while 14.9M ran at 9.8k. Cycle time is governed by tokens
+per run. Measured end to end through the real session path: 0.61 s/step, 13.4k
+tokens/s across two arms, 0.90 GiB peak, and a 400-step dev cycle (1.64M
+tokens/arm) in **~4.1 minutes** instead of an hour.
+
+The dev budget is not a protocol measurement and must not be read as one: at
+dev scale the probe is 1.5% of training FLOPs, not the declared 0.0942%, and the
+Gates are unchanged (Gate 4 still requires the declared target at declared
+fidelity). Nothing about the pre-registered protocol moved - only which
+configuration a bare ``V0SessionConfig()`` means.
+
+The launch CLI is unaffected: ``scripts/kaggle_queue.py --queue session`` builds
+``declared_session_config()`` explicitly for a real launch (pinned by test), so a
+declared queue cannot silently train a dev model. Fixed while making this change:
+the CLI previously relied on the defaults *being* declared, which would have
+downgraded a real launch silently once the defaults changed - the test that
+caught it is `test_cli_default_queue_is_the_declared_block`.
+
 ## Status Legend
 
 - DONE: implemented and covered by a passing check.

@@ -83,6 +83,45 @@ DECLARED_V0_CONFIG = V0MoEConfig(
 N_active = 134,341,632 active parameters (plan section 8 V0 target)."""
 
 
+DEV_V0_CONFIG = V0MoEConfig(
+    vocab_size=8_192,
+    context_size=512,
+    hidden_size=320,
+    depth=6,
+    attention_heads=5,
+    experts_per_layer=(8,) * 6,
+    active_experts=2,
+    expert_width=320,
+)
+"""The fast-iteration configuration: roughly 14.9M total and 7.6M active
+parameters. This is the DEFAULT for development work, not a protocol config -
+the pre-registered target is ``DECLARED_V0_CONFIG`` above, and it is built only
+when a run at declared scale is actually being performed.
+
+Sized by measurement on the development GPU (GTX 1070, 8 GiB) rather than by
+parameter count: at these sizes the MoE block is latency-bound, not FLOP-bound,
+because each block runs one kernel per expert per pass, so the SMALLEST shape is
+not the fastest one. Measured, batch 8, fp16 autocast, 20-step steady state:
+
+| config | total params | tokens/s | peak memory |
+|---|---|---|---|
+| h256 d6 e8 w256 v8k ctx512 | 10.0M | 3.6k | 0.76 GiB |
+| h320 d6 e8 w320 v8k ctx512 (this one) | 14.9M | 9.8k | 0.90 GiB |
+| h512 d6 e8 w512 v16k ctx512 | 39.9M | 6.0k | 1.77 GiB |
+
+Cycle time is therefore governed by tokens per run, not by model size: a
+400-step dev session at batch 8 x context 512 is 1.64M tokens per arm, about
+2.8 minutes per arm on that GPU.
+
+Measured end to end through ``run_v0_session`` (both arms, probes, checkpoints,
+40 steps then extrapolated linearly at steady state): **0.61 s/step, 13.4k
+tokens/s across the two arms, a 400-step dev cycle in ~4.1 minutes**, peak
+0.90 GiB. The declared target is 285M parameters and 24.6M tokens per arm, i.e.
+15x the tokens at ~1/3 the throughput - an hour plus per arm - which is why it
+is no longer the default.
+"""
+
+
 def validate_declared_v0_config(config: V0MoEConfig) -> None:
     """Reject deviations from the pre-registered declared configuration.
 

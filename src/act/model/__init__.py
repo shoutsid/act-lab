@@ -13,6 +13,7 @@ from .moe import StaticMoECausalLM, StaticMoEConfig
 from .v0 import V0CausalLM, V0ModelConfig
 from .v0_moe import (
     DECLARED_V0_CONFIG,
+    DEV_V0_CONFIG,
     V0MoEBlock,
     V0MoECausalLM,
     V0MoEConfig,
@@ -35,6 +36,7 @@ __all__ = [
 	"V0CausalLM",
 	"V0ModelConfig",
 	"DECLARED_V0_CONFIG",
+	"DEV_V0_CONFIG",
 	"V0MoEBlock",
 	"V0MoECausalLM",
 	"V0MoEConfig",

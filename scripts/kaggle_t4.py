@@ -497,11 +497,11 @@ def mode_preflight() -> None:
         expected_probe_cost_percent,
         tolerance_band,
     )
-    from act.training.v0_session import V0SessionConfig
+    from act.training.v0_session import V0SessionConfig, declared_session_config
 
     # Runbook pre-flight 4: the declared config must reproduce the counts the
     # tolerance band derives from.
-    total, active = estimated_parameter_count(V0SessionConfig().model_config())
+    total, active = estimated_parameter_count(declared_session_config().model_config())
     expected_total, expected_active = 285_336_576, 134_341_632
     _log(f"declared parameters: {total:,} total / {active:,} active")
     assert total == expected_total, f"total {total} != {expected_total}"
@@ -616,9 +616,9 @@ def mode_dtypeprobe() -> None:
     _bootstrap()
     from act.model.v0_moe import V0MoECausalLM
     from act.training.session_plan import PairSchedule
-    from act.training.v0_session import V0SessionConfig
+    from act.training.v0_session import V0SessionConfig, declared_session_config
 
-    config = V0SessionConfig()
+    config = declared_session_config()
     steps, warmup = 10, 3
     _log("=== ACT lab: dtype throughput probe ===")
     _log(f"declared config: batch {config.batch_size} x context {config.context_size}")

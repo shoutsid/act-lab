@@ -39,19 +39,19 @@ from act.training.session_plan import (
     unusable_schedule_reason,
     working_dir_headroom_gb,
 )
-from act.training.v0_session import V0SessionConfig, arm_slots
+from act.training.v0_session import V0SessionConfig, arm_slots, declared_session_config
 
 DECLARED_CHECKPOINT_INTERVAL = 500
 # The declared pair is ``--session-arms``' default (runbook 2). Read from the
 # registered config rather than restated as a number, so the plan cannot drift
 # from the command that will run it - the schedule needs the arm count as well
 # as the rate, because pair time is charged per wave of arms.
-DECLARED_ARMS = len(V0SessionConfig().arms)
+DECLARED_ARMS = len(declared_session_config().arms)
 
 
 def build_declared_model(device: torch.device) -> tuple[V0MoECausalLM, int, int]:
     """Construct the declared 285M model and return it with (total, active) counts."""
-    config = V0SessionConfig().model_config()
+    config = declared_session_config().model_config()
     total, active = estimated_parameter_count(config)
     torch.manual_seed(15012)  # outside the reserved 15000-15011 seed block
     model = V0MoECausalLM(config).to(device)

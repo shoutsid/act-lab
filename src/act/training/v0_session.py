@@ -37,6 +37,8 @@ import torch
 from torch import Tensor
 
 from act.model import (
+    DECLARED_V0_CONFIG,
+    DEV_V0_CONFIG,
     V0MoECausalLM,
     V0MoEConfig,
     estimated_parameter_count,
@@ -59,7 +61,17 @@ from act.training.v0_span import WindowSampler
 
 @dataclass(frozen=True)
 class V0SessionConfig:
-    """Declared protocol configuration by default (section 5.1)."""
+    """Fast-iteration dev configuration by default (see ``declared_session_config``).
+
+    The default is deliberately NOT the pre-registered section 5.1 target. That
+    target is a 285M-parameter, 24.6M-token-per-arm protocol run whose cycle time
+    on a single development GPU is an hour or more, and using it as the default
+    made every iteration cost a run. The default here is the measured-fastest
+    small shape (``DEV_V0_CONFIG``, ~14.9M total / 7.6M active) with a 400-step
+    budget: 1.64M tokens per arm, about 2.8 minutes per arm on a GTX 1070. The
+    declared target is built explicitly by ``declared_session_config()`` and
+    validated by ``validate_declared_v0_config`` whenever ``declared`` is True.
+    """
 
     # Default seed for a lone session. 15000 is the start of the declared
     # section 5.1 queue (re-reserved from 9000 by the adopted section 5.5
@@ -67,22 +79,24 @@ class V0SessionConfig:
     seed: int = 15000
     arms: tuple[str, ...] = ("random", "adaptive")
     device: str = "auto"
-    # Declared V0 model (plan section 8).
-    vocab_size: int = 32_768
-    context_size: int = 2_048
-    hidden_size: int = 1_024
-    depth: int = 12
-    attention_heads: int = 16
+    # Dev V0 model (plan section 8's target is reached via
+    # ``declared_session_config()``).
+    vocab_size: int = 8_192
+    context_size: int = 512
+    hidden_size: int = 320
+    depth: int = 6
+    attention_heads: int = 5
     expert_count: int = 8
     active_experts: int = 2
-    expert_width: int = 1_024
-    declared: bool = True
-    # Declared budget: batch 2 x context 2048 x 6000 steps = 24,576,000 tokens.
-    batch_size: int = 2
-    total_steps: int = 6_000
+    expert_width: int = 320
+    declared: bool = False
+    # Dev budget: batch 8 x context 512 x 400 steps = 1,638,400 tokens per arm.
+    batch_size: int = 8
+    total_steps: int = 400
     learning_rate: float = 3e-4
-    # Declared events: E=3 at steps 1500/3000/4500.
-    mutation_interval: int = 1_500
+    # Dev events: E=3 at steps 100/200/300 (the declared cadence compressed to
+    # the dev horizon; the declared run keeps 1500/3000/4500).
+    mutation_interval: int = 100
     mutation_budget: int = 3
     # Selection: cap-4/1-batch primary (set probe_batch_count=2 for secondary).
     probe_candidate_cap: int = 4
@@ -119,7 +133,7 @@ class V0SessionConfig:
     # weights. Dtype touches no pre-registered criterion: FLOPs counters
     # book operations, not time, so both dtypes produce identical counters.
     dtype: str = "fp32"
-    checkpoint_interval: int = 500
+    checkpoint_interval: int = 100
     max_checkpoints: int = 3
     checkpoint_max_bytes: int | None = None
     # Real-data token streams (section 5.1 machinery on real text). When set,
@@ -254,6 +268,38 @@ class V0SessionConfig:
 
     def training_tokens(self) -> int:
         return self.batch_size * self.context_size * self.total_steps
+
+
+def declared_session_config(**overrides: object) -> V0SessionConfig:
+    """The pre-registered section 5.1 / plan-section-8 target session.
+
+    285M total / 134M active parameters, batch 2 x context 2048 x 6000 steps =
+    24,576,000 tokens per arm, events at steps 1500/3000/4500. This is what a
+    declared run uses; the plain ``V0SessionConfig()`` default is the fast dev
+    shape, so anything that means "the protocol configuration" must say so by
+    calling this rather than by using the defaults.
+    """
+    fields: dict[str, object] = {
+        "vocab_size": DECLARED_V0_CONFIG.vocab_size,
+        "context_size": DECLARED_V0_CONFIG.context_size,
+        "hidden_size": DECLARED_V0_CONFIG.hidden_size,
+        "depth": DECLARED_V0_CONFIG.depth,
+        "attention_heads": DECLARED_V0_CONFIG.attention_heads,
+        "expert_count": DECLARED_V0_CONFIG.experts_per_layer[0],
+        "active_experts": DECLARED_V0_CONFIG.active_experts,
+        "expert_width": DECLARED_V0_CONFIG.expert_width,
+        "declared": True,
+        "batch_size": 2,
+        "total_steps": 6_000,
+        "mutation_interval": 1_500,
+        "mutation_budget": 3,
+        "checkpoint_interval": 500,
+        "dtype": "fp16",
+    }
+    fields.update(overrides)
+    config = V0SessionConfig(**fields)  # type: ignore[arg-type]
+    validate_declared_v0_config(config.model_config())
+    return config
 
 
 def predicted_cost_ratio(config: V0SessionConfig) -> float:
@@ -1520,7 +1566,10 @@ def run_v0_session(
     deadline_check: Callable[[], bool] | None = None,
     deadline_budget_seconds: float | None = None,
 ) -> V0SessionResult:
-    """Run (or resume) the declared protocol session for one seed.
+    """Run (or resume) a protocol session for one seed.
+
+    The config defaults to the fast dev shape; pass
+    ``declared_session_config()`` for the pre-registered 285M target.
 
     ``deadline_check`` is consulted only at checkpoint boundaries; when it
     returns True the run stops cooperatively by raising

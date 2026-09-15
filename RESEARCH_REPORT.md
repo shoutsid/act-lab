@@ -2450,6 +2450,181 @@ describes.
 The committed summary is `artifacts/study-summaries/portability-depth4-384.json`
 (`study_757e78b90de8a510`).
 
+### 5.19 Pre-registration: does the matched-initialization topology value share the depth-4 onset?
+
+**Motivation.** Section 5.18 leaves the project's newest positive result attached
+to a single depth. That depth is not arbitrary: sections 5.12 and 5.15 located
+the *while-training* adaptive value-creation onset between depth 3 and depth 4
+(adaptive-vs-null wins `117/384` at depth 1, `161/384` at depth 2, `188/384` at
+3, `225/384` at 4 - monotone, with the sign of the mean flipping just above
+depth 3). If the topology's matched-initialization value comes from the same
+mechanism, it should onset at the same place. If it does not, the onset the
+depth dose-response found is a property of the **controller** (probe-based
+selection needs a substrate rich enough to discriminate) rather than of the
+substrate - which would REDIRECT the project toward the controller instead of
+toward depth.
+
+**Design.** Section 5.18's design unchanged except for depth: the same registered
+config, the same four transports (`O`, `D`, `F`, `O_fixed`), the same donor
+mechanism. Two fresh blocks, 20-way sharding each:
+
+| block | seeds | depth | donor offset | donor block |
+|---|---|---|---|---|
+| depth 2 | 85000-85383 | 2 | +2000 | 87000-87383 |
+| depth 3 | 86000-86383 | 3 | +2000 | 88000-88383 |
+
+Declared difference from the earlier shallow-depth cells: sections 5.12's and
+5.15's depth-1/2/3 cells used the `prefix` candidate policy, while these use
+`spread` - matching 5.18 exactly so the depths are comparable to each other.
+Any disagreement with 5.15's cells therefore has the policy as an alternative
+explanation and is recorded as such rather than attributed to depth.
+
+**Primaries (per depth, n = 384):**
+1. **matched topology value** - `O` < `O_fixed` (both sides on their own
+   initialization, so only the topology differs).
+2. **pairing** - the difference-in-differences of section 5.18.1.
+
+Two depths x two primaries = four tests, so the declared per-primary threshold
+is **Bonferroni `alpha/4 = 0.0125`**, which at n = 384 is the exact bar **215**
+(not 212 - the script computes and asserts its own declared bar at run time).
+The section-5.18 depth-4 rows (`O_vs_O_fixed` `293/384`; DiD `237/384`) are
+reported as context but come from a different block and a looser threshold
+(`0.025`), so they are not part of this study's family.
+
+**Predictions (declared before measurement).** Both primaries are predicted to
+**fail at both depths**. The topology's matched-init value at depth 4
+(`O` wins `293/384`, mean `-0.1295`) is the largest effect this project has
+measured, and if it comes from the same expressiveness the controller's onset
+found, there is nothing at depth 2 (where every mutating arm loses to doing
+nothing) for it to exploit. A pass at either depth is the more informative
+outcome and means the shallow-depth failure belongs to the selection rule, not
+to the substrate.
+
+**Secondaries (reported, not verdict-bearing).** Portability per depth (`D` <
+`F`); the raw contaminated contrast `O` vs `D`; the donor-init control (`F` vs
+the fixed arm's own run); capacity (active-parameter counts, which the depth-4
+block showed favour the initial topology); and the discovery-time ordering, for
+continuity with section 5.15's cells.
+
+**Pre-registered interpretation (fixed before running).**
+- (a) Both depths fail both primaries: **co-located onsets** - the matched-init
+topology value is depth-4-specific, sharing the threshold the controller's
+while-training value has (§5.15's branch (b)). The section-52 scale-up must not
+assume the effect exists at smaller widths/depths, and "depth buys
+expressiveness that mutations can exploit" becomes the joint reading.
+- (b) Depth 2 fails, depth 3 passes: the topology onset sits between 2 and 3,
+one step below the controller's - partial co-location, and the controller's
+depth-3 failure becomes a selection problem at a depth where the substrate
+already supports value.
+- (c) Both depths pass: the topology mechanism is **not** depth-limited at these
+sizes, so §5.15's onset is a property of probe-based selection. The project
+redirects to controller research (why does the probe fail to find structure
+that is there?), and the section-52 scale-up is deprioritised.
+- (d) Depth 2 passes, depth 3 fails: non-monotone - the depth axis reading is
+suspended pending a follow-up, and no other reading is taken.
+
+**Scope limits (pre-declared).** Toy fidelity, one substrate, `spread` policy at
+all depths, one donor map (+2000). The teacher treatment remains untested.
+Machinery smoke-tests run on spent blocks only; the verdicts use 85000-85383 and
+86000-86383 and nothing else.
+
+**Cost.** 2 blocks x (1 discovery + 4 transports) per seed; shallow depths are
+cheaper per seed than depth 4, so ~45 min of CPU total across 20 shards per
+block.
+
+### 5.20 Pre-registration: is the shallow-depth topology value *selection*-specific?
+
+**Motivation.** Section 5.19 measured, at depths 2 and 3, a large
+matched-initialization advantage for the topology the adaptive arm ends up with
+(`260/384` and `270/384`, p `1.7e-12` and `5.2e-16`) - larger than anything the
+*while-training* comparison shows at those depths, where the adaptive arm loses
+to doing nothing (`161/384`, `188/384`). The obvious alternative explanation is
+that the comparison is not measuring adaptive *selection* at all:
+
+- **selection-specific**: the controller chose structure that trains better when
+  restarted, so the value is in the choice.
+- **shrinkage / any-churn**: the arm prunes experts, the adaptive topologies are
+  smaller than the initial one (`346/384` and `353/384` seeds), and perhaps *any*
+  churned - or any smaller - topology retrains better on this substrate. Then
+  section 5.19's result is a capacity/regularization effect and the controller
+  is incidental.
+
+Section 5.17's block already separates these at depth 4, and separates them
+cleanly: under the *same* rewound treatment, the **random-churn** topology is
+indistinguishable from the initial topology (`B_random` vs `B_fixed`:
+`205/384`, mean `-0.0024`, p `0.101`, i.e. essentially zero mean) while the
+adaptive topology beats both it (`255/384`, mean `-0.1099`, p `6.13e-11`) and
+the initial topology (`274/384`, p `1.46e-17`). Nothing like that measurement
+exists at depths 2 and 3, and that is the gap this study closes.
+
+**Design.** Three rewound transports per seed, all on the seed's **own** initial
+model so initialization is matched on every side: `A_own` (adaptive genome),
+`R_own` (random-churn genome), `F_own` (unmutated genome, which reproduces the
+fixed arm's own run exactly and is the validity check). Fresh blocks, 20-way
+sharding:
+
+| block | seeds | depth |
+|---|---|---|
+| depth 2 | 89000-89383 | 2 |
+| depth 3 | 91000-91383 | 3 |
+
+Same registered config and `spread` policy as sections 5.18-5.19.
+
+**Primaries (per depth, n = 384), threshold Bonferroni `alpha/4 = 0.0125`
+(exact bar **215**, computed and asserted at run time):**
+1. **selection-specific value** - `A_own` < `R_own`.
+2. **matched-init value replicates** - `A_own` < `F_own`, which is section
+   5.19's primary 1 measured again on an unspent block.
+
+The `R_own` < `F_own` row is reported as the **control that defines what "value"
+means here**: if it passes, churn alone produces better-retraining topologies and
+primary 1's interpretation inverts.
+
+**Predictions (declared before measurement).** Two of my last four predictions
+have been wrong and both times in the direction of understating an effect, so
+this is stated carefully. Primary 1 is predicted to **fail at depth 2 and pass
+at depth 3**: the controller's selection signal is weakest where section 5.15
+found its while-training value weakest (depth 2), while the shrinkage
+alternative should not depend on depth. Primary 2 is predicted to **pass at both
+depths** (replication of 5.19's `260/384` and `270/384`). A depth-2 primary-1
+pass would mean the selection signal is real even where the while-training
+comparison cannot see it, which is the reading section 5.19 could not
+distinguish.
+
+**Secondaries (reported, not verdict-bearing).** Capacity: the active-parameter
+counts of all three topologies per seed, so "is the adaptive topology just
+smaller?" is answerable directly and not by inference - if `R_own`'s topologies
+are pruned to a similar size, size cannot explain primary 1, and if they are not,
+primary 1's interpretation is recorded as capacity-confounded. Also the
+random-topology control (`R_own` vs `F_own`), the discovery-time ordering for
+continuity with section 5.15, and the raw transported losses.
+
+**Pre-registered interpretation (fixed before running).**
+- (a) Primary 1 passes at both depths and primary 2 replicates: the shallow-depth
+topology value is **selection-specific**, so section 5.15's depth-4 onset is a
+*selection* onset and section 5.19's branch (c) stands - the controller, not the
+substrate, is what fails at shallow depth. Redirects to controller research and
+deprioritises the section-52 scale-up.
+- (b) Primary 1 fails at both depths: the shallow-depth advantage is **not**
+selection-specific. Section 5.19's result is re-read as shrinkage/any-churn, the
+"reusable genome" claim is weakened to "smaller topologies retrain better at
+shallow depth", and the section-52 scale-up must carry this control.
+- (c) Primary 1 fails at depth 2 / passes at depth 3: specificity needs depth -
+consistent with a selection signal that scales with the substrate, and the
+depth-2 result is recorded as a shrinkage effect specifically.
+- (d) Primary 2 fails at either depth: section 5.19's own result does not
+replicate on a fresh block. That is recorded as a replication failure, the
+depth-2/3 matched-init result is withdrawn pending a follow-up, and no other
+reading is taken from this study.
+
+**Scope limits (pre-declared).** Toy fidelity, one substrate, `spread` policy,
+own-initialization only (the donor machinery of 5.18 is not re-run here). The
+teacher treatment remains untested. Smoke tests on spent blocks only; the
+verdicts use 89000-89383 and 91000-91383 and nothing else.
+
+**Cost.** 2 blocks x (1 discovery + 3 transports) per seed, ~3.5 s/seed at these
+depths; ~45 min of CPU across 20 shards per block.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

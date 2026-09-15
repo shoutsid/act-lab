@@ -51,6 +51,7 @@ from .v0_session import (
 	arm_device_indices,
 	arm_devices,
 	arm_slots,
+	declared_session_config,
 	predicted_cost_ratio,
 	run_v0_session,
 )
@@ -101,6 +102,7 @@ __all__ = [
 	"V0SessionConfig",
 	"V0SessionInterrupted",
 	"V0SessionResult",
+	"declared_session_config",
 	"predicted_cost_ratio",
 	"run_v0_session",
 	"aggregate_arm_cost_ratio",

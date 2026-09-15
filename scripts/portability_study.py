@@ -51,17 +51,47 @@ from act.topology import ArchitectureGenome  # noqa: E402
 
 SHARD_DIR = ROOT / "artifacts" / "toy-portability-study"
 #: Declared donor offset: seed ``s``'s foreign initialization is seed ``s+1000``'s
-#: initial model, so the donor block is 84000-84383 for the registered block.
+#: initial model, so the donor block is 84000-84383 for the depth-4 block.
 DONOR_OFFSET = 1000
 PROFILES: dict[str, dict] = {
     "depth4": {
         "seeds": tuple(range(83000, 83384)),
+        "overrides": {},
+        "donor_offset": 1000,
+        # Section 5.18's declared family: one study, two primaries, alpha/2.
+        "per_primary_alpha": 0.025,
         "report_section": "5.18",
         "summary": "artifacts/study-summaries/portability-depth4-384.json",
+    },
+    # Section 5.19: the same design along the depth axis. Two depths x two
+    # primaries = four tests, so the declared per-primary threshold is
+    # Bonferroni alpha/4 = 0.0125, which at n = 384 is the exact bar 215 (not
+    # 212 - asserted at run time). Donor offsets are 2000 so the donor blocks
+    # (87000-87383, 88000-88383) stay disjoint from every study block, including
+    # each other's.
+    "depth2": {
+        "seeds": tuple(range(85000, 85384)),
+        "overrides": {"depth": 2},
+        "donor_offset": 2000,
+        "per_primary_alpha": 0.0125,
+        "report_section": "5.19",
+        "summary": "artifacts/study-summaries/portability-depth2-384.json",
+    },
+    "depth3": {
+        "seeds": tuple(range(86000, 86384)),
+        "overrides": {"depth": 3},
+        "donor_offset": 2000,
+        "per_primary_alpha": 0.0125,
+        "report_section": "5.19",
+        "summary": "artifacts/study-summaries/portability-depth3-384.json",
     },
     # Machinery smoke test only, on spent blocks.
     "smoke": {
         "seeds": tuple(range(73000, 73004)),
+        "overrides": {},
+        "donor_offset": 1000,
+        "per_primary_alpha": 0.025,
+        "declared_n": 4,
         "report_section": "5.18 (smoke)",
         "summary": "artifacts/study-summaries/portability-smoke.json",
     },
@@ -95,19 +125,29 @@ TRANSPORTS = {
     "O_fixed": (("fixed", "rewound"), None),
 }
 ALPHA = 0.05
-DECLARED_ALPHA = ALPHA / 2  # 0.025, the section 5.9-5.17 convention
 DECLARED_N = 384
-DECLARED_BAR = 212  # exact one-tailed binomial bar at n = 384, alpha = 0.025
 
 
-def _configs(seed: int) -> tuple[ExperimentConfig, ExperimentConfig]:
-    host = ExperimentConfig(**REGISTERED, seed=seed, arms=ARMS)
-    donor = replace(host, seed=seed + DONOR_OFFSET)
+def _declared_alpha(profile: str) -> float:
+    return PROFILES[profile]["per_primary_alpha"]
+
+
+def _declared_bar(profile: str) -> int:
+    """The declared bar, computed from the declared alpha rather than asserted."""
+    return _gate_min_wins(DECLARED_N, _declared_alpha(profile))
+
+
+def _configs(seed: int, profile: str) -> tuple[ExperimentConfig, ExperimentConfig]:
+    spec = PROFILES[profile]
+    host = ExperimentConfig(
+        **{**REGISTERED, **spec["overrides"]}, seed=seed, arms=ARMS
+    )
+    donor = replace(host, seed=seed + spec["donor_offset"])
     return host, donor
 
 
-def _run_seed(seed: int) -> dict:
-    host, donor = _configs(seed)
+def _run_seed(seed: int, profile: str) -> dict:
+    host, donor = _configs(seed, profile)
     arms = {arm.mode: arm for arm in run_experiment(host).arms}
     transport: dict[str, dict] = {}
     for label, ((mode, initialization), source) in TRANSPORTS.items():
@@ -127,7 +167,7 @@ def _run_seed(seed: int) -> dict:
         }
     return {
         "seed": seed,
-        "donor_seed": seed + DONOR_OFFSET,
+        "donor_seed": host.seed + PROFILES[profile]["donor_offset"],
         "discovery": {
             "losses": {mode: arms[mode].final_loss for mode in ("random", "adaptive", "fixed")},
             "mutations": {
@@ -151,7 +191,9 @@ def run_shard(shard: int, shards: int, profile: str) -> Path:
     if path.exists():
         print(f"shard {shard}: already complete ({path.name})")
         return path
-    experiments = [_run_seed(seed) for seed in PROFILES[profile]["seeds"][shard::shards]]
+    experiments = [
+        _run_seed(seed, profile) for seed in PROFILES[profile]["seeds"][shard::shards]
+    ]
     directory.mkdir(parents=True, exist_ok=True)
     payload = {
         "shard": shard,
@@ -165,7 +207,7 @@ def run_shard(shard: int, shards: int, profile: str) -> Path:
 
 
 def _shards_for(profile: str) -> int:
-    return 20 if profile == "depth4" else 1
+    return 1 if profile == "smoke" else 20
 
 
 def load_shards(shards: int, profile: str) -> list[dict]:
@@ -182,7 +224,7 @@ def load_shards(shards: int, profile: str) -> list[dict]:
     return sorted(experiments, key=lambda exp: exp["seed"])
 
 
-def _comparison(deltas: list[float], alpha: float = DECLARED_ALPHA) -> dict:
+def _comparison(deltas: list[float], alpha: float) -> dict:
     """One pre-registered primary: sign-test statistics at the declared bar."""
     wins = sum(delta < 0 for delta in deltas)
     n = len(deltas)
@@ -204,7 +246,7 @@ def _comparison(deltas: list[float], alpha: float = DECLARED_ALPHA) -> dict:
     }
 
 
-def _built_in_checks(experiments: list[dict]) -> dict:
+def _built_in_checks(experiments: list[dict], profile: str) -> dict:
     """Pre-conditions that must hold before the primaries can be read.
 
     The load-bearing ones: the own-initialization rewind must reproduce a known
@@ -214,10 +256,12 @@ def _built_in_checks(experiments: list[dict]) -> dict:
     initialization held identical.
     """
     return {
-        "declared_bar_matches_exact_binomial": _gate_min_wins(DECLARED_N, DECLARED_ALPHA)
-        == DECLARED_BAR,
-        "registered_block_matches_declared_n": len(PROFILES["depth4"]["seeds"])
-        == DECLARED_N,
+        "declared_bar_matches_exact_binomial": _gate_min_wins(
+            DECLARED_N, _declared_alpha(profile)
+        )
+        == _declared_bar(profile),
+        "block_matches_declared_n": len(PROFILES[profile]["seeds"])
+        == PROFILES[profile].get("declared_n", DECLARED_N),
         "own_rewind_reproduces_fixed_arm_exactly": all(
             exp["transport"]["O_fixed"]["loss"] == exp["discovery"]["losses"]["fixed"]
             and exp["transport"]["O_fixed"]["training_flops"]
@@ -252,9 +296,10 @@ def summarize(profile: str) -> dict:
     spec = PROFILES[profile]
     experiments = load_shards(_shards_for(profile), profile)
     n = len(experiments)
-    checks = _built_in_checks(experiments)
+    checks = _built_in_checks(experiments, profile)
     if not all(checks.values()):
         raise SystemExit(f"built-in checks failed: {checks}")
+    alpha = _declared_alpha(profile)
 
     def losses(label: str) -> list[float]:
         return [exp["transport"][label]["loss"] for exp in experiments]
@@ -274,12 +319,12 @@ def summarize(profile: str) -> dict:
         for exp in experiments
     ]
     comparisons = {
-        "pairing_difference_in_differences": _comparison(pairing_deltas),
-        "D_vs_F": _comparison(delta("D", "F")),
-        "O_vs_D": _comparison(delta("O", "D")),
+        "pairing_difference_in_differences": _comparison(pairing_deltas, alpha),
+        "D_vs_F": _comparison(delta("D", "F"), alpha),
+        "O_vs_D": _comparison(delta("O", "D"), alpha),
         # Both sides on their own initialization - the section-5.17 P2 contrast
         # replicated on this block, and the row the synthesis table quotes.
-        "O_vs_O_fixed": _comparison(delta("O", "O_fixed")),
+        "O_vs_O_fixed": _comparison(delta("O", "O_fixed"), alpha),
         # Secondary controls: is the donor initialization intrinsically better or
         # worse for the unmutated topology, and does the fresh/foreign pair
         # behave alike?
@@ -287,9 +332,10 @@ def summarize(profile: str) -> dict:
             [
                 exp["transport"]["F"]["loss"] - exp["discovery"]["losses"]["fixed"]
                 for exp in experiments
-            ]
+            ],
+            alpha,
         ),
-        "D_vs_O_fixed": _comparison(delta("D", "O_fixed")),
+        "D_vs_O_fixed": _comparison(delta("D", "O_fixed"), alpha),
     }
     p1 = comparisons["pairing_difference_in_differences"]["passes"]
     p2 = comparisons["D_vs_F"]["passes"]
@@ -323,15 +369,18 @@ def summarize(profile: str) -> dict:
         "profile": profile,
         "report_section": spec["report_section"],
         "alpha": ALPHA,
-        "per_primary_alpha": DECLARED_ALPHA,
-        "declared_bar": DECLARED_BAR,
-        "donor_offset": DONOR_OFFSET,
+        "per_primary_alpha": alpha,
+        "declared_bar": _declared_bar(profile),
+        "depth": PROFILES[profile]["overrides"].get("depth", REGISTERED["depth"]),
+        "donor_offset": PROFILES[profile]["donor_offset"],
         "arms": ["random", "adaptive", "fixed"],
         "transports": {label: [list(pair), source] for label, (pair, source) in TRANSPORTS.items()},
         "independent_arm_rng": True,
         "seeds": list(spec["seeds"]),
-        "donor_seeds": [seed + DONOR_OFFSET for seed in spec["seeds"]],
-        "config": {**REGISTERED, "arms": ARMS},
+        "donor_seeds": [
+            seed + spec["donor_offset"] for seed in spec["seeds"]
+        ],
+        "config": {**REGISTERED, **PROFILES[profile]["overrides"], "arms": ARMS},
         "per_seed": [
             {
                 "seed": exp["seed"],
@@ -381,7 +430,7 @@ def summarize(profile: str) -> dict:
             "config": payload["config"],
             "seeds": payload["seeds"],
             "per_seed": payload["per_seed"],
-            "alpha": DECLARED_ALPHA,
+            "alpha": alpha,
         }
     )
     payload["study_id"] = f"study_{payload['study_hash']}"
@@ -393,8 +442,8 @@ def verdict(profile: str) -> int:
     payload = summarize(profile)
     n = len(payload["seeds"])
     print(
-        f"built-in check: declared bar {DECLARED_BAR} equals the exact binomial bar at "
-        f"n={DECLARED_N}, alpha={DECLARED_ALPHA}: "
+        f"built-in check: declared bar {payload['declared_bar']} equals the exact "
+        f"binomial bar at n={DECLARED_N}, alpha={payload['per_primary_alpha']}: "
         f"{payload['built_in_checks']['declared_bar_matches_exact_binomial']}"
     )
     print(

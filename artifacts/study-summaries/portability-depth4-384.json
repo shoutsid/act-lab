@@ -102,6 +102,7 @@
  },
  "config_hash": "be0b4892acd23584",
  "declared_bar": 212,
+ "depth": 4,
  "discovery_means": {
   "adaptive": 12.36961554425458,
   "fixed": 12.400253174205622,
