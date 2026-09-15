@@ -815,7 +815,7 @@ and per-event landscapes are in `artifacts/real-diag/diagnostic.json`
 (run log `run-heldout-long.log` alongside); 8-seed power caveats apply
 throughout.
 
-### 5.4 Pre-registration: accept/reject gating of random draws (designed, not yet run)
+### 5.4 Pre-registration: accept/reject gating of random draws (RAN - outcome in section 5.7)
 
 **Motivation.** Section 5.3's unified verdict locates the failure in the
 probe's candidate ORDERING, not in its measurements: the same probe
@@ -1146,7 +1146,7 @@ beat doing nothing"; with draw-minus-reference >= 0 in 24/24, large theta
 approaches the random arm and the informative window is narrow. Eight-seed
 power caveats apply throughout.
 
-### 5.8 Pre-registration: the do-nothing control arm (designed, not yet run)
+### 5.8 Pre-registration: the do-nothing control arm (IMPLEMENTED as the `null` arm; results in sections 5.9, 5.10 and 5.15)
 
 **Motivation.** Section 5.7's follow-up (1). The gated outcome's 8/8 win
 was produced by an arm that performed zero mutations - either churn harm
@@ -1223,7 +1223,7 @@ still applies; a powered confirmation on a fresh block (or at the toy
 scale where 384 seeds are cheap) is the next pre-registration if this axis
 is pursued.
 
-### 5.9 Pre-registration: does the toy adaptive edge clear the do-nothing bar? (designed, not yet run)
+### 5.9 Pre-registration: does the toy adaptive edge clear the do-nothing bar? (RAN - suite `null_toy_study.py`, summary `null-control-depth1-384.json`)
 
 **Motivation.** Sections 5.7-5.8 established real-text churn harm and showed
 a do-nothing arm beating random churn there. Every toy Gate-style pass -
@@ -1300,7 +1300,7 @@ section 9.5; the open question is whether the section-5.6 depth-4 pass
 (spread policy, a 20-candidate pool genuinely larger than the cap)
 clears the do-nothing bar - pre-registered next as section 5.10.
 
-### 5.10 Pre-registration: the depth-4 confirmation against the null arm (designed, not yet run)
+### 5.10 Pre-registration: the depth-4 confirmation against the null arm (RAN - summary `null-control-depth4-384.json`)
 
 **Motivation.** Section 5.9's branch 2 leaves the project's current Gate 3
 evidence - the section-5.6 depth-4 confirmation (spread policy, cap 4 over
@@ -1360,7 +1360,7 @@ third control under it. (Revised by section 5.12: the depth x policy 2x2
 shows DEPTH, not the candidate policy, is the separating factor - the
 attribution above is confounded and superseded.)
 
-### 5.11 Pre-registration: the intermediate-theta sweep against the null arm (designed, not yet run)
+### 5.11 Pre-registration: the intermediate-theta sweep against the null arm (RAN - summary `theta-sweep-9008-9017.json`; `IMPLEMENTATION_STATUS.md`)
 
 **Motivation.** Section 5.7's follow-up (2), now correctly aimed: the
 question is not "does gating beat random" (doing nothing already does,
@@ -1454,7 +1454,7 @@ The next real-data direction moves off probe-derived selection entirely
 this scale). The honest real-text ladder is null < everything: at this
 fidelity the only topology policy that helps is none.
 
-### 5.12 Pre-registration: the depth x candidate-policy 2x2 null-control study (designed, not yet run)
+### 5.12 Pre-registration: the depth x candidate-policy 2x2 null-control study (RAN - summaries `null-control-depth1-spread-384.json`, `null-control-depth4-prefix-384.json`)
 
 **Motivation.** Sections 5.9 and 5.10 differ in TWO registered fields at
 once: 5.9 is depth 1 + the prefix candidate policy, 5.10 is depth 4 +
@@ -1539,7 +1539,7 @@ budget. Gate 3's value-creation claim should be quoted as depth-driven
 at this scale; the depth-1 rows (all four arms' comparisons at depth 1)
 remain churn-suppression phenomena.
 
-### 5.13 Pre-registration: the routing-statistics heuristic against the null arm (designed, not yet run)
+### 5.13 Pre-registration: the routing-statistics heuristic against the null arm (RAN - summary `heuristic-9008-9017.json`)
 
 **Motivation.** Section 5.11's falsification branch named the next
 real-data direction: off probe-derived selection entirely, starting
@@ -1706,7 +1706,7 @@ the queue, plus per-session restore/publish overhead. It runs as
 regular sessions in the same 12-hour Kaggle windows, after the primary
 queue completes (the runbook order).
 
-### 5.15 Pre-registration: the depth dose-response of value creation (designed, not yet run)
+### 5.15 Pre-registration: the depth dose-response of value creation (RAN - summaries `null-control-depth2-384.json`, `null-control-depth3-384.json`; `IMPLEMENTATION_STATUS.md`)
 
 **Motivation.** The 2x2 (5.12) established that DEPTH - not the candidate
 policy - separates churn suppression (depth 1: adaptive loses to the

@@ -53,6 +53,43 @@ def test_every_cited_study_id_has_a_committed_summary() -> None:
     )
 
 
+SECTION_HEADER = re.compile(r"^### (5\.\d+(?:\.\d+)?) (.*)$", re.M)
+
+
+def test_no_section_header_contradicts_its_own_summary() -> None:
+    """A section labelled "not yet run" must not have a committed summary.
+
+    The section list is how a reader enters this report, and several entries were
+    labelled "designed, not yet run" long after their blocks had run and their
+    summaries were committed - the same drift that let section 5.19 be cited with
+    no artifact. ``report_section`` is machine-readable, so the contradiction is
+    checkable: a summary that names a section proves that section ran.
+    """
+    report = REPORT.read_text()
+    stale = []
+    for match in SECTION_HEADER.finditer(report):
+        section, title = match.group(1), match.group(2)
+        if "not yet run" not in title:
+            continue
+        proving = [
+            filename
+            for study_id, filename in _records().items()
+            if _section_of(filename) == section
+        ]
+        if proving:
+            stale.append((section, proving))
+    assert not stale, (
+        "section header(s) still say 'not yet run' but a committed summary "
+        f"proves the block ran: {stale}. Relabel the header."
+    )
+
+
+def _section_of(filename: str) -> str | None:
+    payload = json.loads((summaries_dir() / filename).read_text())
+    section = payload.get("report_section")
+    return section if isinstance(section, str) else None
+
+
 def test_every_committed_summary_is_referenced() -> None:
     """A committed artifact must be reachable from the written record."""
     text = REPORT.read_text() + STATUS.read_text()
