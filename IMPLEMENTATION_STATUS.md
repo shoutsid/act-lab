@@ -1506,6 +1506,30 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   `tests/test_specificity_summary.py`; the observation is pinned to its source
   summaries by `tests/test_fused_vs_frozen_observation.py`, which also fails if
   the report drops the "unregistered" label.
+- **Section 5.23 RAN (2026-09-15, blocks 94000-94383 depth 2 / 95000-95383 depth
+  3, `scripts/optimizer_reset_study.py`).** The confound section 5.22 left open,
+  decomposed with a new opt-in knob `ExperimentConfig.optimizer_reset_steps`
+  (empty by default, so no published number moves): a twin run whose genome,
+  weights, seed and data schedule are identical to the fixed arm's and which
+  differs **only** by discarding Adam's moments at steps 12/24/36. Registered
+  verdict **branch (c)**: resets cost nothing - P1 fails at both depths *in the
+  exonerating direction* (the reset twin was slightly BETTER, `F` winning only
+  157/384 and 105/384, mean +0.005 / +0.016) - while the rebuild alone accounts
+  for the whole penalty (`U` < `R`: 299/384 and 311/384, mean -0.1069 / -0.1276,
+  against section 5.22's total -0.0996 / -0.1219 on independent blocks). **So
+  section 5.22's delivery change stands unqualified and the cheap alternative is
+  closed off: preserving optimizer state across mutations would buy nothing.**
+  Prediction declared as correct here after four consecutive understatements, and
+  the pre-registration disclosed that it was informed by a spent-block smoke that
+  pointed against the mechanism the design was built to detect. What remains
+  unseparated: the reset twin keeps the *initial* architecture (so `U` vs `R` is
+  a between-topology contrast), and a grow's fresh expert initialization is not
+  isolated at all - it is now the leading candidate. Summaries
+  `artifacts/study-summaries/optimizer-reset-depth{2,3}-384.json`
+  (`study_e0f1f2629785dc17`, `study_09573ffbfb828091`), pinned by
+  `tests/test_optimizer_reset_summary.py` (which also pins that the rebuild's
+  cost is 0.8-1.2x the 5.22 penalty, so the decomposition cannot silently stop
+  closing) and `tests/test_optimizer_reset_control.py`.
 - **Report-artifact link guard (2026-09-15).** Section 5.19's missing summaries
   were a defect *class*, not an incident: a result can be cited widely while its
   artifact does not exist. `tests/test_report_artifact_links.py` now fails if any

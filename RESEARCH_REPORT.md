@@ -2901,6 +2901,168 @@ resets, and capacity loss from pruning - remain live, and the frozen path is
 *different work* rather than strictly less. The teacher treatment is still
 untested.
 
+### 5.22.1 Post-hoc: the penalty is not a capacity artifact
+
+Section 5.22's adopted consequence - two-stage delivery - is only earned if the
+penalty is a **process** effect. The competing reading is that a frozen retrain
+simply trains a *smaller* model (mutating arms prune), and that smaller models
+train better at this scale, in which case the operational lesson would be "prune
+early", not "freeze and retrain". Two independent checks over all five blocks
+that carry these contrasts rule that out.
+
+**1. The penalty does not track how much the topology changed size.** Per seed,
+correlating the fused-run penalty against the frozen topology's size change:
+
+| block | corr(penalty, size change) | seeds where the topology shrank |
+|---|---|---|
+| depth 2 (5.20) | −0.039 | 52% |
+| depth 3 (5.20) | −0.051 | 56% |
+| depth 4 (5.17) | −0.002 | 54% |
+| depth 2 (5.22) | +0.013 | 46% |
+| depth 3 (5.22) | +0.046 | 48% |
+
+Every correlation is within ±0.05 of zero, and four of five are negative - seeds
+whose topology shrank *more* paid a slightly *smaller* penalty. The last column
+matters on its own: random churn **grows** experts in roughly half the seeds, so
+"the run got pruned" is not even the typical case the penalty is charged in.
+
+**2. Size buys nothing when the process is removed.** Comparing the frozen
+retrain of the churned topology against the frozen retrain of the *unpruned*
+initial topology - same process on both sides, so this is a pure capacity
+comparison - the churned topology is not better in any block: `213/384`, `197/384`,
+`205/384`, `195/384`, `214/384` (means −0.021 to −0.001). A pruned topology,
+retrained, is indistinguishable from the unpruned one. "Smaller models train
+better at this scale" is therefore false at this fidelity.
+
+Together these say the fused run loses ~0.1 nats to something the *process* does,
+not to the size of the model it ends up with. The frozen path also does *less*
+per-step work when the topology shrank, which pushes the same direction. **The
+one live confound left is optimizer history**: a frozen retrain starts a fresh
+optimizer while the fused run rebuilds one at each of its three mutations, and
+that is not separable from these blocks. It is named here rather than controlled,
+and is the next registered axis.
+
+### 5.23 Pre-registration: is the mid-training penalty optimizer history or the architecture change?
+
+**Motivation.** Section 5.22 established the penalty and section 5.22.1 ruled
+out the size of the resulting topology. One confound is left, and it is a
+mechanical one rather than a statistical one: the mutation path re-creates the
+optimizer whenever it rebuilds the model - `_mutate_by_probe` and the random path
+both assign a fresh `torch.optim.AdamW` after `rebuild_model_from_genome` - so
+every event discards all Adam moment estimates. A fused run therefore pays three
+full Adam restarts that a frozen retrain never pays. If that is the whole story,
+the ~0.10-nat penalty is **not** evidence that mutating a live run is
+architecturally harmful, and section 5.22's adopted consequence would be
+qualified: the cheap fix would be to preserve optimizer state across mutations
+rather than to abandon the fused pipeline.
+
+**Design.** New opt-in knob `ExperimentConfig.optimizer_reset_steps`: at the named
+steps every arm's optimizer is re-created from scratch with the genome and the
+weights untouched. It is empty by default, so no published number moves. Per seed,
+on one initial model and one data schedule:
+
+| run | what it is | differs from | by |
+|---|---|---|---|
+| `F` | the `fixed` arm's own run | - | - |
+| `U` | the same unmutated genome, optimizer reset at 12/24/36 | `F` | optimizer history **alone** |
+| `R` | the fused `random` arm | `U` | the mid-flight rebuild |
+| `A` | the fused `adaptive` arm | `U` | the mid-flight rebuild |
+
+`F` and `U` share a seed, an initial model, a data schedule and a genome (the last
+is a built-in check), so a difference between them cannot be anything but the
+optimizer. Fresh blocks, 20-way sharding: **depth 2 = 94000-94383**, **depth 3 =
+95000-95383**.
+
+**Primaries (per depth, n = 384), Bonferroni `alpha/4 = 0.0125` -> bar 215.**
+1. **reset cost** - `F` < `U`. Does optimizer history alone move the loss?
+2. **architecture cost beyond resets** - `U` < `R`. Is the fused run worse than a
+   run that only resets?
+
+**Prediction (declared before the registered blocks, and informed by a spent-block
+smoke that is disclosed rather than hidden).** The machinery smoke ran on seeds
+73000-73002 (spent): the reset-only twin was near-neutral and flipped sign across
+seeds (per-seed `+0.025`, `+0.050`, `-0.024`, mean `+0.017`), against a penalty of
+`~0.10`. That is a factor of six smaller and not consistently signed, so **P1 is
+predicted to FAIL and P2 to PASS: branch (c).** Stating this is the point of the
+smoke convention used elsewhere in this report - a prediction chosen from a spent
+block is declared as such, and here it points *against* the mechanism the design
+was built to detect. Three seeds at depth 4 cannot settle it, which is why the
+registered block exists.
+
+**Pre-registered interpretation (fixed before running).**
+- (a) P1 and P2 both pass: **two components** - Adam restarts cost something and
+  the rebuild costs something on top. Two-stage delivery stands, and
+  optimizer-preserving mutation becomes a partial fix worth its own study.
+- (b) P1 passes and P2 fails: the penalty is **essentially all optimizer reset**.
+  Section 5.22's delivery change is qualified (the fused pipeline is viable if
+  Adam state survives), and the recommended fix is optimizer preservation.
+- (c) P1 fails: **resets are not the cost** - the architecture change is.
+  Section 5.22's adopted consequence stands unqualified and no cheaper fix
+  exists on this axis. This is the branch the disclosed smoke predicts.
+
+**Secondaries (reported, not verdict-bearing).** `U` vs `A` (the adaptive arm's
+penalty against the same reset-only reference); the reset step count and their
+sizing against the fused schedule; and the reset-only loss means beside the fused
+means, so the magnitude comparison is readable without recomputing it.
+
+**Scope limits (pre-declared).** Toy fidelity, synthetic tokens, one substrate,
+`spread` policy. The reset twin keeps the *initial* architecture, so P2 compares
+two different final topologies rather than one topology in two processes -
+`U` vs `R` is a legitimate directional test of "does the rebuild cost beyond
+resets" but it is not a same-topology contrast, and it is recorded as such. The
+other half of the mechanism, a fresh expert's random initialization after a grow,
+is not isolated by this design at all.
+
+**Cost.** 2 runs per seed instead of 1 discovery plus 3 retrains, so cheaper than
+section 5.22: ~2.5 s/seed at these depths, well under 10 minutes of CPU across 20
+shards per block.
+
+### 5.23 Outcome: resets cost nothing - the architecture change is the whole penalty (branch (c))
+
+Run on the registered fresh blocks 94000-94383 (depth 2) and 95000-95383 (depth
+3), `study_e0f1f2629785dc17` and `study_09573ffbfb828091`. Every built-in check
+held in both blocks, including the one that makes the control clean: the
+reset-only twin's genome is byte-identical to the fixed arm's, it never mutated,
+and it books exactly the same training FLOPs - so `F` and `U` differ by optimizer
+history and nothing else.
+
+| | depth 2 (n = 384) | depth 3 (n = 384) |
+|---|---|---|
+| **P1** reset cost: `F` < `U` | 157/384, mean +0.0049, p 1.00 | 105/384, mean +0.0164, p 1.00 |
+| **P2** rebuild cost beyond resets: `U` < `R` | **299/384**, mean −0.1069, p 2.48e-29 | **311/384**, mean −0.1276, p 2.22e-36 |
+| context: `U` < `A` | 235/384, mean −0.0402, p 6.66e-06 | 223/384, mean −0.0354, p 9.08e-04 |
+
+Bar 215 at `alpha/4 = 0.0125`.
+
+**Registered verdict: branch (c) - resets are not the cost, and the architecture
+change is.** P1 fails at both depths *and in the exonerating direction*: the
+reset-only twin was not merely unharmed but slightly **better** than its no-reset
+twin in the majority of seeds (`F` wins only 157/384 and 105/384; the twin's mean
+advantage is 0.005 and 0.016 nats). Three full Adam restarts cost nothing
+measurable on this substrate.
+
+**The accounting closes.** The rebuild's cost alone (`U` vs `R`: −0.1069, −0.1276)
+is within a few percent of the *entire* penalty section 5.22 measured against the
+fused random arm on independent blocks (−0.0996, −0.1219). Optimizer history
+accounts for **zero** of the penalty; the mid-flight architecture change accounts
+for all of it. Section 5.22's adopted consequence therefore stands unqualified,
+and the cheaper alternative is closed off: preserving Adam state across mutations
+would buy nothing.
+
+**Prediction correct, and it was the smoke that got it right.** Section 5.23
+declared P1 fail / P2 pass before the registered blocks, on the strength of three
+spent-block seeds whose reset twin was near-neutral and sign-flipping. That is the
+first correct prediction in this sequence after four that understated an effect,
+and the difference is that this one was grounded in a measurement rather than in
+a prior about which axis *should* matter.
+
+**What remains unseparated.** The reset twin keeps the *initial* architecture, so
+`U` vs `R` is a between-topology comparison: it shows the fused run is worse than
+a resets-only run, not that one topology is worse in two processes. And the
+component that a grow introduces - a **fresh random initialization for the new
+expert** - is not isolated by this design at all; it is now the leading candidate
+for what remains inside "the architecture change".
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

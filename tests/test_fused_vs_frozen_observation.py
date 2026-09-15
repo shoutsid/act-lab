@@ -106,3 +106,73 @@ def test_section_5_21_is_still_labelled_unregistered() -> None:
         "must keep the 'unregistered' label"
     )
     assert "Prediction" not in match.group(1)
+
+
+#: Section 5.22.1: block -> (summary file, churned transport, fused arm, fixed transport)
+CAPACITY_BLOCKS = {
+    "5.20-d2": ("specificity-depth2-384.json", "R_own", "random", "F_own"),
+    "5.20-d3": ("specificity-depth3-384.json", "R_own", "random", "F_own"),
+    "5.17-d4": ("initialization-depth4-384.json", "B_random", "random", "B_fixed"),
+    "5.22-d2": ("frozen-delivery-depth2-384.json", "R_own", "random", "F_own"),
+    "5.22-d3": ("frozen-delivery-depth3-384.json", "R_own", "random", "F_own"),
+}
+#: Quoted correlation between the fused-run penalty and the topology's size change.
+QUOTED_CAPACITY_CORRELATION = {
+    "5.20-d2": -0.039, "5.20-d3": -0.051, "5.17-d4": -0.002,
+    "5.22-d2": 0.013, "5.22-d3": 0.046,
+}
+#: Quoted frozen-churned vs frozen-unpruned win counts.
+QUOTED_FROZEN_VS_UNPRUNED = {
+    "5.20-d2": 213, "5.20-d3": 197, "5.17-d4": 205, "5.22-d2": 195, "5.22-d3": 214,
+}
+
+
+def _capacity_rows(block: str) -> dict:
+    name = CAPACITY_BLOCKS[block][0]
+    return json.loads((summaries_dir() / name).read_text())
+
+
+def _pearson(xs: list[float], ys: list[float]) -> float:
+    n = len(xs)
+    mx, my = sum(xs) / n, sum(ys) / n
+    cov = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    vx = sum((x - mx) ** 2 for x in xs) ** 0.5
+    vy = sum((y - my) ** 2 for y in ys) ** 0.5
+    return cov / (vx * vy)
+
+
+def test_section_5_22_1_penalty_is_independent_of_size_change() -> None:
+    """The adopted consequence needs the penalty to be a process effect.
+
+    If the penalty tracked how much the topology shrank, "the frozen retrain just
+    trains a smaller model" would explain it, and the lesson would be to prune
+    early instead of to freeze and retrain. Section 5.22.1 reports near-zero
+    correlations; this pins that they stay near zero.
+    """
+    for block, quoted in QUOTED_CAPACITY_CORRELATION.items():
+        _name, transport, arm, fixed = CAPACITY_BLOCKS[block]
+        rows = _capacity_rows(block)["per_seed"]
+        penalty = [r["discovery_losses"][arm] - r["transport_losses"][transport] for r in rows]
+        shrink = [
+            r["transport_active_parameter_count"][fixed]
+            - r["transport_active_parameter_count"][transport]
+            for r in rows
+        ]
+        assert abs(_pearson(penalty, shrink)) < 0.1, (block, _pearson(penalty, shrink))
+        assert abs(_pearson(penalty, shrink) - quoted) < 5e-3, block
+
+
+def test_section_5_22_1_size_buys_nothing_when_frozen() -> None:
+    """With the process removed, the churned topology must NOT be better.
+
+    Same frozen treatment on both sides, so any win would be a pure capacity
+    effect. None of the five blocks shows one - that is what makes "smaller
+    models train better at this scale" unavailable as an explanation.
+    """
+    for block, quoted in QUOTED_FROZEN_VS_UNPRUNED.items():
+        _name, transport, _arm, fixed = CAPACITY_BLOCKS[block]
+        rows = _capacity_rows(block)["per_seed"]
+        deltas = [r["transport_losses"][transport] - r["transport_losses"][fixed] for r in rows]
+        wins = sum(delta < 0 for delta in deltas)
+        assert wins == quoted, (block, wins)
+        assert wins <= 0.6 * len(deltas), (block, wins)

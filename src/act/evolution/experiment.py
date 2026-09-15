@@ -64,6 +64,16 @@ class ExperimentConfig:
     probe_landscape: bool = False
     probe_force_candidate: int | None = None
     probe_force_events: int | None = None
+    # Steps at which every arm's optimizer is re-created from scratch, with no
+    # change to the genome or the weights - Adam's moment estimates are simply
+    # discarded, which is what the mutation path does as a side effect of
+    # rebuilding the model (see ``_mutate_by_probe`` / the random path: both
+    # assign a fresh AdamW after rebuilding). It exists so the mid-training
+    # process penalty of report section 5.22 can be decomposed: a run whose only
+    # difference from its twin is these resets isolates the optimizer cost from
+    # the architecture-change cost. Empty (the default) leaves every published
+    # number untouched.
+    optimizer_reset_steps: tuple[int, ...] = ()
     arms: str = "fixed,random,adaptive"
     device: str = "cpu"
 
@@ -191,6 +201,15 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
         raise ValueError("probe_force_candidate must be non-negative when set")
     if config.probe_force_events is not None and config.probe_force_events < 1:
         raise ValueError("probe_force_events must be at least 1 when set")
+    reset_steps = config.optimizer_reset_steps
+    if reset_steps and (
+        any(step < 1 or step > config.steps for step in reset_steps)
+        or tuple(sorted(set(reset_steps))) != reset_steps
+    ):
+        raise ValueError(
+            "optimizer_reset_steps must be strictly increasing positive steps "
+            "within the run"
+        )
     arm_modes = _parse_arms(config.arms)
     torch.manual_seed(config.seed)
     initial_genome = create_genome(
@@ -231,6 +250,7 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
         )
         for mode in arm_modes
     )
+    reset_step_set = set(config.optimizer_reset_steps)
     for step, tokens in enumerate(_training_batches(config, device), start=1):
         for arm_index, arm in enumerate(arms):
             arm.optimizer.zero_grad(set_to_none=True)
@@ -238,6 +258,12 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
             loss.backward()
             arm.optimizer.step()
             arm.training_flops += arm.model.parameter_count * tokens.numel() * 2
+            if step in reset_step_set:
+                # Section 5.23's control: discard Adam's moments without
+                # touching the genome or the weights.
+                arm.optimizer = torch.optim.AdamW(
+                    arm.model.parameters(), lr=config.learning_rate
+                )
             if (
                 arm.mode != "fixed"
                 and step % config.mutation_interval == 0
