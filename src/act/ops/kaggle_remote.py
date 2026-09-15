@@ -35,6 +35,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import shutil
+import tarfile
 import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -159,37 +160,17 @@ class KaggleApiAdapter:
                 "the kaggle package is required for remote dataset access; "
                 "it is preinstalled on Kaggle images (pip install kaggle elsewhere)"
             )
-        import tarfile
-
-        self._tarfile = tarfile
         from kaggle.api.kaggle_api_extended import KaggleApi
 
         self._api = KaggleApi()
         self._api.authenticate()
-
-    def _stage_push(self, folder: Path, staging: Path) -> None:
-        """Stage the pushed folder: one tar per seed dir, files copied flat."""
-        for entry in sorted(folder.iterdir()):
-            if entry.name == METADATA_NAME:
-                continue  # re-copied last, from its canonical source
-            if entry.is_dir():
-                archive = staging / f"{entry.name}.tar"
-                with self._tarfile.open(archive, "w") as tar:
-                    for path in sorted(entry.rglob("*")):
-                        if path.is_file():
-                            tar.add(path, arcname=str(Path(entry.name) / path.relative_to(entry)))
-            elif entry.is_file():
-                shutil.copy2(entry, staging / entry.name)
-        metadata = folder / METADATA_NAME
-        if metadata.is_file():
-            shutil.copy2(metadata, staging / METADATA_NAME)
 
     def create_version(self, folder: Path, version_notes: str) -> str:
         folder = Path(folder)
         with tempfile.TemporaryDirectory(prefix="act-kaggle-push-") as scratch:
             staging = Path(scratch) / "push"
             staging.mkdir()
-            self._stage_push(folder, staging)
+            stage_push(folder, staging)
             try:
                 self._api.dataset_create_version(
                     str(staging), version_notes, dir_mode="skip", quiet=True
@@ -205,6 +186,39 @@ class KaggleApiAdapter:
 
     def download_files(self, dataset: str, target: Path) -> None:
         self._api.dataset_download_files(dataset, path=str(target), unzip=True)
+
+
+def stage_push(folder: str | Path, staging: str | Path) -> None:
+    """Stage the pushed folder: one tar per seed dir, plain files copied flat.
+
+    This is the upload layout the live probes established (see the adapter's
+    docstring): the service extracts uploaded archives and keeps their
+    *internal* paths, so each seed is archived under ``seed-NNNN/...``. Get
+    the prefix wrong and every seed's files land at the archive root and
+    collide - a silently corrupt dataset that still reports as published.
+    Module-level and free of the API client so that behaviour is testable
+    without authenticating.
+    """
+    source = Path(folder)
+    target = Path(staging)
+    target.mkdir(parents=True, exist_ok=True)
+    for entry in sorted(source.iterdir()):
+        if entry.name == METADATA_NAME:
+            continue  # re-copied last, from its canonical source
+        if entry.is_dir():
+            archive = target / f"{entry.name}.tar"
+            with tarfile.open(archive, "w") as tar:
+                for path in sorted(entry.rglob("*")):
+                    if path.is_file():
+                        tar.add(
+                            path,
+                            arcname=str(Path(entry.name) / path.relative_to(entry)),
+                        )
+        elif entry.is_file():
+            shutil.copy2(entry, target / entry.name)
+    metadata = source / METADATA_NAME
+    if metadata.is_file():
+        shutil.copy2(metadata, target / METADATA_NAME)
 
 
 def _is_missing_dataset_error(error: Exception) -> bool:

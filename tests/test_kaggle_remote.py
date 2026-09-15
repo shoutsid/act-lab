@@ -27,8 +27,10 @@ from act.ops.kaggle_remote import (
     publish_on_exit,
     restore_latest,
 )
+import tarfile
+
 from act.training import V0SessionConfig, run_v0_session
-from act.training.v0_handoff import HANDOFF_DATASET, publish_seed
+from act.training.v0_handoff import HANDOFF_DATASET, publish_seed, restore_seed
 
 
 class FakeClient:
@@ -97,6 +99,88 @@ def _publish_local_seed(tmp_path: Path, seed: int) -> Path:
         dataset_root, result, session_dir=session_dir, code_revision="test-rev"
     )
     return dataset_root
+
+
+class _ExtractingService:
+    """A client that behaves like the real service's extraction.
+
+    ``stage_push`` uploads one tar per seed directory; Kaggle stores those as
+    flat files and expands them server-side, and keeps the archives'
+    *internal* paths. ``download_files`` therefore re-materialises internal
+    paths, not the archive names - which is exactly what makes the arcname
+    prefix load-bearing.
+    """
+
+    def __init__(self, staging: Path) -> None:
+        self.staging = staging
+        self.downloads: list[str] = []
+
+    def download_files(self, dataset: str, target: Path) -> None:
+        self.downloads.append(dataset)
+        target.mkdir(parents=True, exist_ok=True)
+        for entry in sorted(self.staging.iterdir()):
+            if entry.suffix == ".tar":
+                with tarfile.open(entry) as tar:
+                    tar.extractall(target)
+            else:
+                shutil.copy2(entry, target / entry.name)
+
+
+def test_the_publish_round_trip_rebuilds_the_handoff_tree(tmp_path: Path) -> None:
+    """Stage, upload, extract, download and merge - the whole remote joint.
+
+    The adapter's docstring records why the staging exists at all (the naive
+    upload silently produced an *empty* dataset, and per-directory tarring
+    flattened every seed to the archive root where they collided), but
+    nothing pinned it. A regression here corrupts the published dataset while
+    still reporting ``published``, and the run would spend its remaining
+    quota re-training seeds that were already done.
+    """
+    dataset_root = _publish_local_seed(tmp_path, 15000)
+    _publish_local_seed(tmp_path, 15001)
+    handoff = dataset_root / HANDOFF_DATASET
+    dataset = "owner/act-v0-5-1"
+    ensure_metadata(handoff, dataset)
+
+    staging = tmp_path / "staging"
+    kaggle_remote.stage_push(handoff, staging)
+
+    # One archive per seed, each rooted at its own seed directory: without the
+    # prefix both seeds' checkpoints would land on the same paths.
+    archives = sorted(path.name for path in staging.glob("*.tar"))
+    assert archives == ["seed-15000.tar", "seed-15001.tar"]
+    with tarfile.open(staging / "seed-15000.tar") as tar:
+        names = tar.getnames()
+    assert names and all(name.startswith("seed-15000/") for name in names)
+
+    # Restore into a *fresh* root, as a later session does.
+    fresh = tmp_path / "fresh"
+    service = _ExtractingService(staging)
+    restored = restore_latest(fresh, dataset=dataset, client=service)
+
+    assert restored == [15000, 15001]
+    assert service.downloads == [dataset]
+    # Byte-exact, not merely present: restore_seed verifies every checksum the
+    # pre-upload manifest recorded, so a mangled archive fails here.
+    session_dir = tmp_path / "restored-session"
+    assert restore_seed(fresh, 15000, session_dir=session_dir).is_dir()
+    assert restore_seed(fresh, 15001, session_dir=session_dir).is_dir()
+
+
+def test_stage_push_copies_plain_files_and_the_metadata(tmp_path: Path) -> None:
+    source = tmp_path / "handoff"
+    (source / "seed-15000").mkdir(parents=True)
+    (source / "seed-15000" / "seed-summary.json").write_text("{}")
+    (source / "revision.txt").write_text("abc\n")
+    (source / METADATA_NAME).write_text('{"id": "owner/slug"}')
+
+    staging = tmp_path / "staging"
+    kaggle_remote.stage_push(source, staging)
+
+    # A loose file stays a loose file; the metadata is re-copied from source.
+    assert (staging / "revision.txt").read_text() == "abc\n"
+    assert json.loads((staging / METADATA_NAME).read_text())["id"] == "owner/slug"
+    assert (staging / "seed-15000.tar").is_file()
 
 
 def test_dataset_metadata_requires_owner_slug() -> None:

@@ -731,6 +731,21 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   `exit_code` 1 matching the process exit code 1. The reader/writer coupling
   is now pinned by a test, because the existing verdict tests hand-build their
   summaries and never fed the script a summary the runner wrote.
+- **The remote publish round trip is now pinned, not just asserted.** The
+  adapter's docstring records that the upload layout was established by live
+  probes because the *naive* upload silently produced an empty dataset and
+  per-directory tarring flattened every seed to the archive root where they
+  collided - but the staging that fixes it had **no test coverage at all**, and
+  its failure mode is a corrupt dataset that still reports `published`. (That
+  is now caught twice over: the driver's no-progress guard would also fire,
+  because a later session would re-train seeds that were never really
+  published.) `stage_push` is now a module-level function free of the API
+  client, so it is testable without authenticating, and a test drives the
+  whole joint - stage, upload, service-side extraction, download, merge - into
+  a fresh root, asserting one archive per seed rooted at `seed-NNNN/`, both
+  seeds restored, and every checksum from the pre-upload manifest verified
+  through `restore_seed`. Confirmed to have teeth: dropping the arcname prefix
+  reproduces the collision and fails the test.
 - **The driver refuses to repeat a session that advanced nothing.** A session
   whose clock never fit a pair reports *success* while writing no progress
   (rule 1 idles it), and the loop would push again - up to `--max-sessions`
