@@ -1945,6 +1945,15 @@ capacity-matched, adaptive beats random `40/90` (bar 59) - i.e. not even
 at the loose bar. A structural win here would not have been bought with
 parameters, and there is no win to explain.
 
+> **Superseded in part - read section 5.18.2 before quoting this.** The
+> comparison this section fails is *initialization-mismatched*: the adaptive
+> side carries a redrawn initialization while the control carries its original
+> one. Section 5.18 re-ran it with initialization matched on both sides (donor
+> on both: `234/384`; own on both: `293/384`) and the topology wins both times.
+> The registered verdict below stands as what this section's design could
+> measure, not as the project's finding on whether the topology is a standalone
+> artifact.
+
 **Reading.** Under either bar, primary 2 fails: a topology discovered by the
 probing arm is *not* a better standalone architecture than the initial,
 never-mutated one. Primary 1 is the knife edge - directionally favourable
@@ -2145,6 +2154,12 @@ the block was run.**
 Transport arm means: `B_adaptive 12.3101 < C_random 12.3776 < C_adaptive 12.3907
 < B_random 12.4200 < B_fixed 12.4224`. Discovery means: `adaptive 12.4062 <
 fixed 12.4224 < random 12.5003`.
+
+> **Extended by section 5.18.** This section's own-initialization rows are the
+> *matched* half of the picture and are confirmed there (`O` vs `O_fixed`,
+> `293/384`); its fresh-init rows (`198/384`) are the *mismatched* half and are
+> explained there as an unmatched control rather than as a weak topology. Read
+> 5.18.2 for the synthesis.
 
 **What this says.** With the initialization held as level as the topology
 allows - both sides carry their original initialization, one as the unmutated
