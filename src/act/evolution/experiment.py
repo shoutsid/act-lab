@@ -83,6 +83,16 @@ class ExperimentConfig:
     # (preserve_router=True)`). Report section 5.24 tests whether the
     # mid-training penalty is this discard.
     preserve_router_on_rebuild: bool = False
+    # Force every mutation by a non-adaptive arm to be a grow or a prune, instead
+    # of the seeded chooser's coin flip. It exists so the residual mid-training
+    # penalty (report section 5.25) can be attributed: a run whose events are ALL
+    # prunes isolates a pruned expert's lost capacity, one whose events are ALL
+    # grows isolates a new expert's fresh initialization. None (the default) is
+    # the historical coin flip and changes nothing. A forced operation that the
+    # genome cannot perform is left unperformed rather than replaced by the
+    # opposite operation, so a profile that silently stops mutating fails its
+    # budget check instead of measuring the wrong thing.
+    forced_operation: str | None = None
     arms: str = "fixed,random,adaptive"
     device: str = "cpu"
 
@@ -205,6 +215,8 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
         raise ValueError("unsupported probe_candidate_policy")
     if config.probe_selection not in {"argmin", "argmax", "random"}:
         raise ValueError("unsupported probe_selection")
+    if config.forced_operation not in {None, "grow", "prune"}:
+        raise ValueError("forced_operation must be None, 'grow' or 'prune'")
     if config.probe_batch_count < 1:
         raise ValueError("probe_batch_count must be at least 1")
     if config.probe_force_candidate is not None and config.probe_force_candidate < 0:
@@ -312,6 +324,7 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
                     config.probe_landscape,
                     config.probe_force_candidate,
                     config.probe_force_events,
+                    config.forced_operation,
                 )
     validation_tokens = _validation_batches(config, device)
     results = tuple(
@@ -552,6 +565,7 @@ def _mutate_arm(
     record_landscape: bool = False,
     force_candidate: int | None = None,
     force_events: int | None = None,
+    forced_operation: str | None = None,
 ) -> None:
     if arm.mode == "guided":
         _mutate_by_probe(
@@ -597,6 +611,8 @@ def _mutate_arm(
         )
         operation = decision.operation
         layer = next(item for item in arm.genome.layers if item.id == decision.layer_id)
+    elif forced_operation is not None:
+        operation = forced_operation
     else:
         operation = chooser.choice(("grow", "prune"))
     changed = False
@@ -615,7 +631,7 @@ def _mutate_arm(
         else:
             expert = chooser.choice(layer.experts)
         changed = prune_expert(arm.genome, layer.id, expert.id)
-    if not changed:
+    if not changed and forced_operation is None:
         fallback = max(
             arm.genome.layers,
             key=lambda candidate: max(arm.model.routing_load[candidate.index]),
@@ -623,6 +639,9 @@ def _mutate_arm(
         if len(fallback.experts) < 8:
             changed = grow_expert(arm.genome, fallback.id, step) is not None
     if not changed:
+        # A forced operation that the genome cannot perform is left unperformed
+        # rather than swapped for the opposite one: the study's built-in budget
+        # check must catch it, not have it silently measured as something else.
         return
     rebuilt = rebuild_model_from_genome(
         arm.model,

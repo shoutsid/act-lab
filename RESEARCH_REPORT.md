@@ -3197,6 +3197,137 @@ capacity, and a **grown** expert's fresh random initialization (preservation
 carries surviving rows and leaves a new expert's row freshly drawn). Section
 5.23's between-topology caveat also still applies.
 
+### 5.25 Pre-registration: is the residual a pruned expert or a grown one?
+
+**Motivation.** Section 5.24 removed the discarded routing head and left a
+residual of `~0.044` (depth 2) and `~0.058` (depth 3). Two candidates remain - a
+**pruned** expert's lost capacity, and a **grown** expert's fresh random
+initialization - and they cannot be separated by subgroup split, because the mix
+of operations was chosen by the same seeded coin flip that the subgroups would be
+defined by. So the operation is forced instead.
+
+**Design.** `ExperimentConfig.forced_operation` makes every event by a
+non-adaptive arm the named operation; a forced operation the genome cannot perform
+is left **unperformed** rather than replaced by the opposite one, so a profile
+that quietly stops mutating fails its budget check instead of measuring the wrong
+thing. Each profile is its own fresh block, with
+`preserve_router_on_rebuild=True` (section 5.24's treatment) and
+`arms="fixed,random"`:
+
+| block | seeds | operation | experts/layer | ends at |
+|---|---|---|---|---|
+| prune | 98000-98383 | all 3 events prune | 5 | 2 on the worst lane, still legal |
+| grow | 99000-99383 | all 3 events grow | 4 | 7 on the worst lane, under the 8 ceiling |
+
+The two blocks have different expert counts by necessity, but each primary is a
+*within-block* paired contrast against that block's own frozen retrain, so the
+substrate difference is not a confound for either one.
+
+**Primaries (n = 384 per block), Bonferroni `alpha/2 = 0.025` -> bar 212.**
+1. **prune residual** - `Rp_own` < `Rp` on the prune block: does losing an expert's
+   learned function cost anything once the routing head survives?
+2. **grow residual** - `Rp_own` < `Rp` on the grow block: does adding a freshly
+   initialized expert cost anything under the same treatment?
+
+**Prediction (declared before the registered blocks; the spent-block smoke is
+disclosed and it covered only one profile).** A 4-seed machinery smoke ran the
+prune profile on spent seeds 73000-73003 and showed residual `-0.0583`, close to
+section 5.24's mixed residual - so **P1 is predicted to pass**. **P2 is predicted
+to fail**, giving **branch (b): the residual is the pruned expert's lost
+capacity.** The reasoning is that a prune destroys a trained function
+irreversibly, while a grow *adds* capacity: the surviving experts keep their
+weights, the routing head now keeps its rows for them (section 5.24), and the
+new expert's only cost is a transient while the model learns to use it. Section
+5.17's subgroup split pointed the same way - the matched-init effect was
+concentrated in pure-prune seeds - and that is a *different* measurement on
+different blocks, so it is offered as agreement rather than as the basis.
+
+**Pre-registered interpretation (fixed before running).**
+- (a) both pass: the residual is **both** operations - losing capacity and adding
+  an untrained one both cost, so it is intrinsic to changing the architecture.
+- (b) P1 passes, P2 fails: the residual is the **pruned expert's lost capacity**.
+  The cheapest attack is then a mutation policy that prunes less, or trains the
+  survivor to compensate, rather than anything about initialization.
+- (c) P1 fails, P2 passes: the residual is the **grown expert's fresh
+  initialization**, and the fix is an initialization for new experts (section 51's
+  teacher treatment becomes directly relevant).
+- (d) neither passes: no residual in either *pure* profile. Since section 5.24
+  measured one on mixed runs, the residual would then require the **mix** itself
+  rather than either operation - a different mechanism from both candidates, and
+  the attribution is recorded as failed.
+
+**Secondaries (reported, not verdict-bearing).** The two residual magnitudes side
+by side with section 5.24's mixed figure, so the additive reading ("the mixed
+residual should be about half the pure one") is checkable; the fixed arm's own
+loss per block; and the final per-lane expert counts, which the built-in check
+requires to have moved by exactly the budget in one direction.
+
+**Scope limits (pre-declared).** Toy fidelity, synthetic tokens, one substrate,
+depth 2 only, the `random` arm only, and the operation is forced rather than
+drawn - so what is attributed is the *cost of a forced operation*, which is the
+right quantity for attribution but is not itself a deployable policy. A grow's
+new expert is freshly initialized by the existing path and no alternative
+initialization is tested here.
+
+**Cost.** One fused run plus one frozen retrain per seed, ~1.4 s/seed.
+
+### 5.25 Outcome: both operations cost, and the grow costs more (branch (a))
+
+Run on the registered fresh blocks 98000-98383 (prune) and 99000-99383 (grow),
+`study_68591d55f3a56db7` and `study_c7ec09294da043fc`. Every built-in check held
+in both blocks, including the one the forced operation exists for: **every event
+was the forced operation**, so the total expert count moved by exactly the budget
+in one direction, no lane dipped below two experts, and nothing was ever
+substituted by the fallback grow.
+
+| | prune block (n = 384) | grow block (n = 384) |
+|---|---|---|
+| **P1/P2** residual: `Rp_own` < `Rp` | **241/384**, mean −0.0297, p 3.25e-07 | **241/384**, mean −0.0476, p 3.25e-07 |
+| per forced event | 0.0099 | 0.0159 |
+
+Both primaries pass at the Bonferroni bar of 212.
+
+**Registered verdict: branch (a) - the residual is both operations.** Losing a
+trained expert's function costs, *and* adding a freshly initialized one costs, so
+the residual is intrinsic to changing the architecture in either direction rather
+than to one operation. The two blocks landed on the same win count (241/384) and
+different magnitudes, which is a coincidence of the two effects' noise, not a
+relationship.
+
+**The prediction was wrong, and the way it was wrong is the useful part.** I
+declared P1 pass / P2 fail - branch (b), the pruned expert's lost capacity -
+reasoning that a prune destroys a trained function irreversibly while a grow only
+*adds* capacity a preserved routing head can learn to use. In fact the **grow
+costs about 1.6x the prune** (0.0159 vs 0.0099 per event). Making a new expert
+and teaching the model to route to it is the more expensive operation, not the
+cheaper one. This is the fifth prediction in the sequence to understate an effect,
+and the first where the miss was in the *comparison* rather than the existence of
+an effect.
+
+**An additive consistency check, which is a real test and it roughly holds.**
+Section 5.24's mixed-run residual (depth 2, routing head preserved) was `0.0441`.
+If per-event costs add, a run with `1.5` prunes and `1.5` grows should cost
+`1.5 x 0.0099 + 1.5 x 0.0159 = 0.0386` - within 13% of the measured figure, on
+different blocks, with a different substrate (5 and 4 experts/layer here versus
+4 in section 5.24) and an operation mix that was assumed rather than recorded.
+It is offered as agreement, not as a derivation.
+
+**Consequences.** With section 5.24, the mid-training penalty now decomposes as:
+just over half from a discarded routing head (a defect, fixed by
+`preserve_router=True`), and the remainder split between pruning and growing at
+about 1:1.6. The remaining lever is therefore not "mutate less" but the
+**initialization of a new expert**, which is precisely the axis plan section 51's
+teacher treatment addresses - and which this project has never tested, because it
+needs the Qwen-derived artifacts the plan describes and this repository does not
+bundle. That is now the best-motivated untested experiment in the programme.
+
+**Caveats, as declared.** Depth 2 only; the `random` arm only; operations forced
+rather than drawn, so what is attributed is the cost of a forced operation, which
+is the right quantity for attribution but is not itself a policy. The two blocks
+necessarily start at different expert counts (5 and 4 per layer), so their
+magnitudes are comparable in shape but not substrate-identical, and the
+per-operation split above inherits that.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

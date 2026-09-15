@@ -1,0 +1,6978 @@
+{
+ "alpha": 0.05,
+ "built_in_checks": {
+  "block_matches_declared_n": true,
+  "declared_bar_matches_exact_binomial": true,
+  "every_event_was_the_forced_operation": true,
+  "every_seed_used_the_full_budget": true,
+  "fixed_transport_reproduces_the_fixed_arm": true,
+  "no_layer_went_below_two_experts": true
+ },
+ "comparisons": {
+  "Rp_own_vs_Rp": {
+   "bar_and_p_agree": true,
+   "binomial_p": 3.2479436770215537e-07,
+   "mean_delta": -0.04759033272663752,
+   "min_wins": 212,
+   "n": 384,
+   "passes": true,
+   "wins": 241
+  }
+ },
+ "config": {
+  "active_experts": 2,
+  "adaptive_expert_metric": "random",
+  "adaptive_policy": "probe_loss",
+  "batch_size": 2,
+  "depth": 2,
+  "device": "cpu",
+  "expert_count": 4,
+  "forced_operation": "grow",
+  "hidden_size": 24,
+  "independent_arm_rng": true,
+  "learning_rate": 0.0003,
+  "mutation_budget": 3,
+  "mutation_interval": 12,
+  "preserve_router_on_rebuild": true,
+  "probe_batch_count": 2,
+  "probe_candidate_cap": 4,
+  "probe_candidate_policy": "spread",
+  "sequence_length": 12,
+  "steps": 48,
+  "validation_batches": 4,
+  "vocab_size": 32
+ },
+ "config_hash": "c70e7f0dadaca4ab",
+ "declared_bar": 212,
+ "loss_means": {
+  "F": 14.318624705076218,
+  "Rp": 14.37707200460136,
+  "Rp_own": 14.329481671874722
+ },
+ "operation": "grow",
+ "per_primary_alpha": 0.025,
+ "per_seed": [
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.88042950630188,
+   "losses": {
+    "F": 13.88042950630188,
+    "Rp": 13.889508962631226,
+    "Rp_own": 13.741945743560791
+   },
+   "mutations": 3,
+   "seed": 99000
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.259452819824219,
+   "losses": {
+    "F": 14.259452819824219,
+    "Rp": 14.228000402450562,
+    "Rp_own": 14.241054773330688
+   },
+   "mutations": 3,
+   "seed": 99001
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.949753999710083,
+   "losses": {
+    "F": 13.949753999710083,
+    "Rp": 13.960245847702026,
+    "Rp_own": 13.783172845840454
+   },
+   "mutations": 3,
+   "seed": 99002
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.02204418182373,
+   "losses": {
+    "F": 13.02204418182373,
+    "Rp": 13.124453067779541,
+    "Rp_own": 13.102320194244385
+   },
+   "mutations": 3,
+   "seed": 99003
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.414782762527466,
+   "losses": {
+    "F": 12.414782762527466,
+    "Rp": 12.460227012634277,
+    "Rp_own": 12.38726806640625
+   },
+   "mutations": 3,
+   "seed": 99004
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.240567445755005,
+   "losses": {
+    "F": 13.240567445755005,
+    "Rp": 13.192856550216675,
+    "Rp_own": 13.257448434829712
+   },
+   "mutations": 3,
+   "seed": 99005
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.117845058441162,
+   "losses": {
+    "F": 14.117845058441162,
+    "Rp": 14.12206506729126,
+    "Rp_own": 14.37636399269104
+   },
+   "mutations": 3,
+   "seed": 99006
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.917932748794556,
+   "losses": {
+    "F": 13.917932748794556,
+    "Rp": 13.904234647750854,
+    "Rp_own": 13.85090708732605
+   },
+   "mutations": 3,
+   "seed": 99007
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.493299722671509,
+   "losses": {
+    "F": 13.493299722671509,
+    "Rp": 13.487504243850708,
+    "Rp_own": 13.555631160736084
+   },
+   "mutations": 3,
+   "seed": 99008
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.4360990524292,
+   "losses": {
+    "F": 13.4360990524292,
+    "Rp": 13.501619100570679,
+    "Rp_own": 13.490046262741089
+   },
+   "mutations": 3,
+   "seed": 99009
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.63063097000122,
+   "losses": {
+    "F": 13.63063097000122,
+    "Rp": 13.68748688697815,
+    "Rp_own": 13.602453708648682
+   },
+   "mutations": 3,
+   "seed": 99010
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.641171932220459,
+   "losses": {
+    "F": 13.641171932220459,
+    "Rp": 13.559635877609253,
+    "Rp_own": 13.482523679733276
+   },
+   "mutations": 3,
+   "seed": 99011
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.545057535171509,
+   "losses": {
+    "F": 14.545057535171509,
+    "Rp": 14.640989303588867,
+    "Rp_own": 14.566637516021729
+   },
+   "mutations": 3,
+   "seed": 99012
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.265837907791138,
+   "losses": {
+    "F": 14.265837907791138,
+    "Rp": 14.404279470443726,
+    "Rp_own": 14.243657112121582
+   },
+   "mutations": 3,
+   "seed": 99013
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.505362272262573,
+   "losses": {
+    "F": 15.505362272262573,
+    "Rp": 15.530716180801392,
+    "Rp_own": 15.604660511016846
+   },
+   "mutations": 3,
+   "seed": 99014
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.382387638092041,
+   "losses": {
+    "F": 14.382387638092041,
+    "Rp": 14.62190294265747,
+    "Rp_own": 14.5890212059021
+   },
+   "mutations": 3,
+   "seed": 99015
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.955988883972168,
+   "losses": {
+    "F": 13.955988883972168,
+    "Rp": 14.165959358215332,
+    "Rp_own": 14.12080430984497
+   },
+   "mutations": 3,
+   "seed": 99016
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.024780988693237,
+   "losses": {
+    "F": 14.024780988693237,
+    "Rp": 14.06275725364685,
+    "Rp_own": 13.974589347839355
+   },
+   "mutations": 3,
+   "seed": 99017
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.019785165786743,
+   "losses": {
+    "F": 14.019785165786743,
+    "Rp": 14.145337104797363,
+    "Rp_own": 14.027730703353882
+   },
+   "mutations": 3,
+   "seed": 99018
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.978215217590332,
+   "losses": {
+    "F": 13.978215217590332,
+    "Rp": 13.869543313980103,
+    "Rp_own": 13.9745192527771
+   },
+   "mutations": 3,
+   "seed": 99019
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.628491878509521,
+   "losses": {
+    "F": 13.628491878509521,
+    "Rp": 13.736336946487427,
+    "Rp_own": 13.675787687301636
+   },
+   "mutations": 3,
+   "seed": 99020
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.566155910491943,
+   "losses": {
+    "F": 14.566155910491943,
+    "Rp": 14.701569080352783,
+    "Rp_own": 14.738298177719116
+   },
+   "mutations": 3,
+   "seed": 99021
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.77710771560669,
+   "losses": {
+    "F": 13.77710771560669,
+    "Rp": 13.800723314285278,
+    "Rp_own": 13.864397287368774
+   },
+   "mutations": 3,
+   "seed": 99022
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.512284517288208,
+   "losses": {
+    "F": 13.512284517288208,
+    "Rp": 13.446658849716187,
+    "Rp_own": 13.568009614944458
+   },
+   "mutations": 3,
+   "seed": 99023
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.604790449142456,
+   "losses": {
+    "F": 15.604790449142456,
+    "Rp": 15.742765426635742,
+    "Rp_own": 15.648682832717896
+   },
+   "mutations": 3,
+   "seed": 99024
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.991490125656128,
+   "losses": {
+    "F": 14.991490125656128,
+    "Rp": 14.962753772735596,
+    "Rp_own": 15.009121656417847
+   },
+   "mutations": 3,
+   "seed": 99025
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.009509801864624,
+   "losses": {
+    "F": 13.009509801864624,
+    "Rp": 13.08251404762268,
+    "Rp_own": 13.14896821975708
+   },
+   "mutations": 3,
+   "seed": 99026
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.09328007698059,
+   "losses": {
+    "F": 15.09328007698059,
+    "Rp": 15.096075534820557,
+    "Rp_own": 15.00336217880249
+   },
+   "mutations": 3,
+   "seed": 99027
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 16.014846324920654,
+   "losses": {
+    "F": 16.014846324920654,
+    "Rp": 16.16520094871521,
+    "Rp_own": 15.972246885299683
+   },
+   "mutations": 3,
+   "seed": 99028
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.774243831634521,
+   "losses": {
+    "F": 15.774243831634521,
+    "Rp": 16.044517517089844,
+    "Rp_own": 15.616280555725098
+   },
+   "mutations": 3,
+   "seed": 99029
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.240170240402222,
+   "losses": {
+    "F": 14.240170240402222,
+    "Rp": 14.429374933242798,
+    "Rp_own": 14.306683540344238
+   },
+   "mutations": 3,
+   "seed": 99030
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.18462324142456,
+   "losses": {
+    "F": 14.18462324142456,
+    "Rp": 14.382588386535645,
+    "Rp_own": 14.312486171722412
+   },
+   "mutations": 3,
+   "seed": 99031
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.318143129348755,
+   "losses": {
+    "F": 14.318143129348755,
+    "Rp": 14.306816339492798,
+    "Rp_own": 14.422665357589722
+   },
+   "mutations": 3,
+   "seed": 99032
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.828378915786743,
+   "losses": {
+    "F": 15.828378915786743,
+    "Rp": 15.801591396331787,
+    "Rp_own": 15.85819673538208
+   },
+   "mutations": 3,
+   "seed": 99033
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.05695128440857,
+   "losses": {
+    "F": 14.05695128440857,
+    "Rp": 14.100201845169067,
+    "Rp_own": 13.904080152511597
+   },
+   "mutations": 3,
+   "seed": 99034
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.977687120437622,
+   "losses": {
+    "F": 12.977687120437622,
+    "Rp": 13.088754653930664,
+    "Rp_own": 13.168477058410645
+   },
+   "mutations": 3,
+   "seed": 99035
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.014503240585327,
+   "losses": {
+    "F": 15.014503240585327,
+    "Rp": 15.035041570663452,
+    "Rp_own": 14.924764156341553
+   },
+   "mutations": 3,
+   "seed": 99036
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.123594760894775,
+   "losses": {
+    "F": 14.123594760894775,
+    "Rp": 14.228935241699219,
+    "Rp_own": 14.135253429412842
+   },
+   "mutations": 3,
+   "seed": 99037
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.330971002578735,
+   "losses": {
+    "F": 14.330971002578735,
+    "Rp": 14.386290550231934,
+    "Rp_own": 14.407928228378296
+   },
+   "mutations": 3,
+   "seed": 99038
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.220645427703857,
+   "losses": {
+    "F": 14.220645427703857,
+    "Rp": 14.279963493347168,
+    "Rp_own": 14.341196775436401
+   },
+   "mutations": 3,
+   "seed": 99039
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.456600189208984,
+   "losses": {
+    "F": 13.456600189208984,
+    "Rp": 13.663074254989624,
+    "Rp_own": 13.742032766342163
+   },
+   "mutations": 3,
+   "seed": 99040
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.462770462036133,
+   "losses": {
+    "F": 14.462770462036133,
+    "Rp": 14.572470664978027,
+    "Rp_own": 14.469699382781982
+   },
+   "mutations": 3,
+   "seed": 99041
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.125475645065308,
+   "losses": {
+    "F": 14.125475645065308,
+    "Rp": 14.157264471054077,
+    "Rp_own": 13.823623657226562
+   },
+   "mutations": 3,
+   "seed": 99042
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.752191066741943,
+   "losses": {
+    "F": 13.752191066741943,
+    "Rp": 13.946744441986084,
+    "Rp_own": 13.79636812210083
+   },
+   "mutations": 3,
+   "seed": 99043
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.33381724357605,
+   "losses": {
+    "F": 15.33381724357605,
+    "Rp": 15.306236028671265,
+    "Rp_own": 15.362813472747803
+   },
+   "mutations": 3,
+   "seed": 99044
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.965883016586304,
+   "losses": {
+    "F": 14.965883016586304,
+    "Rp": 15.041869878768921,
+    "Rp_own": 14.910207033157349
+   },
+   "mutations": 3,
+   "seed": 99045
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.303755760192871,
+   "losses": {
+    "F": 12.303755760192871,
+    "Rp": 12.199022054672241,
+    "Rp_own": 12.288909912109375
+   },
+   "mutations": 3,
+   "seed": 99046
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.542888641357422,
+   "losses": {
+    "F": 14.542888641357422,
+    "Rp": 14.312161207199097,
+    "Rp_own": 14.347286701202393
+   },
+   "mutations": 3,
+   "seed": 99047
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.056233882904053,
+   "losses": {
+    "F": 15.056233882904053,
+    "Rp": 15.05657410621643,
+    "Rp_own": 14.904552459716797
+   },
+   "mutations": 3,
+   "seed": 99048
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.312935829162598,
+   "losses": {
+    "F": 15.312935829162598,
+    "Rp": 15.433175325393677,
+    "Rp_own": 15.47789978981018
+   },
+   "mutations": 3,
+   "seed": 99049
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.37726092338562,
+   "losses": {
+    "F": 14.37726092338562,
+    "Rp": 14.307970762252808,
+    "Rp_own": 14.206276178359985
+   },
+   "mutations": 3,
+   "seed": 99050
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.998873233795166,
+   "losses": {
+    "F": 14.998873233795166,
+    "Rp": 15.11873459815979,
+    "Rp_own": 15.094883441925049
+   },
+   "mutations": 3,
+   "seed": 99051
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.054967880249023,
+   "losses": {
+    "F": 14.054967880249023,
+    "Rp": 14.131984233856201,
+    "Rp_own": 14.271692752838135
+   },
+   "mutations": 3,
+   "seed": 99052
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.835886240005493,
+   "losses": {
+    "F": 13.835886240005493,
+    "Rp": 13.901093482971191,
+    "Rp_own": 13.875625848770142
+   },
+   "mutations": 3,
+   "seed": 99053
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.429688692092896,
+   "losses": {
+    "F": 12.429688692092896,
+    "Rp": 12.562349319458008,
+    "Rp_own": 12.140685081481934
+   },
+   "mutations": 3,
+   "seed": 99054
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.328307628631592,
+   "losses": {
+    "F": 13.328307628631592,
+    "Rp": 13.325156450271606,
+    "Rp_own": 13.250249147415161
+   },
+   "mutations": 3,
+   "seed": 99055
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.929888010025024,
+   "losses": {
+    "F": 15.929888010025024,
+    "Rp": 16.101801872253418,
+    "Rp_own": 16.053195238113403
+   },
+   "mutations": 3,
+   "seed": 99056
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.684671640396118,
+   "losses": {
+    "F": 14.684671640396118,
+    "Rp": 14.664248943328857,
+    "Rp_own": 14.671714782714844
+   },
+   "mutations": 3,
+   "seed": 99057
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.877566814422607,
+   "losses": {
+    "F": 14.877566814422607,
+    "Rp": 14.900885581970215,
+    "Rp_own": 14.862642765045166
+   },
+   "mutations": 3,
+   "seed": 99058
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.053278923034668,
+   "losses": {
+    "F": 15.053278923034668,
+    "Rp": 15.148267984390259,
+    "Rp_own": 14.876145839691162
+   },
+   "mutations": 3,
+   "seed": 99059
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.486094236373901,
+   "losses": {
+    "F": 14.486094236373901,
+    "Rp": 14.52031660079956,
+    "Rp_own": 14.45389986038208
+   },
+   "mutations": 3,
+   "seed": 99060
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.713898658752441,
+   "losses": {
+    "F": 13.713898658752441,
+    "Rp": 13.79811978340149,
+    "Rp_own": 13.675382614135742
+   },
+   "mutations": 3,
+   "seed": 99061
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.947643280029297,
+   "losses": {
+    "F": 14.947643280029297,
+    "Rp": 15.225829362869263,
+    "Rp_own": 15.152648687362671
+   },
+   "mutations": 3,
+   "seed": 99062
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.591869354248047,
+   "losses": {
+    "F": 14.591869354248047,
+    "Rp": 14.676590204238892,
+    "Rp_own": 14.623425483703613
+   },
+   "mutations": 3,
+   "seed": 99063
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 16.066704988479614,
+   "losses": {
+    "F": 16.066704988479614,
+    "Rp": 15.970902681350708,
+    "Rp_own": 16.011760234832764
+   },
+   "mutations": 3,
+   "seed": 99064
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.738281011581421,
+   "losses": {
+    "F": 15.738281011581421,
+    "Rp": 15.747570514678955,
+    "Rp_own": 15.96259617805481
+   },
+   "mutations": 3,
+   "seed": 99065
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.899346351623535,
+   "losses": {
+    "F": 15.899346351623535,
+    "Rp": 15.956721544265747,
+    "Rp_own": 15.887991666793823
+   },
+   "mutations": 3,
+   "seed": 99066
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.639914751052856,
+   "losses": {
+    "F": 13.639914751052856,
+    "Rp": 13.851897239685059,
+    "Rp_own": 13.61320185661316
+   },
+   "mutations": 3,
+   "seed": 99067
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.520455598831177,
+   "losses": {
+    "F": 14.520455598831177,
+    "Rp": 14.562446117401123,
+    "Rp_own": 14.497458934783936
+   },
+   "mutations": 3,
+   "seed": 99068
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.51149034500122,
+   "losses": {
+    "F": 13.51149034500122,
+    "Rp": 13.678133487701416,
+    "Rp_own": 13.612359762191772
+   },
+   "mutations": 3,
+   "seed": 99069
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.517383575439453,
+   "losses": {
+    "F": 14.517383575439453,
+    "Rp": 14.554117202758789,
+    "Rp_own": 14.535398483276367
+   },
+   "mutations": 3,
+   "seed": 99070
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.90045166015625,
+   "losses": {
+    "F": 12.90045166015625,
+    "Rp": 12.873313903808594,
+    "Rp_own": 12.97434401512146
+   },
+   "mutations": 3,
+   "seed": 99071
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.625134468078613,
+   "losses": {
+    "F": 14.625134468078613,
+    "Rp": 14.709417819976807,
+    "Rp_own": 14.541019201278687
+   },
+   "mutations": 3,
+   "seed": 99072
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.141016960144043,
+   "losses": {
+    "F": 14.141016960144043,
+    "Rp": 14.257896184921265,
+    "Rp_own": 14.210777997970581
+   },
+   "mutations": 3,
+   "seed": 99073
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.802054405212402,
+   "losses": {
+    "F": 14.802054405212402,
+    "Rp": 14.785859823226929,
+    "Rp_own": 14.557610034942627
+   },
+   "mutations": 3,
+   "seed": 99074
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.739786863327026,
+   "losses": {
+    "F": 13.739786863327026,
+    "Rp": 13.823801040649414,
+    "Rp_own": 13.604213237762451
+   },
+   "mutations": 3,
+   "seed": 99075
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.230985403060913,
+   "losses": {
+    "F": 14.230985403060913,
+    "Rp": 14.338943243026733,
+    "Rp_own": 14.281854152679443
+   },
+   "mutations": 3,
+   "seed": 99076
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.999450922012329,
+   "losses": {
+    "F": 12.999450922012329,
+    "Rp": 12.986790180206299,
+    "Rp_own": 12.972748279571533
+   },
+   "mutations": 3,
+   "seed": 99077
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.760237216949463,
+   "losses": {
+    "F": 14.760237216949463,
+    "Rp": 14.700636386871338,
+    "Rp_own": 14.662268877029419
+   },
+   "mutations": 3,
+   "seed": 99078
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.47555422782898,
+   "losses": {
+    "F": 15.47555422782898,
+    "Rp": 15.382083654403687,
+    "Rp_own": 15.443983793258667
+   },
+   "mutations": 3,
+   "seed": 99079
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.665574312210083,
+   "losses": {
+    "F": 12.665574312210083,
+    "Rp": 12.88175654411316,
+    "Rp_own": 12.87019157409668
+   },
+   "mutations": 3,
+   "seed": 99080
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.633217334747314,
+   "losses": {
+    "F": 15.633217334747314,
+    "Rp": 15.719763994216919,
+    "Rp_own": 15.503310441970825
+   },
+   "mutations": 3,
+   "seed": 99081
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.047584772109985,
+   "losses": {
+    "F": 14.047584772109985,
+    "Rp": 14.175923824310303,
+    "Rp_own": 14.34065055847168
+   },
+   "mutations": 3,
+   "seed": 99082
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.643494367599487,
+   "losses": {
+    "F": 14.643494367599487,
+    "Rp": 14.589709758758545,
+    "Rp_own": 14.652741193771362
+   },
+   "mutations": 3,
+   "seed": 99083
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.350079774856567,
+   "losses": {
+    "F": 14.350079774856567,
+    "Rp": 14.374634027481079,
+    "Rp_own": 14.32318115234375
+   },
+   "mutations": 3,
+   "seed": 99084
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.060104608535767,
+   "losses": {
+    "F": 13.060104608535767,
+    "Rp": 13.102762460708618,
+    "Rp_own": 13.065660953521729
+   },
+   "mutations": 3,
+   "seed": 99085
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.458558320999146,
+   "losses": {
+    "F": 15.458558320999146,
+    "Rp": 15.529080867767334,
+    "Rp_own": 15.463568925857544
+   },
+   "mutations": 3,
+   "seed": 99086
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.568877935409546,
+   "losses": {
+    "F": 13.568877935409546,
+    "Rp": 13.783025741577148,
+    "Rp_own": 13.67985224723816
+   },
+   "mutations": 3,
+   "seed": 99087
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.548872709274292,
+   "losses": {
+    "F": 13.548872709274292,
+    "Rp": 13.633439779281616,
+    "Rp_own": 13.678277492523193
+   },
+   "mutations": 3,
+   "seed": 99088
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.441693782806396,
+   "losses": {
+    "F": 14.441693782806396,
+    "Rp": 14.388254404067993,
+    "Rp_own": 14.407135963439941
+   },
+   "mutations": 3,
+   "seed": 99089
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.104881048202515,
+   "losses": {
+    "F": 14.104881048202515,
+    "Rp": 14.014707803726196,
+    "Rp_own": 14.009012222290039
+   },
+   "mutations": 3,
+   "seed": 99090
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.873298406600952,
+   "losses": {
+    "F": 13.873298406600952,
+    "Rp": 13.98763656616211,
+    "Rp_own": 13.942421913146973
+   },
+   "mutations": 3,
+   "seed": 99091
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.687904119491577,
+   "losses": {
+    "F": 14.687904119491577,
+    "Rp": 14.781999826431274,
+    "Rp_own": 14.780062913894653
+   },
+   "mutations": 3,
+   "seed": 99092
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.487642049789429,
+   "losses": {
+    "F": 13.487642049789429,
+    "Rp": 13.646238327026367,
+    "Rp_own": 13.644691944122314
+   },
+   "mutations": 3,
+   "seed": 99093
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.653511047363281,
+   "losses": {
+    "F": 12.653511047363281,
+    "Rp": 12.727314472198486,
+    "Rp_own": 12.588050127029419
+   },
+   "mutations": 3,
+   "seed": 99094
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.856583595275879,
+   "losses": {
+    "F": 12.856583595275879,
+    "Rp": 12.945845603942871,
+    "Rp_own": 12.964221239089966
+   },
+   "mutations": 3,
+   "seed": 99095
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.951300144195557,
+   "losses": {
+    "F": 14.951300144195557,
+    "Rp": 15.074869394302368,
+    "Rp_own": 15.031909465789795
+   },
+   "mutations": 3,
+   "seed": 99096
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.2691490650177,
+   "losses": {
+    "F": 14.2691490650177,
+    "Rp": 14.393227815628052,
+    "Rp_own": 14.284919261932373
+   },
+   "mutations": 3,
+   "seed": 99097
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.113928079605103,
+   "losses": {
+    "F": 14.113928079605103,
+    "Rp": 14.15996503829956,
+    "Rp_own": 14.250091075897217
+   },
+   "mutations": 3,
+   "seed": 99098
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.212936878204346,
+   "losses": {
+    "F": 15.212936878204346,
+    "Rp": 15.465372562408447,
+    "Rp_own": 14.9488685131073
+   },
+   "mutations": 3,
+   "seed": 99099
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.705911874771118,
+   "losses": {
+    "F": 15.705911874771118,
+    "Rp": 15.754427194595337,
+    "Rp_own": 16.035032510757446
+   },
+   "mutations": 3,
+   "seed": 99100
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.119448900222778,
+   "losses": {
+    "F": 12.119448900222778,
+    "Rp": 12.119564294815063,
+    "Rp_own": 11.846801042556763
+   },
+   "mutations": 3,
+   "seed": 99101
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.436958312988281,
+   "losses": {
+    "F": 14.436958312988281,
+    "Rp": 14.353992700576782,
+    "Rp_own": 14.313659906387329
+   },
+   "mutations": 3,
+   "seed": 99102
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.368115663528442,
+   "losses": {
+    "F": 13.368115663528442,
+    "Rp": 13.40212893486023,
+    "Rp_own": 13.490832328796387
+   },
+   "mutations": 3,
+   "seed": 99103
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.991807222366333,
+   "losses": {
+    "F": 12.991807222366333,
+    "Rp": 13.079955577850342,
+    "Rp_own": 12.868518352508545
+   },
+   "mutations": 3,
+   "seed": 99104
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.511995077133179,
+   "losses": {
+    "F": 13.511995077133179,
+    "Rp": 13.485403060913086,
+    "Rp_own": 13.480226039886475
+   },
+   "mutations": 3,
+   "seed": 99105
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.317318201065063,
+   "losses": {
+    "F": 13.317318201065063,
+    "Rp": 13.522733688354492,
+    "Rp_own": 13.115707397460938
+   },
+   "mutations": 3,
+   "seed": 99106
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.033145427703857,
+   "losses": {
+    "F": 14.033145427703857,
+    "Rp": 14.086445093154907,
+    "Rp_own": 13.818713903427124
+   },
+   "mutations": 3,
+   "seed": 99107
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.980109930038452,
+   "losses": {
+    "F": 13.980109930038452,
+    "Rp": 14.094568490982056,
+    "Rp_own": 13.920226573944092
+   },
+   "mutations": 3,
+   "seed": 99108
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.823528289794922,
+   "losses": {
+    "F": 15.823528289794922,
+    "Rp": 15.950302600860596,
+    "Rp_own": 15.762273788452148
+   },
+   "mutations": 3,
+   "seed": 99109
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 16.12888813018799,
+   "losses": {
+    "F": 16.12888813018799,
+    "Rp": 15.958775758743286,
+    "Rp_own": 15.820355892181396
+   },
+   "mutations": 3,
+   "seed": 99110
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.54628610610962,
+   "losses": {
+    "F": 13.54628610610962,
+    "Rp": 13.612530946731567,
+    "Rp_own": 13.682670593261719
+   },
+   "mutations": 3,
+   "seed": 99111
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.77747392654419,
+   "losses": {
+    "F": 12.77747392654419,
+    "Rp": 12.744726657867432,
+    "Rp_own": 12.860873937606812
+   },
+   "mutations": 3,
+   "seed": 99112
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.46888780593872,
+   "losses": {
+    "F": 14.46888780593872,
+    "Rp": 14.603923797607422,
+    "Rp_own": 14.327255487442017
+   },
+   "mutations": 3,
+   "seed": 99113
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.096904039382935,
+   "losses": {
+    "F": 14.096904039382935,
+    "Rp": 14.23984432220459,
+    "Rp_own": 14.167948246002197
+   },
+   "mutations": 3,
+   "seed": 99114
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.222145080566406,
+   "losses": {
+    "F": 14.222145080566406,
+    "Rp": 14.307304620742798,
+    "Rp_own": 14.324392557144165
+   },
+   "mutations": 3,
+   "seed": 99115
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.56518268585205,
+   "losses": {
+    "F": 13.56518268585205,
+    "Rp": 13.51615285873413,
+    "Rp_own": 13.664357900619507
+   },
+   "mutations": 3,
+   "seed": 99116
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.309580326080322,
+   "losses": {
+    "F": 12.309580326080322,
+    "Rp": 12.253637552261353,
+    "Rp_own": 12.284330129623413
+   },
+   "mutations": 3,
+   "seed": 99117
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.176652193069458,
+   "losses": {
+    "F": 14.176652193069458,
+    "Rp": 14.329625368118286,
+    "Rp_own": 14.163646697998047
+   },
+   "mutations": 3,
+   "seed": 99118
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.8570237159729,
+   "losses": {
+    "F": 14.8570237159729,
+    "Rp": 14.910538911819458,
+    "Rp_own": 14.728752613067627
+   },
+   "mutations": 3,
+   "seed": 99119
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.434308052062988,
+   "losses": {
+    "F": 15.434308052062988,
+    "Rp": 15.36021614074707,
+    "Rp_own": 15.368819236755371
+   },
+   "mutations": 3,
+   "seed": 99120
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.483513116836548,
+   "losses": {
+    "F": 15.483513116836548,
+    "Rp": 15.68404483795166,
+    "Rp_own": 15.618228197097778
+   },
+   "mutations": 3,
+   "seed": 99121
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.577211141586304,
+   "losses": {
+    "F": 14.577211141586304,
+    "Rp": 14.829593896865845,
+    "Rp_own": 14.573009729385376
+   },
+   "mutations": 3,
+   "seed": 99122
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.126552820205688,
+   "losses": {
+    "F": 14.126552820205688,
+    "Rp": 14.070180416107178,
+    "Rp_own": 14.077523946762085
+   },
+   "mutations": 3,
+   "seed": 99123
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.83633279800415,
+   "losses": {
+    "F": 13.83633279800415,
+    "Rp": 13.80993127822876,
+    "Rp_own": 13.64179539680481
+   },
+   "mutations": 3,
+   "seed": 99124
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.292571544647217,
+   "losses": {
+    "F": 14.292571544647217,
+    "Rp": 14.533371210098267,
+    "Rp_own": 14.614072561264038
+   },
+   "mutations": 3,
+   "seed": 99125
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.38182783126831,
+   "losses": {
+    "F": 13.38182783126831,
+    "Rp": 13.541252136230469,
+    "Rp_own": 13.471678733825684
+   },
+   "mutations": 3,
+   "seed": 99126
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.963489055633545,
+   "losses": {
+    "F": 13.963489055633545,
+    "Rp": 14.277107238769531,
+    "Rp_own": 14.024473190307617
+   },
+   "mutations": 3,
+   "seed": 99127
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.296273231506348,
+   "losses": {
+    "F": 15.296273231506348,
+    "Rp": 15.320265769958496,
+    "Rp_own": 15.47510290145874
+   },
+   "mutations": 3,
+   "seed": 99128
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.269713163375854,
+   "losses": {
+    "F": 14.269713163375854,
+    "Rp": 14.261122941970825,
+    "Rp_own": 14.587932348251343
+   },
+   "mutations": 3,
+   "seed": 99129
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.87222409248352,
+   "losses": {
+    "F": 14.87222409248352,
+    "Rp": 15.025184869766235,
+    "Rp_own": 14.790732860565186
+   },
+   "mutations": 3,
+   "seed": 99130
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.554039716720581,
+   "losses": {
+    "F": 15.554039716720581,
+    "Rp": 15.59978461265564,
+    "Rp_own": 15.559290885925293
+   },
+   "mutations": 3,
+   "seed": 99131
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.950849056243896,
+   "losses": {
+    "F": 14.950849056243896,
+    "Rp": 15.035542011260986,
+    "Rp_own": 15.059939861297607
+   },
+   "mutations": 3,
+   "seed": 99132
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.589518308639526,
+   "losses": {
+    "F": 14.589518308639526,
+    "Rp": 14.66608715057373,
+    "Rp_own": 14.71195101737976
+   },
+   "mutations": 3,
+   "seed": 99133
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.983252763748169,
+   "losses": {
+    "F": 14.983252763748169,
+    "Rp": 15.173138856887817,
+    "Rp_own": 15.039658784866333
+   },
+   "mutations": 3,
+   "seed": 99134
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.776641845703125,
+   "losses": {
+    "F": 14.776641845703125,
+    "Rp": 14.920982122421265,
+    "Rp_own": 14.677555084228516
+   },
+   "mutations": 3,
+   "seed": 99135
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 16.04772424697876,
+   "losses": {
+    "F": 16.04772424697876,
+    "Rp": 16.154996633529663,
+    "Rp_own": 16.14652180671692
+   },
+   "mutations": 3,
+   "seed": 99136
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.496145725250244,
+   "losses": {
+    "F": 15.496145725250244,
+    "Rp": 15.36157774925232,
+    "Rp_own": 15.558329820632935
+   },
+   "mutations": 3,
+   "seed": 99137
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.45084547996521,
+   "losses": {
+    "F": 14.45084547996521,
+    "Rp": 14.56684923171997,
+    "Rp_own": 14.65693473815918
+   },
+   "mutations": 3,
+   "seed": 99138
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.55891466140747,
+   "losses": {
+    "F": 14.55891466140747,
+    "Rp": 14.617111682891846,
+    "Rp_own": 14.65010380744934
+   },
+   "mutations": 3,
+   "seed": 99139
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.89535117149353,
+   "losses": {
+    "F": 14.89535117149353,
+    "Rp": 14.905133485794067,
+    "Rp_own": 14.982545852661133
+   },
+   "mutations": 3,
+   "seed": 99140
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.817439317703247,
+   "losses": {
+    "F": 15.817439317703247,
+    "Rp": 15.889778852462769,
+    "Rp_own": 15.889221429824829
+   },
+   "mutations": 3,
+   "seed": 99141
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.629607915878296,
+   "losses": {
+    "F": 14.629607915878296,
+    "Rp": 14.585223197937012,
+    "Rp_own": 14.414499044418335
+   },
+   "mutations": 3,
+   "seed": 99142
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.02622938156128,
+   "losses": {
+    "F": 14.02622938156128,
+    "Rp": 13.97677206993103,
+    "Rp_own": 13.841351985931396
+   },
+   "mutations": 3,
+   "seed": 99143
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.706722736358643,
+   "losses": {
+    "F": 14.706722736358643,
+    "Rp": 14.75769829750061,
+    "Rp_own": 14.763486623764038
+   },
+   "mutations": 3,
+   "seed": 99144
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.689634323120117,
+   "losses": {
+    "F": 12.689634323120117,
+    "Rp": 12.778639793395996,
+    "Rp_own": 12.748123168945312
+   },
+   "mutations": 3,
+   "seed": 99145
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.146958589553833,
+   "losses": {
+    "F": 14.146958589553833,
+    "Rp": 14.271627187728882,
+    "Rp_own": 14.369400978088379
+   },
+   "mutations": 3,
+   "seed": 99146
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.794099807739258,
+   "losses": {
+    "F": 15.794099807739258,
+    "Rp": 15.756646156311035,
+    "Rp_own": 15.769769430160522
+   },
+   "mutations": 3,
+   "seed": 99147
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.110106468200684,
+   "losses": {
+    "F": 14.110106468200684,
+    "Rp": 14.147224187850952,
+    "Rp_own": 14.052726030349731
+   },
+   "mutations": 3,
+   "seed": 99148
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.885705471038818,
+   "losses": {
+    "F": 13.885705471038818,
+    "Rp": 13.937034606933594,
+    "Rp_own": 13.855390548706055
+   },
+   "mutations": 3,
+   "seed": 99149
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.015905857086182,
+   "losses": {
+    "F": 13.015905857086182,
+    "Rp": 13.066303491592407,
+    "Rp_own": 13.105121612548828
+   },
+   "mutations": 3,
+   "seed": 99150
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.275110006332397,
+   "losses": {
+    "F": 13.275110006332397,
+    "Rp": 13.22405219078064,
+    "Rp_own": 13.133402585983276
+   },
+   "mutations": 3,
+   "seed": 99151
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.709696292877197,
+   "losses": {
+    "F": 15.709696292877197,
+    "Rp": 15.811802625656128,
+    "Rp_own": 15.68331003189087
+   },
+   "mutations": 3,
+   "seed": 99152
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.405034065246582,
+   "losses": {
+    "F": 12.405034065246582,
+    "Rp": 12.467255592346191,
+    "Rp_own": 12.466127157211304
+   },
+   "mutations": 3,
+   "seed": 99153
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.258821249008179,
+   "losses": {
+    "F": 14.258821249008179,
+    "Rp": 14.247427463531494,
+    "Rp_own": 14.318058729171753
+   },
+   "mutations": 3,
+   "seed": 99154
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 16.1524498462677,
+   "losses": {
+    "F": 16.1524498462677,
+    "Rp": 16.128004789352417,
+    "Rp_own": 16.049463510513306
+   },
+   "mutations": 3,
+   "seed": 99155
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.551990509033203,
+   "losses": {
+    "F": 14.551990509033203,
+    "Rp": 14.59268569946289,
+    "Rp_own": 14.433622360229492
+   },
+   "mutations": 3,
+   "seed": 99156
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 16.233386993408203,
+   "losses": {
+    "F": 16.233386993408203,
+    "Rp": 16.199405193328857,
+    "Rp_own": 16.146498918533325
+   },
+   "mutations": 3,
+   "seed": 99157
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.6285719871521,
+   "losses": {
+    "F": 12.6285719871521,
+    "Rp": 12.594011783599854,
+    "Rp_own": 12.673282384872437
+   },
+   "mutations": 3,
+   "seed": 99158
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.425583124160767,
+   "losses": {
+    "F": 13.425583124160767,
+    "Rp": 13.44766092300415,
+    "Rp_own": 13.353740930557251
+   },
+   "mutations": 3,
+   "seed": 99159
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.493869304656982,
+   "losses": {
+    "F": 13.493869304656982,
+    "Rp": 13.514094829559326,
+    "Rp_own": 13.570817232131958
+   },
+   "mutations": 3,
+   "seed": 99160
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.512027263641357,
+   "losses": {
+    "F": 15.512027263641357,
+    "Rp": 15.581699132919312,
+    "Rp_own": 15.440881729125977
+   },
+   "mutations": 3,
+   "seed": 99161
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.316447496414185,
+   "losses": {
+    "F": 14.316447496414185,
+    "Rp": 14.304846286773682,
+    "Rp_own": 14.253322839736938
+   },
+   "mutations": 3,
+   "seed": 99162
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.311054944992065,
+   "losses": {
+    "F": 14.311054944992065,
+    "Rp": 14.517429828643799,
+    "Rp_own": 14.515650033950806
+   },
+   "mutations": 3,
+   "seed": 99163
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.424448013305664,
+   "losses": {
+    "F": 14.424448013305664,
+    "Rp": 14.532015800476074,
+    "Rp_own": 14.369110822677612
+   },
+   "mutations": 3,
+   "seed": 99164
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.705625057220459,
+   "losses": {
+    "F": 14.705625057220459,
+    "Rp": 14.789509296417236,
+    "Rp_own": 14.617704629898071
+   },
+   "mutations": 3,
+   "seed": 99165
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.231417417526245,
+   "losses": {
+    "F": 13.231417417526245,
+    "Rp": 13.190860748291016,
+    "Rp_own": 13.338512420654297
+   },
+   "mutations": 3,
+   "seed": 99166
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.18808627128601,
+   "losses": {
+    "F": 15.18808627128601,
+    "Rp": 15.553987979888916,
+    "Rp_own": 15.282853603363037
+   },
+   "mutations": 3,
+   "seed": 99167
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.173001050949097,
+   "losses": {
+    "F": 15.173001050949097,
+    "Rp": 14.999351263046265,
+    "Rp_own": 15.191253900527954
+   },
+   "mutations": 3,
+   "seed": 99168
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.275176763534546,
+   "losses": {
+    "F": 14.275176763534546,
+    "Rp": 14.444445133209229,
+    "Rp_own": 14.338386058807373
+   },
+   "mutations": 3,
+   "seed": 99169
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.568973064422607,
+   "losses": {
+    "F": 13.568973064422607,
+    "Rp": 13.738205194473267,
+    "Rp_own": 13.823107481002808
+   },
+   "mutations": 3,
+   "seed": 99170
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.27410078048706,
+   "losses": {
+    "F": 13.27410078048706,
+    "Rp": 13.312237024307251,
+    "Rp_own": 13.193603515625
+   },
+   "mutations": 3,
+   "seed": 99171
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.634726285934448,
+   "losses": {
+    "F": 14.634726285934448,
+    "Rp": 14.595186233520508,
+    "Rp_own": 14.614024639129639
+   },
+   "mutations": 3,
+   "seed": 99172
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.445101737976074,
+   "losses": {
+    "F": 13.445101737976074,
+    "Rp": 13.549110174179077,
+    "Rp_own": 13.274449586868286
+   },
+   "mutations": 3,
+   "seed": 99173
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.228784322738647,
+   "losses": {
+    "F": 15.228784322738647,
+    "Rp": 15.244786500930786,
+    "Rp_own": 15.169592380523682
+   },
+   "mutations": 3,
+   "seed": 99174
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.448140144348145,
+   "losses": {
+    "F": 13.448140144348145,
+    "Rp": 13.390828371047974,
+    "Rp_own": 13.527712106704712
+   },
+   "mutations": 3,
+   "seed": 99175
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.218815326690674,
+   "losses": {
+    "F": 14.218815326690674,
+    "Rp": 14.20923399925232,
+    "Rp_own": 14.250089883804321
+   },
+   "mutations": 3,
+   "seed": 99176
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.86235237121582,
+   "losses": {
+    "F": 15.86235237121582,
+    "Rp": 15.722116470336914,
+    "Rp_own": 15.773651838302612
+   },
+   "mutations": 3,
+   "seed": 99177
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.797890424728394,
+   "losses": {
+    "F": 14.797890424728394,
+    "Rp": 14.71268892288208,
+    "Rp_own": 14.93252944946289
+   },
+   "mutations": 3,
+   "seed": 99178
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.72726559638977,
+   "losses": {
+    "F": 13.72726559638977,
+    "Rp": 13.783602476119995,
+    "Rp_own": 13.837089776992798
+   },
+   "mutations": 3,
+   "seed": 99179
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.840781450271606,
+   "losses": {
+    "F": 15.840781450271606,
+    "Rp": 15.795557975769043,
+    "Rp_own": 15.51680874824524
+   },
+   "mutations": 3,
+   "seed": 99180
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.129981756210327,
+   "losses": {
+    "F": 15.129981756210327,
+    "Rp": 15.176568984985352,
+    "Rp_own": 15.097727537155151
+   },
+   "mutations": 3,
+   "seed": 99181
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.706316709518433,
+   "losses": {
+    "F": 13.706316709518433,
+    "Rp": 13.7812819480896,
+    "Rp_own": 13.349207639694214
+   },
+   "mutations": 3,
+   "seed": 99182
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.665258884429932,
+   "losses": {
+    "F": 15.665258884429932,
+    "Rp": 15.8434739112854,
+    "Rp_own": 15.710249185562134
+   },
+   "mutations": 3,
+   "seed": 99183
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.975432634353638,
+   "losses": {
+    "F": 13.975432634353638,
+    "Rp": 14.01842451095581,
+    "Rp_own": 14.009612083435059
+   },
+   "mutations": 3,
+   "seed": 99184
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.896358489990234,
+   "losses": {
+    "F": 14.896358489990234,
+    "Rp": 14.928291320800781,
+    "Rp_own": 14.896023750305176
+   },
+   "mutations": 3,
+   "seed": 99185
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.161839485168457,
+   "losses": {
+    "F": 14.161839485168457,
+    "Rp": 14.310153245925903,
+    "Rp_own": 14.269453525543213
+   },
+   "mutations": 3,
+   "seed": 99186
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.753061056137085,
+   "losses": {
+    "F": 13.753061056137085,
+    "Rp": 13.831017255783081,
+    "Rp_own": 13.642887353897095
+   },
+   "mutations": 3,
+   "seed": 99187
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.08997392654419,
+   "losses": {
+    "F": 15.08997392654419,
+    "Rp": 15.141558408737183,
+    "Rp_own": 15.079022645950317
+   },
+   "mutations": 3,
+   "seed": 99188
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.705722570419312,
+   "losses": {
+    "F": 14.705722570419312,
+    "Rp": 14.808221578598022,
+    "Rp_own": 14.551576137542725
+   },
+   "mutations": 3,
+   "seed": 99189
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.356653690338135,
+   "losses": {
+    "F": 13.356653690338135,
+    "Rp": 13.474480390548706,
+    "Rp_own": 13.37573790550232
+   },
+   "mutations": 3,
+   "seed": 99190
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.916335582733154,
+   "losses": {
+    "F": 13.916335582733154,
+    "Rp": 13.972988367080688,
+    "Rp_own": 13.89191460609436
+   },
+   "mutations": 3,
+   "seed": 99191
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.085091590881348,
+   "losses": {
+    "F": 14.085091590881348,
+    "Rp": 14.135558605194092,
+    "Rp_own": 14.166346311569214
+   },
+   "mutations": 3,
+   "seed": 99192
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.257838487625122,
+   "losses": {
+    "F": 15.257838487625122,
+    "Rp": 15.312798500061035,
+    "Rp_own": 15.252681255340576
+   },
+   "mutations": 3,
+   "seed": 99193
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.530433654785156,
+   "losses": {
+    "F": 13.530433654785156,
+    "Rp": 13.67299485206604,
+    "Rp_own": 13.6439847946167
+   },
+   "mutations": 3,
+   "seed": 99194
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.092592716217041,
+   "losses": {
+    "F": 15.092592716217041,
+    "Rp": 15.08962893486023,
+    "Rp_own": 15.122466325759888
+   },
+   "mutations": 3,
+   "seed": 99195
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.028331995010376,
+   "losses": {
+    "F": 13.028331995010376,
+    "Rp": 13.021227598190308,
+    "Rp_own": 13.011893272399902
+   },
+   "mutations": 3,
+   "seed": 99196
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.973988056182861,
+   "losses": {
+    "F": 13.973988056182861,
+    "Rp": 13.977806329727173,
+    "Rp_own": 14.088302850723267
+   },
+   "mutations": 3,
+   "seed": 99197
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.870303630828857,
+   "losses": {
+    "F": 12.870303630828857,
+    "Rp": 12.880629062652588,
+    "Rp_own": 12.966666460037231
+   },
+   "mutations": 3,
+   "seed": 99198
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.303715467453003,
+   "losses": {
+    "F": 15.303715467453003,
+    "Rp": 15.41350245475769,
+    "Rp_own": 15.11567997932434
+   },
+   "mutations": 3,
+   "seed": 99199
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.545994520187378,
+   "losses": {
+    "F": 13.545994520187378,
+    "Rp": 13.557056188583374,
+    "Rp_own": 13.5192391872406
+   },
+   "mutations": 3,
+   "seed": 99200
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.899624347686768,
+   "losses": {
+    "F": 12.899624347686768,
+    "Rp": 13.185543775558472,
+    "Rp_own": 13.01298475265503
+   },
+   "mutations": 3,
+   "seed": 99201
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.519562482833862,
+   "losses": {
+    "F": 13.519562482833862,
+    "Rp": 13.618950366973877,
+    "Rp_own": 13.50382113456726
+   },
+   "mutations": 3,
+   "seed": 99202
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.952018737792969,
+   "losses": {
+    "F": 14.952018737792969,
+    "Rp": 14.986695528030396,
+    "Rp_own": 15.091134071350098
+   },
+   "mutations": 3,
+   "seed": 99203
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.598482370376587,
+   "losses": {
+    "F": 14.598482370376587,
+    "Rp": 14.691251754760742,
+    "Rp_own": 14.815787553787231
+   },
+   "mutations": 3,
+   "seed": 99204
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.544200658798218,
+   "losses": {
+    "F": 13.544200658798218,
+    "Rp": 13.664132595062256,
+    "Rp_own": 13.37782621383667
+   },
+   "mutations": 3,
+   "seed": 99205
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.032407999038696,
+   "losses": {
+    "F": 14.032407999038696,
+    "Rp": 14.06606149673462,
+    "Rp_own": 13.971445083618164
+   },
+   "mutations": 3,
+   "seed": 99206
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.420994281768799,
+   "losses": {
+    "F": 15.420994281768799,
+    "Rp": 15.423508405685425,
+    "Rp_own": 15.524417877197266
+   },
+   "mutations": 3,
+   "seed": 99207
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.55970811843872,
+   "losses": {
+    "F": 13.55970811843872,
+    "Rp": 13.57524299621582,
+    "Rp_own": 13.30066204071045
+   },
+   "mutations": 3,
+   "seed": 99208
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.15427041053772,
+   "losses": {
+    "F": 15.15427041053772,
+    "Rp": 15.269532918930054,
+    "Rp_own": 15.115254402160645
+   },
+   "mutations": 3,
+   "seed": 99209
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.447139501571655,
+   "losses": {
+    "F": 14.447139501571655,
+    "Rp": 14.362678289413452,
+    "Rp_own": 14.372313022613525
+   },
+   "mutations": 3,
+   "seed": 99210
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.211579322814941,
+   "losses": {
+    "F": 14.211579322814941,
+    "Rp": 14.305942296981812,
+    "Rp_own": 14.670385360717773
+   },
+   "mutations": 3,
+   "seed": 99211
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.817054033279419,
+   "losses": {
+    "F": 12.817054033279419,
+    "Rp": 12.9555184841156,
+    "Rp_own": 12.856096029281616
+   },
+   "mutations": 3,
+   "seed": 99212
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.798350811004639,
+   "losses": {
+    "F": 14.798350811004639,
+    "Rp": 14.915505409240723,
+    "Rp_own": 14.923413515090942
+   },
+   "mutations": 3,
+   "seed": 99213
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.849889993667603,
+   "losses": {
+    "F": 13.849889993667603,
+    "Rp": 14.10869312286377,
+    "Rp_own": 14.023672819137573
+   },
+   "mutations": 3,
+   "seed": 99214
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.258712530136108,
+   "losses": {
+    "F": 14.258712530136108,
+    "Rp": 14.398191928863525,
+    "Rp_own": 14.273971796035767
+   },
+   "mutations": 3,
+   "seed": 99215
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.729247331619263,
+   "losses": {
+    "F": 15.729247331619263,
+    "Rp": 15.765910863876343,
+    "Rp_own": 15.516676187515259
+   },
+   "mutations": 3,
+   "seed": 99216
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.47538447380066,
+   "losses": {
+    "F": 15.47538447380066,
+    "Rp": 15.482726573944092,
+    "Rp_own": 15.514443635940552
+   },
+   "mutations": 3,
+   "seed": 99217
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.611463785171509,
+   "losses": {
+    "F": 13.611463785171509,
+    "Rp": 13.838754892349243,
+    "Rp_own": 13.708024501800537
+   },
+   "mutations": 3,
+   "seed": 99218
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.82885217666626,
+   "losses": {
+    "F": 14.82885217666626,
+    "Rp": 14.876593589782715,
+    "Rp_own": 15.079697847366333
+   },
+   "mutations": 3,
+   "seed": 99219
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.607866048812866,
+   "losses": {
+    "F": 13.607866048812866,
+    "Rp": 13.663990259170532,
+    "Rp_own": 13.845124244689941
+   },
+   "mutations": 3,
+   "seed": 99220
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.487179040908813,
+   "losses": {
+    "F": 14.487179040908813,
+    "Rp": 14.531277656555176,
+    "Rp_own": 14.576706409454346
+   },
+   "mutations": 3,
+   "seed": 99221
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.625023126602173,
+   "losses": {
+    "F": 13.625023126602173,
+    "Rp": 13.704710245132446,
+    "Rp_own": 13.575871229171753
+   },
+   "mutations": 3,
+   "seed": 99222
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.82822322845459,
+   "losses": {
+    "F": 14.82822322845459,
+    "Rp": 14.973710536956787,
+    "Rp_own": 14.765790224075317
+   },
+   "mutations": 3,
+   "seed": 99223
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 16.302250862121582,
+   "losses": {
+    "F": 16.302250862121582,
+    "Rp": 16.452937126159668,
+    "Rp_own": 16.197766542434692
+   },
+   "mutations": 3,
+   "seed": 99224
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.515842914581299,
+   "losses": {
+    "F": 14.515842914581299,
+    "Rp": 14.545715570449829,
+    "Rp_own": 14.522946834564209
+   },
+   "mutations": 3,
+   "seed": 99225
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.87656021118164,
+   "losses": {
+    "F": 13.87656021118164,
+    "Rp": 14.164545059204102,
+    "Rp_own": 13.94978666305542
+   },
+   "mutations": 3,
+   "seed": 99226
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.244283199310303,
+   "losses": {
+    "F": 15.244283199310303,
+    "Rp": 15.325373411178589,
+    "Rp_own": 15.200321197509766
+   },
+   "mutations": 3,
+   "seed": 99227
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.982816219329834,
+   "losses": {
+    "F": 12.982816219329834,
+    "Rp": 13.178905963897705,
+    "Rp_own": 13.166378259658813
+   },
+   "mutations": 3,
+   "seed": 99228
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.64384150505066,
+   "losses": {
+    "F": 14.64384150505066,
+    "Rp": 14.98660135269165,
+    "Rp_own": 14.733571767807007
+   },
+   "mutations": 3,
+   "seed": 99229
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.410594463348389,
+   "losses": {
+    "F": 13.410594463348389,
+    "Rp": 13.328493118286133,
+    "Rp_own": 13.414921760559082
+   },
+   "mutations": 3,
+   "seed": 99230
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.298339366912842,
+   "losses": {
+    "F": 14.298339366912842,
+    "Rp": 14.325065851211548,
+    "Rp_own": 14.287115573883057
+   },
+   "mutations": 3,
+   "seed": 99231
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.848508358001709,
+   "losses": {
+    "F": 14.848508358001709,
+    "Rp": 14.936262130737305,
+    "Rp_own": 14.906566858291626
+   },
+   "mutations": 3,
+   "seed": 99232
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.201077222824097,
+   "losses": {
+    "F": 14.201077222824097,
+    "Rp": 14.241099834442139,
+    "Rp_own": 14.298979997634888
+   },
+   "mutations": 3,
+   "seed": 99233
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.742170810699463,
+   "losses": {
+    "F": 14.742170810699463,
+    "Rp": 14.886234998703003,
+    "Rp_own": 14.77228331565857
+   },
+   "mutations": 3,
+   "seed": 99234
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.490055322647095,
+   "losses": {
+    "F": 13.490055322647095,
+    "Rp": 13.5165433883667,
+    "Rp_own": 13.361066341400146
+   },
+   "mutations": 3,
+   "seed": 99235
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.102417945861816,
+   "losses": {
+    "F": 13.102417945861816,
+    "Rp": 13.190134525299072,
+    "Rp_own": 12.900362253189087
+   },
+   "mutations": 3,
+   "seed": 99236
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.849653005599976,
+   "losses": {
+    "F": 15.849653005599976,
+    "Rp": 15.937260389328003,
+    "Rp_own": 15.985554456710815
+   },
+   "mutations": 3,
+   "seed": 99237
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.561213493347168,
+   "losses": {
+    "F": 14.561213493347168,
+    "Rp": 14.62523865699768,
+    "Rp_own": 14.586899995803833
+   },
+   "mutations": 3,
+   "seed": 99238
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.587627649307251,
+   "losses": {
+    "F": 14.587627649307251,
+    "Rp": 14.624547958374023,
+    "Rp_own": 14.862449169158936
+   },
+   "mutations": 3,
+   "seed": 99239
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.87746548652649,
+   "losses": {
+    "F": 13.87746548652649,
+    "Rp": 14.0732102394104,
+    "Rp_own": 14.00892162322998
+   },
+   "mutations": 3,
+   "seed": 99240
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.676902770996094,
+   "losses": {
+    "F": 13.676902770996094,
+    "Rp": 13.802829504013062,
+    "Rp_own": 13.667518138885498
+   },
+   "mutations": 3,
+   "seed": 99241
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.169482707977295,
+   "losses": {
+    "F": 15.169482707977295,
+    "Rp": 15.240715980529785,
+    "Rp_own": 15.129804372787476
+   },
+   "mutations": 3,
+   "seed": 99242
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.567139863967896,
+   "losses": {
+    "F": 15.567139863967896,
+    "Rp": 15.633082866668701,
+    "Rp_own": 15.673365592956543
+   },
+   "mutations": 3,
+   "seed": 99243
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.672099828720093,
+   "losses": {
+    "F": 12.672099828720093,
+    "Rp": 12.79326319694519,
+    "Rp_own": 12.62415862083435
+   },
+   "mutations": 3,
+   "seed": 99244
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.083234310150146,
+   "losses": {
+    "F": 13.083234310150146,
+    "Rp": 13.166953325271606,
+    "Rp_own": 13.161721229553223
+   },
+   "mutations": 3,
+   "seed": 99245
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.546697854995728,
+   "losses": {
+    "F": 14.546697854995728,
+    "Rp": 14.56132984161377,
+    "Rp_own": 14.438423156738281
+   },
+   "mutations": 3,
+   "seed": 99246
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.324198007583618,
+   "losses": {
+    "F": 13.324198007583618,
+    "Rp": 13.278334379196167,
+    "Rp_own": 13.402571439743042
+   },
+   "mutations": 3,
+   "seed": 99247
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.934080362319946,
+   "losses": {
+    "F": 12.934080362319946,
+    "Rp": 13.037440538406372,
+    "Rp_own": 12.976609706878662
+   },
+   "mutations": 3,
+   "seed": 99248
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.79863429069519,
+   "losses": {
+    "F": 13.79863429069519,
+    "Rp": 13.946151733398438,
+    "Rp_own": 13.799875020980835
+   },
+   "mutations": 3,
+   "seed": 99249
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.223003387451172,
+   "losses": {
+    "F": 13.223003387451172,
+    "Rp": 13.379650115966797,
+    "Rp_own": 13.157692432403564
+   },
+   "mutations": 3,
+   "seed": 99250
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.146530628204346,
+   "losses": {
+    "F": 13.146530628204346,
+    "Rp": 13.265682220458984,
+    "Rp_own": 12.948434829711914
+   },
+   "mutations": 3,
+   "seed": 99251
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.283915042877197,
+   "losses": {
+    "F": 14.283915042877197,
+    "Rp": 14.062978267669678,
+    "Rp_own": 14.284635543823242
+   },
+   "mutations": 3,
+   "seed": 99252
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.665007591247559,
+   "losses": {
+    "F": 14.665007591247559,
+    "Rp": 14.767862319946289,
+    "Rp_own": 14.973013401031494
+   },
+   "mutations": 3,
+   "seed": 99253
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.544925689697266,
+   "losses": {
+    "F": 12.544925689697266,
+    "Rp": 12.493117809295654,
+    "Rp_own": 12.631502389907837
+   },
+   "mutations": 3,
+   "seed": 99254
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.980769157409668,
+   "losses": {
+    "F": 14.980769157409668,
+    "Rp": 14.89989686012268,
+    "Rp_own": 14.946979761123657
+   },
+   "mutations": 3,
+   "seed": 99255
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.578192710876465,
+   "losses": {
+    "F": 15.578192710876465,
+    "Rp": 15.619257688522339,
+    "Rp_own": 15.662334442138672
+   },
+   "mutations": 3,
+   "seed": 99256
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.7546226978302,
+   "losses": {
+    "F": 14.7546226978302,
+    "Rp": 14.926584720611572,
+    "Rp_own": 14.558286428451538
+   },
+   "mutations": 3,
+   "seed": 99257
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.799686670303345,
+   "losses": {
+    "F": 13.799686670303345,
+    "Rp": 13.768216133117676,
+    "Rp_own": 13.708081722259521
+   },
+   "mutations": 3,
+   "seed": 99258
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.710506200790405,
+   "losses": {
+    "F": 13.710506200790405,
+    "Rp": 13.688879013061523,
+    "Rp_own": 13.762202262878418
+   },
+   "mutations": 3,
+   "seed": 99259
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.181161165237427,
+   "losses": {
+    "F": 14.181161165237427,
+    "Rp": 14.373749256134033,
+    "Rp_own": 14.07067060470581
+   },
+   "mutations": 3,
+   "seed": 99260
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.82830548286438,
+   "losses": {
+    "F": 14.82830548286438,
+    "Rp": 14.891202688217163,
+    "Rp_own": 15.063679218292236
+   },
+   "mutations": 3,
+   "seed": 99261
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.608972787857056,
+   "losses": {
+    "F": 12.608972787857056,
+    "Rp": 12.635050535202026,
+    "Rp_own": 12.60381007194519
+   },
+   "mutations": 3,
+   "seed": 99262
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.881440877914429,
+   "losses": {
+    "F": 13.881440877914429,
+    "Rp": 13.997968435287476,
+    "Rp_own": 13.833731174468994
+   },
+   "mutations": 3,
+   "seed": 99263
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.223331451416016,
+   "losses": {
+    "F": 14.223331451416016,
+    "Rp": 14.328528881072998,
+    "Rp_own": 14.167912483215332
+   },
+   "mutations": 3,
+   "seed": 99264
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.850044965744019,
+   "losses": {
+    "F": 14.850044965744019,
+    "Rp": 15.046977996826172,
+    "Rp_own": 14.906274795532227
+   },
+   "mutations": 3,
+   "seed": 99265
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.921821594238281,
+   "losses": {
+    "F": 15.921821594238281,
+    "Rp": 15.965798139572144,
+    "Rp_own": 16.026808738708496
+   },
+   "mutations": 3,
+   "seed": 99266
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.824308633804321,
+   "losses": {
+    "F": 13.824308633804321,
+    "Rp": 13.906087160110474,
+    "Rp_own": 13.902941465377808
+   },
+   "mutations": 3,
+   "seed": 99267
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.005352258682251,
+   "losses": {
+    "F": 15.005352258682251,
+    "Rp": 14.91552209854126,
+    "Rp_own": 14.985039234161377
+   },
+   "mutations": 3,
+   "seed": 99268
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.040336608886719,
+   "losses": {
+    "F": 14.040336608886719,
+    "Rp": 13.910164833068848,
+    "Rp_own": 14.088722467422485
+   },
+   "mutations": 3,
+   "seed": 99269
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.401911735534668,
+   "losses": {
+    "F": 14.401911735534668,
+    "Rp": 14.53835129737854,
+    "Rp_own": 14.358300924301147
+   },
+   "mutations": 3,
+   "seed": 99270
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.039608716964722,
+   "losses": {
+    "F": 14.039608716964722,
+    "Rp": 14.055317640304565,
+    "Rp_own": 13.827954053878784
+   },
+   "mutations": 3,
+   "seed": 99271
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.933942317962646,
+   "losses": {
+    "F": 13.933942317962646,
+    "Rp": 14.063665628433228,
+    "Rp_own": 13.956380605697632
+   },
+   "mutations": 3,
+   "seed": 99272
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.08191442489624,
+   "losses": {
+    "F": 14.08191442489624,
+    "Rp": 14.131167650222778,
+    "Rp_own": 14.180852174758911
+   },
+   "mutations": 3,
+   "seed": 99273
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.04190969467163,
+   "losses": {
+    "F": 13.04190969467163,
+    "Rp": 13.135950803756714,
+    "Rp_own": 13.224243402481079
+   },
+   "mutations": 3,
+   "seed": 99274
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.800208806991577,
+   "losses": {
+    "F": 12.800208806991577,
+    "Rp": 12.92881178855896,
+    "Rp_own": 12.831327438354492
+   },
+   "mutations": 3,
+   "seed": 99275
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.345998048782349,
+   "losses": {
+    "F": 14.345998048782349,
+    "Rp": 14.335762023925781,
+    "Rp_own": 14.337778568267822
+   },
+   "mutations": 3,
+   "seed": 99276
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.15155291557312,
+   "losses": {
+    "F": 14.15155291557312,
+    "Rp": 14.241474866867065,
+    "Rp_own": 14.15490198135376
+   },
+   "mutations": 3,
+   "seed": 99277
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.515581846237183,
+   "losses": {
+    "F": 15.515581846237183,
+    "Rp": 15.638418912887573,
+    "Rp_own": 15.577653169631958
+   },
+   "mutations": 3,
+   "seed": 99278
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.358705043792725,
+   "losses": {
+    "F": 12.358705043792725,
+    "Rp": 12.44997501373291,
+    "Rp_own": 12.312196493148804
+   },
+   "mutations": 3,
+   "seed": 99279
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.437377452850342,
+   "losses": {
+    "F": 15.437377452850342,
+    "Rp": 15.398982524871826,
+    "Rp_own": 15.416468858718872
+   },
+   "mutations": 3,
+   "seed": 99280
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.486345529556274,
+   "losses": {
+    "F": 14.486345529556274,
+    "Rp": 14.418554306030273,
+    "Rp_own": 14.519836902618408
+   },
+   "mutations": 3,
+   "seed": 99281
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.270719051361084,
+   "losses": {
+    "F": 15.270719051361084,
+    "Rp": 15.247225046157837,
+    "Rp_own": 15.324699640274048
+   },
+   "mutations": 3,
+   "seed": 99282
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.971242189407349,
+   "losses": {
+    "F": 13.971242189407349,
+    "Rp": 14.021644830703735,
+    "Rp_own": 13.869897603988647
+   },
+   "mutations": 3,
+   "seed": 99283
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.87170672416687,
+   "losses": {
+    "F": 13.87170672416687,
+    "Rp": 13.911110639572144,
+    "Rp_own": 13.746892929077148
+   },
+   "mutations": 3,
+   "seed": 99284
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.273169755935669,
+   "losses": {
+    "F": 14.273169755935669,
+    "Rp": 14.26961898803711,
+    "Rp_own": 14.096104860305786
+   },
+   "mutations": 3,
+   "seed": 99285
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.69241189956665,
+   "losses": {
+    "F": 14.69241189956665,
+    "Rp": 14.714599609375,
+    "Rp_own": 14.758398294448853
+   },
+   "mutations": 3,
+   "seed": 99286
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.064751386642456,
+   "losses": {
+    "F": 15.064751386642456,
+    "Rp": 14.97901701927185,
+    "Rp_own": 14.997096300125122
+   },
+   "mutations": 3,
+   "seed": 99287
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.341106176376343,
+   "losses": {
+    "F": 12.341106176376343,
+    "Rp": 12.390923261642456,
+    "Rp_own": 12.347293615341187
+   },
+   "mutations": 3,
+   "seed": 99288
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.495925188064575,
+   "losses": {
+    "F": 13.495925188064575,
+    "Rp": 13.544174909591675,
+    "Rp_own": 13.416476726531982
+   },
+   "mutations": 3,
+   "seed": 99289
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.835484266281128,
+   "losses": {
+    "F": 13.835484266281128,
+    "Rp": 13.989530563354492,
+    "Rp_own": 13.829379558563232
+   },
+   "mutations": 3,
+   "seed": 99290
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.954246759414673,
+   "losses": {
+    "F": 12.954246759414673,
+    "Rp": 12.93623161315918,
+    "Rp_own": 13.103841543197632
+   },
+   "mutations": 3,
+   "seed": 99291
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.114530086517334,
+   "losses": {
+    "F": 14.114530086517334,
+    "Rp": 14.186501264572144,
+    "Rp_own": 14.073120355606079
+   },
+   "mutations": 3,
+   "seed": 99292
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.614140748977661,
+   "losses": {
+    "F": 14.614140748977661,
+    "Rp": 14.73753833770752,
+    "Rp_own": 14.672379732131958
+   },
+   "mutations": 3,
+   "seed": 99293
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.466554880142212,
+   "losses": {
+    "F": 14.466554880142212,
+    "Rp": 14.615447759628296,
+    "Rp_own": 14.368408679962158
+   },
+   "mutations": 3,
+   "seed": 99294
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.764161825180054,
+   "losses": {
+    "F": 14.764161825180054,
+    "Rp": 14.780065536499023,
+    "Rp_own": 14.798860311508179
+   },
+   "mutations": 3,
+   "seed": 99295
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.867560863494873,
+   "losses": {
+    "F": 14.867560863494873,
+    "Rp": 14.823482036590576,
+    "Rp_own": 14.995613813400269
+   },
+   "mutations": 3,
+   "seed": 99296
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.311126947402954,
+   "losses": {
+    "F": 14.311126947402954,
+    "Rp": 14.355660676956177,
+    "Rp_own": 14.59566354751587
+   },
+   "mutations": 3,
+   "seed": 99297
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.442221879959106,
+   "losses": {
+    "F": 14.442221879959106,
+    "Rp": 14.513795614242554,
+    "Rp_own": 14.27021074295044
+   },
+   "mutations": 3,
+   "seed": 99298
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.884457349777222,
+   "losses": {
+    "F": 12.884457349777222,
+    "Rp": 13.02266001701355,
+    "Rp_own": 12.716585874557495
+   },
+   "mutations": 3,
+   "seed": 99299
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.52617335319519,
+   "losses": {
+    "F": 14.52617335319519,
+    "Rp": 14.75606369972229,
+    "Rp_own": 14.679894924163818
+   },
+   "mutations": 3,
+   "seed": 99300
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.307973861694336,
+   "losses": {
+    "F": 14.307973861694336,
+    "Rp": 14.492334127426147,
+    "Rp_own": 14.449099779129028
+   },
+   "mutations": 3,
+   "seed": 99301
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.891387224197388,
+   "losses": {
+    "F": 13.891387224197388,
+    "Rp": 13.84653615951538,
+    "Rp_own": 13.700435876846313
+   },
+   "mutations": 3,
+   "seed": 99302
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.668158531188965,
+   "losses": {
+    "F": 13.668158531188965,
+    "Rp": 13.953394174575806,
+    "Rp_own": 13.885080337524414
+   },
+   "mutations": 3,
+   "seed": 99303
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 16.850743770599365,
+   "losses": {
+    "F": 16.850743770599365,
+    "Rp": 16.714919090270996,
+    "Rp_own": 16.925721406936646
+   },
+   "mutations": 3,
+   "seed": 99304
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.356825590133667,
+   "losses": {
+    "F": 15.356825590133667,
+    "Rp": 15.292351245880127,
+    "Rp_own": 15.386877298355103
+   },
+   "mutations": 3,
+   "seed": 99305
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.182229280471802,
+   "losses": {
+    "F": 13.182229280471802,
+    "Rp": 13.172440767288208,
+    "Rp_own": 13.220415830612183
+   },
+   "mutations": 3,
+   "seed": 99306
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.111756324768066,
+   "losses": {
+    "F": 14.111756324768066,
+    "Rp": 14.208967685699463,
+    "Rp_own": 13.997465133666992
+   },
+   "mutations": 3,
+   "seed": 99307
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.3462655544281,
+   "losses": {
+    "F": 14.3462655544281,
+    "Rp": 14.460382223129272,
+    "Rp_own": 14.439538717269897
+   },
+   "mutations": 3,
+   "seed": 99308
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 11.535561084747314,
+   "losses": {
+    "F": 11.535561084747314,
+    "Rp": 11.57306432723999,
+    "Rp_own": 11.514309644699097
+   },
+   "mutations": 3,
+   "seed": 99309
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 17.060758113861084,
+   "losses": {
+    "F": 17.060758113861084,
+    "Rp": 16.95911693572998,
+    "Rp_own": 17.057801723480225
+   },
+   "mutations": 3,
+   "seed": 99310
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.164413452148438,
+   "losses": {
+    "F": 15.164413452148438,
+    "Rp": 15.123852491378784,
+    "Rp_own": 15.214781761169434
+   },
+   "mutations": 3,
+   "seed": 99311
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.926241397857666,
+   "losses": {
+    "F": 13.926241397857666,
+    "Rp": 13.941782712936401,
+    "Rp_own": 13.855387210845947
+   },
+   "mutations": 3,
+   "seed": 99312
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.080751180648804,
+   "losses": {
+    "F": 14.080751180648804,
+    "Rp": 14.09559941291809,
+    "Rp_own": 14.114829540252686
+   },
+   "mutations": 3,
+   "seed": 99313
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.467358827590942,
+   "losses": {
+    "F": 13.467358827590942,
+    "Rp": 13.551101922988892,
+    "Rp_own": 13.548407554626465
+   },
+   "mutations": 3,
+   "seed": 99314
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.50420618057251,
+   "losses": {
+    "F": 14.50420618057251,
+    "Rp": 14.555412292480469,
+    "Rp_own": 14.555456399917603
+   },
+   "mutations": 3,
+   "seed": 99315
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 11.885136365890503,
+   "losses": {
+    "F": 11.885136365890503,
+    "Rp": 11.919837951660156,
+    "Rp_own": 12.04236388206482
+   },
+   "mutations": 3,
+   "seed": 99316
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.103873014450073,
+   "losses": {
+    "F": 14.103873014450073,
+    "Rp": 14.12618088722229,
+    "Rp_own": 14.00982666015625
+   },
+   "mutations": 3,
+   "seed": 99317
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.002415657043457,
+   "losses": {
+    "F": 15.002415657043457,
+    "Rp": 15.15791630744934,
+    "Rp_own": 14.978599071502686
+   },
+   "mutations": 3,
+   "seed": 99318
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.147964000701904,
+   "losses": {
+    "F": 14.147964000701904,
+    "Rp": 14.180830717086792,
+    "Rp_own": 14.176337957382202
+   },
+   "mutations": 3,
+   "seed": 99319
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 16.069933652877808,
+   "losses": {
+    "F": 16.069933652877808,
+    "Rp": 16.277363300323486,
+    "Rp_own": 16.18499207496643
+   },
+   "mutations": 3,
+   "seed": 99320
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.75934648513794,
+   "losses": {
+    "F": 14.75934648513794,
+    "Rp": 14.658997058868408,
+    "Rp_own": 14.553303480148315
+   },
+   "mutations": 3,
+   "seed": 99321
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.93929123878479,
+   "losses": {
+    "F": 14.93929123878479,
+    "Rp": 15.010680437088013,
+    "Rp_own": 14.863550424575806
+   },
+   "mutations": 3,
+   "seed": 99322
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.269585132598877,
+   "losses": {
+    "F": 14.269585132598877,
+    "Rp": 14.314329862594604,
+    "Rp_own": 14.365349769592285
+   },
+   "mutations": 3,
+   "seed": 99323
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.934539556503296,
+   "losses": {
+    "F": 14.934539556503296,
+    "Rp": 15.010520935058594,
+    "Rp_own": 14.893517017364502
+   },
+   "mutations": 3,
+   "seed": 99324
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.679461002349854,
+   "losses": {
+    "F": 13.679461002349854,
+    "Rp": 13.888130903244019,
+    "Rp_own": 13.73183798789978
+   },
+   "mutations": 3,
+   "seed": 99325
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.224854707717896,
+   "losses": {
+    "F": 13.224854707717896,
+    "Rp": 13.351134061813354,
+    "Rp_own": 13.253607511520386
+   },
+   "mutations": 3,
+   "seed": 99326
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.75146746635437,
+   "losses": {
+    "F": 14.75146746635437,
+    "Rp": 14.71749758720398,
+    "Rp_own": 14.693148851394653
+   },
+   "mutations": 3,
+   "seed": 99327
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 16.491822242736816,
+   "losses": {
+    "F": 16.491822242736816,
+    "Rp": 16.605008363723755,
+    "Rp_own": 16.329317331314087
+   },
+   "mutations": 3,
+   "seed": 99328
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.571275234222412,
+   "losses": {
+    "F": 14.571275234222412,
+    "Rp": 14.669710397720337,
+    "Rp_own": 14.674057483673096
+   },
+   "mutations": 3,
+   "seed": 99329
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.159197568893433,
+   "losses": {
+    "F": 13.159197568893433,
+    "Rp": 13.198423862457275,
+    "Rp_own": 12.96598768234253
+   },
+   "mutations": 3,
+   "seed": 99330
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.738224029541016,
+   "losses": {
+    "F": 14.738224029541016,
+    "Rp": 14.88368535041809,
+    "Rp_own": 14.407331943511963
+   },
+   "mutations": 3,
+   "seed": 99331
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.27023959159851,
+   "losses": {
+    "F": 15.27023959159851,
+    "Rp": 15.342957973480225,
+    "Rp_own": 15.043128490447998
+   },
+   "mutations": 3,
+   "seed": 99332
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.669702768325806,
+   "losses": {
+    "F": 13.669702768325806,
+    "Rp": 13.579604625701904,
+    "Rp_own": 13.477662086486816
+   },
+   "mutations": 3,
+   "seed": 99333
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.866780281066895,
+   "losses": {
+    "F": 14.866780281066895,
+    "Rp": 14.86601972579956,
+    "Rp_own": 14.983465909957886
+   },
+   "mutations": 3,
+   "seed": 99334
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.078317880630493,
+   "losses": {
+    "F": 14.078317880630493,
+    "Rp": 14.092060565948486,
+    "Rp_own": 14.407898187637329
+   },
+   "mutations": 3,
+   "seed": 99335
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 11.628446340560913,
+   "losses": {
+    "F": 11.628446340560913,
+    "Rp": 11.68932032585144,
+    "Rp_own": 11.751222372055054
+   },
+   "mutations": 3,
+   "seed": 99336
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.398669719696045,
+   "losses": {
+    "F": 15.398669719696045,
+    "Rp": 15.435313940048218,
+    "Rp_own": 15.278299331665039
+   },
+   "mutations": 3,
+   "seed": 99337
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.33322024345398,
+   "losses": {
+    "F": 15.33322024345398,
+    "Rp": 15.498941421508789,
+    "Rp_own": 15.457609176635742
+   },
+   "mutations": 3,
+   "seed": 99338
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.331951141357422,
+   "losses": {
+    "F": 15.331951141357422,
+    "Rp": 15.372617244720459,
+    "Rp_own": 15.431233644485474
+   },
+   "mutations": 3,
+   "seed": 99339
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.462829828262329,
+   "losses": {
+    "F": 13.462829828262329,
+    "Rp": 13.559737205505371,
+    "Rp_own": 13.265297174453735
+   },
+   "mutations": 3,
+   "seed": 99340
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.278592824935913,
+   "losses": {
+    "F": 13.278592824935913,
+    "Rp": 13.304734945297241,
+    "Rp_own": 13.378355741500854
+   },
+   "mutations": 3,
+   "seed": 99341
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.513520956039429,
+   "losses": {
+    "F": 15.513520956039429,
+    "Rp": 15.603991508483887,
+    "Rp_own": 15.830617427825928
+   },
+   "mutations": 3,
+   "seed": 99342
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.98617696762085,
+   "losses": {
+    "F": 15.98617696762085,
+    "Rp": 16.26030969619751,
+    "Rp_own": 16.112432718276978
+   },
+   "mutations": 3,
+   "seed": 99343
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.359880208969116,
+   "losses": {
+    "F": 15.359880208969116,
+    "Rp": 15.258931159973145,
+    "Rp_own": 15.364503383636475
+   },
+   "mutations": 3,
+   "seed": 99344
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.866712808609009,
+   "losses": {
+    "F": 12.866712808609009,
+    "Rp": 12.962894201278687,
+    "Rp_own": 12.600523233413696
+   },
+   "mutations": 3,
+   "seed": 99345
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.813983678817749,
+   "losses": {
+    "F": 15.813983678817749,
+    "Rp": 15.875389337539673,
+    "Rp_own": 15.908921241760254
+   },
+   "mutations": 3,
+   "seed": 99346
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 16.42690110206604,
+   "losses": {
+    "F": 16.42690110206604,
+    "Rp": 16.407984018325806,
+    "Rp_own": 16.499232292175293
+   },
+   "mutations": 3,
+   "seed": 99347
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.94492220878601,
+   "losses": {
+    "F": 14.94492220878601,
+    "Rp": 15.119694232940674,
+    "Rp_own": 15.066381454467773
+   },
+   "mutations": 3,
+   "seed": 99348
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.62810206413269,
+   "losses": {
+    "F": 15.62810206413269,
+    "Rp": 15.635223388671875,
+    "Rp_own": 15.531912803649902
+   },
+   "mutations": 3,
+   "seed": 99349
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.52162504196167,
+   "losses": {
+    "F": 14.52162504196167,
+    "Rp": 14.438873767852783,
+    "Rp_own": 14.611408948898315
+   },
+   "mutations": 3,
+   "seed": 99350
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.4334135055542,
+   "losses": {
+    "F": 14.4334135055542,
+    "Rp": 14.371087789535522,
+    "Rp_own": 14.354811906814575
+   },
+   "mutations": 3,
+   "seed": 99351
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.975884437561035,
+   "losses": {
+    "F": 15.975884437561035,
+    "Rp": 15.931740999221802,
+    "Rp_own": 16.153488397598267
+   },
+   "mutations": 3,
+   "seed": 99352
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.857856273651123,
+   "losses": {
+    "F": 14.857856273651123,
+    "Rp": 14.797819375991821,
+    "Rp_own": 14.794812202453613
+   },
+   "mutations": 3,
+   "seed": 99353
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.886992692947388,
+   "losses": {
+    "F": 13.886992692947388,
+    "Rp": 13.863066911697388,
+    "Rp_own": 13.811542987823486
+   },
+   "mutations": 3,
+   "seed": 99354
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.78682279586792,
+   "losses": {
+    "F": 13.78682279586792,
+    "Rp": 13.973745822906494,
+    "Rp_own": 13.98731017112732
+   },
+   "mutations": 3,
+   "seed": 99355
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.31180214881897,
+   "losses": {
+    "F": 14.31180214881897,
+    "Rp": 14.216433763504028,
+    "Rp_own": 14.383623600006104
+   },
+   "mutations": 3,
+   "seed": 99356
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.638883113861084,
+   "losses": {
+    "F": 15.638883113861084,
+    "Rp": 15.564154386520386,
+    "Rp_own": 15.699492692947388
+   },
+   "mutations": 3,
+   "seed": 99357
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.971043825149536,
+   "losses": {
+    "F": 14.971043825149536,
+    "Rp": 14.911642074584961,
+    "Rp_own": 14.912525653839111
+   },
+   "mutations": 3,
+   "seed": 99358
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.134254693984985,
+   "losses": {
+    "F": 13.134254693984985,
+    "Rp": 13.220707893371582,
+    "Rp_own": 13.21263599395752
+   },
+   "mutations": 3,
+   "seed": 99359
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.906064987182617,
+   "losses": {
+    "F": 14.906064987182617,
+    "Rp": 15.056888818740845,
+    "Rp_own": 15.008151531219482
+   },
+   "mutations": 3,
+   "seed": 99360
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.800655603408813,
+   "losses": {
+    "F": 13.800655603408813,
+    "Rp": 13.875757217407227,
+    "Rp_own": 13.902252912521362
+   },
+   "mutations": 3,
+   "seed": 99361
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 16.64570426940918,
+   "losses": {
+    "F": 16.64570426940918,
+    "Rp": 16.675679206848145,
+    "Rp_own": 16.439334630966187
+   },
+   "mutations": 3,
+   "seed": 99362
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.849554300308228,
+   "losses": {
+    "F": 13.849554300308228,
+    "Rp": 13.919635772705078,
+    "Rp_own": 13.804030418395996
+   },
+   "mutations": 3,
+   "seed": 99363
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.362025499343872,
+   "losses": {
+    "F": 13.362025499343872,
+    "Rp": 13.296685457229614,
+    "Rp_own": 13.302999496459961
+   },
+   "mutations": 3,
+   "seed": 99364
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.01413869857788,
+   "losses": {
+    "F": 15.01413869857788,
+    "Rp": 15.169985055923462,
+    "Rp_own": 15.034844160079956
+   },
+   "mutations": 3,
+   "seed": 99365
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.451278924942017,
+   "losses": {
+    "F": 15.451278924942017,
+    "Rp": 15.576721906661987,
+    "Rp_own": 15.353932857513428
+   },
+   "mutations": 3,
+   "seed": 99366
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.653861999511719,
+   "losses": {
+    "F": 13.653861999511719,
+    "Rp": 13.427737712860107,
+    "Rp_own": 13.662923336029053
+   },
+   "mutations": 3,
+   "seed": 99367
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.462327003479004,
+   "losses": {
+    "F": 14.462327003479004,
+    "Rp": 14.555158853530884,
+    "Rp_own": 14.371963500976562
+   },
+   "mutations": 3,
+   "seed": 99368
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.750103950500488,
+   "losses": {
+    "F": 14.750103950500488,
+    "Rp": 14.859609603881836,
+    "Rp_own": 14.845348119735718
+   },
+   "mutations": 3,
+   "seed": 99369
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.55963683128357,
+   "losses": {
+    "F": 15.55963683128357,
+    "Rp": 15.688080787658691,
+    "Rp_own": 15.574721574783325
+   },
+   "mutations": 3,
+   "seed": 99370
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.139771699905396,
+   "losses": {
+    "F": 13.139771699905396,
+    "Rp": 13.129024267196655,
+    "Rp_own": 13.160774946212769
+   },
+   "mutations": 3,
+   "seed": 99371
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.295252561569214,
+   "losses": {
+    "F": 15.295252561569214,
+    "Rp": 15.41166090965271,
+    "Rp_own": 15.249751567840576
+   },
+   "mutations": 3,
+   "seed": 99372
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.66630244255066,
+   "losses": {
+    "F": 14.66630244255066,
+    "Rp": 14.718555688858032,
+    "Rp_own": 14.854013442993164
+   },
+   "mutations": 3,
+   "seed": 99373
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.577329635620117,
+   "losses": {
+    "F": 14.577329635620117,
+    "Rp": 14.489437580108643,
+    "Rp_own": 14.463356256484985
+   },
+   "mutations": 3,
+   "seed": 99374
+  },
+  {
+   "experts": {
+    "final": [
+     4,
+     7
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.801093816757202,
+   "losses": {
+    "F": 15.801093816757202,
+    "Rp": 15.75206732749939,
+    "Rp_own": 15.727501153945923
+   },
+   "mutations": 3,
+   "seed": 99375
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.586905479431152,
+   "losses": {
+    "F": 15.586905479431152,
+    "Rp": 15.733177185058594,
+    "Rp_own": 15.491053104400635
+   },
+   "mutations": 3,
+   "seed": 99376
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.558810234069824,
+   "losses": {
+    "F": 14.558810234069824,
+    "Rp": 14.606299638748169,
+    "Rp_own": 14.620150566101074
+   },
+   "mutations": 3,
+   "seed": 99377
+  },
+  {
+   "experts": {
+    "final": [
+     7,
+     4
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.108958721160889,
+   "losses": {
+    "F": 14.108958721160889,
+    "Rp": 14.21074914932251,
+    "Rp_own": 14.220700025558472
+   },
+   "mutations": 3,
+   "seed": 99378
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.379912614822388,
+   "losses": {
+    "F": 14.379912614822388,
+    "Rp": 14.447643041610718,
+    "Rp_own": 14.12354588508606
+   },
+   "mutations": 3,
+   "seed": 99379
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 13.346322536468506,
+   "losses": {
+    "F": 13.346322536468506,
+    "Rp": 13.447547674179077,
+    "Rp_own": 13.405246019363403
+   },
+   "mutations": 3,
+   "seed": 99380
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 15.806697607040405,
+   "losses": {
+    "F": 15.806697607040405,
+    "Rp": 15.927090644836426,
+    "Rp_own": 16.03568959236145
+   },
+   "mutations": 3,
+   "seed": 99381
+  },
+  {
+   "experts": {
+    "final": [
+     6,
+     5
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 14.214754104614258,
+   "losses": {
+    "F": 14.214754104614258,
+    "Rp": 14.14720368385315,
+    "Rp_own": 14.37169361114502
+   },
+   "mutations": 3,
+   "seed": 99382
+  },
+  {
+   "experts": {
+    "final": [
+     5,
+     6
+    ],
+    "initial_per_layer": 4
+   },
+   "fixed_transport_loss": 12.650260210037231,
+   "losses": {
+    "F": 12.650260210037231,
+    "Rp": 12.71369194984436,
+    "Rp_own": 12.35986065864563
+   },
+   "mutations": 3,
+   "seed": 99383
+  }
+ ],
+ "profile": "grow",
+ "protocol": "forced-operation-residual-attribution",
+ "record_type": "residual_attribution_study",
+ "report_section": "5.25",
+ "residual_penalty": -0.04759033272663752,
+ "seeds": [
+  99000,
+  99001,
+  99002,
+  99003,
+  99004,
+  99005,
+  99006,
+  99007,
+  99008,
+  99009,
+  99010,
+  99011,
+  99012,
+  99013,
+  99014,
+  99015,
+  99016,
+  99017,
+  99018,
+  99019,
+  99020,
+  99021,
+  99022,
+  99023,
+  99024,
+  99025,
+  99026,
+  99027,
+  99028,
+  99029,
+  99030,
+  99031,
+  99032,
+  99033,
+  99034,
+  99035,
+  99036,
+  99037,
+  99038,
+  99039,
+  99040,
+  99041,
+  99042,
+  99043,
+  99044,
+  99045,
+  99046,
+  99047,
+  99048,
+  99049,
+  99050,
+  99051,
+  99052,
+  99053,
+  99054,
+  99055,
+  99056,
+  99057,
+  99058,
+  99059,
+  99060,
+  99061,
+  99062,
+  99063,
+  99064,
+  99065,
+  99066,
+  99067,
+  99068,
+  99069,
+  99070,
+  99071,
+  99072,
+  99073,
+  99074,
+  99075,
+  99076,
+  99077,
+  99078,
+  99079,
+  99080,
+  99081,
+  99082,
+  99083,
+  99084,
+  99085,
+  99086,
+  99087,
+  99088,
+  99089,
+  99090,
+  99091,
+  99092,
+  99093,
+  99094,
+  99095,
+  99096,
+  99097,
+  99098,
+  99099,
+  99100,
+  99101,
+  99102,
+  99103,
+  99104,
+  99105,
+  99106,
+  99107,
+  99108,
+  99109,
+  99110,
+  99111,
+  99112,
+  99113,
+  99114,
+  99115,
+  99116,
+  99117,
+  99118,
+  99119,
+  99120,
+  99121,
+  99122,
+  99123,
+  99124,
+  99125,
+  99126,
+  99127,
+  99128,
+  99129,
+  99130,
+  99131,
+  99132,
+  99133,
+  99134,
+  99135,
+  99136,
+  99137,
+  99138,
+  99139,
+  99140,
+  99141,
+  99142,
+  99143,
+  99144,
+  99145,
+  99146,
+  99147,
+  99148,
+  99149,
+  99150,
+  99151,
+  99152,
+  99153,
+  99154,
+  99155,
+  99156,
+  99157,
+  99158,
+  99159,
+  99160,
+  99161,
+  99162,
+  99163,
+  99164,
+  99165,
+  99166,
+  99167,
+  99168,
+  99169,
+  99170,
+  99171,
+  99172,
+  99173,
+  99174,
+  99175,
+  99176,
+  99177,
+  99178,
+  99179,
+  99180,
+  99181,
+  99182,
+  99183,
+  99184,
+  99185,
+  99186,
+  99187,
+  99188,
+  99189,
+  99190,
+  99191,
+  99192,
+  99193,
+  99194,
+  99195,
+  99196,
+  99197,
+  99198,
+  99199,
+  99200,
+  99201,
+  99202,
+  99203,
+  99204,
+  99205,
+  99206,
+  99207,
+  99208,
+  99209,
+  99210,
+  99211,
+  99212,
+  99213,
+  99214,
+  99215,
+  99216,
+  99217,
+  99218,
+  99219,
+  99220,
+  99221,
+  99222,
+  99223,
+  99224,
+  99225,
+  99226,
+  99227,
+  99228,
+  99229,
+  99230,
+  99231,
+  99232,
+  99233,
+  99234,
+  99235,
+  99236,
+  99237,
+  99238,
+  99239,
+  99240,
+  99241,
+  99242,
+  99243,
+  99244,
+  99245,
+  99246,
+  99247,
+  99248,
+  99249,
+  99250,
+  99251,
+  99252,
+  99253,
+  99254,
+  99255,
+  99256,
+  99257,
+  99258,
+  99259,
+  99260,
+  99261,
+  99262,
+  99263,
+  99264,
+  99265,
+  99266,
+  99267,
+  99268,
+  99269,
+  99270,
+  99271,
+  99272,
+  99273,
+  99274,
+  99275,
+  99276,
+  99277,
+  99278,
+  99279,
+  99280,
+  99281,
+  99282,
+  99283,
+  99284,
+  99285,
+  99286,
+  99287,
+  99288,
+  99289,
+  99290,
+  99291,
+  99292,
+  99293,
+  99294,
+  99295,
+  99296,
+  99297,
+  99298,
+  99299,
+  99300,
+  99301,
+  99302,
+  99303,
+  99304,
+  99305,
+  99306,
+  99307,
+  99308,
+  99309,
+  99310,
+  99311,
+  99312,
+  99313,
+  99314,
+  99315,
+  99316,
+  99317,
+  99318,
+  99319,
+  99320,
+  99321,
+  99322,
+  99323,
+  99324,
+  99325,
+  99326,
+  99327,
+  99328,
+  99329,
+  99330,
+  99331,
+  99332,
+  99333,
+  99334,
+  99335,
+  99336,
+  99337,
+  99338,
+  99339,
+  99340,
+  99341,
+  99342,
+  99343,
+  99344,
+  99345,
+  99346,
+  99347,
+  99348,
+  99349,
+  99350,
+  99351,
+  99352,
+  99353,
+  99354,
+  99355,
+  99356,
+  99357,
+  99358,
+  99359,
+  99360,
+  99361,
+  99362,
+  99363,
+  99364,
+  99365,
+  99366,
+  99367,
+  99368,
+  99369,
+  99370,
+  99371,
+  99372,
+  99373,
+  99374,
+  99375,
+  99376,
+  99377,
+  99378,
+  99379,
+  99380,
+  99381,
+  99382,
+  99383
+ ],
+ "study_hash": "c7ec09294da043fc",
+ "study_id": "study_c7ec09294da043fc",
+ "summary_note": "Section 5.25. Every mutation event is forced to one operation, so the residual penalty of section 5.24 is attributed to a pruned expert's lost capacity (prune block) or a grown expert's fresh initialization (grow block) rather than to their mix. Rp_own - Rp is the residual; negative means the frozen retrain won."
+}

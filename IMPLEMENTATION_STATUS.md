@@ -1561,6 +1561,30 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   (`study_18c56d8bf539e2f3`, `study_65103c230c610378`), pinned by
   `tests/test_router_preservation_summary.py` (which also pins the defect itself,
   teeth-checked by flipping the default).
+- **Section 5.25 RAN (2026-09-15, blocks 98000-98383 prune / 99000-99383 grow,
+  `scripts/residual_attribution_study.py`).** Attributes section 5.24's residual
+  by *forcing* the operation rather than splitting a mix: new opt-in
+  `ExperimentConfig.forced_operation` makes every non-adaptive event the named
+  operation, and a forced operation the genome cannot perform is left
+  unperformed rather than swapped for the fallback grow (so a profile that stops
+  mutating fails its budget check instead of measuring the wrong thing).
+  Registered verdict **branch (a) - the residual is BOTH operations**: the prune
+  block 241/384 (mean -0.0297, p 3.25e-07) and the grow block 241/384 (mean
+  -0.0476, p 3.25e-07), bar 212 at `alpha/2`. **The grow costs ~1.6x the prune**
+  (0.0159 vs 0.0099 per forced event) - the opposite of the declared prediction,
+  which expected the grow to be free because it only adds capacity. Fifth
+  understated prediction in the sequence, and the first where the miss was in the
+  *comparison* rather than in whether an effect exists. An additive check roughly
+  holds: per-event costs predict `0.0386` for a 50/50 mix against section 5.24's
+  measured `0.0441`, on different blocks and substrates. **Consequence:** the
+  remaining lever is the *initialization of a new expert*, exactly plan section
+  51's teacher treatment - now the best-motivated untested experiment in the
+  programme, and still blocked on Qwen-derived artifacts this repo does not
+  bundle. Summaries
+  `artifacts/study-summaries/residual-{prune,grow}-384.json`
+  (`study_68591d55f3a56db7`, `study_c7ec09294da043fc`), pinned by
+  `tests/test_residual_attribution_summary.py` and
+  `tests/test_forced_operation_control.py`.
 - **Report-artifact link guard (2026-09-15).** Section 5.19's missing summaries
   were a defect *class*, not an incident: a result can be cited widely while its
   artifact does not exist. `tests/test_report_artifact_links.py` now fails if any
