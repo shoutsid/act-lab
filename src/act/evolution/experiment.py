@@ -1,5 +1,6 @@
 """Matched-budget Experiment 0 for the Python training path."""
 
+from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import asdict, dataclass
 import math
@@ -113,6 +114,10 @@ class ArmResult:
     architecture_hash: str
     mutation_history: tuple[dict[str, object], ...]
     importance_records: tuple[dict[str, object], ...]
+    # Plan section 11 (weight/topology separation): the discovered topology as
+    # a portable object, so the genome - not the weights - can be extracted,
+    # transported and retrained. ``ArchitectureGenome.from_dict`` inverts it.
+    genome: dict[str, object]
 
 
 @dataclass(frozen=True)
@@ -226,15 +231,7 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
         )
         for mode in arm_modes
     )
-    data = torch.Generator(device="cpu")
-    data.manual_seed(config.seed ^ 0x5EED)
-    for step in range(1, config.steps + 1):
-        tokens = torch.randint(
-            0,
-            config.vocab_size,
-            (config.batch_size, config.sequence_length),
-            generator=data,
-        ).to(device)
+    for step, tokens in enumerate(_training_batches(config, device), start=1):
         for arm_index, arm in enumerate(arms):
             arm.optimizer.zero_grad(set_to_none=True)
             loss = arm.model.loss(tokens)
@@ -623,6 +620,28 @@ def _latest_importance(arm: _Arm) -> dict[str, dict[str, object]]:
     return latest
 
 
+def _training_batches(
+    config: ExperimentConfig,
+    device: torch.device,
+) -> Iterator[torch.Tensor]:
+    """The per-seed training data schedule: one batch per step, in order.
+
+    Extracted so that a study which retrains a discovered topology on the
+    *same* schedule (plan section 52) consumes the same draws rather than a
+    duplicated copy of the seed constant. The draws depend only on the
+    config, never on the arm, so every arm of a block sees identical data.
+    """
+    data = torch.Generator(device="cpu")
+    data.manual_seed(config.seed ^ 0x5EED)
+    for _ in range(config.steps):
+        yield torch.randint(
+            0,
+            config.vocab_size,
+            (config.batch_size, config.sequence_length),
+            generator=data,
+        ).to(device)
+
+
 def _validation_batches(
     config: ExperimentConfig,
     device: torch.device,
@@ -663,6 +682,7 @@ def _finish_arm(arm: _Arm, batches: tuple[torch.Tensor, ...]) -> ArmResult:
         architecture_hash=genome_hash(arm.genome),
         mutation_history=tuple(arm.mutation_history or ()),
         importance_records=tuple(arm.importance_records or ()),
+        genome=arm.genome.to_dict(),
     )
 
 
