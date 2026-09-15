@@ -15,6 +15,7 @@ from act.training import (
     initialize_distributed,
     wrap_distributed,
 )
+from act.training.runtime import resolve_device
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BENCHMARK = REPO_ROOT / "scripts" / "v0_throughput_benchmark.py"
@@ -96,6 +97,31 @@ def test_gpu_inventory_counts_every_visible_device() -> None:
         assert len(inventory["names"]) == inventory["count"]
     else:
         assert inventory == {"count": 0, "names": []}
+
+
+def test_resolve_device_accepts_an_explicit_cuda_index() -> None:
+    """The pair model addresses one GPU per arm, so ``cuda:N`` must work.
+
+    Kaggle's T4 shape hands out two devices (measured 2026-09-15) and nothing
+    could name the second one: ``resolve_device`` only understood ``cuda``,
+    which torch reads as device 0.
+    """
+    if not torch.cuda.is_available():
+        pytest.skip("no CUDA device on this host")
+    assert resolve_device("cuda:0").index == 0
+    # An index the host does not have must fail at startup, not mid-step.
+    with pytest.raises(ValueError, match="does not exist"):
+        resolve_device(f"cuda:{torch.cuda.device_count()}")
+    with pytest.raises(ValueError, match="integer"):
+        resolve_device("cuda:x")
+
+
+def test_resolve_device_rejects_nonsense_and_keeps_cpu() -> None:
+    assert resolve_device("cpu").type == "cpu"
+    with pytest.raises(ValueError, match="device must be"):
+        resolve_device("gpu")
+    with pytest.raises(ValueError, match="integer"):
+        resolve_device("cuda:-1")
 
 
 def test_benchmark_artifact_carries_the_gpu_inventory(tmp_path) -> None:

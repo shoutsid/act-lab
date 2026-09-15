@@ -138,14 +138,37 @@ def _autocast_context(device: torch.device, mode: str):
 
 
 def resolve_device(requested: str) -> torch.device:
-    """Resolve an explicit device or prefer CUDA when the driver supports it."""
+    """Resolve an explicit device, including a specific CUDA index.
+
+    ``cuda`` means device 0, as torch reads it. ``cuda:N`` selects one device
+    explicitly, which the pair model needs: section 5.2 places a pair's two
+    arms on separate GPUs, and Kaggle's T4 shape hands out two (measured
+    2026-09-15). An index the host does not have fails here, at startup, rather
+    than inside a training step - and ``cuda:1`` on a one-GPU host is exactly
+    the mistake worth catching early.
+    """
     if requested == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if requested not in {"cpu", "cuda"}:
-        raise ValueError("device must be auto, cpu, or cuda")
-    if requested == "cuda" and not torch.cuda.is_available():
-        raise RuntimeError("CUDA was requested but no compatible device is available")
-    return torch.device(requested)
+    if requested == "cpu":
+        return torch.device("cpu")
+    if requested == "cuda" or requested.startswith("cuda:"):
+        if not torch.cuda.is_available():
+            raise RuntimeError(
+                "CUDA was requested but no compatible device is available"
+            )
+        if requested == "cuda":
+            return torch.device("cuda")
+        index = requested.split(":", 1)[1]
+        if not index.isdigit():
+            raise ValueError(f"device index must be an integer, got {requested!r}")
+        count = torch.cuda.device_count()
+        if int(index) >= count:
+            raise ValueError(
+                f"{requested} does not exist: the host reports {count} CUDA "
+                "device(s)"
+            )
+        return torch.device(requested)
+    raise ValueError("device must be auto, cpu, cuda, or cuda:N")
 
 
 def gpu_inventory() -> dict[str, object]:

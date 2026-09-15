@@ -18,6 +18,7 @@ from act.training.runtime import (
     TrainingConfig,
     TrainingState,
     make_optimizer,
+    resolve_device,
     save_checkpoint,
     train_steps,
 )
@@ -184,6 +185,12 @@ def _run_pair_session(args: argparse.Namespace) -> None:
         )
     if args.hours <= 0:
         raise SystemExit("--hours must be positive")
+    try:
+        # Fail before any training: an unusable device (``cuda:1`` on a
+        # one-GPU host) should not surface from inside a training step.
+        resolve_device(args.device)
+    except (ValueError, RuntimeError) as error:
+        raise SystemExit(f"--device {args.device!r}: {error}") from error
     if args.seeds is None:
         seeds = DECLARED_SEEDS
     elif "-" in args.seeds and "," not in args.seeds:
@@ -353,7 +360,11 @@ def main() -> None:
         default=None,
         help="training horizon (baseline default 8; v0 default 6000 = declared)",
     )
-    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    parser.add_argument(
+        "--device", default="auto",
+        help="auto | cpu | cuda | cuda:N - a specific index is how the pair "
+        "model addresses the second GPU (the declared run is cuda)",
+    )
     parser.add_argument("--checkpoint", type=Path, default=Path("artifacts/dense-baseline.pt"))
     # V0 protocol options.
     parser.add_argument(

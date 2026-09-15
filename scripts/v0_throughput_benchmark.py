@@ -126,8 +126,9 @@ def main() -> int:
     )
     parser.add_argument("--warmup", type=int, default=5)
     parser.add_argument(
-        "--device", choices=("auto", "cpu", "cuda"), default="auto",
-        help="auto resolves to CUDA when available (the declared decision context)",
+        "--device", default="auto",
+        help="auto resolves to CUDA when available (the declared decision context); "
+        "cuda:N pins one index, which is how a second GPU is addressed",
     )
     parser.add_argument(
         "--output", type=Path, default=None,
@@ -225,7 +226,11 @@ def main() -> int:
         "benchmark": "v0-throughput-5.2",
         "profile": "declared-285M" if not args.profile else "smoke-profile",
         "device": str(device),
-        "device_name": torch.cuda.get_device_name(0) if device.type == "cuda" else platform.processor(),
+        "device_name": (
+            torch.cuda.get_device_name(device.index or 0)
+            if device.type == "cuda"
+            else platform.processor()
+        ),
         # The rate above is single-device (resolve_device -> cuda:0); how many
         # devices the host actually offered is the difference between a
         # measured rate and a measured rate with idle hardware next to it.
