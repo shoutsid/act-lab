@@ -9,6 +9,7 @@ runbook says, since a drifted flag is a protocol change, not a typo.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -108,6 +109,64 @@ def test_handoff_roots_are_repo_relative_outside_a_kernel() -> None:
     queue = kaggle_t4.QUEUES["control"]
     assert queue.dataset_root == "artifacts/datasets-control"
     assert queue.session_dir == "artifacts/v0-sessions-control"
+
+
+def test_reclaim_deletes_the_root_after_a_publish_that_did_not_fail(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "act-lab-session-deadbeef"
+    (root / "artifacts" / "datasets").mkdir(parents=True)
+    (root / "artifacts" / "datasets" / "seed-15000.tar").write_bytes(b"x" * 32)
+    monkeypatch.setattr(kaggle_t4, "workspace_root", lambda mode="": root)
+
+    kaggle_t4._reclaim()
+
+    assert not root.exists()
+
+
+def test_reclaim_keeps_the_root_when_the_publish_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A failed publish means the overlay copy is the only copy of this
+    # session's completions; it must survive for inspection.
+    root = tmp_path / "act-lab-session-deadbeef"
+    root.mkdir(parents=True)
+    log = root / "remote-publish-log.json"
+    log.write_text(json.dumps({"status": "failed"}))
+    monkeypatch.setattr(kaggle_t4, "workspace_root", lambda mode="": root)
+
+    kaggle_t4._reclaim(log)
+
+    assert root.exists()
+
+
+def test_reclaim_never_touches_the_repository(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Outside a kernel the workspace root is the repo itself; a stray rmtree
+    # here would be catastrophic, so it must be a no-op.
+    monkeypatch.setattr(kaggle_t4, "workspace_root", lambda mode="": Path("."))
+
+    kaggle_t4._reclaim()
+
+    assert Path(".").exists()
+    assert Path("scripts/kaggle_t4.py").is_file()
+
+
+def test_run_token_is_stable_per_container_and_empty_outside_one(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(kaggle_t4.CONTAINER_NAME_ENV, raising=False)
+    assert kaggle_t4.run_token() == ""
+
+    monkeypatch.setenv(
+        kaggle_t4.CONTAINER_NAME_ENV, "kaggle_abc123-350086509-webtier"
+    )
+    token = kaggle_t4.run_token()
+    assert token == kaggle_t4.run_token()  # deterministic within a run
+    monkeypatch.setenv(
+        kaggle_t4.CONTAINER_NAME_ENV, "kaggle_zzz999-350086509-webtier"
+    )
+    # Two kernels of the same queue must not share an overlay directory.
+    assert kaggle_t4.run_token() != token
 
 
 def test_handoff_roots_move_off_the_working_mount_in_a_kernel(

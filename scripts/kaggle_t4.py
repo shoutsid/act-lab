@@ -51,6 +51,7 @@ the API calls to leave the session.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -83,6 +84,23 @@ INPUT_ROOT = Path("/kaggle/input")
 WORK_ROOT = Path("/kaggle/working/act-lab")
 
 
+CONTAINER_NAME_ENV = "KAGGLE_CONTAINER_NAME"
+
+
+def run_token() -> str:
+    """A filesystem-safe token unique to this kernel run, or ``""`` outside one.
+
+    ``KAGGLE_CONTAINER_NAME`` carries the run identity (verified 2026-09-15:
+    ``kaggle_<hash>-<number>-webtier``), which is what makes the overlay work
+    root collision-proof: the queues are driven one session at a time, and two
+    kernels of the *same* queue must never share a directory.
+    """
+    name = os.environ.get(CONTAINER_NAME_ENV, "")
+    if not name:
+        return ""
+    return hashlib.sha1(name.encode("utf-8")).hexdigest()[:10]
+
+
 def workspace_root(mode: str = "") -> Path:
     """Where a run's handoff roots live.
 
@@ -95,14 +113,14 @@ def workspace_root(mode: str = "") -> Path:
     to survive the session: the published dataset is restored at session start
     and pushed again at exit.
 
-    The overlay is shared with the host, so the directory is scoped by mode
-    (``/tmp/act-lab-session``, ``/tmp/act-lab-verdict``, ...): concurrent
-    kernels of different modes must not share a root. Locally the roots stay
-    repo-relative, which is what the runbook prints.
+    Scoped by mode *and* run token, because the overlay is host-shared. Locally
+    the roots stay repo-relative, which is what the runbook prints.
     """
-    if Path("/kaggle/working").is_dir():
-        return Path("/tmp") / (f"act-lab-{mode}" if mode else "act-lab")
-    return Path(".")
+    if not Path("/kaggle/working").is_dir():
+        return Path(".")
+    token = run_token()
+    scope = f"act-lab-{mode}" if mode else "act-lab"
+    return Path("/tmp") / (f"{scope}-{token}" if token else scope)
 
 
 @dataclass(frozen=True)
@@ -369,10 +387,55 @@ def report_resources() -> None:
             _log(f"handoff root {root}: {total / 2**30:.2f} GiB")
 
 
+def _log_environ() -> None:
+    """Log the KAGGLE_* environment, values masked.
+
+    Two purposes: confirm which credential variables are absent (the publish
+    path relies on the kernel's own identity), and look for a run-unique
+    identifier to scope the overlay work root by, so two kernels of the same
+    queue can never share a directory.
+    """
+    secret = ("KEY", "TOKEN", "SECRET", "PASSWORD")
+    keys = sorted(k for k in os.environ if k.startswith("KAGGLE"))
+    _log(f"KAGGLE_* variables: {len(keys)}")
+    for key in keys:
+        value = os.environ[key]
+        if any(word in key.upper() for word in secret):
+            value = f"<set, {len(value)} chars>"
+        elif len(value) > 80:
+            value = value[:77] + "..."
+        _log(f"  {key}={value}")
+
+
+def _reclaim(publish_log: Path | None = None) -> None:
+    """Delete this run's overlay work root once its state is elsewhere.
+
+    The overlay is shared with the host, so leaving tens of GB per session
+    behind would be antisocial; the durable copy is the published dataset. The
+    root is kept when the publish failed, so a failed session can be
+    inspected - and because the publish outcome is already in the kernel
+    output, keeping it costs nothing but space.
+    """
+    root = workspace_root()
+    if root == Path(".") or not root.is_dir():
+        return
+    if publish_log is not None and publish_log.is_file():
+        try:
+            if json.loads(publish_log.read_text()).get("status") == "failed":
+                _log(f"keeping {root}: the publish failed, state is only local")
+                return
+        except (OSError, ValueError):
+            pass
+    size = sum(path.stat().st_size for path in root.rglob("*") if path.is_file())
+    shutil.rmtree(root, ignore_errors=True)
+    _log(f"reclaimed {root} ({size / 2**30:.2f} GiB)")
+
+
 def mode_probe() -> None:
     """Diagnostic: is the Kaggle dataset API usable inside a kernel?"""
     _log("=== Kaggle-in-kernel credential probe ===")
     report_resources()
+    _log_environ()
     for key in ("KAGGLE_USERNAME", "KAGGLE_KEY", "KAGGLE_CONFIG_DIR", "HOME"):
         value = os.environ.get(key)
         if value and key == "KAGGLE_KEY":
@@ -478,8 +541,10 @@ def mode_session(queue: Queue) -> None:
     # Runbook 6: keep the audit trail in the kernel output, so the per-pair
     # actions and the publish outcome survive without the dataset API.
     _keep(work / queue.session_dir / "session-log.json")
-    _keep(work / queue.dataset_root / "remote-publish-log.json")
+    publish_log = work / queue.dataset_root / "remote-publish-log.json"
+    _keep(publish_log)
     report_resources()
+    _reclaim(publish_log)
 
     _log(f"=== {queue.mode} session finished after {(time.time() - started) / 3600:.2f} h ===")
 
@@ -509,6 +574,7 @@ def mode_verdict() -> None:
     _keep(verdict_path)
     if verdict_path.is_file():
         _log(json.dumps(json.loads(verdict_path.read_text()), indent=2, sort_keys=True))
+    _reclaim()
     _log("=== VERDICT COMPLETE ===")
 
 

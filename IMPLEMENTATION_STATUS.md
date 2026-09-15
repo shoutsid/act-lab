@@ -653,6 +653,18 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   session. Pinned by a runner test that fails the second publish and asserts
   the first seed stays `complete`, the second does not, and the third is never
   attempted.
+- **The overlay work root is collision-proof and self-cleaning.** Because the
+  root lives on a host-shared overlay, it is scoped by mode *and* by run:
+  `KAGGLE_CONTAINER_NAME` carries the run identity (probed 2026-09-15:
+  `kaggle_<hash>-<number>-webtier`), hashed into the directory name. The queues
+  are driven one session at a time by design - quota, not parallelism, is the
+  constraint - so this only matters when an overlap happens by accident, and it
+  makes that harmless rather than corrupting a directory another kernel is
+  using. The root is deleted at session end once the exit publish reports
+  anything other than `failed`, and kept when it fails (the overlay copy is
+  then the only copy of that session's completions); outside a kernel the root
+  is the repository itself, so the reclaim is a hard no-op there and is tested
+  to be one.
 - `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (272, including the
   26 report-figure data-assembly tests, 14 session-plan tests pinning the
   section 5.2 schedule/dtype tables, 10 handoff tests covering atomic

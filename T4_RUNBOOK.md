@@ -42,7 +42,16 @@ no-re-tuning rule are all untouched.
 
    **On Kaggle those roots are not under the working directory** — see the
    disk budget in §0.5. `scripts/kaggle_t4.py` passes absolute overlay roots
-   for them; running the launch command by hand on Kaggle must do the same.
+   for them, scoped by mode *and* by run
+   (`/tmp/act-lab-<mode>-<run-token>/…`, the token derived from
+   `KAGGLE_CONTAINER_NAME`), so two kernels can never share a directory;
+   running the launch command by hand on Kaggle must pass the same kind of
+   absolute root. **One session per queue at a time is the design** - the
+   queues are sequential and the weekly GPU quota, not parallelism, is the
+   constraint - and the run-scoped root exists so that an accidental overlap
+   is harmless instead of corrupting a shared directory on the host overlay.
+   The run's root is deleted at session end once the exit publish has reported
+   anything other than `failed` (the durable copy is the published dataset).
 
 3. **Remote dataset name.** Choose one `owner/slug` for the whole run (e.g.
    `<your-account>/act-v0-5-1`) and use it identically in every session. The
