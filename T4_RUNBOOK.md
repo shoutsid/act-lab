@@ -115,11 +115,15 @@ live is adopted instead of gated.
 
 A script kernel receives **only** `code_file`: the CLI sends that file's text
 and nothing else from the push folder, and the metadata has no field for
-environment variables. The staged entry script is therefore generated with the
-mode pinned inside it (`run-session.py`, `run-verdict.py`, ...) - and the
-`--hours` window pinned with it, because the kernel reads `ACT_T4_HOURS` from
-its *own* environment and would otherwise fall back to its default while the
-quota gate compared the overridden number. Copying
+environment variables. The staged entry script is therefore generated with **every** knob the kernel
+resolves from its own environment pinned inside it (`run-session.py`,
+`run-verdict.py`, ...): the mode, the `--hours` window, and the owner/slug
+that `Queue.dataset` - the dataset a session publishes to - is built from.
+Each of those was a silent no-op when set on the pushing side, and each only
+looked like it worked because the default happened to match; the owner/slug
+one would have published to the default dataset while the driver believed
+otherwise. Staging refuses if any of those constants is renamed in the body.
+Copying
 `kaggle_t4.py` into a folder and exporting `ACT_T4_MODE` on the pushing side
 does **not** work - the kernel never sees that environment.
 

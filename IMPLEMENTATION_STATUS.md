@@ -741,6 +741,19 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   `seed-*/manifests/manifest.json` and checksum-verified restore), and the
   resume lookup. Pinned by 1 integration test in `tests/test_kaggle_queue.py`
   (plus the 12 hand-built `queue_progress` cases).
+- **Every kernel-side environment knob is now pinned into the staged body.**
+  A script kernel receives only `code_file`, so anything set on the pushing
+  side never arrives, and the kernel falls back to its own default. Three
+  instances existed and all three only appeared to work because the default
+  matched: the mode (fixed earlier), `--hours`, and - the one that would have
+  been destructive - `ACT_T4_OWNER`/`ACT_T4_SLUG`, which `Queue.dataset`
+  builds *inside the kernel*, so an override would have published the session
+  to the default dataset while the driver believed otherwise. Staging now
+  emits all of them from one helper (`pinned_environment`), and refuses if any
+  of the constants is renamed in the body. Verified by executing the staged
+  guard with the driver's environment set and the kernel's cleared: it
+  resolves `someone-else/other-dataset` rather than the default. Pinned by a
+  test that stages under an override and asserts the metadata agrees.
 - `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (272, including the
   26 report-figure data-assembly tests, 14 session-plan tests pinning the
   section 5.2 schedule/dtype tables, 10 handoff tests covering atomic

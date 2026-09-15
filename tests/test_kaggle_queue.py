@@ -198,10 +198,31 @@ def test_staged_kernel_pins_the_declared_window(tmp_path: Path) -> None:
     assert source.endswith(
         'if __name__ == "__main__":\n'
         "    os.environ.setdefault(MODE_ENV, 'session')\n"
+        "    os.environ.setdefault(OWNER_ENV, 'sid123123234')\n"
+        "    os.environ.setdefault(SLUG_ENV, 'act-v0-5-1')\n"
         "    os.environ.setdefault(HOURS_ENV, '6.5')\n"
         "    raise SystemExit(main())\n"
     )
     compile(source, str(folder / metadata["code_file"]), "exec")
+
+
+def test_staged_kernel_pins_the_dataset_it_will_publish_to(tmp_path: Path, monkeypatch) -> None:
+    """``Queue.dataset`` is resolved inside the kernel, from its own env.
+
+    An ``ACT_T4_OWNER``/``ACT_T4_SLUG`` override set here would otherwise be
+    invisible there, and the session would publish to the default dataset
+    while the driver believed it was using the override.
+    """
+    monkeypatch.setenv("ACT_T4_OWNER", "someone-else")
+    monkeypatch.setenv("ACT_T4_SLUG", "other-dataset")
+    folder = kaggle_queue.stage(tmp_path / "push", "session", 9.0)
+    metadata = json.loads((folder / "kernel-metadata.json").read_text())
+    source = (folder / metadata["code_file"]).read_text()
+
+    assert "os.environ.setdefault(OWNER_ENV, 'someone-else')" in source
+    assert "os.environ.setdefault(SLUG_ENV, 'other-dataset')" in source
+    # The staged metadata must agree with what the kernel will resolve.
+    assert metadata["dataset_sources"] == ["someone-else/act-lab-code"]
 
 
 def test_staged_kernel_without_a_window_keeps_the_kernel_default(tmp_path: Path) -> None:

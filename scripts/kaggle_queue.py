@@ -256,6 +256,36 @@ def ensure_code_dataset(repo: str | Path, *, log=print) -> str:
 
 
 
+# Every knob the kernel resolves from its *own* environment. A script kernel
+# receives only ``code_file``, so anything set on the pushing side has to be
+# written into the body or it silently falls back to a default - how both
+# ``--hours`` and an ``ACT_T4_OWNER`` override became no-ops that only looked
+# right because the default happened to match. Names, not values: the body
+# defines these as module constants and the staged script uses them directly.
+# ``QUEUE_ENV`` is deliberately absent - the kernel only reads it in the
+# ``metadata`` mode, which :func:`stage` performs locally via
+# ``kaggle_t4.metadata_for``.
+PINNED_ENV_NAMES = ("MODE_ENV", "OWNER_ENV", "SLUG_ENV")
+
+
+def pinned_environment(queue_mode: str, hours: float | None) -> list[str]:
+    """The ``__main__`` lines that make the pushed kernel self-contained."""
+    values = {
+        "MODE_ENV": queue_mode,
+        "OWNER_ENV": os.environ.get(kaggle_t4.OWNER_ENV, kaggle_t4.DEFAULT_OWNER),
+        "SLUG_ENV": os.environ.get(kaggle_t4.SLUG_ENV, kaggle_t4.DEFAULT_SLUG),
+    }
+    lines = [
+        f"    os.environ.setdefault({name}, {values[name]!r})"
+        for name in PINNED_ENV_NAMES
+    ]
+    if hours is not None:
+        # The quota gate compares this same number, so a silent fallback to the
+        # kernel's default would make the gate unsound.
+        lines.append(f"    os.environ.setdefault(HOURS_ENV, {str(hours)!r})")
+    return lines
+
+
 def stage(
     directory: str | Path, queue_mode: str, hours: float | None = None
 ) -> Path:
@@ -279,14 +309,13 @@ def stage(
             "kaggle_t4.py's __main__ guard drifted; kaggle_queue.stage cannot "
             "pin the queue mode into the pushed kernel body"
         )
-    pinned_lines = [
-        'if __name__ == "__main__":',
-        f"    os.environ.setdefault(MODE_ENV, {queue_mode!r})",
-    ]
-    if hours is not None:
-        # The quota gate below compares the same number, so letting the kernel
-        # fall back to its own default would make the gate unsound.
-        pinned_lines.append(f"    os.environ.setdefault(HOURS_ENV, {str(hours)!r})")
+    for name in (*PINNED_ENV_NAMES, "HOURS_ENV"):
+        if f"\n{name} = " not in body:
+            raise SystemExit(
+                f"kaggle_t4.py no longer defines {name}; staging cannot pin it "
+                "into the pushed kernel body"
+            )
+    pinned_lines = ['if __name__ == "__main__":', *pinned_environment(queue_mode, hours)]
     pinned_lines.append("    raise SystemExit(main())")
     pinned = "\n".join(pinned_lines) + "\n"
     entry = folder / f"run-{queue_mode}.py"
