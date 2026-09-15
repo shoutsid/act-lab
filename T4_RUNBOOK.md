@@ -68,6 +68,62 @@ no-re-tuning rule are all untouched.
 
 ---
 
+## 0.5 Driving the run as Kaggle kernels
+
+Sections 1-2c describe what a session *does*; this section is how a session is
+started. The registered commands run as **script kernels** driven by
+`scripts/kaggle_t4.py`, whose behaviour is selected by `ACT_T4_MODE`
+(`preflight`, `session`, `control`, `null`, plus `probe` and `metadata`). Every
+mode copies the attached code dataset into the writable working dir, runs the
+registered command unchanged, and keeps the session log and publish log in the
+kernel output. The metadata for a push is generated, not hand-written:
+
+```bash
+mkdir -p /tmp/act-t4 && cd /tmp/act-t4
+cp <repo>/scripts/kaggle_t4.py .
+ACT_T4_MODE=metadata ACT_T4_QUEUE=session python kaggle_t4.py
+kaggle kernels push -p .
+```
+
+Three Kaggle-side facts that are not obvious, recorded because they already
+cost one failed run:
+
+1. **The code dataset mounts nested.** The current runtime attaches a dataset
+   at `/kaggle/input/datasets/<owner>/<slug>/`, not `/kaggle/input/<slug>/`.
+   The driver searches the mount tree for `pyproject.toml` + `src/act` instead
+   of assuming a depth, so the flat and `<owner>/<slug>` layouts also resolve.
+2. **`gpu_type` is not an accelerator pin.** `kaggle kernels push` honours
+   `machine_shape` (`NvidiaTeslaT4`); an unknown key is silently dropped and
+   the run lands on whatever Kaggle assigns. The generated metadata sets it.
+3. **The dataset API needs no secrets.** `KaggleApi().authenticate()` succeeds
+   inside a kernel from the session's own identity, with no environment
+   variables and no `kaggle.json` (probed 2026-09-15; `ACT_T4_MODE=probe`
+   re-checks). Internet access must stay enabled for restore and publish.
+
+**Session-1 inputs, measured on a Kaggle T4 (2026-09-15, `--steps 50`).** These
+replace the section 5.2 feasibility assumptions; the launch command re-derives
+the schedule decisions from the artifact rather than from the table.
+
+| Field | Section 5.2 assumption | Measured on T4 |
+|---|---|---|
+| `measured_tokens_per_second` | 10,000 | **1,958.7** |
+| `dtype_decision` | fp32 | **fp16** (below the 2,500 floor - the registered contingency) |
+| `pair_time_hours` | ~0.78 | **3.585** |
+| `full_pairs_per_session` | 11 | **2** |
+| `sessions_for_primary` | 2 | **6** |
+
+The consequence is a quota plan, not a knob change: at 3.585 h per pair the
+primary queue is ~43 GPU-hours, the 2b control queue ~43 more, and 2c ~0.3 -
+about 86 GPU-hours against the free tier's 30 GPU-h/week, i.e. roughly three
+weeks of sessions. Pass `--hours 9` (the registered usable window): at the
+measured rate the deadline rules then place exactly two completed pairs and
+never start a third the clock cannot finish.
+
+A kernel that requests a GPU accelerator queues when no T4 is free (status
+`QUEUED`, which consumes no quota); the queue clears on its own.
+
+---
+
 ## 1. Session-1 throughput benchmark (fixes dtype + schedule)
 
 ```bash

@@ -545,6 +545,46 @@ These remain TODO or DEFERRED until the first gate passes:
 
 ## Verified Checks
 
+- **Section 5.1 T4 pre-flight DONE on a real Kaggle T4 (2026-09-15).** The
+  runbook's pre-flight 4 and section 1 ran as a script kernel on a
+  `NvidiaTeslaT4`: the declared config reproduced 285,336,576 total /
+  134,341,632 active parameters, and the benchmark (`--steps 50`, forward +
+  backward + AdamW with checkpointed activations) measured **1,958.7
+tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
+  contingency). Derived schedule: `pair_time_hours` 3.585,
+  `full_pairs_per_session` 2, `sessions_for_primary` 6, `working_dir_headroom_gb`
+  +5.12. The artifact is `artifacts/v0-benchmark.json` (gitignored) and was
+  downloaded from the kernel output, so the launch command's input exists and
+  is not a hand-edited file.
+- The whole run is now reproducible code, not operator lore:
+  `scripts/kaggle_t4.py` drives every session kind as a script kernel
+  (`ACT_T4_MODE` = `metadata` / `probe` / `preflight` / `session` / `control` /
+  `null`), generates the push metadata, copies the attached code dataset into
+  the writable working dir, re-runs the benchmark in-session (a fresh session
+  has no `artifacts/`, and the launch command refuses a stale artifact), runs
+  the registered command unchanged, and keeps the session/publish logs in the
+  kernel output. It absorbs two Kaggle behaviours that each cost a failed
+  run: attached datasets mount **nested** (`/kaggle/input/datasets/<owner>/<slug>/`
+  on the current runtime, so the code root is found by searching the mount
+  tree for `pyproject.toml` + `src/act` rather than assuming a depth), and
+  `gpu_type` is **not** an accelerator pin - only `machine_shape`
+  (`NvidiaTeslaT4`) is honoured, so the previous `gpu_type: t4` push ran
+  whatever Kaggle assigned. Pinned by 11 tests in `tests/test_kaggle_t4.py`
+  (every mount layout, the exact per-queue launch argv for sections 2/2b/2c,
+  disjoint datasets/roots, and the metadata key set).
+- **The Kaggle dataset API authenticates inside a kernel without secrets**
+  (probed 2026-09-15 as `ACT_T4_MODE=probe`): `KaggleApi().authenticate()`
+  succeeds from the session's own identity with no `KAGGLE_USERNAME`,
+  `KAGGLE_KEY`, or `kaggle.json`, and `dataset_list(mine=True)` returns the
+  account's datasets. So the section 2 restore/publish legs need no User
+  Secrets - only `enable_internet: true`, which the generated metadata sets.
+- **Quota plan for the section 5.1 queues** (measured, not assumed): at
+  3.585 h per pair the primary queue is ~43 GPU-hours, the section 2b
+  pool-matched control queue ~43 more, and the 2c null queue ~0.3 - about
+  86 GPU-hours against the free tier's 30 GPU-h/week, i.e. roughly three
+  weeks of sessions. The primary queue launched 2026-09-15 with `--hours 9`
+  (the registered usable window), which at the measured rate places exactly
+  two completed pairs per session.
 - `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (272, including the
   26 report-figure data-assembly tests, 14 session-plan tests pinning the
   section 5.2 schedule/dtype tables, 10 handoff tests covering atomic
