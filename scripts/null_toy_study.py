@@ -63,14 +63,14 @@ PROFILES: dict[str, dict] = {
     "depth1-spread": {
         "seeds": tuple(range(72000, 72384)),
         "overrides": {"probe_candidate_policy": "spread"},
-        "run_revision": "PENDING-PREREG",
+        "run_revision": "c086685",
         "report_section": "5.12",
         "summary": "artifacts/study-summaries/null-control-depth1-spread-384.json",
     },
     "depth4-prefix": {
         "seeds": tuple(range(73000, 73384)),
         "overrides": {"depth": 4},
-        "run_revision": "PENDING-PREREG",
+        "run_revision": "c086685",
         "report_section": "5.12",
         "summary": "artifacts/study-summaries/null-control-depth4-prefix-384.json",
     },
