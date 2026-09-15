@@ -1784,6 +1784,38 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   correction:** 5.31's prose read the sign-flipped `penalty = own - fused` column
   as agreeing with the fused column; it cannot, and 5.32's null own-column
   measurement is the corrected reading.
+- **Section 5.33 RAN (2026-09-15, blocks 119000-120535 depth 2 / 121000-122535
+  depth 3, `scripts/probe_selection_study.py`).** Two findings prompted it, both
+  from section 5.32: its lever was worth 27.6-41.6% of the prune penalty on the
+  **non-probe** paths, and its consequence ("the discovery controller should prefer
+  the quietest expert") is **wrong**, because `prune_expert_policy` is inert on the
+  probe-guided path - `_mutate_by_probe` enumerates every expert through
+  `feasible_expert_mutations` and returns before the policy branch, measured as
+  bit-identical losses across all three policies under `adaptive_policy="probe_loss"`
+  and pinned by `test_the_knob_is_inert_on_the_probe_guided_discovery_path`. So the
+  discovery controller already owns the lever; the open question is whether its own
+  choice beats the cheap rule. New opt-in `probe_selection="quietest"` (both probe
+  paths, so they cannot drift) isolates the TARGET: it fires only when the probe's
+  own pick is a prune, and then takes the least-loaded expert in the probed pool.
+  Registered verdict **branch (a) at both depths**: `fused(A)` vs `fused(M)`
+  **-0.04118 p 5e-05** and **-0.04848 p 5e-05**; `fused(A)` vs `fused(Q)`
+  **-0.03120 p 5e-05** and **-0.03443 p 5e-05**; both clear the sign test too. The
+  ordering is three-deep and that is the interpretable part: against the same pool at
+  the same probe cost the probe beats random by 0.0412/0.0485, the load rule beats
+  random by 0.00998/0.0140, so the load rule recovers only **24.2%/29.0%** of the
+  probe's advantage - it is not empty, and it is not enough. **Mechanism differs from
+  5.32:** here `own(A) - own(Q)` is -0.03571/-0.05414, comparable to the fused
+  contrast, so the probe buys a better run AND a better artifact, where 5.32's lever
+  moved only the fused column. Against `F`, mutation pays in this configuration
+  (`A` -0.04537/-0.05685, `Q` -0.01418/-0.02242). Treatment bound in 6110/6144 and
+  6091/6144 seed-selection pairs; four distinct final genomes in 1253/1536 and
+  1300/1536. Summaries `artifacts/study-summaries/probe-selection-depth{2,3}-1536.json`
+  (`study_dbd63572517fd575`, `study_a24a62de8ce82d39`), pinned by
+  `tests/test_probe_selection_summary.py` and
+  `tests/test_probe_selection_quietest.py` (the rule's isolation contract: the
+  selection must come from the probed pool, and must leave the operation alone when
+  the probe's own pick was not a prune). Prediction correct, the fifth of the last
+  six; the magnitude was the surprise - I expected the load rule to be comparable.
 - **Report-artifact link guard (2026-09-15).** Section 5.19's missing summaries
   were a defect *class*, not an incident: a result can be cited widely while its
   artifact does not exist. `tests/test_report_artifact_links.py` now fails if any

@@ -4405,6 +4405,13 @@ remains the less certain of the two.
 **Pre-registered interpretation.**
 - (a) both pass: the target is a lever, monotone in load, and the discovery
   controller should prefer the quietest expert.
+
+> **One clause of (a) is wrong, and section 5.33 is the correction.** The target is
+> a lever, but the discovery controller should *not* prefer the quietest expert: on
+> the probe-guided path the setting is unreachable (the probe enumerates every expert
+> already), and overriding the probe's prune target with a load rule costs
+> 0.031-0.034 nats. The measured conclusion stands where it was measured - the
+> `random` arm and non-probe adaptive policies.
 - (b) P1 passes, P2 fails: the quietest is a good target but the busiest is not
   especially bad - the cost is not monotone in load, and the lever is one-sided.
 - (c) P2 passes, P1 fails: the busiest is a bad target but the quietest is no better
@@ -4601,6 +4608,95 @@ the probe at all.
 
 **Cost.** Five adaptive/fixed runs plus two frozen retrains per seed, ~2.3 s/seed;
 1536 seeds x 2 depths, ~6 minutes wall over 20 cores.
+
+### 5.33 Result
+
+**Branch (a) at both depths, as predicted: the probe's selection is informed, and it beats
+the load rule.** Blocks `119000-120535` (depth 2) and `121000-122535` (depth 3), 1536 seeds
+each, summaries `probe-selection-depth2-1536.json` (`study_dbd63572517fd575`) and
+`probe-selection-depth3-1536.json` (`study_a24a62de8ce82d39`).
+
+| fused loss | depth 2 | depth 3 |
+|---|---|---|
+| `F` (never mutate) | 14.322996 | 13.444359 |
+| `A` probe argmin (historical) | **14.277621** | **13.387508** |
+| `Q` quietest load rule | 14.308818 | 13.421940 |
+| `M` pool-matched random | 14.318801 | 13.435984 |
+| `G` argmax (inverted control) | 14.360936 | 13.477511 |
+
+**Primaries** (one-sided paired sign-flip permutation test on the mean, `alpha/4 = 0.0125`):
+
+| | depth 2 | depth 3 |
+|---|---|---|
+| **P1** `fused(A)` < `fused(M)` | −0.04118 (t −11.69), p **5e-05** | −0.04848 (t −12.57), p **5e-05** |
+| **P2** `fused(A)` < `fused(Q)` | −0.03120 (t −9.68), p **5e-05** | −0.03443 (t −10.55), p **5e-05** |
+
+Both clear the sign test too (899/1536 and 947/1536 for P1; 818/1536 and 845/1536 for P2,
+against a bar of 813), so this result does not rest on the more efficient statistic alone.
+The inverted control behaves: `A` beats `G` by 0.08332 and 0.09000.
+
+**The ordering is three-deep, and the middle rung is what makes it interpretable.** Against
+the same pool at the same probe cost:
+
+| | depth 2 | depth 3 |
+|---|---|---|
+| probe argmin beats random by | 0.04118 | 0.04848 |
+| load rule beats random by | 0.00998 | 0.01404 |
+| **share of the probe's advantage the load rule recovers** | **24.2%** | **29.0%** |
+
+The load signal is not empty - it beats the loss-blind control at both depths - but the probe
+captures roughly three quarters to four fifths of its own advantage that the load rule misses.
+So section 5.32's lever, which was worth 27.6-41.6% of the prune penalty on the non-probe
+paths, is **not reachable more cheaply on the path that matters**.
+
+#### The mechanism differs from section 5.32's, and that is the interesting part
+
+Section 5.32 found the prune-target lever acted on the fused trajectory alone:
+`own(Q) - own(R)` was slightly *worse* than random while the fused loss improved, so the
+delivered artifact was unchanged. **Here the probe's advantage shows up in both columns:**
+`own(A) - own(Q)` is **−0.03571** (depth 2) and **−0.05414** (depth 3), comparable to the
+fused contrast, and `own` is the column the freeze-and-retrain pipeline delivers. So the
+probe's selection is not buying a better *run* at the cost of a worse *artifact* - it buys
+both, which is what a selector scoring the right objective should do, and it is evidence
+that the two effects are genuinely different mechanisms rather than one effect seen twice.
+
+Against the unmutated arm, mutation pays at both depths in this configuration:
+`fused(A)` −0.04537 and −0.05685, `fused(Q)` −0.01418 and −0.02242. The treatment bound almost
+everywhere: 6110/6144 and 6091/6144 seed-selection pairs contained a prune, and 1253/1536 and
+1300/1536 seeds ended with four distinct final genomes.
+
+#### Two statistics, one disagreement, and the registered one wins both times
+
+`fused(Q)` vs `fused(M)` and `own(A)` vs `own(Q)` (depth 2) are cases where the mean test
+passes and the sign test does not - `Q` vs `M` is 794/1536 at depth 3, p 0.097 against the
+mean test's p 5e-05. That is section 5.31's power asymmetry reappearing in exactly the place
+section 5.31.1 predicted it would: on the smaller of two effects, at the same block size.
+Both disagreements are on secondaries; every primary passes under both statistics.
+
+#### Correction to section 5.32's consequence
+
+Section 5.32's interpretation (a) said "the discovery controller should prefer the quietest
+expert". That is now **wrong twice over**, and both halves are measured:
+
+1. the setting is not reachable on that path at all (`prune_expert_policy` is inert under
+   `adaptive_policy="probe_loss"`, pinned by a test), and
+2. if the controller *did* follow a load rule for its prune target, it would do **worse** -
+   by 0.03120 and 0.03443 nats - than the rule it already uses.
+
+Section 5.32's answer stands for where it was measured (the `random` arm and non-probe adaptive
+policies). It does not transfer to discovery, and the direction of the error matters: a reader
+acting on it would have replaced a selector that is working with one that is measurably worse.
+
+**Scope.** `Q` was compared against `A` as the probe would have chosen it, so this measures the
+value of overriding the probe's prune target and not whether a load rule would survive without
+a probe. The toy-fidelity, synthetic-token and fixed-probe-budget caveats of sections
+5.30-5.32 all apply unchanged.
+
+**Prediction.** Correct (P1 and P2 as registered), the fifth of the last six. P1 was a
+replication of section 9.9's depth-4 result on a new configuration and is the least informative
+half. P2 was the real question and I declared it uncertain in advance; the direction I gave it
+was right, and the *magnitude* is what I did not anticipate - I expected the load rule to be
+roughly comparable, and it recovered only a quarter to a third of the probe's advantage.
 
 ## 6. Reproducibility
 
