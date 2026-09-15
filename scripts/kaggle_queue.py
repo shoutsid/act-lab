@@ -69,6 +69,11 @@ QUOTA_RESOURCE = "GPU"
 STATUS_RE = re.compile(r"KernelWorkerStatus\.([A-Z_]+)")
 SESSION_LOG_NAME = "session-log.json"
 VERDICT_NAME = "v0-5-1-verdict.json"
+# The exit-publish audit trail the kernel keeps beside the session log. Must
+# agree with ``act.ops.kaggle_remote.PUBLISH_LOG_NAME``; a test asserts it,
+# because a drifted name would make the driver report every session as having
+# published nothing.
+PUBLISH_LOG_NAME = "remote-publish-log.json"
 # Single-job kernels that are pushed once and reported, rather than queues that
 # are re-pushed until a block completes. ``verdict`` is the section 4 decision
 # - the reason the queues were run at all.
@@ -476,6 +481,23 @@ def load_session_log(output_dir: str | Path) -> dict[str, object] | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def load_publish_log(output_dir: str | Path) -> dict[str, object] | None:
+    """The session's exit-publish outcome, or ``None`` when it is absent.
+
+    This is whether the session's work survived at all: the handoff roots live
+    in the container overlay, so a failed push leaves nothing for a later
+    session to pick up. The kernel keeps the log in its output for exactly
+    this reason, and the driver now reports it rather than leaving the
+    operator to fetch it.
+    """
+    candidates = sorted(
+        Path(output_dir).rglob(PUBLISH_LOG_NAME), key=lambda path: len(path.parts)
+    )
+    if not candidates:
+        return None
+    return json.loads(candidates[0].read_text(encoding="utf-8"))
+
+
 def _run(argv: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(argv, capture_output=True, text=True)
 
@@ -663,6 +685,27 @@ def drive(
             f"(session completed {session_log.get('pairs_completed')} pair(s))",
             flush=True,
         )
+        publish = load_publish_log(output_dir)
+        if publish is not None:
+            print(
+                f"  exit publish: {publish.get('status')} "
+                f"({publish.get('seeds_published')} seed version(s))",
+                flush=True,
+            )
+            if publish.get("status") == "failed":
+                # The session's pairs are gone with its container: there is no
+                # local copy for the next session to push. Re-training them to
+                # re-attempt the push costs a whole window, so stop and let the
+                # recorded error be read first - the usual cause is transient,
+                # which is why the push already retried.
+                print(
+                    f"  exit publish FAILED ({publish.get('error')}); this "
+                    "session's pairs are lost with the container; stopping "
+                    "rather than re-training them",
+                    flush=True,
+                )
+                return EXIT_SESSION_FAILED
+
         failure = failed_pair_note(session_log)
         if failure is not None:
             # The session's completed seeds are published (the runner stops the

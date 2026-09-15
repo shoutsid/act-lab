@@ -629,6 +629,16 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   it, before any session assumed it. Nothing else moved: the same tiny pairs
   produce the same losses, FLOPs and architecture hashes however the arms are
   scheduled.
+- **The driver reports whether a session's pairs survived.** The exit publish
+  is the only durable copy, so its outcome is the number that matters in an
+  unattended multi-hour drive - and it was previously visible only to someone
+  who downloaded the kernel output by hand. The driver now reads
+  `remote-publish-log.json` (which `mode_session` keeps beside the session log)
+  after every session, prints the status and seed count, and stops when it says
+  `failed`: re-training a session's pairs to re-attempt the push costs a whole
+  window, and the usual cause is transient, which is why the push already
+  retried. The name is pinned against `kaggle_remote.PUBLISH_LOG_NAME` by a
+  test, because a drifted constant would read as "nothing published".
 - The whole run is now reproducible code, not operator lore:
   `scripts/kaggle_t4.py` drives every session kind as a script kernel
   (`ACT_T4_MODE` = `metadata` / `probe` / `preflight` / `session` / `control` /

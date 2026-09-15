@@ -389,8 +389,12 @@ def test_drive_still_pushes_when_the_week_can_cover_the_session(monkeypatch) -> 
     assert code == kaggle_queue.EXIT_SESSION_FAILED
 
 
-def _fake_kaggle(calls: list[list[str]], session_logs: list[dict]):
-    """A ``_run`` that reports COMPLETE and writes the i-th session log."""
+def _fake_kaggle(calls: list[list[str]], session_logs: list[dict], publish_logs=None):
+    """A ``_run`` that reports COMPLETE and writes the i-th session log.
+
+    ``publish_logs`` optionally supplies the exit-publish audit trail the
+    kernel also keeps, which the driver reports as the session's survival.
+    """
     written = {"count": 0}
 
     def fake_run(argv: list[str]) -> subprocess.CompletedProcess[str]:
@@ -406,6 +410,9 @@ def _fake_kaggle(calls: list[list[str]], session_logs: list[dict]):
             target.mkdir(parents=True, exist_ok=True)
             index = min(written["count"], len(session_logs) - 1)
             (target / "session-log.json").write_text(json.dumps(session_logs[index]))
+            if publish_logs is not None:
+                publish = publish_logs[min(written["count"], len(publish_logs) - 1)]
+                (target / kaggle_queue.PUBLISH_LOG_NAME).write_text(json.dumps(publish))
             written["count"] += 1
         return subprocess.CompletedProcess(argv, 0, "", "")
 
@@ -505,6 +512,80 @@ def test_drive_re_stages_when_the_code_dataset_moves_between_sessions(
     # Staged once at start, then re-staged for the push whose dataset moved.
     assert len(staged) == 2
     assert pushes[0][pushes[0].index("-p") + 1] != pushes[1][pushes[1].index("-p") + 1]
+
+
+def test_publish_log_name_matches_the_remote_wrapper() -> None:
+    """The driver reads the file the wrapper writes; a drift reads as silence."""
+    from act.ops.kaggle_remote import PUBLISH_LOG_NAME as WRAPPER_NAME
+
+    assert kaggle_queue.PUBLISH_LOG_NAME == WRAPPER_NAME
+
+
+def test_drive_reports_the_exit_publish_outcome(monkeypatch, capsys) -> None:
+    """Whether a session's pairs survived is the number that matters."""
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        kaggle_queue,
+        "_run",
+        _fake_kaggle(
+            calls,
+            [
+                {
+                    "declared_seed_queue": DECLARED_QUEUE,
+                    "pairs": [{"action": "completed"}],
+                },
+                {
+                    "declared_seed_queue": DECLARED_QUEUE,
+                    "pairs": [{"action": "completed"}, {"action": "completed"}],
+                },
+            ],
+            publish_logs=[
+                {"status": "published", "seeds_published": 6},
+                {"status": "published", "seeds_published": 12},
+            ],
+        ),
+    )
+    monkeypatch.setattr(kaggle_queue, "ensure_code_dataset", lambda *a, **k: "rev")
+
+    kaggle_queue.drive("session", hours=9.0, poll=0.0, timeout=1.0, max_sessions=2)
+
+    printed = capsys.readouterr().out
+    assert "exit publish: published (6 seed version(s))" in printed
+    assert "exit publish: published (12 seed version(s))" in printed
+
+
+def test_drive_stops_when_the_exit_publish_failed(monkeypatch, capsys) -> None:
+    """A session whose push failed leaves nothing behind to carry forward.
+
+    The handoff roots are in the container overlay, so re-training those pairs
+    costs a whole window to re-attempt the same push - stop and let the
+    recorded error be read first.
+    """
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        kaggle_queue,
+        "_run",
+        _fake_kaggle(
+            calls,
+            [
+                {
+                    "declared_seed_queue": DECLARED_QUEUE,
+                    "pairs": [{"action": "completed"}],
+                }
+            ],
+            publish_logs=[{"status": "failed", "seeds_published": 6, "error": "RuntimeError: 500"}],
+        ),
+    )
+    monkeypatch.setattr(kaggle_queue, "ensure_code_dataset", lambda *a, **k: "rev")
+
+    code = kaggle_queue.drive(
+        "session", hours=9.0, poll=0.0, timeout=1.0, max_sessions=3
+    )
+
+    assert code == kaggle_queue.EXIT_SESSION_FAILED
+    pushes = [argv for argv in calls if argv[1:3] == ["kernels", "push"]]
+    assert len(pushes) == 1
+    assert "pairs are lost with the container" in capsys.readouterr().out
 
 
 def test_drive_stops_when_a_session_failed_a_pair(monkeypatch) -> None:
