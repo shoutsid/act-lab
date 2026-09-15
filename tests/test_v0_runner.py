@@ -777,3 +777,181 @@ def test_cli_exit_publish_failure_does_not_crash_the_session(
     cli.main()  # must not raise
     stderrish = capsys.readouterr().out
     assert '"status": "failed"' in stderrish  # outcome recorded, not raised
+
+
+# --- the section 5.14 do-nothing queue launch (--session-arms) --------------
+
+
+def test_cli_session_arms_default_is_the_registered_pair(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """An unflagged launch still runs the registered random/adaptive pair."""
+    import sys
+
+    from act.training import cli
+
+    captured: dict = {}
+
+    def fake_run_pair_session(**kwargs):
+        captured.update(kwargs)
+        return {
+            "protocol": "v0-compute-efficiency-5.2",
+            "seeds_requested": list(kwargs["seeds"]),
+            "declared_seed_queue": [],
+            "remaining_hours_at_entry": kwargs["remaining_hours"],
+            "measured_tokens_per_second": kwargs["measured_tokens_per_second"],
+            "pair_time_hours": 0.1,
+            "pairs_completed": 0,
+            "latest_published_seed": None,
+            "pairs": [],
+        }
+
+    monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",
+                "--seeds", "15000",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+                "--output", str(tmp_path / "log.json"),
+            ],
+            profile=False,
+        )
+    )
+    cli.main()
+
+    assert captured["config"].arms == ("random", "adaptive")
+
+
+def test_cli_session_arms_null_builds_a_declared_null_session(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """The 5.14 do-nothing queue launch: declared fidelity, single null arm."""
+    import sys
+
+    from act.training import cli
+
+    captured: dict = {}
+
+    def fake_run_pair_session(**kwargs):
+        captured.update(kwargs)
+        return {
+            "protocol": "v0-compute-efficiency-5.2",
+            "seeds_requested": list(kwargs["seeds"]),
+            "declared_seed_queue": [],
+            "remaining_hours_at_entry": kwargs["remaining_hours"],
+            "measured_tokens_per_second": kwargs["measured_tokens_per_second"],
+            "pair_time_hours": 0.1,
+            "pairs_completed": 0,
+            "latest_published_seed": None,
+            "pairs": [],
+        }
+
+    monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",
+                "--seeds", "15000-15011",
+                "--session-arms", "null",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+                "--output", str(tmp_path / "log.json"),
+            ],
+            profile=False,  # the real launch command runs the declared config
+        )
+    )
+    cli.main()
+
+    config = captured["config"]
+    assert config.arms == ("null",)
+    assert config.declared is True  # declared 285M fidelity, no overrides
+    assert config.total_steps == 6_000
+    assert config.probe_batch_count == 1
+    # The runbook's documented range form must parse, not crash.
+    assert captured["seeds"] == tuple(range(15000, 15012))
+
+
+def test_cli_seeds_accepts_the_runbook_range_form(tmp_path: Path, monkeypatch) -> None:
+    """The runbook documents '--seeds 15000-15011'; the CLI must honor it.
+
+    Regression pin for a latent parser bug the 5.14 null-queue tests exposed:
+    the pair-session seed parser only handled comma lists, so the documented
+    launch command crashed with ``invalid literal for int()``.
+    """
+    import sys
+
+    from act.training import cli
+
+    captured: dict = {}
+
+    def fake_run_pair_session(**kwargs):
+        captured.update(kwargs)
+        return {
+            "protocol": "v0-compute-efficiency-5.2",
+            "seeds_requested": list(kwargs["seeds"]),
+            "declared_seed_queue": [],
+            "remaining_hours_at_entry": kwargs["remaining_hours"],
+            "measured_tokens_per_second": kwargs["measured_tokens_per_second"],
+            "pair_time_hours": 0.1,
+            "pairs_completed": 0,
+            "latest_published_seed": None,
+            "pairs": [],
+        }
+
+    monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",
+                "--seeds", "15000-15011",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+                "--output", str(tmp_path / "log.json"),
+            ],
+            profile=False,
+        )
+    )
+    cli.main()
+
+    assert captured["seeds"] == tuple(range(15000, 15012))
+
+
+def test_cli_session_arms_rejects_unknown_and_empty(tmp_path: Path, monkeypatch) -> None:
+    import sys
+
+    from act.training import cli
+
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",
+                "--session-arms", "bogus",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+            ],
+            profile=False,
+        )
+    )
+    with pytest.raises(ValueError, match="unsupported V0 session arms"):
+        cli.main()  # unknown arm is refused by the config validation
+
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",
+                "--session-arms", " , ",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+            ],
+            profile=False,
+        )
+    )
+    with pytest.raises(SystemExit, match="--session-arms resolved to an empty tuple"):
+        cli.main()

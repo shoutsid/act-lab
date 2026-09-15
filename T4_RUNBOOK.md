@@ -185,6 +185,35 @@ root): both queues hold the same seeds, and the two runs must not mix.
 
 ---
 
+## 2c. The do-nothing null queue (pre-registered section 5.14)
+
+The verdict's newest clause (§5.14) requires a third queue: single-arm null
+sessions (`--session-arms null`) at the SAME declared fidelity over the SAME
+block, into their own roots. A null session trains the identical init and
+data stream but performs no probe and no mutation, so its per-seed loss is
+the do-nothing baseline the adaptive arm must beat before Gate 4. Run it
+AFTER the primary and §2b queues (it is ~90 s of GPU per seed plus session
+overhead):
+
+```bash
+PYTHONPATH=src python -m act.training.cli --mode pair-session \
+  --device cuda \
+  --hours <remaining-clock-hours> \
+  --seeds 15000-15011 \
+  --session-arms null \
+  --dataset-root artifacts/datasets-null \
+  --session-dir artifacts/v0-sessions-null \
+  --kaggle-dataset <owner>/<slug>-null
+```
+
+- No probe/policy flags are needed (the null arm is policy-free by
+construction); `--seeds` and the roots must still be explicit, and the
+null queue must never point at the primary or control roots.
+- The published seed summaries carry `null_final_loss` and the zero-probe /
+zero-mutation counters the §5.14 built-in checks read.
+
+---
+
 ## 3. Running the queue to completion
 
 The queue is 12 declared seeds (15000–15011), one atomic pair each. Schedule
@@ -216,10 +245,12 @@ When all 12 seeds publish `complete` versions:
 PYTHONPATH=src python scripts/v0_verdict.py \
   --dataset-root artifacts/datasets \
   --control-root artifacts/datasets-control \
+  --null-root artifacts/datasets-null \
   --probe-batch-count 1
 ```
 
-Exit codes and meanings (the two control rows are the adopted §5.5 clause):
+Exit codes and meanings (the two control rows are the adopted §5.5 clause;
+the two null rows are the pre-registered §5.14 clause):
 
 | Exit | Verdict | Pre-registered consequence |
 |---|---|---|
@@ -229,6 +260,8 @@ Exit codes and meanings (the two control rows are the adopted §5.5 clause):
 | 2 | `PASS_COST_ONLY_HARM_GUARD_REJECTS` | harm guard hit (adaptive worse in ≥ 10 of 12 pairs) → do not proceed to Gate 4 |
 | 2 | `PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES` | the loss-blind arm won ≥ 10 of its 12 pairs, i.e. the pool alone clears the gate → the cost PASS stands but the quality inference does not; **never** treat this as "the controller wins" |
 | 2 | `PASS_COST_ONLY_CONTROL_MISSING` | no `--control-root` given → the clause could not be evaluated; running the control is part of the protocol, so Gate 4 is withheld |
+| 2 | `PASS_COST_ONLY_NULL_REJECTS` | adaptive failed to beat the null arm on ≥ 10 of 12 seeds → doing nothing is at least as good as the adaptive arm at declared fidelity; the cost PASS stands but the selection claim does not; **never** treat this as a tunable miss (no new block, no knob changes) |
+| 2 | `PASS_COST_ONLY_NULL_MISSING` | no `--null-root` given (or the null queue is incomplete on the declared block) → running the do-nothing queue is part of the protocol, so Gate 4 is withheld |
 
 The verdict JSON is written to `<dataset-root>/v0-5-1-verdict.json` and prints
 the aggregate cost, predicted value, band, harm-guard tally, the

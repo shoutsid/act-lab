@@ -172,15 +172,33 @@ def _run_pair_session(args: argparse.Namespace) -> None:
         )
     if args.hours <= 0:
         raise SystemExit("--hours must be positive")
-    seeds = (
-        DECLARED_SEEDS
-        if args.seeds is None
-        else tuple(int(value) for value in args.seeds.split(",") if value.strip())
-    )
+    if args.seeds is None:
+        seeds = DECLARED_SEEDS
+    elif "-" in args.seeds and "," not in args.seeds:
+        # The runbook's documented 'A-B' range form (the section 5.2 command
+        # passes --seeds 15000-15011); also accepted by the verdict script.
+        start, end = args.seeds.split("-", 1)
+        if not (start.strip().isdigit() and end.strip().isdigit()):
+            raise SystemExit(
+                f"--seeds range must be 'A-B' with integers, got {args.seeds!r}"
+            )
+        seeds = tuple(range(int(start), int(end) + 1))
+    else:
+        try:
+            seeds = tuple(
+                int(value) for value in args.seeds.split(",") if value.strip()
+            )
+        except ValueError as error:
+            raise SystemExit(f"--seeds must be a comma list or 'A-B' range: {error}")
     if not seeds:
         raise SystemExit("--seeds resolved to an empty queue")
+    arms = tuple(
+        arm.strip() for arm in args.session_arms.split(",") if arm.strip()
+    )
+    if not arms:
+        raise SystemExit("--session-arms resolved to an empty tuple")
     config = V0SessionConfig(
-        arms=("random", "adaptive"),
+        arms=arms,
         probe_batch_count=args.probe_batch_count,
         probe_candidate_policy=args.probe_candidate_policy,
         probe_selection=args.probe_selection,
@@ -193,7 +211,7 @@ def _run_pair_session(args: argparse.Namespace) -> None:
         # the real command runs the declared 285M config without overrides.
         config = V0SessionConfig(
             declared=False,
-            arms=("random", "adaptive"),
+            arms=arms,
             device=args.device,
             dtype=dtype,
             vocab_size=64,
@@ -312,8 +330,8 @@ def main() -> None:
     # V0 protocol options.
     parser.add_argument(
         "--seeds", default=None,
-        help="comma-separated seeds (v0 default 15000; pair-session default "
-        "the declared queue 15000-15011)",
+        help="comma-separated seeds or an inclusive 'A-B' range (pair-session "
+        "default the declared queue 15000-15011)",
     )
     parser.add_argument("--probe-batch-count", type=int, default=1)
     # Adopted section 5.5 protocol knobs. Defaults are the registered ones, so
@@ -352,6 +370,12 @@ def main() -> None:
         "--hours", type=float, default=12.0,
         help="remaining session clock at entry in hours (12-hour Kaggle limit "
         "minus boot and restore)",
+    )
+    parser.add_argument(
+        "--session-arms", default="random,adaptive",
+        help="comma-separated session arms for pair-session mode: 'random,adaptive' "
+        "(the registered section 5.1 pair), 'null' (the pre-registered section "
+        "5.14 do-nothing queue), 'gated' or 'heuristic' (single-arm queues)",
     )
     parser.add_argument(
         "--session-dir", default="artifacts/v0-sessions",

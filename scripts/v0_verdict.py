@@ -19,18 +19,29 @@ v0-5-1/`` and applies the decision rules fixed in RESEARCH_REPORT.md section
   the adaptive edge does not demonstrate selection value and the Gate 4
   recommendation is withheld (the cost PASS stands). A missing control is
   equally disqualifying for Gate 4, since the clause cannot be evaluated.
+- **Do-nothing clause** (pre-registered section 5.14): the protocol runs a
+  null-session queue at declared fidelity over the SAME block (single-arm
+  `arms=("null",)` sessions, own roots). If the adaptive arm fails to beat
+  the null arm on >= 10 of 12 seeds, the adaptive edge does not demonstrate
+  value over doing nothing and Gate 4 is withheld (the cost PASS stands). A
+  missing or incomplete null queue is equally disqualifying: running the
+  do-nothing control is part of the protocol, and its absence must never
+  read as "no null effect found". The registered rules (cost, band, harm
+  guard, pool clause) are untouched.
 
 Usage:
 
     PYTHONPATH=src python scripts/v0_verdict.py \
         --dataset-root artifacts/datasets \
-        --control-root artifacts/datasets-control
+        --control-root artifacts/datasets-control \
+        --null-root artifacts/datasets-null
 
-Exit code 0 = PASS (cost + band + harm guard + control clause clear), 1 = FAIL
-(primary cost miss), 2 = PASS with qualification (cost passes but the measured
-C lands outside the tolerance band, the harm guard rejects, the pool-matched
-control also passes, or no control was supplied). The JSON verdict is printed
-and written beside the dataset root for the artifact trail.
+Exit code 0 = PASS (cost + band + harm guard + control + null clauses clear),
+1 = FAIL (primary cost miss), 2 = PASS with qualification (cost passes but the
+measured C lands outside the tolerance band, the harm guard rejects, the
+pool-matched control also passes, the null clause rejects, or a required
+control queue was not supplied). The JSON verdict is printed and written
+beside the dataset root for the artifact trail.
 """
 
 from __future__ import annotations
@@ -52,6 +63,10 @@ HARM_GUARD_LOSS_LIMIT = 10  # adaptive worse in >= 10 of 12 pairs rejects
 # pool/location effect alone clears the gate, so the adaptive edge does not
 # demonstrate selection value and Gate 4 is withheld (section 5.5 change 3).
 POOL_CONTROL_WIN_LIMIT = 10
+# The do-nothing clause (pre-registered section 5.14): adaptive failing to
+# beat the null arm on >= 10 of 12 seeds means the edge does not demonstrate
+# value over doing nothing; Gate 4 is withheld and the cost PASS stands.
+NULL_WIN_LIMIT = 10
 
 
 def parse_seeds(spec: str) -> tuple[int, ...]:
@@ -135,12 +150,117 @@ def _control_block(dataset_root: Path, declared_seeds: tuple[int, ...]) -> dict:
     }
 
 
+def _null_block(
+    null_root: Path | None,
+    declared_seeds: tuple[int, ...],
+    primary_summaries: dict[int, dict],
+) -> dict[str, object]:
+    """The section 5.14 do-nothing queue: per-seed null vs adaptive pairing.
+
+    The null queue lives under its own dataset root (the section 5.5
+    control-root pattern): single-arm ``arms=("null",)`` sessions at declared
+    fidelity over the SAME declared block. ``evaluated`` requires the queue
+    to exist AND be complete on the declared block; anything less withholds
+    Gate 4 rather than reading as a null result.
+    """
+    if null_root is None:
+        return {
+            "evaluated": False,
+            "reason": (
+                "no --null-root supplied; the pre-registered section 5.14 "
+                "do-nothing clause requires the null-session queue before "
+                "Gate 4 can be authorized"
+            ),
+        }
+    complete = _seed_numbers(null_root)
+    if not complete:
+        return {
+            "evaluated": False,
+            "reason": (
+                f"no complete seed versions under {null_root}; the section 5.14 "
+                "do-nothing queue has not been run"
+            ),
+        }
+    seeds = [seed for seed in complete if seed in declared_seeds]
+    missing = sorted(set(declared_seeds) - set(seeds))
+    if missing:
+        return {
+            "evaluated": False,
+            "reason": (
+                f"null queue incomplete on the declared block: missing seed(s) "
+                f"{missing}; the section 5.14 clause cannot be evaluated and "
+                "Gate 4 is withheld"
+            ),
+        }
+    # Pairing is over the intersection of complete seeds on both sides: a
+    # seed missing on either side is already reported by that side's own
+    # queue-completeness accounting, and Gate 4 additionally requires both
+    # queues complete.
+    pairs: list[dict[str, object]] = []
+    adaptive_losses = 0
+    for seed in [seed for seed in seeds if seed in primary_summaries]:
+        arms = _load_seed(null_root, seed)["arms"]
+        if "null" not in arms:
+            raise SystemExit(f"null queue seed {seed} is missing the null arm")
+        if "adaptive" in arms or "random" in arms:
+            raise SystemExit(
+                f"null queue seed {seed} must be a single-arm null session "
+                "(adaptive/random arms found; is --null-root pointed at a "
+                "pair-session dataset?)"
+            )
+        # The pairing is cross-queue by design: the adaptive loss comes from
+        # the PRIMARY run's seed summary, the null loss from the do-nothing
+        # queue - the null sessions carry no adaptive arm of their own.
+        primary_arms = primary_summaries[seed]["arms"]
+        if "adaptive" not in primary_arms:
+            raise SystemExit(
+                f"seed {seed}: the primary dataset has no adaptive arm to pair "
+                "against the null queue"
+            )
+        adaptive_loss = float(primary_arms["adaptive"]["final_loss"])
+        null_loss = float(arms["null"]["final_loss"])
+        # "Beat" is strict: ties count against the arm seeking Gate 4, the
+        # same conservative reading the harm guard applies to losses.
+        won = adaptive_loss < null_loss
+        if not won:
+            adaptive_losses += 1
+        pairs.append(
+            {
+                "seed": seed,
+                "adaptive_loss": adaptive_loss,
+                "null_loss": null_loss,
+                "null_search_flops": int(arms["null"]["search_flops"]),
+                "null_mutation_count": int(arms["null"]["mutation_count"]),
+                "adaptive_beats_null": won,
+            }
+        )
+    for pair in pairs:
+        if pair["null_search_flops"] != 0 or pair["null_mutation_count"] != 0:
+            raise SystemExit(
+                f"null queue seed {pair['seed']}: the null arm must book zero "
+                "search FLOPs and zero mutations"
+            )
+    wins = len(pairs) - adaptive_losses
+    return {
+        "evaluated": True,
+        "null_root": str(null_root),
+        "pairs": len(pairs),
+        "seeds_missing": [],
+        "adaptive_wins": wins,
+        "adaptive_losses_or_ties": adaptive_losses,
+        "win_limit": NULL_WIN_LIMIT,
+        "clause_rejects": adaptive_losses >= NULL_WIN_LIMIT,
+        "per_seed": pairs,
+    }
+
+
 def compute_verdict(
     dataset_root: Path,
     *,
     probe_batch_count: int,
     declared_seeds: tuple[int, ...] = DECLARED_SEEDS,
     control_root: Path | None = None,
+    null_root: Path | None = None,
 ) -> dict:
     """Assemble the machine-checked section 5.1 verdict from published seeds.
 
@@ -150,6 +270,8 @@ def compute_verdict(
     declared). ``control_root`` is the pool-matched loss-blind arm's dataset;
     the adopted section 5.5 protocol requires it, so its absence withholds the
     Gate 4 recommendation rather than silently skipping the clause.
+    ``null_root`` is the section 5.14 do-nothing queue's dataset (single-arm
+    null sessions over the same block); same rule: required for Gate 4.
     """
     if not declared_seeds:
         raise SystemExit("declared seed block must not be empty")
@@ -207,9 +329,11 @@ def compute_verdict(
         }
     else:
         control = _control_block(control_root, declared_seeds)
+    null = _null_block(null_root, declared_seeds, summaries)
     # Label precedence among the withholding clauses: anti-adaptivity (harm
-    # guard), then the pool-matched clause, then the control being absent, then
-    # the band miss. All of them exit 2 and all withhold Gate 4; the verdict
+    # guard), then the pool-matched clause, then the section 5.14 do-nothing
+    # clause, then a missing control, then a missing null queue, then the
+    # band miss. All of them exit 2 and all withhold Gate 4; the verdict
     # string must surface which one fired.
     if not cost_pass:
         verdict = "FAIL"
@@ -220,8 +344,14 @@ def compute_verdict(
     elif control["evaluated"] and control["control_passes_gate"]:
         verdict = "PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES"
         exit_code = 2
+    elif null["evaluated"] and null["clause_rejects"]:
+        verdict = "PASS_COST_ONLY_NULL_REJECTS"
+        exit_code = 2
     elif not control["evaluated"]:
         verdict = "PASS_COST_ONLY_CONTROL_MISSING"
+        exit_code = 2
+    elif not null["evaluated"]:
+        verdict = "PASS_COST_ONLY_NULL_MISSING"
         exit_code = 2
     elif not in_band:
         verdict = "PASS_WITH_QUALIFICATION"
@@ -252,17 +382,20 @@ def compute_verdict(
             "clear": harm_guard_clear,
         },
         "pool_matched_control": control,
+        "null_control": null,
         "per_seed": pairs,
         "verdict": verdict,
         "gate_4_authorized": verdict == "PASS" and not missing,
         "notes": (
             f"Gate 4 authorization requires all {len(declared_seeds)} declared "
             "seeds complete, cost <= 5%, measured C inside the [0.5, 2]x band, "
-            "the harm guard clear, and the adopted section 5.5 pool-matched "
+            "the harm guard clear, the adopted section 5.5 pool-matched "
             "control clause satisfied (the loss-blind arm must NOT clear the "
-            "gate, and the control must have been run). A band miss forces "
-            "re-derivation before Gate 4 (no knob re-tuning against the "
-            "measured C)."
+            "gate, and the control must have been run), and the section 5.14 "
+            "do-nothing clause satisfied (adaptive must beat the null arm on "
+            "the declared queue, and the null queue must have been run). A "
+            "band miss forces re-derivation before Gate 4 (no knob re-tuning "
+            "against the measured C)."
         ),
     }
 
@@ -289,6 +422,12 @@ def main() -> int:
         "authorization under the adopted section 5.5 protocol",
     )
     parser.add_argument(
+        "--null-root", type=Path, default=None,
+        help="dataset root of the section 5.14 do-nothing queue (single-arm "
+        "null sessions at declared fidelity over the same seeds); required for "
+        "Gate 4 authorization under the pre-registered section 5.14 protocol",
+    )
+    parser.add_argument(
         "--output", type=Path, default=None,
         help="verdict JSON path (default <dataset-root>/v0-5-1-verdict.json)",
     )
@@ -299,6 +438,7 @@ def main() -> int:
         probe_batch_count=args.probe_batch_count,
         declared_seeds=declared_seeds,
         control_root=args.control_root,
+        null_root=args.null_root,
     )
     output = args.output or Path(args.dataset_root) / "v0-5-1-verdict.json"
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -334,12 +474,28 @@ def main() -> int:
                 f"(limit {control['win_limit']}); the adaptive edge does not "
                 f"demonstrate selection value and Gate 4 is withheld"
             )
+    null = verdict["null_control"]
+    if not null["evaluated"]:
+        print(
+            "WARNING: the section 5.14 do-nothing queue was not supplied (or is "
+            "incomplete on the declared block); the do-nothing clause cannot be "
+            "evaluated and Gate 4 is withheld"
+        )
+    elif null["clause_rejects"]:
+        print(
+            f"WARNING: the adaptive arm failed to beat the null arm on "
+            f"{null['adaptive_losses_or_ties']}/{null['pairs']} seeds (limit "
+            f"{null['win_limit']}); the adaptive edge does not demonstrate "
+            f"value over doing nothing and Gate 4 is withheld"
+        )
     return {
         "FAIL": 1,
         "PASS_WITH_QUALIFICATION": 2,
         "PASS_COST_ONLY_HARM_GUARD_REJECTS": 2,
         "PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES": 2,
+        "PASS_COST_ONLY_NULL_REJECTS": 2,
         "PASS_COST_ONLY_CONTROL_MISSING": 2,
+        "PASS_COST_ONLY_NULL_MISSING": 2,
     }.get(verdict["verdict"], 0)
 
 

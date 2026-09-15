@@ -1601,6 +1601,88 @@ unspent). The toy factor map (5.9-5.12) stands on its own: depth-driven
 value creation exists at depth 4 there, and closing the real-text leg
 removes the transfer assumption, not the toy result.
 
+### 5.14 Pre-registration: the do-nothing clause for Gate 4 (designed, not yet run)
+
+**Motivation.** The section 5.1/5.5 verdict structure predates the null
+arm. Its harm guard (adaptive worse in >= 10 of 12 pairs vs RANDOM) and
+its pool-matched clause both measure against churn arms; sections 5.8,
+5.11 and 5.13 then established that on real text at diagnostic fidelity
+churn is itself the harm (null < random, < gated at every threshold,
+< heuristic, all at p < 0.001). If that ordering holds at declared
+fidelity, the registered gate could pass while adaptive still loses to
+doing nothing - authorizing Gate 4 on a comparison that no longer
+carries the selection claim. The 2x2 (5.12) shows the depth factor cuts
+both ways: the declared config is depth 12, deeper than any toy cell
+where creation won, so no toy result predicts the declared-fidelity
+outcome. Only the declared-scale measurement can.
+
+**Design.** A **null-session queue** at DECLARED fidelity over the SAME
+block 15000-15011, run as its own single-arm sessions (`arms=("null",)`)
+into its own dataset/session roots (as the 5.5 pool-matched control uses
+its own roots), publishing per-seed `null_final_loss` under the existing
+runner contract (5.8). Expected cost ~90 s/seed of GPU (~18 min over 12
+sessions) plus restore/publish overhead; no probes, no search FLOPs,
+mutations always zero. A null session trains the SAME init and data
+stream as the pair sessions, so its losses are paired with the primary
+run's adaptive/random arms per seed. No probe-budget flag is needed; the
+null arm is policy-free by construction.
+
+**Adoption rule.** The T4 runbook (T4_RUNBOOK.md) gains a step 2c: run
+the null queue with `--session-arms null` and separate roots
+(`artifacts/datasets-null`, `artifacts/v0-sessions-null`, own Kaggle
+dataset slug). The verdict (scripts/v0_verdict.py) gains a
+`--null-root` argument; with it, the per-seed null losses are loaded and
+two amendments apply:
+
+1. **Do-nothing clause (the 5.14 primary).** Gate 4 is additionally
+   withheld if the adaptive arm fails to beat the null arm on the
+   declared queue: adaptive-minus-null losses are counted and Gate 4 is
+   withheld when adaptive loses-or-ties >= `NULL_WIN_LIMIT = 10` of 12
+   seeds (the mirror of the registered harm-guard limit). The verdict
+   label is `PASS_COST_ONLY_NULL_REJECTS` (exit 2): the cost PASS and
+   the registered rules all stand; the adaptive edge does not
+   demonstrate value over doing nothing.
+2. **Mandatory-execution clause.** A missing or incomplete null queue
+   withholds Gate 4 (`PASS_COST_ONLY_NULL_MISSING`, exit 2) - running
+   the do-nothing control is part of the protocol; its absence must
+   never read as "no null effect found".
+
+Clause precedence: cost FAIL (exit 1) > harm guard > pool-matched
+control > **null clause (5.14)** > control missing > null missing >
+band miss. All withholding clauses exit 2 and leave the cost PASS
+standing; the label names which fired.
+
+**Pre-registered interpretation (fixed before running).**
+- (a) Adaptive clears the do-nothing bar at declared fidelity (null
+  rejects clause does not fire): the selection claim survives the
+  strictest control - the gate then stands or falls on the registered
+  cost/band/control rules exactly as registered.
+- (b) The null clause fires (adaptive loses-or-ties >= 10/12 vs null):
+  the real-text null ordering REPLICATES at declared fidelity, Gate 4 is
+  withheld, and the 5.1 program's selection premise is falsified at its
+  own measurement scale. The cost/band/control machinery stands as a
+  protocol demonstration; no re-tuning, no new block, no knob changes
+  (the 5.5 discipline). The project's open frontier is then the toy
+  factor map (5.12: depth-driven value creation) and Gate 4 is closed
+  with the real-text program.
+- (c) Mixed (5-9/12 adaptive losses vs null): treat exactly like the
+  registered harm-guard gray zone - cost PASS stands, Gate 4 is
+  authorized only if the clause does NOT fire (losses < 10); the gray
+  zone itself is recorded but authorizes nothing.
+
+**Built-in checks (machine-checked at verdict time).** Null arms must
+book zero search FLOPs and zero mutations at declared fidelity too
+(rebuild bookings still land in search FLOPs for mutating arms only;
+the null arm has none); null queue completeness on the same block;
+per-seed pairing (each null loss must come from the same seed as the
+pair it is compared against).
+
+**Cost.** ~90 s/seed on the T4 (24.576M tokens at the measured rate,
+no probe/event overhead beyond zero mutations) - ~7 min of GPU across
+the queue, plus per-session restore/publish overhead. It runs as
+regular sessions in the same 12-hour Kaggle windows, after the primary
+queue completes (the runbook order).
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

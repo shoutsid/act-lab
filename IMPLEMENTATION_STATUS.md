@@ -818,6 +818,23 @@ These remain TODO or DEFERRED until the first gate passes:
   real text at this fidelity. The project's one remaining open gate is
   Gate 4 (the section-5.5 compute-efficiency protocol, block
   15000-15011, unspent).
+- **Section 5.14 pre-registered (2026-09-15, revision `4e26de9`)**: the
+  **do-nothing clause for Gate 4**. The 5.1/5.5 verdict structure predates
+  the null arm - its harm guard compares adaptive against RANDOM churn
+  only, so a full-fidelity run could pass while adaptive still loses to
+  doing nothing (the exact 5.9 trap). The amendment: a null-session queue
+  at declared fidelity over the SAME block 15000-15011 (runbook step 2c,
+  `--session-arms null`, own roots, ~90 s/seed), and two new verdict
+  clauses - `PASS_COST_ONLY_NULL_REJECTS` (adaptive loses-or-ties >= 10/12
+  vs null) and `PASS_COST_ONLY_NULL_MISSING` (the queue is mandatory), both
+  exit-2 withholdings leaving the cost PASS standing. Clause order: harm
+  guard > pool control > null > control-missing > null-missing > band.
+  Implemented: `scripts/v0_verdict.py --null-root`, CLI `--session-arms`,
+  10 new tests (suite at 372). BONUS FIX: the pair-session `--seeds` parser
+  now accepts the runbook's documented `15000-15011` range form (it crashed
+  on it before - a latent bug the new CLI tests exposed). The T4 runbook
+  now has three queues (primary, control, null) and a 4-clause verdict
+  command.
 - `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
   `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
   deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer

@@ -112,11 +112,17 @@ def _populate(
     adaptive_wins: int | None = None,
     control_root: Path | None = None,
     control_wins: int = 0,
+    null_root: Path | None = None,
+    null_wins: int | None = None,
 ) -> None:
     """Write all 12 declared seeds; ``adaptive_wins`` caps the win count.
 
     With ``control_root`` the same pairs are also written as the adopted
     section 5.5 pool-matched loss-blind arm, ``control_wins`` of them won.
+    With ``null_root`` a section 5.14 do-nothing queue is written as
+    single-arm null sessions; ``null_wins`` counts the seeds where the
+    adaptive arm beats the null arm (``None`` = adaptive always wins, the
+    authorization-friendly default, mirroring ``adaptive_wins``).
     """
     for index, seed in enumerate(DECLARED):
         adaptive_won = adaptive_wins is None or index < adaptive_wins
@@ -137,6 +143,49 @@ def _populate(
                 random_loss=1.5 if control_won else 1.0,
                 search_flops=search_flops,
             )
+    if null_root is not None:
+        for index, seed in enumerate(DECLARED):
+            adaptive_beats = null_wins is None or index < null_wins
+            _write_null_seed(
+                null_root,
+                seed,
+                null_loss=2.0 if adaptive_beats else 0.5,
+            )
+
+
+def _write_null_seed(dataset_root: Path, seed: int, *, null_loss: float) -> None:
+    """Materialize one single-arm null session summary (section 5.14 layout)."""
+    destination = seed_directory(dataset_root, seed)
+    reports = destination / "reports"
+    reports.mkdir(parents=True, exist_ok=True)
+    summary = {
+        "seed": seed,
+        "status": "complete",
+        "protocol": "v0-compute-efficiency-5.1",
+        "interrupted_step": None,
+        "predicted_cost_ratio": 0.0,
+        "arms": {
+            "null": {
+                "mode": "null",
+                "final_loss": null_loss,
+                "validation_loss": null_loss,
+                "quality": 0.0,
+                "mutation_count": 0,
+                "parameter_count": 1_000,
+                "active_parameter_count": 800,
+                "training_flops": TRAINING_FLOPS_PER_SEED,
+                "search_flops": 0,
+                "architecture_hash": "0" * 64,
+                "mutation_history": [],
+                "wall_time_seconds": 1.0,
+                "tokens_per_second": 1.0,
+            }
+        },
+        "config": {},
+    }
+    (reports / "seed-summary.json").write_text(
+        json.dumps(summary, indent=2, sort_keys=True) + "\n"
+    )
 
 
 def _run_main(
@@ -146,6 +195,7 @@ def _run_main(
     probe_batch_count: int = 1,
     output: Path | None = None,
     control_root: Path | None = None,
+    null_root: Path | None = None,
 ) -> int:
     argv = [
         "v0-verdict",
@@ -158,6 +208,8 @@ def _run_main(
         argv += ["--output", str(output)]
     if control_root is not None:
         argv += ["--control-root", str(control_root)]
+    if null_root is not None:
+        argv += ["--null-root", str(null_root)]
     monkeypatch.setattr(sys, "argv", argv)
     return v0_verdict.main()
 
@@ -179,9 +231,15 @@ def test_full_in_band_queue_passes_and_authorizes_gate_4(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     control = tmp_path / "control"
-    _populate(tmp_path, search_flops=_in_band_search_flops(), control_root=control)
+    null = tmp_path / "null"
+    _populate(
+        tmp_path,
+        search_flops=_in_band_search_flops(),
+        control_root=control,
+        null_root=null,
+    )
     exit_code = _run_main(  # default output beside the root
-        monkeypatch, tmp_path, control_root=control
+        monkeypatch, tmp_path, control_root=control, null_root=null
     )
 
     assert exit_code == 0
@@ -212,6 +270,15 @@ def test_full_in_band_queue_passes_and_authorizes_gate_4(
     assert verdict["pool_matched_control"]["evaluated"] is True
     assert verdict["pool_matched_control"]["adaptive_wins"] == 0
     assert verdict["pool_matched_control"]["control_passes_gate"] is False
+    # The section 5.14 clause was evaluated and did not fire: the adaptive
+    # arm beat the do-nothing arm on every seed, and the built-in checks held.
+    assert verdict["null_control"]["evaluated"] is True
+    assert verdict["null_control"]["adaptive_wins"] == 12
+    assert verdict["null_control"]["clause_rejects"] is False
+    assert all(
+        pair["null_search_flops"] == 0 and pair["null_mutation_count"] == 0
+        for pair in verdict["null_control"]["per_seed"]
+    )
 
 
 def test_aggregate_cost_matches_the_toy_accounting_over_summaries(tmp_path: Path) -> None:
@@ -241,15 +308,19 @@ def test_probe_batch_count_two_rebases_the_band_without_retuning(tmp_path: Path)
     # of the secondary's. The runbook's --probe-batch-count 2 re-bases the
     # band on the declared prediction; it never re-tunes the measurement.
     control = tmp_path / "control"
+    null = tmp_path / "null"
     _populate(
-        tmp_path, search_flops=_in_band_search_flops(factor=0.7), control_root=control
+        tmp_path,
+        search_flops=_in_band_search_flops(factor=0.7),
+        control_root=control,
+        null_root=null,
     )
 
     primary = v0_verdict.compute_verdict(
-        tmp_path, probe_batch_count=1, control_root=control
+        tmp_path, probe_batch_count=1, control_root=control, null_root=null
     )
     secondary = v0_verdict.compute_verdict(
-        tmp_path, probe_batch_count=2, control_root=control
+        tmp_path, probe_batch_count=2, control_root=control, null_root=null
     )
 
     assert primary["verdict"] == "PASS"
@@ -264,14 +335,16 @@ def test_exactly_five_percent_still_passes_the_primary_criterion(tmp_path: Path)
     # The registered rule is "cost <= 5%": the boundary itself passes the
     # primary criterion (then qualifies on the band, as it must).
     control = tmp_path / "control"
+    null = tmp_path / "null"
     _populate(
         tmp_path,
         search_flops=_in_band_search_flops(factor=5.0 / expected_probe_cost_percent(1)),
         control_root=control,
+        null_root=null,
     )
 
     verdict = v0_verdict.compute_verdict(
-        tmp_path, probe_batch_count=1, control_root=control
+        tmp_path, probe_batch_count=1, control_root=control, null_root=null
     )
 
     assert verdict["measured_cost_percent"] == pytest.approx(5.0, rel=1e-9)
@@ -287,13 +360,21 @@ def test_incomplete_queue_withholds_gate_4_but_still_passes_cost(
 ) -> None:
     last = DECLARED[-1]
     control = tmp_path / "control"
-    _populate(tmp_path, search_flops=_in_band_search_flops(), control_root=control)
+    null = tmp_path / "null"
+    _populate(
+        tmp_path,
+        search_flops=_in_band_search_flops(),
+        control_root=control,
+        null_root=null,
+    )
     # The final seed has only its deadline-stop snapshot: forensic, never judged.
     summary = _summary_at(tmp_path, last)
     summary["status"] = "in-progress"
     _rewrite_summary(tmp_path, last, summary)
 
-    exit_code = _run_main(monkeypatch, tmp_path, control_root=control)
+    exit_code = _run_main(
+        monkeypatch, tmp_path, control_root=control, null_root=null
+    )
 
     assert exit_code == 0
     out = capsys.readouterr().out
@@ -309,17 +390,25 @@ def test_stray_complete_seeds_are_excluded_from_the_aggregate(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     control = tmp_path / "control"
-    _populate(tmp_path, search_flops=_in_band_search_flops(), control_root=control)
+    null = tmp_path / "null"
+    _populate(
+        tmp_path,
+        search_flops=_in_band_search_flops(),
+        control_root=control,
+        null_root=null,
+    )
     # A smoke-test leftover whose cost would explode the aggregate if it were
     # (wrongly) pooled, plus a non-numeric directory ignored outright.
     _write_seed(tmp_path, 20, adaptive_loss=0.5, random_loss=2.0, search_flops=10**15)
-    junk = tmp_path / HANDOFF_DATASET / "seed-junk" / "reports"
+    junk = tmp_path / HANDOFF_DATASET / "seed-junk" / "reports" 
     junk.mkdir(parents=True)
     (junk / "seed-summary.json").write_text(
         json.dumps({"seed": 1, "status": "complete"}) + "\n"
     )
 
-    exit_code = _run_main(monkeypatch, tmp_path, control_root=control)
+    exit_code = _run_main(
+        monkeypatch, tmp_path, control_root=control, null_root=null
+    )
 
     assert exit_code == 0
     out = capsys.readouterr().out
@@ -355,12 +444,16 @@ def test_primary_cost_over_criterion_fails(tmp_path: Path, monkeypatch: pytest.M
 @pytest.mark.parametrize("factor", [3.0, 0.3])
 def test_band_miss_qualifies_the_pass_in_both_directions(factor: float, tmp_path: Path) -> None:
     control = tmp_path / "control"
+    null = tmp_path / "null"
     _populate(
-        tmp_path, search_flops=_in_band_search_flops(factor=factor), control_root=control
+        tmp_path,
+        search_flops=_in_band_search_flops(factor=factor),
+        control_root=control,
+        null_root=null,
     )
 
     verdict = v0_verdict.compute_verdict(
-        tmp_path, probe_batch_count=1, control_root=control
+        tmp_path, probe_batch_count=1, control_root=control, null_root=null
     )
 
     assert verdict["primary_pass"] is True
@@ -400,15 +493,17 @@ def test_harm_guard_rejects_at_ten_losses(
     # The registered guard: adaptive must not lose in >= 10 of 12 pairs
     # (exact one-tailed sign test p = 0.0193), i.e. fewer than 3 wins rejects.
     control = tmp_path / "control"
+    null = tmp_path / "null"
     _populate(
         tmp_path,
         search_flops=_in_band_search_flops(),
         adaptive_wins=adaptive_wins,
         control_root=control,
+        null_root=null,
     )
 
     verdict = v0_verdict.compute_verdict(
-        tmp_path, probe_batch_count=1, control_root=control
+        tmp_path, probe_batch_count=1, control_root=control, null_root=null
     )
 
     assert verdict["verdict"] == expected_verdict
@@ -568,6 +663,7 @@ def test_declared_block_can_be_re_reserved_without_loosening_a_rule(
     """
     fresh = tuple(range(12000, 12012))
     control = tmp_path / "control"
+    null = tmp_path / "null"
     for index, seed in enumerate(fresh):
         won = index < 6
         for root in (tmp_path, control):
@@ -578,6 +674,7 @@ def test_declared_block_can_be_re_reserved_without_loosening_a_rule(
                 random_loss=1.5 if won else 1.0,
                 search_flops=_in_band_search_flops(),
             )
+        _write_null_seed(null, seed, null_loss=2.0 if won else 2.5)
 
     # Default: the registered queue is still the analysis block, so the fresh
     # block reads as strays and the registered seeds as missing.
@@ -589,7 +686,11 @@ def test_declared_block_can_be_re_reserved_without_loosening_a_rule(
 
     # Overridden: the block is judged on exactly the same rules.
     re_declared = v0_verdict.compute_verdict(
-        tmp_path, probe_batch_count=1, declared_seeds=fresh, control_root=control
+        tmp_path,
+        probe_batch_count=1,
+        declared_seeds=fresh,
+        control_root=control,
+        null_root=null,
     )
     assert re_declared["declared_seeds"] == list(fresh)
     assert re_declared["seeds_complete"] == list(fresh)
@@ -645,15 +746,17 @@ def test_control_just_under_the_limit_keeps_gate_4_authorized(tmp_path: Path) ->
     # The clause is a threshold, not a gradient: one win below the limit the
     # loss-blind arm does not pass its own gate and authorization stands.
     control = tmp_path / "control"
+    null = tmp_path / "null"
     _populate(
         tmp_path,
         search_flops=_in_band_search_flops(),
         control_root=control,
         control_wins=v0_verdict.POOL_CONTROL_WIN_LIMIT - 1,
+        null_root=null,
     )
 
     verdict = v0_verdict.compute_verdict(
-        tmp_path, probe_batch_count=1, control_root=control
+        tmp_path, probe_batch_count=1, control_root=control, null_root=null
     )
 
     assert verdict["verdict"] == "PASS"
@@ -692,4 +795,154 @@ def test_control_missing_an_arm_aborts(tmp_path: Path) -> None:
     with pytest.raises(SystemExit, match="random/adaptive pair"):
         v0_verdict.compute_verdict(
             tmp_path, probe_batch_count=1, control_root=control
+        )
+
+
+# --- the section 5.14 do-nothing clause -------------------------------------
+
+
+def test_null_clause_rejects_when_adaptive_fails_to_beat_null(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Adaptive losing-or-tying >= 10/12 vs null withholds Gate 4.
+
+    Section 5.14: the registered harm guard only measures against churn arms;
+    the do-nothing clause adds the bar the churn-harm results (5.8, 5.11,
+    5.13) demand. The cost PASS stands (exit 2, not 1).
+    """
+    control = tmp_path / "control"
+    null = tmp_path / "null"
+    _populate(
+        tmp_path,
+        search_flops=_in_band_search_flops(),
+        control_root=control,
+        null_root=null,
+        null_wins=2,  # adaptive beats null on only 2 of 12 seeds
+    )
+
+    exit_code = _run_main(
+        monkeypatch, tmp_path, control_root=control, null_root=null
+    )
+
+    assert exit_code == 2
+    out = capsys.readouterr().out
+    assert "value over doing nothing" in out
+    verdict = json.loads((tmp_path / "v0-5-1-verdict.json").read_text())
+    assert verdict["primary_pass"] is True
+    assert verdict["in_tolerance_band"] is True
+    assert verdict["harm_guard"]["clear"] is True
+    assert verdict["pool_matched_control"]["control_passes_gate"] is False
+    assert verdict["verdict"] == "PASS_COST_ONLY_NULL_REJECTS"
+    assert verdict["gate_4_authorized"] is False
+    assert verdict["null_control"]["clause_rejects"] is True
+    assert verdict["null_control"]["adaptive_losses_or_ties"] == (
+        v0_verdict.NULL_WIN_LIMIT
+    )
+
+
+def test_null_clause_just_under_the_limit_keeps_gate_4_authorized(
+    tmp_path: Path,
+) -> None:
+    # Threshold semantics, mirroring the harm guard: 9 adaptive losses vs
+    # null sits one below the limit, the clause does not fire, and the
+    # full authorization stands.
+    control = tmp_path / "control"
+    null = tmp_path / "null"
+    _populate(
+        tmp_path,
+        search_flops=_in_band_search_flops(),
+        control_root=control,
+        null_root=null,
+        null_wins=3,  # 12 - 3 = 9 losses-or-ties: just under the bar
+    )
+
+    verdict = v0_verdict.compute_verdict(
+        tmp_path, probe_batch_count=1, control_root=control, null_root=null
+    )
+
+    assert verdict["verdict"] == "PASS"
+    assert verdict["gate_4_authorized"] is True
+    assert verdict["null_control"]["clause_rejects"] is False
+
+
+def test_missing_null_queue_withholds_gate_4_rather_than_skipping_the_clause(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The pre-registered protocol requires the do-nothing queue; absence is
+    disqualifying, and must never read as "no null effect found"."""
+    control = tmp_path / "control"
+    _populate(tmp_path, search_flops=_in_band_search_flops(), control_root=control)
+
+    exit_code = _run_main(monkeypatch, tmp_path, control_root=control)
+
+    assert exit_code == 2
+    out = capsys.readouterr().out
+    assert "do-nothing queue was not supplied" in out
+    verdict = json.loads((tmp_path / "v0-5-1-verdict.json").read_text())
+    assert verdict["verdict"] == "PASS_COST_ONLY_NULL_MISSING"
+    assert verdict["null_control"]["evaluated"] is False
+    assert verdict["gate_4_authorized"] is False
+
+
+def test_incomplete_null_queue_withholds_gate_4(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # A partial null queue cannot authorize a full-block claim: the clause
+    # must not silently evaluate over whatever seeds happen to exist.
+    control = tmp_path / "control"
+    null = tmp_path / "null"
+    _populate(
+        tmp_path,
+        search_flops=_in_band_search_flops(),
+        control_root=control,
+        null_root=null,
+    )
+    _rewrite_summary(null, DECLARED[0], {"status": "in-progress", "arms": {}})
+
+    exit_code = _run_main(
+        monkeypatch, tmp_path, control_root=control, null_root=null
+    )
+
+    assert exit_code == 2
+    verdict = json.loads((tmp_path / "v0-5-1-verdict.json").read_text())
+    assert verdict["verdict"] == "PASS_COST_ONLY_NULL_MISSING"
+    assert verdict["null_control"]["evaluated"] is False
+    assert str(DECLARED[0]) in verdict["null_control"]["reason"]
+
+
+def test_null_label_precedence_over_control_missing_and_band(
+    tmp_path: Path,
+) -> None:
+    """The 5.14 clause outranks the missing-control and band labels."""
+    null = tmp_path / "null"
+    _populate(
+        tmp_path,
+        search_flops=_in_band_search_flops(factor=3.0),  # also a band miss
+        null_root=null,
+        null_wins=2,
+    )
+
+    verdict = v0_verdict.compute_verdict(tmp_path, probe_batch_count=1, null_root=null)
+
+    assert verdict["verdict"] == "PASS_COST_ONLY_NULL_REJECTS"
+    assert verdict["in_tolerance_band"] is False
+    assert verdict["pool_matched_control"]["evaluated"] is False
+
+
+def test_null_root_pointed_at_the_primary_dataset_aborts(tmp_path: Path) -> None:
+    # Pointing --null-root at a pair-session dataset is an operator error the
+    # machine-check must refuse, not misread: those summaries carry no null
+    # arm at all.
+    control = tmp_path / "control"
+    _populate(
+        tmp_path,
+        search_flops=_in_band_search_flops(),
+        control_root=control,
+    )
+    with pytest.raises(SystemExit, match="missing the null arm"):
+        v0_verdict.compute_verdict(
+            tmp_path,
+            probe_batch_count=1,
+            control_root=control,
+            null_root=tmp_path,  # the primary root: pair arms live here
         )
