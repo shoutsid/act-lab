@@ -680,3 +680,73 @@ def test_published_code_revision_is_none_when_the_marker_is_absent(tmp_path: Pat
 
     (tmp_path / kaggle_queue.REVISION_MARKER).write_text("cafe1234\n")
     assert kaggle_queue.published_code_revision("owner/ds", work=tmp_path) == "cafe1234"
+
+
+def test_stage_code_dataset_leaves_the_source_tree_untouched(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Staging must not write into the repo it stages.
+
+    The marker used to be written to the *source* tree and archived from
+    there, which left ``revision.txt`` in the repo. Untracked, that makes the
+    next ``code_revision`` refuse the tree as dirty - one publish blocking
+    every publish after it.
+    """
+    monkeypatch.setattr(
+        kaggle_queue,
+        "code_files",
+        lambda repo: ["pyproject.toml", "src/act/__init__.py"],
+    )
+    marker_in_repo = ROOT / kaggle_queue.REVISION_MARKER
+    marker_in_repo.unlink(missing_ok=True)
+
+    folder = kaggle_queue.stage_code_dataset(ROOT, tmp_path / "code", "cafe1234")
+
+    assert not marker_in_repo.exists()
+    assert (folder / kaggle_queue.REVISION_MARKER).read_text().strip() == "cafe1234"
+    with tarfile.open(folder / kaggle_queue.CODE_ARCHIVE_NAME) as archive:
+        assert kaggle_queue.REVISION_MARKER in set(archive.getnames())
+
+
+def test_ensure_code_dataset_retries_a_read_back_that_lags_the_push(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A download right after a version push can serve the previous version.
+
+    Measured 2026-09-15: the read-back saw the old revision immediately after a
+    successful publish, which is indistinguishable from a rejected push. The
+    single-read check raised SystemExit there even though the push had landed.
+    """
+    calls: list[list[str]] = []
+
+    def fake_run(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        calls.append(list(argv))
+        return subprocess.CompletedProcess(argv, 0, "version pushed", "")
+
+    served = {"count": 0}
+
+    def fake_download(dataset: str, *, work) -> Path:
+        here = Path(work)
+        here.mkdir(parents=True, exist_ok=True)
+        (here / "src" / "act").mkdir(parents=True, exist_ok=True)
+        (here / "pyproject.toml").write_text("[project]\n")
+        # Read 0 is the pre-publish state; read 1 is the race, still showing the
+        # old revision; read 2 finally sees the pushed one.
+        stale = served["count"] < 2
+        (here / kaggle_queue.REVISION_MARKER).write_text(
+            "old9999\n" if stale else "cafe1234\n"
+        )
+        served["count"] += 1
+        return here
+
+    monkeypatch.setattr(kaggle_queue, "_run", fake_run)
+    monkeypatch.setattr(kaggle_queue, "download_code_dataset", fake_download)
+    monkeypatch.setattr(kaggle_queue, "code_revision", lambda repo: "cafe1234")
+    monkeypatch.setattr(
+        kaggle_queue, "stage_code_dataset", lambda repo, directory, revision: Path(directory)
+    )
+    monkeypatch.setattr(kaggle_queue, "CODE_VERIFY_POLL_SECONDS", 0.0)
+
+    assert kaggle_queue.ensure_code_dataset(tmp_path) == "cafe1234"
+    assert served["count"] >= 3
+    assert [argv for argv in calls if argv[1:3] == ["datasets", "version"]]

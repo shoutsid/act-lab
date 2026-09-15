@@ -208,10 +208,19 @@ cost one failed run:
    records `code_revision`, so the provenance would be wrong too. Measured
    2026-09-15: the dataset was a commit behind, and every fix in between
    (including the guarded handoff publish) was absent from the session that was
-   running. `kaggle_queue.ensure_code_dataset` now compares the dataset's
-   `revision.txt` marker with `git rev-parse HEAD` before any quota is spent,
-   republishes when they differ, and refuses outright on a dirty or non-git
-   tree (a tree that is not a clean commit has no reproducible revision).
+   running. `kaggle_queue.ensure_code_dataset` runs before any quota is spent:
+   it pins the dataset to `git rev-parse HEAD`, refuses outright on a dirty or
+   non-git tree (a tree that is not a clean commit has no reproducible
+   revision), and republishes when the published copy is not at that revision
+   **or does not carry the package tree**. The marker alone is not evidence -
+   it is a loose top-level file, so it survives an upload that drops every
+   subdirectory while the tree does not. So the tree travels as one archive
+   (`code.tar`, whose internal paths the service restores), the staging marker
+   is written into the staging folder and never the repo (a marker left in the
+   repo is untracked, which makes the next run refuse the tree as dirty), and
+   the read-back is polled, because a download issued immediately after a
+   version push can serve the previous version and look like a rejected
+   publish.
    `artifacts/` is deliberately **not** shipped: a session must start with no
    `artifacts/` directory, so the launch command cannot read a benchmark
    artifact that this session did not measure itself.

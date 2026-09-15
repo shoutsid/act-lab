@@ -772,8 +772,18 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   `artifacts/`, because a session must start with no `artifacts/` directory so
   the launch command cannot read a benchmark artifact it did not measure, and
   excluding the web side (`public/`, `server/`, vite/ts configs) which the
-  kernel never imports. Pinned by 5 tests in `tests/test_kaggle_queue.py`,
-  including that `artifacts/` never ships.
+  kernel never imports. Two follow-on defects found and fixed 2026-09-15: the
+  tree is uploaded as one archive because Kaggle's uploader silently drops
+  every subdirectory (a folder-shaped push published a dataset with no `src/`
+  while still reporting success), and the revision marker is now written into
+  the *staging* folder rather than the repo - a marker left at the repo root is
+  an untracked file, so the publish refused the very next publish. The
+  post-publish read-back is polled: a download issued right after a version
+  push can serve the previous version, which is indistinguishable from a
+  rejected push. Pinned by the code-dataset tests in
+  `tests/test_kaggle_queue.py`, including that `artifacts/` never ships, that
+  the archive carries the package tree, and that staging leaves the source tree
+  untouched.
 - **The session pipeline is proven end to end, not just in pieces.** The
   registered launch command was run at reduced fidelity on CPU
   (`--profile --seeds 15000-15001`) and its own `session-log.json` fed back

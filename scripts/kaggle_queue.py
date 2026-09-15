@@ -138,6 +138,12 @@ REVISION_MARKER = "revision.txt"
 # under /kaggle/input". The service extracts uploaded archives and keeps their
 # internal paths, which is the same route the checkpoint handoff uses.
 CODE_ARCHIVE_NAME = "code.tar"
+# How long a publish's read-back is retried. A ``datasets download`` issued
+# right after a version push can still serve the *previous* version (measured
+# 2026-09-15), which is indistinguishable from a rejected publish - so the
+# check polls instead of failing on the first read.
+CODE_VERIFY_TIMEOUT_SECONDS = 120.0
+CODE_VERIFY_POLL_SECONDS = 5.0
 
 
 def code_dataset_id() -> str:
@@ -208,11 +214,15 @@ def stage_code_dataset(repo: str | Path, directory: str | Path, revision: str) -
             "what the kernel's mount search looks for"
         )
     archive = folder / CODE_ARCHIVE_NAME
+    # The marker is written into the *staging* folder and never the source
+    # tree: a marker left at the repo root is an untracked file, so the very
+    # next ``code_revision`` call refuses the tree as dirty - a publish that
+    # sabotages the following publish.
+    marker = folder / REVISION_MARKER
+    marker.write_text(f"{revision}\n", encoding="utf-8")
     with tarfile.open(archive, "w") as tar:
         for name in names:
             tar.add(root / name, arcname=name)
-        marker = root / REVISION_MARKER
-        marker.write_text(f"{revision}\n", encoding="utf-8")
         tar.add(marker, arcname=REVISION_MARKER)
     with tarfile.open(archive) as tar:
         archived = set(tar.getnames())
@@ -220,7 +230,6 @@ def stage_code_dataset(repo: str | Path, directory: str | Path, revision: str) -
         name.startswith("src/act/") for name in archived
     ):
         raise SystemExit(f"{archive} does not carry the package tree")
-    (folder / REVISION_MARKER).write_text(f"{revision}\n", encoding="utf-8")
     (folder / "dataset-metadata.json").write_text(
         json.dumps(
             {
@@ -269,6 +278,14 @@ def code_payload_defect(directory: str | Path) -> str | None:
     return "a pyproject.toml with a sibling src/act"
 
 
+def read_revision_marker(directory: str | Path) -> str | None:
+    """The revision marker inside an already-downloaded code dataset."""
+    marker = Path(directory) / REVISION_MARKER
+    if not marker.is_file():
+        return None
+    return marker.read_text(encoding="utf-8").strip() or None
+
+
 def published_code_revision(
     dataset: str, *, work: str | Path | None = None
 ) -> str | None:
@@ -276,10 +293,7 @@ def published_code_revision(
     here = Path(work) if work is not None else Path(tempfile.mkdtemp(prefix="act-code-check-"))
     if download_code_dataset(dataset, work=here) is None:
         return None
-    marker = here / REVISION_MARKER
-    if not marker.is_file():
-        return None
-    return marker.read_text(encoding="utf-8").strip() or None
+    return read_revision_marker(here)
 
 
 def ensure_code_dataset(repo: str | Path, *, log=print) -> str:
@@ -294,10 +308,9 @@ def ensure_code_dataset(repo: str | Path, *, log=print) -> str:
     """
     dataset = code_dataset_id()
     revision = code_revision(repo)
-    probe = Path(tempfile.mkdtemp(prefix="act-code-check-"))
     fetch = Path(tempfile.mkdtemp(prefix="act-code-fetch-"))
     if download_code_dataset(dataset, work=fetch) is not None:
-        published = published_code_revision(dataset, work=probe)
+        published = read_revision_marker(fetch)
         defect = code_payload_defect(fetch)
     else:
         published, defect = None, None
@@ -326,17 +339,27 @@ def ensure_code_dataset(repo: str | Path, *, log=print) -> str:
                 f"{(created.stderr or created.stdout).strip()}"
             )
     # Read it back: a version that dropped the package tree still reports as
-    # published, and every kernel then dies at bootstrap.
-    verify = Path(tempfile.mkdtemp(prefix="act-code-verify-"))
-    if download_code_dataset(dataset, work=verify) is not None:
+    # published, and every kernel then dies at bootstrap. The read-back can
+    # serve the version that was current *before* this push, which looks
+    # exactly like a rejected publish, so it is polled rather than judged on
+    # one read.
+    deadline = time.monotonic() + CODE_VERIFY_TIMEOUT_SECONDS
+    while True:
+        verify = Path(tempfile.mkdtemp(prefix="act-code-verify-"))
+        if download_code_dataset(dataset, work=verify) is None:
+            break
         still = code_payload_defect(verify)
-        marker = published_code_revision(dataset, work=verify)
-        if still is not None or marker != revision:
+        marker = read_revision_marker(verify)
+        if still is None and marker == revision:
+            break
+        if time.monotonic() >= deadline:
             raise SystemExit(
-                f"published {dataset} is not usable: "
-                f"{'missing ' + still if still else f'at {marker}'} "
+                f"published {dataset} is not usable after "
+                f"{CODE_VERIFY_TIMEOUT_SECONDS:.0f}s: "
+                f"{'carries ' + still if still else f'is at {marker}'} "
                 f"(expected {revision[:12]} with a findable package tree)"
             )
+        time.sleep(CODE_VERIFY_POLL_SECONDS)
     log(f"  published code dataset {dataset} at {revision[:12]}", flush=True)
     return revision
 
