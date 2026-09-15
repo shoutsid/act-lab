@@ -237,8 +237,13 @@ is a rate on the device training used (`device_name: Tesla T4`); the artifact's
 
 | Field | Section 5.2 assumption | Measured on T4 |
 |---|---|---|
-| `measured_tokens_per_second` (fp32) | 10,000 | **1,958.7** |
+| `measured_tokens_per_second` (fp32) | 10,000 | **2,124.2** |
 | `dtype_decision` | fp32 | **fp16** (below the 2,500 floor - the registered contingency) |
+| `gpu_inventory` | - | **2 x `Tesla T4`** (confirmed 2026-09-15) |
+
+The pre-flight's `nvidia-smi` shows **two T4s**, both idle. The second one has
+been idle for the whole run so far, and it is the reason the pair-time model's
+parallelism is reachable at all - see below.
 
 **The schedule is derived from the rate of the dtype the session trains.** The
 fp32 number above is the pre-committed rule's *input*; it is not what the arms
@@ -246,8 +251,8 @@ run at. Measured on the T4 (`--queue dtypeprobe`, 2026-09-15):
 
 | dtype | tokens/s | `pair_time_hours` | `full_pairs_per_session` | `sessions_for_primary` |
 |---|---|---|---|---|
-| fp32 | 2,066.3 | 6.71 | 1 | 12 |
-| **fp16** (the decided dtype) | **4,694.9** | **3.01** | **2** | **6** |
+| fp32 | 2,124.2 | 6.53 | 1 | 12 |
+| **fp16** (the decided dtype) | **5,433.2** | **2.61** | **3** | **4** |
 
 **Two corrections sit behind those rows, and they nearly cancel.**
 
@@ -266,23 +271,25 @@ run at. Measured on the T4 (`--queue dtypeprobe`, 2026-09-15):
    deadline rule would start pairs it could not finish - which section 5.2
    answers by restarting the pair from scratch, never resuming it.
 
-Because the rate correction (2.27x) and the arm correction (2x) nearly cancel,
+Because the rate correction (2.56x) and the arm correction (2x) nearly cancel,
 the *recorded* total was accidentally about right for the wrong reasons. The
-corrected plan is: primary 12 pairs x 3.01 h = **~36 GPU-hours**, the 2b control
-queue the same ~36, and 2c 12 pairs x 1.554 h (one arm) = **~19**, so about
-**90 GPU-hours** against the free tier's 30/week - roughly four weeks. The
-recorded "2c ~0.3" does not follow from the runner: an arm's token budget is
-`batch x context x steps`, independent of how many arms run, so the null queue
-cannot be cheap.
+corrected plan is: primary 12 pairs x 2.61 h = **~31 GPU-hours**, the 2b control
+queue the same ~31, and 2c 12 pairs x 1.36 h (one arm) = **~16**, so about
+**79 GPU-hours** against the free tier's 30/week. The recorded "2c ~0.3" does
+not follow from the runner: an arm's token budget is `batch x context x steps`,
+independent of how many arms run, so the null queue cannot be cheap.
 
-Dtype remains an execution detail touching no pre-registered criterion, but the
-arm multiplicity is **not** merely arithmetic: recovering it (each arm on its
-own device) is the one change that still halves this plan, to roughly 45
-GPU-hours. It needs the machine shape to hand out two T4s and a per-arm runner
-that has not been written or validated.
+**And the second T4 is the point.** The pair-time model was written for one arm
+per GPU; two T4s exist, so that model is reachable and the sequential runner is
+what makes the plan larger than it needs to be. Running each arm on its own
+device takes the pair to one arm-time - 24.576M / 5,433 / 3600 + 0.1 = **1.36 h,
+6 pairs per session, 2 sessions for the primary queue**, and roughly **47
+GPU-hours** for the whole run instead of 79. That is the registered design, not
+a new one: it is the parallelism section 5.2 already describes.
 
 Pass `--hours 9` (the registered usable window): at the fp16 rate the deadline
-rules then place two completed pairs per session.
+rules then place three completed pairs per session sequentially, or six with
+one arm per device.
 
 A kernel that requests a GPU accelerator queues when no T4 is free (status
 `QUEUED`, which consumes no quota); the queue clears on its own.

@@ -576,15 +576,21 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   twice what the clock believed. That is the dangerous direction: the deadline
   rule would start pairs it could not finish, and section 5.2 restarts an
   interrupted pair from scratch. The multiplicity is now in the formula and in
-  the runner's own deadline arithmetic.
-  Corrected plan: primary 12 x 3.01 h = ~36 GPU-h, control ~36, null (one arm)
-  12 x 1.554 = ~19, so ~90 GPU-h - the recorded "2c ~0.3" does not follow from
-  the runner, since an arm's token budget is `batch x context x steps`
-  independent of arm count. Dtype stays an execution detail touching no
-  pre-registered criterion; the arm multiplicity is not mere arithmetic, and
-  recovering it (one arm per device) is the remaining change that halves the
-  plan to ~45 GPU-h, needing a two-device shape and a per-arm runner that is
-  not written or validated. The benchmark also refuses to write an artifact
+  the runner's own deadline arithmetic.  Corrected plan, re-measured by a pre-flight on 2026-09-15 (fp32 2,124.2 /
+  fp16 5,433.2, pair 2.61 h, 3 pairs/session): primary 12 x 2.61 = ~31 GPU-h,
+  control ~31, null (one arm) 12 x 1.36 = ~16, so ~79 GPU-h - the recorded
+  "2c ~0.3" does not follow from the runner, since an arm's token budget is
+  `batch x context x steps` independent of arm count. Dtype stays an execution
+  detail touching no pre-registered criterion.
+  **The same pre-flight answered the device question: `gpu_inventory` reports
+  two `Tesla T4`s and `nvidia-smi` shows both idle.** So the pair model's
+  "one per GPU" is reachable, the second T4 has been idle for the entire run,
+  and running each arm on its own device is the remaining change that takes
+  the pair to 1.36 h / 6 pairs per session / 2 sessions for the primary queue -
+  ~47 GPU-h for the whole run instead of 79. That is the parallelism section
+  5.2 already specifies, so implementing it aligns execution with the
+  registration rather than changing it. The benchmark also refuses
+ to write an artifact
   whose schedule fits no pair: on a non-T4 GPU the decided fp16 measured 4.2x
   *slower* than fp32, and the artifact described a session with
   `full_pairs_per_session: 0` - billing a whole window to publish nothing,
