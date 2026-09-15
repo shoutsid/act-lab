@@ -3938,6 +3938,13 @@ was the right one.
 clone result does not extend to the discovery path. The prediction (branch (a)) was
 wrong: this is the fourth miss in a row after three correct ones.
 
+> **Superseded for interpretation by section 5.30 - do not act on the branch (c)
+> reading below.** That study re-ran this design on fresh blocks with the
+> stratification declared in advance and found the grow-stratum effect at 73% of
+the stratum in both blocks (p ~1e-11) *while the full-block statistic failed again
+> (142/384, 130/384)*, so the following readings are properties of the statistic
+> rather than of the mechanism. The numbers in this section stand as measured.
+
 **But branch (c)'s pre-registered interpretation is not what the data says, and the
 reason is mechanical.** The adaptive arm is not a 50/50 mix: it drew only **211 of
 1152 events as grows (18.3%)** at depth 2 and 213 at depth 3, because
@@ -4087,9 +4094,94 @@ both primaries are evaluated on roughly 177-179 seeds rather than 384.
 
 **Cost.** Two discovery runs plus two frozen retrains per seed, ~2.4 s/seed.
 
-### 5.30 Result
+### 5.30 Outcome: the stratification replicates, and so does the artefact (branch (a))
 
-*(pending: registered blocks 111000-111383 and 112000-112383)*
+Run on the registered fresh blocks 111000-111383 (depth 2) and 112000-112383
+(depth 3), `study_54cff7dc8d8b6f11` and `study_da528e81c3204901`. All built-in
+checks held, including the positive control the stratification lives on: **in the
+no-grow stratum the clone setting is a bit-identical no-op** - `C == R` exactly in
+all 189 and 205 seeds, so `C_own - C` **is** `R_own - R` to the last digit.
+
+| grow stratum | depth 2 (n = 195) | depth 3 (n = 179) |
+|---|---|---|
+| **P1** clone helps where it can act: `C` < `R` | **142/195 (73%)**, mean −0.0542, p 7.1e-11, bar 114 — **PASS** | **130/179 (73%)**, mean −0.0466, p 5.9e-10, bar 105 — **PASS** |
+| **P2** residual penalty there: `C_own` < `C` | 98/195, mean −0.0064, p 0.50 — FAIL | 77/179, mean **+0.0144**, p 0.97 — FAIL |
+
+| the rest of the block (reported, not verdict-bearing) | depth 2 | depth 3 |
+|---|---|---|
+| **full-block** `C` < `R` — the section 5.29 statistic | 142/384, mean −0.0275 — **FAIL** | 130/384, mean −0.0217 — **FAIL** |
+| no-grow stratum: `C_own` < `C` (= `R_own` < `R`) | 134/189, mean −0.0553, p 4.3e-09 | 151/205, mean −0.0741, p 4.1e-12 |
+| full-block `C` < `F` | 263/384, mean −0.0508, p 1.7e-13 | 260/384, mean −0.0575, p 1.7e-12 |
+| operation mix drawn | 218 grow / 934 prune | 208 grow / 944 prune |
+
+**Registered verdict: branch (a).** The stratification replicates at both depths
+at **73% of the grow stratum in both blocks** - against 75% and 74% post-hoc in
+section 5.29 - and the residual penalty is gone there. The prediction was correct,
+and it is worth saying plainly that this is a **confirmation, not a surprise**: the
+post-hoc section 5.29 numbers pointed this way, which is precisely why the fresh
+blocks were run rather than the post-hoc reading being taken. What they add is
+out-of-sample replication with the statistic fixed in advance.
+
+**The sharper finding is that the artefact replicated too.** The full-block
+sign test - the exact statistic section 5.29 registered - fails again here, at
+**142/384** and **130/384**, *while* the pre-registered stratified test on the same
+runs passes at p ~1e-11. Same block design, same seeds-worth of evidence, opposite
+verdicts, and the difference is only whether the 189 and 205 seeds that could not
+respond are counted. That is a direct demonstration on independent blocks that
+section 5.29's branch (c) was a property of the statistic and not of the mechanism.
+
+**Section 5.29's branch (c) is therefore superseded for interpretation** - its
+registered numbers stand exactly as measured, and its *reading* ("the clone result
+is confined to the random arm and does not extend to discovery") is wrong. The
+same pointer added to section 5.22 applies here in reverse: the registered verdict
+of 5.29 should not be acted on.
+
+**The mechanism is now located precisely, and it is only half the discovery path.**
+
+| | depth 2 | depth 3 |
+|---|---|---|
+| grow stratum (195, 179 seeds): cloning buys | −0.0542 | −0.0466 |
+| no-grow stratum (189, 205 seeds): the historical penalty stands | −0.0553 | −0.0741 |
+
+The discovery path prunes **82%** of its events, so cloning gets to act in only
+about half the seeds, and where it cannot act the mid-flight penalty is untouched
+and large. Means are `own < C < R < F` at both depths -
+`C` 14.2688 / 13.3529, `R` 14.2963 / 13.3746, `F` 14.3196 / 13.4103, `own`
+14.2368-14.2383 / 13.3177-13.3200 - so on this arm the frozen retrain still wins
+overall, on the strength of the prune term alone. **Section 5.28's "keep the fused
+run" holds for the `random` arm, whose mix is half grows, and does not hold as
+stated for discovery**, where the remaining lever is the prune cost of section 5.25
+rather than anything about initialization. That is the honest state of the
+delivery recommendation: cloning is necessary but not sufficient, and the
+deficit that remains on prune-dominated discovery runs is a separate, open
+problem.
+
+**Caveats, as declared.** Toy fidelity, synthetic tokens, one substrate, depths 2
+and 3, a 3-event budget, the project's registered probe configuration, and cloning
+from the layer's busiest survivor rather than a trained teacher. The grow stratum
+is a little over half the block, so both primaries rest on ~180-195 seeds rather
+than 384; the decision was made on the exact binomial p at `alpha/4`, and the
+realized bars (114 and 105) matched the pre-declared expectation (105 at n = 179).
+The stratum is defined by the historical run's drawn mix, which keeps it
+pre-treatment; on the 65 and 48 seeds where the two runs' genomes diverged, the
+clone run's own mix is not guaranteed to contain a grow, which dilutes the stratum
+toward the null rather than inflating it.
+
+### 5.30.1 Methodological conclusion, recorded because it generalises
+
+A treatment that binds in only part of a block cannot be tested with a majority
+statistic over the whole block. Here it produced two confident verdicts opposite
+to the truth from a mechanism that was working, and then reproduced both the
+truth and the artefact on independent blocks. The two guardrails are now in the
+``adaptive_clone_stratified_study.py`` built-in checks and are the pattern to copy:
+
+1. **Record how often the treatment can bind before choosing the statistic**, and
+   report the stratum sizes next to the primary rather than the block size.
+2. **Stratify on a pre-treatment variable** - here the *historical* run's drawn
+   operation mix, so the setting under test cannot decide who enters the stratum -
+   and include a positive control that the treatment is a bit-identical no-op
+   where it should be one. That control is what makes the stratum boundary
+   credible rather than convenient.
 
 ## 6. Reproducibility
 

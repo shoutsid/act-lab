@@ -1688,6 +1688,55 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   `artifacts/study-summaries/unforced-clone-{depth2,depth3}-384.json`
   (`study_5ece35fb3fbc8724`, `study_f8bc02ca0f048a79`), pinned by
   `tests/test_unforced_clone_summary.py`.
+- **Section 5.29 RAN (2026-09-15, blocks 109000-109383 depth 2 / 110000-110383
+  depth 3, `scripts/adaptive_clone_study.py`).** Tests the pipeline recommendation
+  on the **probe-guided adaptive** arm - the discovery path the project actually
+  uses, not the `random` arm section 5.28 used. Registered verdict **branch (c)**
+  (P1 134/384 and 131/384 FAIL; P2 221/384 and 232/384 PASS), and the prediction
+  (branch (a)) was WRONG - the fourth miss in a row. Pairing was not assumed: the
+  probe scores candidates with the **default** rebuild while the *selected* one is
+  applied with the arm's flags, so the runs can diverge. A pre-run 16-seed
+  measurement found 2/16 divergent; the blocks came in at **45/384 and 40/384**.
+  **But both registered verdicts are artifacts, not findings.** The adaptive arm
+  grows in only **18%** of events, so **205/384 and 207/384 seeds contain NO grow**
+  and cloning is then a bit-identical no-op (`C - R == 0` exactly, 0 wins). A
+  full-block sign test scores those as non-wins for P1 and hands P2 the full
+  historical penalty. Stratified post-hoc on whether a grow occurred, both readings
+  reverse: **`C < R` 134/179 (75%) p 9.1e-12 and 131/177 (74%) p 6.0e-11**, with
+  the penalty gone in the grow stratum (+0.0126 / +0.0016) and intact in the no-grow
+  stratum (-0.0416 / -0.0633). This is the project's first statistic whose
+  *validity* was destroyed by a structural no-op rather than by noise. Summaries
+  `artifacts/study-summaries/adaptive-clone-{depth2,depth3}-384.json`
+  (`study_59e969bbd7767f2d`, `study_c28ad3ce4784f3b9`). **Amendment 5.29.1** records
+  that the stratified reading is post-hoc and not outcome-dependent, and
+  **supersedes branch (c) for interpretation** - its numbers stand, its reading does
+  not.
+- **Section 5.30 RAN (2026-09-15, blocks 111000-111383 depth 2 / 112000-112383
+  depth 3, `scripts/adaptive_clone_stratified_study.py`).** The pre-registered
+  stratified re-test on fresh blocks, with the stratum declared in advance and
+  **stratified on the HISTORICAL run's drawn mix** so the setting under test cannot
+  decide who enters it. Registered verdict **branch (a), replicated at both
+  depths**: grow stratum 195 and 179 seeds, **`C < R` 142/195 (73%) mean -0.0542
+  p 7.1e-11 and 130/179 (73%) mean -0.0466 p 5.9e-10** (bars 114 and 105), penalty
+  gone there (P2 fails: -0.0064 / +0.0144). **The artifact replicated too:** the
+  full-block statistic fails on the same runs (**142/384, 130/384**) while the
+  stratified one passes at p ~1e-11 - same evidence, opposite verdicts, and the
+  only difference is whether the ~200 seeds that could not respond are counted.
+  Positive control held: in the no-grow stratum `C == R` bit-identically and
+  `C_own - C == R_own - R` exactly. **Synthesis:** the discovery path prunes 82% of
+  events, so cloning repairs the grow term (-0.054/-0.047 where it binds) and
+  leaves the prune term untouched, where the historical penalty stands at
+  -0.055/-0.074; means are `own < C < R < F` at both depths, so the frozen retrain
+  still wins overall on the prune term alone. **Section 5.28's "keep the fused run"
+  holds for the `random` arm (half grows) and does NOT hold as stated for
+  discovery** - cloning is necessary but not sufficient, and the residual deficit
+  on prune-dominated discovery runs is a separate open problem. Summaries
+  `artifacts/study-summaries/adaptive-clone-stratified-{depth2,depth3}-384.json`
+  (`study_54cff7dc8d8b6f11`, `study_da528e81c3204901`), pinned by
+  `tests/test_adaptive_clone_stratified_summary.py`. **Methodological conclusion
+  (5.30.1):** record how often a treatment can bind before choosing the statistic,
+  stratify on a pre-treatment variable, and include a positive control that the
+  treatment is a no-op where it should be.
 - **Report-artifact link guard (2026-09-15).** Section 5.19's missing summaries
   were a defect *class*, not an incident: a result can be cited widely while its
   artifact does not exist. `tests/test_report_artifact_links.py` now fails if any
