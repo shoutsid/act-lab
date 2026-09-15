@@ -1739,6 +1739,34 @@ search FLOPs; matched budgets; arm-RNG isolation via the 2-arm ==
 cheaper per seed than the depth-4 cell's ~2.4 s), so roughly 13-16 min
 per cell across 20 shards; ~30 min total.
 
+**Outcome (run 2026-09-15, revision `bbad439`): interpretation branch
+(b) - the value-creation onset sits between depth 3 and depth 4.**
+Built-in checks held in 384/384 seeds per cell; committed study summaries
+`artifacts/study-summaries/null-control-depth2-384.json` and
+`null-control-depth3-384.json`. Per-depth primaries (n = 384, bar 212/384,
+Bonferroni alpha/2 = `0.025`):
+
+| depth | P1 null < random | P2 adaptive < null | mean adaptive-null | ordering |
+|---|---|---|---|---|
+| 1 (5.9) | 280/384, p `4.7e-20` | 117/384 | `+0.0508` | null < adaptive < random |
+| 2 (5.15) | 290/384, p `1.2e-24` | 161/384 | `+0.0208` | null < adaptive < random |
+| 3 (5.15) | 286/384, p `9.5e-23` | 188/384 | `+0.0046` | null < adaptive < random |
+| 4 (5.12) | 266/384, p `1.5e-14` | **225/384**, p `4.4e-04` | `-0.0371` | adaptive < null < random |
+
+The dose-response is monotone in wins (117 < 161 < 188 < 225) and in mean
+harm (`+0.0508` > `+0.0208` > `+0.0046` > `-0.0371`), with the sign flip
+just above depth 3. Branch (d) non-monotonicity is excluded. Churn harm
+(primary 1) clears at every depth, extending its generality across the
+whole measured substrate range. The depth-4 depth-4-prefix margin
+(`-0.0371`) slightly exceeds the depth-4-spread one (`-0.0297`), so the
+series brackets the onset to (3, 4]: the sharp question for any future
+study is depth 3 vs 4 with a finer covariate, not a re-tune of the
+existing cells. Consolidated depth-axis reading: **value creation by
+probe-ordered topology mutation requires substrate depth sufficient to
+support it (onset between depth 3 and 4); below that, every arm that
+mutates loses to doing nothing, and only the richness of choice masks
+it against random churn.**
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

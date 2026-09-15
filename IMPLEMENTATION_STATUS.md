@@ -825,6 +825,16 @@ These remain TODO or DEFERRED until the first gate passes:
   Same three-arm machinery, same primaries, Bonferroni alpha/2; four
   pre-registered branches (monotone onset between 1-2 / 3-4 / 2-3, or a
   non-monotone response suspending the depth-axis reading).
+- **Section 5.15 outcome (RAN 2026-09-15, revision `bbad439`)**: branch
+  (b) - onset between depth 3 and 4. Depth 2: adaptive vs null 161/384
+  (+0.0208); depth 3: 188/384 (+0.0046); depth 4 was already 225/384
+  (-0.0371). Monotone in wins and mean, sign flip just above depth 3,
+  churn harm clears at every depth (p < 1e-9 everywhere). Committed
+  summaries `null-control-depth2-384.json` / `null-control-depth3-384.json`
+  with a monotone dose-response pinning test (suite at 381). Also:
+  smoke-tested the full three-queue Gate 4 launch path (primary/control/
+  null through the real CLI in profile mode + the four-clause verdict) -
+  clean.
 - **Section 5.14 pre-registered (2026-09-15, revision `4e26de9`)**: the
   **do-nothing clause for Gate 4**. The 5.1/5.5 verdict structure predates
   the null arm - its harm guard compares adaptive against RANDOM churn

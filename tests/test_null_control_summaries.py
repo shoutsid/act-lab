@@ -26,10 +26,12 @@ SUMMARIES = {
     "depth4": "null-control-depth4-384.json",
     "depth1-spread": "null-control-depth1-spread-384.json",
     "depth4-prefix": "null-control-depth4-prefix-384.json",
+    "depth2": "null-control-depth2-384.json",
+    "depth3": "null-control-depth3-384.json",
 }
 QUOTED = {
     # profile -> comparison -> (wins, mean, p): the numbers quoted in the
-    # report's section 5.9 / 5.10 outcome paragraphs.
+    # report's section 5.9 / 5.10 / 5.15 outcome paragraphs.
     "depth1": {
         "null_vs_random": (280, -0.079528, 4.69e-20),
         "adaptive_vs_null": (117, +0.050757, 1.0),
@@ -50,12 +52,24 @@ QUOTED = {
         "adaptive_vs_null": (225, -0.037147, 4.43e-04),
         "adaptive_vs_random": (270, -0.107220, 5.19e-16),
     },
+    "depth2": {
+        "null_vs_random": (290, -0.099659, 1.15e-24),
+        "adaptive_vs_null": (161, +0.020811, 9.99e-01),
+        "adaptive_vs_random": (254, -0.078848, 1.22e-10),
+    },
+    "depth3": {
+        "null_vs_random": (286, -0.106794, 9.45e-23),
+        "adaptive_vs_null": (188, +0.004643, 6.77e-01),
+        "adaptive_vs_random": (267, -0.102151, 6.65e-15),
+    },
 }
 OUTCOME_LABEL = {
     "depth1": "branch 2 (1 PASS / 2 FAIL)",
     "depth4": "branch 1 (1+2 PASS)",
     "depth1-spread": "branch 2 (1 PASS / 2 FAIL)",
     "depth4-prefix": "branch 1 (1+2 PASS)",
+    "depth2": "branch 2 (1 PASS / 2 FAIL)",
+    "depth3": "branch 2 (1 PASS / 2 FAIL)",
 }
 
 
@@ -121,10 +135,37 @@ def test_null_control_summary_arm_means_and_hash(profile: str, filename: str) ->
     for arm, mean in summary["arm_means"].items():
         recomputed = sum(row["losses"][arm] for row in summary["per_seed"]) / 384
         assert math.isclose(mean, recomputed, rel_tol=0, abs_tol=1e-12)
-    # The depth-1 orderings are null < adaptive < random; at depth 4 they
-    # flip, regardless of the candidate policy (the section-5.12 2x2).
+    # The depth-1/2/3 orderings are null < adaptive < random; at depth 4
+    # the ordering flips, regardless of the candidate policy (the
+    # section-5.12 2x2), pinning the section-5.15 dose-response: the sign
+    # of adaptive-minus-null flips just above depth 3.
     d1 = summary["arm_means"]
-    if profile.startswith("depth1"):
+    if profile in ("depth1", "depth1-spread", "depth2", "depth3"):
         assert d1["null"] < d1["adaptive"] < d1["random"]
     else:
         assert d1["adaptive"] < d1["null"] < d1["random"]
+
+
+def test_depth_dose_response_is_monotone_across_the_four_cells() -> None:
+    """Section 5.15: the depth axis is monotone in wins and mean harm.
+
+    adaptive-vs-null wins rise with depth (117 < 161 < 188 < 225) and the
+    mean delta falls through zero between depths 3 and 4: the value-creation
+    onset sits between depth 3 and depth 4, the pre-registered branch (b).
+    Churn harm (null-vs-random) clears at every depth.
+    """
+    wins = []
+    means = []
+    churn_p = []
+    for profile in ("depth1", "depth2", "depth3", "depth4"):
+        summary = _load(SUMMARIES[profile])
+        comparisons = summary["comparisons"]
+        wins.append(comparisons["adaptive_vs_null"]["wins"])
+        means.append(comparisons["adaptive_vs_null"]["mean_delta"])
+        churn = comparisons["null_vs_random"]
+        assert churn["passes_bonferroni"] is True  # churn harm at every depth
+        churn_p.append(churn["binomial_p"])
+    assert wins == sorted(wins)
+    assert means == sorted(means, reverse=True)
+    assert means[2] > 0 > means[3]  # the sign flip sits between depth 3 and 4
+    assert all(p < 1e-9 for p in churn_p)
