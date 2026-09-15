@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import kaggle_queue  # noqa: E402
+import kaggle_t4  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -497,12 +498,18 @@ def test_run_once_pushes_the_verdict_and_returns_its_decision(monkeypatch) -> No
             )
         return subprocess.CompletedProcess(argv, 0, "", "")
 
+    ensured: list[int] = []
     monkeypatch.setattr(kaggle_queue, "_run", fake_run)
+    monkeypatch.setattr(
+        kaggle_queue, "ensure_code_dataset", lambda *a, **k: ensured.append(1) or ""
+    )
 
     code = kaggle_queue.run_once("verdict", poll=0.0, timeout=1.0)
 
     assert code == 2
     assert len([argv for argv in calls if argv[1:3] == ["kernels", "push"]]) == 1
+    # The verdict reads the runner's summaries, so it must run the same code.
+    assert ensured == [1]
 
 
 def test_the_documented_verdict_command_is_accepted(monkeypatch) -> None:
@@ -519,6 +526,14 @@ def test_the_documented_verdict_command_is_accepted(monkeypatch) -> None:
     assert seen == ["verdict"]
     assert kaggle_queue.main(["--queue", "preflight"]) == 0
     assert seen == ["verdict", "preflight"]
+    assert kaggle_queue.main(["--queue", "dtypeprobe"]) == 0
+    assert seen == ["verdict", "preflight", "dtypeprobe"]
+
+
+def test_every_one_shot_mode_has_metadata_to_push() -> None:
+    """A mode the driver accepts but cannot stage would push nothing."""
+    for mode in kaggle_queue.ONE_SHOT_MODES:
+        assert kaggle_t4.metadata_for(mode)["id"], mode
 
 
 def test_burned_note_reports_quota_spent_on_nothing() -> None:

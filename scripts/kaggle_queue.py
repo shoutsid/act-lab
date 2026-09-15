@@ -679,6 +679,11 @@ def run_once(mode: str, *, poll: float, timeout: float) -> int:
     """
     kernel = str(kaggle_t4.metadata_for(mode)["id"])
     print(f"=== running {mode} ({kernel}) ===", flush=True)
+    # One-shot kernels run the mounted code too, so the same staleness rule
+    # applies: the verdict reads the runner's own summaries, and a dataset that
+    # lags the tree would compute the decision with an older reader than the
+    # one that wrote them.
+    ensure_code_dataset(Path(__file__).resolve().parent.parent)
     push_dir = stage(Path(tempfile.mkdtemp(prefix=f"act-{mode}-")) / "push", mode)
     push = _run(["kaggle", "kernels", "push", "-p", str(push_dir)])
     print(push.stdout.strip() or push.stderr.strip(), flush=True)
@@ -705,7 +710,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--queue", choices=sorted((*kaggle_t4.QUEUES, *ONE_SHOT_MODES)), default="session",
         help="which declared queue to drive, or a one-shot job to run once "
-        "(preflight, verdict); default session",
+        f"({', '.join(ONE_SHOT_MODES)}); default session",
     )
     parser.add_argument("--hours", type=float, default=None,
                         help="the session window, pinned into the pushed kernel "

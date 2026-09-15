@@ -86,8 +86,8 @@ no-re-tuning rule are all untouched.
 Sections 1-2c describe what a session *does*; this section is how a session is
 started. The registered commands run as **script kernels** driven by
 `scripts/kaggle_t4.py`, whose behaviour is selected by `ACT_T4_MODE`
-(`preflight`, `session`, `control`, `null`, plus `probe`, `verdict` and
-`metadata`). Every mode copies the attached code dataset into the writable
+(`preflight`, `session`, `control`, `null`, plus `probe`, `dtypeprobe`,
+`verdict` and `metadata`). Every mode copies the attached code dataset into the writable
 working dir, runs the registered command unchanged, and keeps the session log
 and publish log in the kernel output.
 
@@ -101,11 +101,14 @@ python scripts/kaggle_queue.py --queue session
 python scripts/kaggle_queue.py --queue control --max-sessions 8
 python scripts/kaggle_queue.py --queue verdict          # after the three queues
 python scripts/kaggle_queue.py --queue preflight        # one-shot diagnostics
+python scripts/kaggle_queue.py --queue dtypeprobe       # fp32 vs fp16 rate (T4)
 ```
 
-`preflight` and `verdict` are one-shot jobs rather than queues: they are
-pushed once and reported, with no re-push loop and no quota gate (the verdict
-runs on CPU and bills nothing). `--queue verdict` returns the registered
+`preflight`, `dtypeprobe` and `verdict` are one-shot jobs rather than queues:
+they are pushed once and reported, with no re-push loop and no quota gate (the
+verdict runs on CPU and bills nothing). All three run the mounted code
+dataset, so the driver publishes it if it lags the tree before pushing - a
+one-shot that ran older code would report on a run it did not measure. `--queue verdict` returns the registered
 section 4 decision as its exit code - **0 PASS, 1 FAIL, 2 PASS with
 qualification, 3 no verdict produced** - so the last step of the run is
 scriptable, and it prints the verdict artifact. The kernel itself always exits
