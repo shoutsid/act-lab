@@ -113,6 +113,25 @@ def queue_progress(session_log: Mapping[str, object]) -> tuple[int, int]:
     return done, len(declared)
 
 
+def failed_pair_note(session_log: Mapping[str, object]) -> str | None:
+    """Describe a pair that raised, or ``None`` when the session had none.
+
+    The runner records ``training_failed`` and stops the queue so the seeds it
+    did complete reach the dataset through the exit publish, then the CLI (and
+    so the kernel) still exits 0. The driver is what has to notice: a session
+    that failed a pair would otherwise be followed by another that repeats the
+    failure, because the pairs it completes before failing look like ordinary
+    progress.
+    """
+    for entry in list(session_log.get("pairs") or []):
+        if entry.get("action") == "training_failed":
+            return (
+                f"seed {entry.get('seed')} failed to train "
+                f"({entry.get('error')})"
+            )
+    return None
+
+
 MAIN_GUARD = 'if __name__ == "__main__":\n    raise SystemExit(main())\n'
 
 # What the kernel actually executes: the package, the scripts it drives, their
@@ -644,6 +663,14 @@ def drive(
             f"(session completed {session_log.get('pairs_completed')} pair(s))",
             flush=True,
         )
+        failure = failed_pair_note(session_log)
+        if failure is not None:
+            # The session's completed seeds are published (the runner stops the
+            # queue rather than crashing precisely so the exit publish runs),
+            # but re-pushing would train into the same failure. Stop, so the
+            # cause is fixed instead of being paid for by the hour.
+            print(f"  {failure}; stopping (another push would repeat it)", flush=True)
+            return EXIT_SESSION_FAILED
         if declared and done >= declared:
             print(f"=== queue {queue_mode!r} COMPLETE ===", flush=True)
             return EXIT_COMPLETE

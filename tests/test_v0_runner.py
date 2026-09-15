@@ -100,6 +100,49 @@ def test_failed_local_publish_stops_the_queue_without_losing_earlier_seeds(
     assert published_seed_status(tmp_path / "dataset", 9001) != "complete"
 
 
+def test_failed_pair_stops_the_queue_without_losing_earlier_seeds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A pair that raises must not cost the session the seeds it published.
+
+    The durable copy is the exit publish, which a crash never reaches, so a
+    training failure (an OOM, a killed arm process) has to stop the queue and
+    let the session exit with what it completed - while never being recorded
+    as ``completed``, so the queue accounting and the driver stay honest.
+    """
+    from act.training import v0_runner
+
+    real_pair = v0_runner._run_one_pair
+    calls: list[int] = []
+
+    def flaky_pair(*, seed: int, **kwargs):
+        calls.append(seed)
+        if seed == 9001:
+            raise RuntimeError("CUDA out of memory. Tried to allocate 2.00 GiB")
+        return real_pair(seed=seed, **kwargs)
+
+    monkeypatch.setattr(v0_runner, "_run_one_pair", flaky_pair)
+    summary = run_pair_session(
+        config=_config(),
+        session_dir=tmp_path / "sessions",
+        dataset_root=tmp_path / "dataset",
+        code_revision="rev",
+        remaining_hours=8.0,
+        measured_tokens_per_second=1e9,
+        seeds=(9000, 9001, 9002),
+        output=tmp_path / "summary.json",
+    )
+
+    actions = [entry["action"] for entry in summary["pairs"]]
+    assert actions == ["completed", "training_failed"]
+    assert calls == [9000, 9001]  # 9002 was never started
+    assert "out of memory" in summary["pairs"][1]["error"]
+    assert summary["pairs_completed"] == 1
+    # The seed that finished stays published, for the exit publish to push.
+    assert published_seed_status(tmp_path / "dataset", 9000) == "complete"
+    assert published_seed_status(tmp_path / "dataset", 9001) != "complete"
+
+
 def test_single_arm_null_session_publishes_one_arm(tmp_path: Path) -> None:
     """The do-nothing control publishes a single-arm seed summary.
 

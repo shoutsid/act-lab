@@ -507,6 +507,36 @@ def test_drive_re_stages_when_the_code_dataset_moves_between_sessions(
     assert pushes[0][pushes[0].index("-p") + 1] != pushes[1][pushes[1].index("-p") + 1]
 
 
+def test_drive_stops_when_a_session_failed_a_pair(monkeypatch) -> None:
+    """A pair that raised must not be followed by a session that repeats it.
+
+    The session stops its own queue so its completed seeds reach the dataset,
+    and its kernel still exits 0 - so the failure is visible only in the log,
+    while the pairs it *did* complete look like ordinary progress. Without
+    this check the loop would push again and pay for the same failure.
+    """
+    code, pushes = _drive_no_progress(
+        monkeypatch,
+        [
+            {
+                "declared_seed_queue": DECLARED_QUEUE,
+                "pairs": [
+                    {"seed": 15000, "action": "completed"},
+                    {
+                        "seed": 15001,
+                        "action": "training_failed",
+                        "error": "RuntimeError: CUDA out of memory",
+                    },
+                ],
+            }
+        ],
+        max_sessions=3,
+    )
+
+    assert code == kaggle_queue.EXIT_SESSION_FAILED
+    assert len(pushes) == 1
+
+
 def test_report_verdict_mirrors_the_registered_code(tmp_path: Path) -> None:
     """The kernel exits 0 whatever the decision, so the artifact carries it."""
     nested = tmp_path / "act-lab" / "artifacts"

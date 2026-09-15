@@ -168,17 +168,40 @@ def run_pair_session(
         # Start (or restart) this pair from scratch on this session's clock.
         # A stale in-progress snapshot is discarded by the restart semantics.
         logger(f"seed {seed}: starting pair ({decision.reason})")
-        pair_result = _run_one_pair(
-            seed=seed,
-            config=seed_config,
-            session_dir=session_dir,
-            dataset_root=dataset_root,
-            code_revision=code_revision,
-            hours_left=hours_left,
-            remaining_at_start=remaining,
-            tokens_per_arm=tokens_per_arm,
-            logger=logger,
-        )
+        try:
+            pair_result = _run_one_pair(
+                seed=seed,
+                config=seed_config,
+                session_dir=session_dir,
+                dataset_root=dataset_root,
+                code_revision=code_revision,
+                hours_left=hours_left,
+                remaining_at_start=remaining,
+                tokens_per_arm=tokens_per_arm,
+                logger=logger,
+            )
+        except Exception as error:  # noqa: BLE001 - must not discard earlier seeds
+            # The same principle the local-publish failure follows: a pair that
+            # cannot finish must not abort the session before the seeds that
+            # *did* finish reach the dataset. The durable copy is the exit
+            # publish, which a crash never reaches - so a pair that raises
+            # (an OOM, a killed arm process, a checkpoint write failure) stops
+            # the queue instead, and the session exits with what it completed.
+            # Recorded as ``training_failed`` - never as ``completed`` - so the
+            # queue accounting stays honest and the driver stops rather than
+            # re-pushing a failure it would repeat.
+            logger(
+                f"seed {seed}: pair FAILED ({type(error).__name__}: {error}); "
+                "stopping the queue so the session can exit-publish completed seeds"
+            )
+            pair_results.append(
+                {
+                    "seed": seed,
+                    "action": "training_failed",
+                    "error": f"{type(error).__name__}: {error}",
+                }
+            )
+            break
         pair_results.append(pair_result)
         if pair_result.get("action") == "publish_failed":
             # Stop rather than train a pair that cannot be published.

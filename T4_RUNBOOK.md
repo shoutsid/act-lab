@@ -584,7 +584,8 @@ Secondary config (if pre-registered): same command with
 | Two sessions of one queue running (burn at 2x) | They will not stop each other: `kaggle kernels delete <owner>/<slug> --yes`, then push once (§0.5 gotcha 5). Nothing is published by the abandoned version. |
 | Local per-pair publish fails (`action: publish_failed`) | The pair is **not** recorded complete and the queue stops at that seed, so the session can still exit-publish the seeds that did complete (it would otherwise abort before publishing anything). Fix the substrate - disk space, permissions - and relaunch; the failed pair restarts from scratch. With the handoff roots on the overlay (§0.2) this should not fire. |
 | Restore fails at session start | Fix credentials / `owner/slug` / connectivity; relaunch. Nothing ran, nothing published. |
-| Session died mid-pair (reboot, timeout) | Relaunch the same command. The pair restarts from scratch; the stale `in-progress` version is ignored. |
+| A pair raised while training (`training_failed` in the session log) | The queue stopped there and the completed seeds were exit-published; the driver exits 1. Read the recorded exception (usually an OOM or a killed arm process), fix the cause, relaunch - the failed pair restarts from scratch. Do not simply re-run it: the same push repeats the same failure. |
+| Session died mid-pair (reboot, timeout) | Relaunch the same command. The pair restarts from scratch; the stale `in-progress` version is ignored. **Everything that session completed is lost with it**: the durable copy is the exit publish (§6), which a killed session never reaches, so a session that died with five pairs done re-trains them. That is the price of one whole-handoff push per session; do not relaunch blindly if the same crash could repeat (check the kernel log for the cause first). |
 | Kaggle auto-extracted archives | Expected and handled: the wrapper stages per-seed tars with `seed-NNNN/...` internal paths (live-verified bit-identical round trip). Restore also extracts blobs itself as defense-in-depth. |
 | Verdict reports stray complete seeds | They are excluded from the aggregate automatically. For cleanliness, delete stray seed directories from the dataset root or use a dedicated root for smoke tests. |
 | Benchmark artifact missing/stale | Re-run step 1. The launch command refuses a hand-edited or stale artifact by design. |
@@ -597,7 +598,10 @@ Secondary config (if pre-registered): same command with
 
 - `artifacts/v0-benchmark.json` — the measured throughput and dtype decision.
 - `artifacts/v0-sessions/session-log.json` — queue, per-pair actions
-  (completed / interrupted / skipped), FLOPs counters, `code_revision`.
+  (completed / interrupted / skipped / `training_failed`), FLOPs counters,
+  `code_revision`. A `training_failed` entry carries the exception text and
+  stops the queue: the seeds that completed are exit-published, and the driver
+  exits 1 rather than pushing a session that would repeat the failure.
 - `artifacts/datasets-control/` + `artifacts/v0-sessions-control/` — the §2b
   pool-matched arm (same seeds, `probe_selection=random`), and its own
   `session-log.json`. Keep both roots: the verdict's clause reads them, and
