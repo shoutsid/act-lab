@@ -3669,6 +3669,87 @@ and 3, `random` arm only, the operation forced rather than drawn (so this is the
 cost of a forced grow, not a deployable policy), and cloning from the layer's
 busiest survivor rather than a trained teacher.
 
+### 5.28 Pre-registration: does the cloning result survive the deployed regime?
+
+**Motivation.** Sections 5.24, 5.26 and 5.27 all measured their effects on
+**forced** operations - every event a grow, or every event a prune - because that
+is what makes a contribution attributable. But the delivery decision those
+sections changed was adopted from the **mixed, unforced** regime: section 5.22
+concluded `discover -> freeze the genome -> retrain from the original
+initialization` from blocks where the operation and its layer were drawn from the
+seeded coin flip. Sections 5.26 and 5.27 then found that the penalty that
+justified that pipeline is invertible, on forced blocks. Whether an invertible
+penalty on forced blocks says anything about the drawn regime the pipeline was
+adopted from is exactly the gap this study closes. (That the process penalty is
+**arm**-generic was already established by section 5.22, which is why this tests
+the regime on the `random` arm rather than re-testing the arms.)
+
+**Design.** `forced_operation` is **left None**, so the operation mix is whatever
+the coin flip produces, and both settings run on the same seed, initial model and
+data schedule with `preserve_router_on_rebuild=True` and `arms="fixed,random"`:
+
+| label | run |
+|---|---|
+| `F` | the fixed arm (unmutated) - identical under both settings |
+| `R` | fused mixed run, new experts freshly drawn (historical) |
+| `R_own` | `R`'s final genome retrained from its own initialization |
+| `C` | fused mixed run, new experts cloned from their layer's busiest survivor |
+| `C_own` | `C`'s final genome retrained from its own initialization |
+
+**The pairing claim is weak here, and the design does not assume it.** The mutation
+*choices* are still drawn from the seed's own RNG, so they should be identical
+under both settings - but a drawn prune the genome cannot perform falls back to a
+**load-based** grow, and that path reads the weights, which cloning changes. The
+two settings can therefore diverge after the first fallback. So unlike sections
+5.26 and 5.27, identical final genomes are **not asserted**: the divergence rate is
+recorded and reported, and each arm's penalty is measured against its **own**
+frozen retrain, which is well defined either way.
+
+**Primaries per depth (n = 384), Bonferroni `alpha/4 = 0.0125` -> bar 215.**
+1. **clone helps in the deployed regime** - `C` < `R`.
+2. **no residual penalty under cloning** - `C_own` < `C`, i.e. the predicted
+   **failure** of P2, as in section 5.26.
+
+**Prediction (declared before the registered blocks; a spent-block smoke is
+disclosed).** A 4-seed machinery smoke (depth 2, spent seeds 73000-73003) drew a
+genuinely mixed block (6 grows, 6 prunes) with **4/4 identical final genomes**,
+and showed clone gain `-0.0661`, fresh penalty `-0.0691`, cloned penalty
+`-0.0030` - so **P1 is predicted to pass and P2 to fail**, giving **branch (a):
+the inversion survives the deployed regime and no penalty remains.** The reasoning
+is that nothing in section 5.26's mechanism mentions *forcing*: a cloned expert
+starts as a working twin whether the grow was chosen or imposed, and the operation
+that costs is still a grow either way. The declared caution is that the smoke's
+per-seed spread exceeds the effect, as in section 5.27.
+
+**Pre-registered interpretation (fixed before running, in section 5.24's letter
+order: (a) means helps, and no penalty remains).**
+- (a) P1 passes, P2 fails: the inversion survives the drawn regime. Clone-and-
+  preserve should then be the pipeline, and section 5.22's freeze-and-retrain is a
+  **regression outside the forced blocks too**, not a safeguard specific to them.
+- (b) both pass: cloning helps in the deployed regime but a residual penalty
+  survives there, so freeze-and-retrain keeps a justification the forced blocks
+  did not show - and the regime, not the operation, is what differs.
+- (c) P2 passes, P1 fails: the section 5.26/5.27 result is **confined to forced
+  operations**, and section 5.22's pipeline stands.
+- (d) neither passes: inconclusive, recorded without a reading.
+
+**Secondaries (reported, not verdict-bearing).** The operation mix and the number
+of seeds where the two settings' architectures or operation mixes diverge (the
+fallback channel); `R_own - R` and `C_own - C` side by side, plus
+`C_own - R_own`; and the fixed arm's own loss.
+
+**Scope limits (pre-declared).** Toy fidelity, synthetic tokens, one substrate,
+depths 2 and 3, the `random` arm only (arm-genericity of the process penalty is
+cited from section 5.22, not re-measured), and a 3-event budget. This tests the
+**drawn-operation regime**, not the probe-based adaptive selection path, which is
+the next axis and is not carried here.
+
+**Cost.** Two fused runs plus two frozen retrains per seed, ~2.1 s/seed.
+
+### 5.28 Result
+
+*(pending: registered blocks 107000-107383 and 108000-108383)*
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
