@@ -1495,7 +1495,12 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   **branch (a), both primaries passing at both depths** (296/384 and 291/384
   adaptive; 286/384 and 300/384 random). **Adopted consequence: two-stage
   delivery (discover -> freeze the genome -> retrain from the original
-  initialization) is the project's pipeline**, and section 5.15's depth
+  initialization) is the project's pipeline.** *SUPERSEDED in part by sections
+  5.23-5.28 - see below: that consequence was earned on the then-current mutation
+  path, which 5.24/5.26/5.27 decomposed into a router discard (a defect) and the
+  fresh new expert (invertible by cloning), and 5.28 showed Freeze-and-retrain is
+  a REGRESSION in the drawn regime this was adopted from. The pipeline is now
+  clone-and-preserve, keeping the fused run.* Section 5.15's depth
   dose-response is re-read as being about the *fused* process. Two fresh blocks
   also replicated 5.20's primaries (256/255 and 257/272). Unseparated mechanism:
   a frozen retrain has a fresh optimizer and trains a pruned topology, so

@@ -2884,6 +2884,21 @@ weight/topology separation are thereby a performance requirement, not bookkeepin
 and section 5.15's depth dose-response is re-read as a statement about the
 **fused** process rather than about where value becomes discoverable.
 
+> **Superseded in part - read this with sections 5.23-5.28.** The consequence
+> adopted above was earned on the *then-current* mutation path, and sections 5.23
+> to 5.28 decompose precisely that path. Optimizer history accounts for none of
+> the penalty (5.23); a discarded router accounted for over half and is a
+> **defect**, not a design property (5.24); and the remainder is the freshly drawn
+> new expert, which cloning **inverts** rather than merely removes (5.26, 5.27 -
+> the body is ~3/4 of it, the copied router row the rest). Section 5.28 then ran
+> the drawn-mutation regime this section was *adopted from* and found that with
+> `preserve_router_on_rebuild=True` and `new_expert_initialization="clone"` the
+> historical path is worse than never mutating at all. **The pipeline recommended
+> here - freeze the genome and retrain - is therefore a regression on this
+> substrate**, and the recommended pipeline is now clone-and-preserve, keeping the
+> fused run. The historical text above is left as written because it is the record
+> of what this block licensed at the time; it is not current guidance.
+
 **Both of this block family's other readings replicated**, which is what makes it
 a usable family. Section 5.20's primaries: `A_own` < `R_own` at `256/384` and
 `255/384`, `A_own` < `F_own` at `257/384` and `272/384` - a fourth and fifth
