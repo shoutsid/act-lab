@@ -328,7 +328,16 @@ def _bootstrap() -> tuple[Path, dict[str, str]]:
         shutil.rmtree(WORK_ROOT)
     shutil.copytree(source, WORK_ROOT)
     os.chdir(WORK_ROOT)
-    return WORK_ROOT, dict(os.environ, PYTHONPATH=str(WORK_ROOT / "src"))
+    src = str(WORK_ROOT / "src")
+    # The env dict configures the *subprocesses* the modes launch, but the
+    # pre-flight, the dtype probe and the verdict import ``act`` in this very
+    # process straight after bootstrapping. Exporting PYTHONPATH never reached
+    # them, so they died on ``ModuleNotFoundError: No module named 'act'`` -
+    # measured 2026-09-15 on the dtype probe, which is also how the session and
+    # the verdict would have failed.
+    if src not in sys.path:
+        sys.path.insert(0, src)
+    return WORK_ROOT, dict(os.environ, PYTHONPATH=src)
 
 
 def _keep(path: Path) -> None:

@@ -59,6 +59,49 @@ def test_find_code_root_ignores_a_decoy_and_fails_closed(tmp_path: Path) -> None
     assert kaggle_t4.find_code_root(tmp_path / "does-not-exist") is None
 
 
+def test_bootstrap_makes_the_copied_tree_importable_in_process(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The returned env dict only ever configured *subprocesses*.
+
+    The pre-flight, the dtype probe and the verdict import ``act`` in this very
+    process straight after bootstrapping, so returning ``PYTHONPATH`` was never
+    enough - measured 2026-09-15, the dtype probe died on
+    ``ModuleNotFoundError: No module named 'act'`` eight seconds in, and the
+    session and the verdict call the same bootstrap.
+    """
+    source = _make_repo(tmp_path / "input", "sid123123234/act-lab-code")
+    # A name nothing else imports, so the check cannot be satisfied by a module
+    # that was already in ``sys.modules``.
+    (source / "src" / "actlab_mount_probe.py").write_text(
+        "VALUE = 'from the mount'\n", encoding="utf-8"
+    )
+    work = tmp_path / "work"
+    monkeypatch.setattr(kaggle_t4, "find_code_root", lambda *a, **k: source)
+    monkeypatch.setattr(kaggle_t4, "WORK_ROOT", work)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "path", list(sys.path))
+
+    root, env = kaggle_t4._bootstrap()
+
+    assert root == work
+    assert env["PYTHONPATH"] == str(work / "src")
+    assert sys.path[0] == str(work / "src")
+
+    import actlab_mount_probe
+
+    assert actlab_mount_probe.VALUE == "from the mount"
+
+
+def test_bootstrap_fails_closed_without_a_code_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(kaggle_t4, "find_code_root", lambda *a, **k: None)
+    monkeypatch.setattr(kaggle_t4, "WORK_ROOT", tmp_path / "work")
+    with pytest.raises(SystemExit, match="no code dataset"):
+        kaggle_t4._bootstrap()
+
+
 def test_primary_launch_command_is_the_registered_one() -> None:
     queue = kaggle_t4.QUEUES["session"]
     assert kaggle_t4.session_argv(queue, 9.0) == [

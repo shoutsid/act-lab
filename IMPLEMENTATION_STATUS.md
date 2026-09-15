@@ -784,6 +784,19 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   `tests/test_kaggle_queue.py`, including that `artifacts/` never ships, that
   the archive carries the package tree, and that staging leaves the source tree
   untouched.
+- **The kernel could not import its own code.** `kaggle_t4._bootstrap()`
+  copies the mounted dataset into the writable working dir and returns an env
+  dict with `PYTHONPATH=<work>/src` - but that dict only ever configured the
+  *subprocesses* each mode launches. The pre-flight, the dtype probe and the
+  verdict import `act` in this very process right after bootstrapping, so they
+  died on `ModuleNotFoundError: No module named 'act'` (measured 2026-09-15,
+  the dtype probe, 8 s in). The pre-flight and the verdict had it from the
+  start; `2040ab1` added the same in-process import to the session mode, which
+  would have killed every session pushed after it. `_bootstrap` now puts the
+  copied `src/` on `sys.path` as well, and a test imports a module that only
+  exists in the fake mount to prove the copied tree is importable in-process.
+  The session that is running predates the session-mode import, which is why it
+  is unaffected.
 - **The session pipeline is proven end to end, not just in pieces.** The
   registered launch command was run at reduced fidelity on CPU
   (`--profile --seeds 15000-15001`) and its own `session-log.json` fed back
