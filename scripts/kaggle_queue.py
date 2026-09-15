@@ -19,7 +19,9 @@ per session.
 
 Exit codes: 0 = queue complete, 1 = the session failed, 2 = the session budget
 ran out with seeds still missing (re-run it, or raise ``--max-sessions``), 3 =
-the weekly quota cannot cover another session (re-run after the refresh).
+the weekly quota cannot cover another session (re-run after the refresh), 4 =
+the last session completed without advancing the queue (fix the cause, then
+re-run - another push would repeat it).
 
 Usage:
 
@@ -53,6 +55,7 @@ EXIT_COMPLETE = 0
 EXIT_SESSION_FAILED = 1
 EXIT_BUDGET_EXHAUSTED = 2
 EXIT_QUOTA_INSUFFICIENT = 3
+EXIT_NO_PROGRESS = 4
 
 # The weekly accelerator line the session kernels bill against.
 QUOTA_RESOURCE = "GPU"
@@ -412,6 +415,25 @@ def quota_shortfall(
     )
 
 
+def burned_note(
+    before: Mapping[str, object] | None,
+    after: Mapping[str, object] | None,
+) -> str:
+    """" (it used N GPU-h of the quota)", for a session that produced nothing.
+
+    A session that does no work still bills whatever it ran for, and the only
+    way to see that is to difference the quota line across it - the same
+    measurement that caught two sessions running at once.
+    """
+    if before is None or after is None:
+        return ""
+    try:
+        burned = float(before["remaining_hours"]) - float(after["remaining_hours"])
+    except (KeyError, TypeError, ValueError):
+        return ""
+    return f" (it used {burned:.2f} GPU-h of the quota)" if burned > 0 else ""
+
+
 def _wait_for_terminal(kernel: str, poll: float, timeout: float) -> str:
     """Poll the kernel until a terminal status, then return it."""
     deadline = time.monotonic() + timeout
@@ -451,6 +473,8 @@ def drive(
 
     for session in range(1, max_sessions + 1):
         print(f"--- session {session}/{max_sessions} ---", flush=True)
+        previous = done
+        quota_before = active_quota()
         live = active_status(queue.kernel_id)
         if should_adopt(live):
             # Never run two sessions of one queue: they would double the GPU
@@ -461,7 +485,7 @@ def drive(
                 flush=True,
             )
         else:
-            shortfall = quota_shortfall(active_quota(), declared_hours)
+            shortfall = quota_shortfall(quota_before, declared_hours)
             if shortfall is not None:
                 print(f"  {shortfall}", flush=True)
                 return EXIT_QUOTA_INSUFFICIENT
@@ -494,6 +518,19 @@ def drive(
         if declared and done >= declared:
             print(f"=== queue {queue_mode!r} COMPLETE ===", flush=True)
             return EXIT_COMPLETE
+        if done <= previous:
+            # A successful session that advanced nothing. It usually means the
+            # clock never fit a pair (rule 1 idles), so re-pushing repeats it
+            # verbatim and each repeat bills quota - the one loop that can
+            # spend a week's budget without producing evidence.
+            burned = burned_note(quota_before, active_quota())
+            print(
+                f"  session completed but the queue did not advance "
+                f"({previous} -> {done} of {declared} seeds){burned}; another "
+                "push would repeat it, so stopping",
+                flush=True,
+            )
+            return EXIT_NO_PROGRESS
 
     print(
         f"queue {queue_mode!r} still incomplete at {done}/{declared} after "

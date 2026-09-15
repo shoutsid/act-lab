@@ -711,6 +711,16 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   cannot-tell cases, the gate's boundary, a drive-level refusal that asserts
   no push happened, and a positive control that a coverable week still
   pushes).
+- **The driver refuses to repeat a session that advanced nothing.** A session
+  whose clock never fit a pair reports *success* while writing no progress
+  (rule 1 idles it), and the loop would push again - up to `--max-sessions`
+  times, each repeat billing quota for the same nothing. The driver now
+  compares cumulative completed seeds across sessions and stops with exit 4,
+  reporting the quota the fruitless session consumed (differencing the quota
+  line, the same measurement that caught two sessions running at once). This
+  is the driver's own version of the burn it exists to prevent. Pinned by 3
+  tests in `tests/test_kaggle_queue.py`, including a positive control that a
+  session which *does* advance keeps the loop going.
 - **The kernel runs the mounted code dataset, and nothing checked it.** The
   staged kernel body is embedded from the working tree, but `src/`, `scripts/`
   and `tests/` are copied from the attached `act-lab-code` dataset, so a lagging

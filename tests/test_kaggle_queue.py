@@ -387,6 +387,88 @@ def test_drive_still_pushes_when_the_week_can_cover_the_session(monkeypatch) -> 
     assert code == kaggle_queue.EXIT_SESSION_FAILED
 
 
+def _fake_kaggle(calls: list[list[str]], session_logs: list[dict]):
+    """A ``_run`` that reports COMPLETE and writes the i-th session log."""
+    written = {"count": 0}
+
+    def fake_run(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        calls.append(list(argv))
+        if argv[1] == "quota":
+            return subprocess.CompletedProcess(argv, 0, QUOTA_PAYLOAD, "")
+        if argv[1:3] == ["kernels", "status"]:
+            return subprocess.CompletedProcess(
+                argv, 0, 'has status "KernelWorkerStatus.COMPLETE"', ""
+            )
+        if argv[1:3] == ["kernels", "output"]:
+            target = Path(argv[argv.index("-p") + 1])
+            target.mkdir(parents=True, exist_ok=True)
+            index = min(written["count"], len(session_logs) - 1)
+            (target / "session-log.json").write_text(json.dumps(session_logs[index]))
+            written["count"] += 1
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    return fake_run
+
+
+def _drive_no_progress(monkeypatch, session_logs: list[dict], max_sessions: int) -> tuple[int, list[list[str]]]:
+    calls: list[list[str]] = []
+    monkeypatch.setattr(kaggle_queue, "_run", _fake_kaggle(calls, session_logs))
+    monkeypatch.setattr(kaggle_queue, "ensure_code_dataset", lambda *a, **k: "")
+    code = kaggle_queue.drive(
+        "session", hours=9.0, poll=0.0, timeout=1.0, max_sessions=max_sessions
+    )
+    return code, [argv for argv in calls if argv[1:3] == ["kernels", "push"]]
+
+
+DECLARED_QUEUE = list(range(15000, 15012))
+
+
+def test_drive_stops_when_a_session_advances_nothing(monkeypatch) -> None:
+    """A success that made no progress must not be repeated.
+
+    An idled session (the clock never fit a pair) reports success and later
+    sessions would do exactly the same, so re-pushing spends quota on
+    nothing - the driver's own version of the burn it exists to prevent.
+    """
+    code, pushes = _drive_no_progress(
+        monkeypatch,
+        [{"declared_seed_queue": DECLARED_QUEUE, "pairs": []}],
+        max_sessions=5,
+    )
+
+    assert code == kaggle_queue.EXIT_NO_PROGRESS
+    assert len(pushes) == 1
+
+
+def test_drive_keeps_going_while_sessions_advance(monkeypatch) -> None:
+    """Positive control: progress is what continues the loop."""
+    code, pushes = _drive_no_progress(
+        monkeypatch,
+        [
+            {"declared_seed_queue": DECLARED_QUEUE, "pairs": [{"action": "completed"}]},
+            {
+                "declared_seed_queue": DECLARED_QUEUE,
+                "pairs": [{"action": "completed"}, {"action": "completed"}],
+            },
+        ],
+        max_sessions=2,
+    )
+
+    # Two advancing sessions run; the budget then runs out, not the guard.
+    assert len(pushes) == 2
+    assert code == kaggle_queue.EXIT_BUDGET_EXHAUSTED
+
+
+def test_burned_note_reports_quota_spent_on_nothing() -> None:
+    before = {"remaining_hours": 28.0, "refresh_at": "x"}
+    after = {"remaining_hours": 25.5, "refresh_at": "x"}
+    assert kaggle_queue.burned_note(before, after) == " (it used 2.50 GPU-h of the quota)"
+    # Unreadable, or no measurable burn: say nothing rather than guess.
+    assert kaggle_queue.burned_note(None, after) == ""
+    assert kaggle_queue.burned_note(before, None) == ""
+    assert kaggle_queue.burned_note(before, before) == ""
+
+
 def test_code_files_ship_the_package_and_not_the_artifacts(monkeypatch) -> None:
     """The kernel runs this code, so what ships is load-bearing.
 

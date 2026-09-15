@@ -103,9 +103,13 @@ python scripts/kaggle_queue.py --queue verdict          # after the three queues
 ```
 
 The driver exits 0 when the queue is complete, 1 on a failed session, 2 when
-the session budget ran out with seeds still missing, and **3 when the weekly
+the session budget ran out with seeds still missing, **3 when the weekly
 quota cannot cover another session** - re-run it after `refreshAt` rather than
-pushing again. It reads `kaggle quota --format json` before every push and
+pushing again - and **4 when a session completed without advancing the
+queue** (it reports how much quota that cost): a session that idles because
+the clock never fit a pair reports success, so re-pushing repeats it verbatim,
+which is the one loop that can spend a week's budget producing nothing. Fix
+the cause - usually `--hours` - then re-run. It reads `kaggle quota --format json` before every push and
 refuses when the remaining GPU hours are below the declared window, because a
 session stopped part-way still bills every hour it used and produces nothing.
 Over the ~12-session, ~86 GPU-hour plan against a 30 GPU-h/week quota that is
