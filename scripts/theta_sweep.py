@@ -22,6 +22,14 @@ Usage:
     PYTHONPATH=src python scripts/theta_sweep.py run            # sessions + verdict
     PYTHONPATH=src python scripts/theta_sweep.py verdict        # aggregate only
     PYTHONPATH=src python scripts/theta_sweep.py run --dry-run
+
+OUTCOME (2026-09-14, revision 9bd9323): NO theta clears - 0/10 wins at
+every theta (p 1.0, bar 9/10), mean gated-minus-null delta monotonically
+harmful in acceptance rate (+0.0027 / +0.0236 / +0.0713): a dose-response
+of churn harm. The pre-registered falsification branch fires; the
+probe-on-real-text program is concluded as falsified in all of its usable
+forms. Seeds accepting nothing are bit-identical to the null arm, so the
+sweep measured exactly the cost of accepted churn.
 """
 
 from __future__ import annotations

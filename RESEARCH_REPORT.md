@@ -1392,6 +1392,99 @@ adaptive booking, null exactly 0).
 **Cost.** ~10 null sessions + 30 gated sessions at ~2.5 min each, ~1.7 h
 on the local GPU; idempotent (skip-completed), resumable.
 
+**Outcome (run 2026-09-14, revision `9bd9323`): NO theta clears - the
+pre-registered falsification branch fires, and the probe-on-real-text
+program is concluded as falsified in all of its usable forms.** Verdict
+machine-checked (`artifacts/real-diag/theta-sweep/verdict.json`, written
+by `scripts/theta_sweep.py`). All four sessions completed 10/10 seeds.
+Per-theta primaries (sign test vs the null arm, bar 9/10, Bonferroni
+alpha/3 = `0.0167`):
+
+- theta `0.02` (accept 2/30, 6.7%): wins **0/10**, mean delta `+0.0027`,
+  p `1.0000` - FAIL;
+- theta `0.05` (accept 13/30, 43.3%): wins **0/10**, mean delta
+  `+0.0236`, p `1.0000` - FAIL;
+- theta `0.1` (accept 23/30, 76.7%): wins **0/10**, mean delta
+  `+0.0713`, p `1.0000` - FAIL.
+
+**Mechanism (verified from the published seed summaries).** Every seed
+where a theta arm accepted nothing is BIT-IDENTICAL to the null arm
+(8/10 seeds at theta `0.02`, 2/10 at `0.05`); where the accept/reject
+sequences of two thetas coincide (9008, 9015, 9017), the two arms'
+losses are bit-identical. The sweep therefore measures exactly what it
+was designed to measure: the delta is the cost of accepted churn, and it
+is monotonically harmful in acceptance rate - a clean dose-response of
+churn harm (`+0.0027` at 6.7% accepted, `+0.0236` at 43%, `+0.0713` at
+77%). The two probe evaluations per event never selected a draw whose
+net effect on final loss was positive for the gate: probed-harmless
+draws are harmful in reality (the section-5.4 finding, now confirmed
+with accepts in the loop), and the threshold family cannot separate them.
+Secondary notes: per-arm probe FLOPs ran as predicted (~2x baseline
+adaptive booking); the same-seed comparison against the published random
+arms at 9008-9011 is consistent, with one informative outlier - the
+random arm at 9008 (loss `4.1279`, vs block-mates `3.2-3.5`) is itself a
+churn catastrophe of exactly the kind section 5.8 established.
+
+**Consequences, as pre-registered.** The gate axis is CLOSED on real
+text at this fidelity: ordering (5.3-5.4), absolute threshold at
+theta=0 (5.4), and intermediate thresholds (this study) all falsified.
+The next real-data direction moves off probe-derived selection entirely
+(routing-statistics heuristics, or no real-data topology mutation at
+this scale). The honest real-text ladder is null < everything: at this
+fidelity the only topology policy that helps is none.
+
+### 5.12 Pre-registration: the depth x candidate-policy 2x2 null-control study (designed, not yet run)
+
+**Motivation.** Sections 5.9 and 5.10 differ in TWO registered fields at
+once: 5.9 is depth 1 + the prefix candidate policy, 5.10 is depth 4 +
+the spread policy. The headline reading - "the richness axis separates
+churn suppression (depth 1) from value creation (depth 4)" - rests on a
+two-cell comparison that confounds model depth with the candidate-pool
+policy. This study runs the missing two cells so the factor becomes a
+proper 2x2: (depth 1 + spread) and (depth 4 + prefix), each with the
+same three arms (random, adaptive, null) and the same primary contract
+as sections 5.9/5.10.
+
+**Design.** The study-3 registered toy config (hidden 24, cap 4 / 2
+batches, 48 steps, interval 12, budget 3, `adaptive_policy=probe_loss`,
+`adaptive_expert_metric=random`, `independent_arm_rng=True`), three arms
+per experiment, 384 fresh seeds per cell, both cells novel
+configurations on never-observed blocks: depth 1 + spread on block
+**72000-72383**, depth 4 + prefix on block **73000-73383**. Sharded
+20-way on CPU as in 5.9/5.10; verdict machine-checked by
+`scripts/null_toy_study.py` (new profiles `depth1-spread` and
+`depth4-prefix`), summaries committed to `artifacts/study-summaries/`
+and pinned by test like the depth-1/depth-4 records.
+
+**Primaries (per cell, identical contract to 5.9/5.10; the two cells
+are one declared family and each cell's primaries are held to
+Bonferroni alpha/2, exactly as in 5.9/5.10; no cross-cell claim is
+gated).** (1) null-vs-random sign test - is churn harm present under
+this policy? (2) adaptive-vs-null sign test - does the controller beat
+doing nothing under this policy?
+
+**Pre-registered interpretation (per cell).**
+- (depth 4 + prefix) primary 2 PASSES: depth-4 value creation is robust
+  to the candidate policy - the 5.9-vs-5.10 contrast is carried by
+  depth, and the axis reading is revised to "depth separates
+  suppression from creation".
+- (depth 4 + prefix) primary 2 FAILS while 5.10 passed: the depth-4
+  edge REQUIRES the spread policy - value creation narrows to the
+  conjunction "depth 4 + spread", and Gate 3's configuration dependence
+  must be quoted wherever its evidence is cited.
+- (depth 1 + spread) primary 2 PASSES: spread alone creates value even
+  at depth 1 - the candidate-policy axis, not depth, separates
+  suppression from creation, and study 3's depth-1 prefix pass was
+  suppression because of the conjunction, not the depth.
+- (depth 1 + spread) primary 2 FAILS (expected): consistent with 5.9;
+  the contrast with a passing depth-4 cell localizes the effect.
+- Primary 1 fails in a cell (no churn harm there): that cell's primary
+  2 remains interpretable but carries no churn-suppression component;
+  quote that cell's ordering directly.
+
+**Cost.** ~1.5-2 s/seed at depth 4 on CPU (measured section 9.3),
+sharded 20-way ~1 min wall per cell.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

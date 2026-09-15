@@ -1,0 +1,120 @@
+{
+ "alpha": 0.05,
+ "bonferroni_alpha": 0.016666666666666666,
+ "code_revision": "9bd9323",
+ "family_verdict": "no theta clears: the probe-on-real-text program is concluded as falsified",
+ "protocol": "theta-sweep-vs-null",
+ "report_section": "5.11",
+ "results": {
+  "t002": {
+   "binomial_p": 1.0,
+   "gate_observables": {
+    "accept_rate": 0.06666666666666667,
+    "decision_counts": {
+     "accept": 2,
+     "reject_noop": 28
+    },
+    "mean_draw_minus_reference": 0.17639436721801757
+   },
+   "mean_delta": 0.0026749193668365477,
+   "min_wins_bonferroni": 9,
+   "n": 10,
+   "passes_bonferroni": false,
+   "per_seed_deltas": {
+    "9008": 0.023808538913726807,
+    "9009": 0.0,
+    "9010": 0.0,
+    "9011": 0.0,
+    "9012": 0.0,
+    "9013": 0.0,
+    "9014": 0.002940654754638672,
+    "9015": 0.0,
+    "9016": 0.0,
+    "9017": 0.0
+   },
+   "theta": 0.02,
+   "wins": 0
+  },
+  "t01": {
+   "binomial_p": 1.0,
+   "gate_observables": {
+    "accept_rate": 0.7666666666666667,
+    "decision_counts": {
+     "accept": 23,
+     "reject_noop": 7
+    },
+    "mean_draw_minus_reference": 0.15459694067637125
+   },
+   "mean_delta": 0.07128189206123352,
+   "min_wins_bonferroni": 9,
+   "n": 10,
+   "passes_bonferroni": false,
+   "per_seed_deltas": {
+    "9008": 0.057333409786224365,
+    "9009": 0.0945553183555603,
+    "9010": 0.08212494850158691,
+    "9011": 0.07958978414535522,
+    "9012": 0.13055634498596191,
+    "9013": 0.0781470537185669,
+    "9014": 0.08863145112991333,
+    "9015": 0.011426687240600586,
+    "9016": 0.047577857971191406,
+    "9017": 0.04287606477737427
+   },
+   "theta": 0.1,
+   "wins": 0
+  },
+  "t05": {
+   "binomial_p": 1.0,
+   "gate_observables": {
+    "accept_rate": 0.43333333333333335,
+    "decision_counts": {
+     "accept": 13,
+     "reject_noop": 17
+    },
+    "mean_draw_minus_reference": 0.15952224731445314
+   },
+   "mean_delta": 0.023610913753509523,
+   "min_wins_bonferroni": 9,
+   "n": 10,
+   "passes_bonferroni": false,
+   "per_seed_deltas": {
+    "9008": 0.057333409786224365,
+    "9009": 0.0,
+    "9010": 0.004625678062438965,
+    "9011": 0.05287128686904907,
+    "9012": 0.027015328407287598,
+    "9013": 0.011371195316314697,
+    "9014": 0.028589487075805664,
+    "9015": 0.011426687240600586,
+    "9016": 0.0,
+    "9017": 0.04287606477737427
+   },
+   "theta": 0.05,
+   "wins": 0
+  }
+ },
+ "secondary_null_vs_published_random": {
+  "9008": -0.8279219269752502,
+  "9009": -0.0945553183555603,
+  "9010": -0.16540604829788208,
+  "9011": -0.07958978414535522
+ },
+ "seeds": [
+  9008,
+  9009,
+  9010,
+  9011,
+  9012,
+  9013,
+  9014,
+  9015,
+  9016,
+  9017
+ ],
+ "thetas": {
+  "t002": 0.02,
+  "t01": 0.1,
+  "t05": 0.05
+ }
+}

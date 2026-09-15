@@ -57,6 +57,23 @@ PROFILES: dict[str, dict] = {
         "report_section": "5.10",
         "summary": "artifacts/study-summaries/null-control-depth4-384.json",
     },
+    # Section 5.12: the missing 2x2 cells. Sections 5.9 (depth 1 + prefix)
+    # and 5.10 (depth 4 + spread) confound depth with the candidate policy;
+    # these two cells complete the factorial design on fresh blocks.
+    "depth1-spread": {
+        "seeds": tuple(range(72000, 72384)),
+        "overrides": {"probe_candidate_policy": "spread"},
+        "run_revision": "PENDING-PREREG",
+        "report_section": "5.12",
+        "summary": "artifacts/study-summaries/null-control-depth1-spread-384.json",
+    },
+    "depth4-prefix": {
+        "seeds": tuple(range(73000, 73384)),
+        "overrides": {"depth": 4},
+        "run_revision": "PENDING-PREREG",
+        "report_section": "5.12",
+        "summary": "artifacts/study-summaries/null-control-depth4-prefix-384.json",
+    },
 }
 REGISTERED = dict(
     hidden_size=24,

@@ -759,6 +759,33 @@ These remain TODO or DEFERRED until the first gate passes:
   compared against the baseline block's stored random arms; per-event
   `gate_decision` records and both probe losses made the mechanism
   measurable as designed. Full suite: 332 passed.
+- **Section 5.11 theta sweep (RAN 2026-09-14, revision `9bd9323`)**: the
+  intermediate-theta sweep against the null arm on the fresh block
+  9008-9017 (10 seeds; `scripts/theta_sweep.py`: the null control plus
+  `gated` at theta {0.02, 0.05, 0.1}). Family verdict: **NO theta
+  clears** (0/10 wins at every theta, p 1.0, bar 9/10 at Bonferroni
+  alpha/3) - the pre-registered falsification branch fires and the
+  probe-on-real-text program is CLOSED at this fidelity. Mean
+  gated-minus-null delta is monotonically harmful in acceptance rate:
+  +0.0027 at 6.7% accepted, +0.0236 at 43.3%, +0.0713 at 76.7% - a clean
+  dose-response of churn harm. Mechanism verified from the published
+  seed summaries: seeds accepting nothing are bit-identical to the null
+  arm (8/10 at theta 0.02), and identical accept/reject sequences across
+  thetas give bit-identical losses (9008/9015/9017) - the sweep measured
+  exactly the cost of accepted churn. Secondary: the published random
+  arm at 9008 (loss 4.1279 vs block-mates ~3.3) is itself a churn
+  catastrophe of the section-5.8 kind. Verdict committed at
+  `artifacts/real-diag/theta-sweep/verdict.json`. Next direction
+  pre-registered as report section 5.12: the depth x candidate-policy
+  2x2 (the 5.9-vs-5.10 contrast varies two registered fields at once).
+  Full suite: 349 passed.
+- **Section 5.12 pre-registration (designed, not yet run)**: the depth x
+  candidate-policy 2x2 completes the factorial behind the 5.9/5.10
+  contrast - depth 1 + spread (fresh block 72000-72383) and depth 4 +
+  prefix (fresh block 73000-73383), same three arms and the same
+  primary contract, executed as new profiles (`depth1-spread`,
+  `depth4-prefix`) of `scripts/null_toy_study.py` with committed
+  summaries and pinning tests like 5.9/5.10.
 - `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
   `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
   deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer
