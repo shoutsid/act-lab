@@ -95,6 +95,10 @@ REGISTERED = dict(
     probe_batch_count=2,
     probe_candidate_policy="spread",
     independent_arm_rng=True,
+    # CPU on purpose: at this shape the card is launch-bound and slower (measured
+    # 2.6x in section 5.27's config), and every committed number in sections
+    # 5.16-5.26 was measured on CPU, so a device switch would stop the record
+    # reproducing. The real-data legs use the GPU.
     device="cpu",
     # Every event is a grow: section 5.25 attributed the residual to the grow,
     # and a grow is the only operation that introduces a new expert at all.

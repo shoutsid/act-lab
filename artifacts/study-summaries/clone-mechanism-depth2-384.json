@@ -1,0 +1,8161 @@
+{
+ "alpha": 0.05,
+ "body_gain": -0.07438906095921993,
+ "built_in_checks": {
+  "all_three_settings_choose_the_same_final_genome": true,
+  "all_three_settings_used_the_full_budget": true,
+  "block_matches_declared_n": true,
+  "declared_bar_matches_exact_binomial": true,
+  "the_fixed_arm_is_identical_across_all_three_settings": true,
+  "the_frozen_reference_is_identical_under_all_three_settings": true
+ },
+ "clone_gain": -0.10083374194800854,
+ "comparisons": {
+  "B_vs_R": {
+   "binomial_p": 3.40155910215785e-27,
+   "mean_delta": -0.07438906095921993,
+   "min_wins": 215,
+   "n": 384,
+   "passes": true,
+   "wins": 295
+  },
+  "C_vs_B": {
+   "binomial_p": 1.8908765384474936e-07,
+   "mean_delta": -0.026444680988788605,
+   "min_wins": 215,
+   "n": 384,
+   "passes": true,
+   "wins": 242
+  },
+  "C_vs_R": {
+   "binomial_p": 2.38266117826501e-42,
+   "mean_delta": -0.10083374194800854,
+   "min_wins": 215,
+   "n": 384,
+   "passes": true,
+   "wins": 320
+  },
+  "R_own_vs_R": {
+   "binomial_p": 0.0006375354327896015,
+   "mean_delta": -0.026199161385496456,
+   "min_wins": 215,
+   "n": 384,
+   "passes": true,
+   "wins": 224
+  }
+ },
+ "config": {
+  "active_experts": 2,
+  "adaptive_expert_metric": "random",
+  "adaptive_policy": "probe_loss",
+  "batch_size": 2,
+  "depth": 2,
+  "device": "cpu",
+  "expert_count": 4,
+  "forced_operation": "grow",
+  "hidden_size": 24,
+  "independent_arm_rng": true,
+  "learning_rate": 0.0003,
+  "mutation_budget": 3,
+  "mutation_interval": 12,
+  "preserve_router_on_rebuild": true,
+  "probe_batch_count": 2,
+  "probe_candidate_cap": 4,
+  "probe_candidate_policy": "spread",
+  "sequence_length": 12,
+  "steps": 48,
+  "validation_batches": 4,
+  "vocab_size": 32
+ },
+ "config_hash": "c70e7f0dadaca4ab",
+ "declared_bar": 215,
+ "depth": 2,
+ "loss_means": {
+  "B": 14.219208889330426,
+  "B_own": 14.267398788904151,
+  "C": 14.192764208341638,
+  "C_own": 14.267398788904151,
+  "F": 14.239759052793184,
+  "R": 14.293597950289646,
+  "R_own": 14.267398788904151
+ },
+ "outcome": "branch (a) both contribute: a trained body and the copied routing affinity each buy something, so cloning is two effects and neither is the whole of section 5.26",
+ "penalty_fresh": -0.026199161385496456,
+ "per_primary_alpha": 0.0125,
+ "per_seed": [
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.108846664428711,
+    "B_own": 14.073863506317139,
+    "C": 14.051260232925415,
+    "C_own": 14.073863506317139,
+    "F": 14.10002613067627,
+    "R": 14.056666612625122,
+    "R_own": 14.073863506317139
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105000
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.277629137039185,
+    "B_own": 15.3264799118042,
+    "C": 15.274776220321655,
+    "C_own": 15.3264799118042,
+    "F": 15.359843969345093,
+    "R": 15.399205446243286,
+    "R_own": 15.3264799118042
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105001
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 16.552354097366333,
+    "B_own": 16.684884786605835,
+    "C": 16.505004167556763,
+    "C_own": 16.684884786605835,
+    "F": 16.587111711502075,
+    "R": 16.59890127182007,
+    "R_own": 16.684884786605835
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105002
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.555428743362427,
+    "B_own": 14.619597434997559,
+    "C": 14.463208675384521,
+    "C_own": 14.619597434997559,
+    "F": 14.600703477859497,
+    "R": 14.626051664352417,
+    "R_own": 14.619597434997559
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105003
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.348865032196045,
+    "B_own": 12.50801968574524,
+    "C": 12.207053422927856,
+    "C_own": 12.50801968574524,
+    "F": 12.310715198516846,
+    "R": 12.458859205245972,
+    "R_own": 12.50801968574524
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105004
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.52272081375122,
+    "B_own": 13.381373643875122,
+    "C": 13.563501834869385,
+    "C_own": 13.381373643875122,
+    "F": 13.570535659790039,
+    "R": 13.705645561218262,
+    "R_own": 13.381373643875122
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105005
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.80902099609375,
+    "B_own": 14.895346641540527,
+    "C": 14.741646528244019,
+    "C_own": 14.895346641540527,
+    "F": 14.87796926498413,
+    "R": 14.835254430770874,
+    "R_own": 14.895346641540527
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105006
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.63553500175476,
+    "B_own": 15.888017892837524,
+    "C": 15.505980253219604,
+    "C_own": 15.888017892837524,
+    "F": 15.637393712997437,
+    "R": 15.740252256393433,
+    "R_own": 15.888017892837524
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105007
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.634430170059204,
+    "B_own": 13.615772247314453,
+    "C": 13.662763833999634,
+    "C_own": 13.615772247314453,
+    "F": 13.62566089630127,
+    "R": 13.66255807876587,
+    "R_own": 13.615772247314453
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105008
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.34611988067627,
+    "B_own": 15.092278480529785,
+    "C": 15.323339462280273,
+    "C_own": 15.092278480529785,
+    "F": 15.292066097259521,
+    "R": 15.254731893539429,
+    "R_own": 15.092278480529785
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105009
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.67667531967163,
+    "B_own": 13.719222784042358,
+    "C": 13.591651916503906,
+    "C_own": 13.719222784042358,
+    "F": 13.659571886062622,
+    "R": 13.752938270568848,
+    "R_own": 13.719222784042358
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105010
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.096066236495972,
+    "B_own": 14.07295846939087,
+    "C": 14.061710834503174,
+    "C_own": 14.07295846939087,
+    "F": 14.121704816818237,
+    "R": 14.044438123703003,
+    "R_own": 14.07295846939087
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105011
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.434880018234253,
+    "B_own": 13.4834144115448,
+    "C": 13.324246644973755,
+    "C_own": 13.4834144115448,
+    "F": 13.403230428695679,
+    "R": 13.47117018699646,
+    "R_own": 13.4834144115448
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105012
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.713699102401733,
+    "B_own": 13.858577013015747,
+    "C": 13.730204582214355,
+    "C_own": 13.858577013015747,
+    "F": 13.783400058746338,
+    "R": 13.9813551902771,
+    "R_own": 13.858577013015747
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105013
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.014661073684692,
+    "B_own": 13.844340324401855,
+    "C": 13.99634599685669,
+    "C_own": 13.844340324401855,
+    "F": 13.985970258712769,
+    "R": 13.958459377288818,
+    "R_own": 13.844340324401855
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105014
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.645576238632202,
+    "B_own": 12.760617733001709,
+    "C": 12.739787340164185,
+    "C_own": 12.760617733001709,
+    "F": 12.808413028717041,
+    "R": 12.870410442352295,
+    "R_own": 12.760617733001709
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105015
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.416840314865112,
+    "B_own": 13.397001504898071,
+    "C": 13.480677366256714,
+    "C_own": 13.397001504898071,
+    "F": 13.459221839904785,
+    "R": 13.628157615661621,
+    "R_own": 13.397001504898071
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105016
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.056391954421997,
+    "B_own": 14.227540493011475,
+    "C": 14.035975456237793,
+    "C_own": 14.227540493011475,
+    "F": 14.195303916931152,
+    "R": 14.348026514053345,
+    "R_own": 14.227540493011475
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105017
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.779606342315674,
+    "B_own": 14.80036211013794,
+    "C": 14.857444286346436,
+    "C_own": 14.80036211013794,
+    "F": 14.896516799926758,
+    "R": 14.915173768997192,
+    "R_own": 14.80036211013794
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105018
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.306800365447998,
+    "B_own": 15.278953552246094,
+    "C": 15.319287300109863,
+    "C_own": 15.278953552246094,
+    "F": 15.30741834640503,
+    "R": 15.218859672546387,
+    "R_own": 15.278953552246094
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105019
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.522018671035767,
+    "B_own": 14.732210159301758,
+    "C": 14.507582187652588,
+    "C_own": 14.732210159301758,
+    "F": 14.588237762451172,
+    "R": 14.639721393585205,
+    "R_own": 14.732210159301758
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105020
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.160588264465332,
+    "B_own": 15.130824089050293,
+    "C": 15.051963329315186,
+    "C_own": 15.130824089050293,
+    "F": 15.062403678894043,
+    "R": 15.131211996078491,
+    "R_own": 15.130824089050293
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105021
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.346977949142456,
+    "B_own": 13.4997079372406,
+    "C": 13.372209548950195,
+    "C_own": 13.4997079372406,
+    "F": 13.431413650512695,
+    "R": 13.398829936981201,
+    "R_own": 13.4997079372406
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105022
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.175096988677979,
+    "B_own": 14.076703548431396,
+    "C": 14.126285791397095,
+    "C_own": 14.076703548431396,
+    "F": 14.179999113082886,
+    "R": 14.261152505874634,
+    "R_own": 14.076703548431396
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105023
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.609029769897461,
+    "B_own": 13.974689483642578,
+    "C": 13.587049961090088,
+    "C_own": 13.974689483642578,
+    "F": 13.670582056045532,
+    "R": 13.709274530410767,
+    "R_own": 13.974689483642578
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105024
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.160638570785522,
+    "B_own": 13.250176429748535,
+    "C": 13.122482538223267,
+    "C_own": 13.250176429748535,
+    "F": 13.158952474594116,
+    "R": 13.171852111816406,
+    "R_own": 13.250176429748535
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105025
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.277318477630615,
+    "B_own": 15.440901756286621,
+    "C": 15.253310680389404,
+    "C_own": 15.440901756286621,
+    "F": 15.37385082244873,
+    "R": 15.349865436553955,
+    "R_own": 15.440901756286621
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105026
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.703699827194214,
+    "B_own": 14.925881624221802,
+    "C": 14.523419618606567,
+    "C_own": 14.925881624221802,
+    "F": 14.761393070220947,
+    "R": 14.811548471450806,
+    "R_own": 14.925881624221802
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105027
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.543468236923218,
+    "B_own": 13.571046829223633,
+    "C": 13.423505306243896,
+    "C_own": 13.571046829223633,
+    "F": 13.500366449356079,
+    "R": 13.428257703781128,
+    "R_own": 13.571046829223633
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105028
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.810903310775757,
+    "B_own": 13.965569734573364,
+    "C": 13.89164137840271,
+    "C_own": 13.965569734573364,
+    "F": 13.960578203201294,
+    "R": 14.13083791732788,
+    "R_own": 13.965569734573364
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105029
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.671507120132446,
+    "B_own": 15.785533905029297,
+    "C": 15.626830816268921,
+    "C_own": 15.785533905029297,
+    "F": 15.735435247421265,
+    "R": 15.703828573226929,
+    "R_own": 15.785533905029297
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105030
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 16.76606798171997,
+    "B_own": 16.85590362548828,
+    "C": 16.76084017753601,
+    "C_own": 16.85590362548828,
+    "F": 16.86900758743286,
+    "R": 16.889883279800415,
+    "R_own": 16.85590362548828
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105031
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.734236240386963,
+    "B_own": 14.767070770263672,
+    "C": 14.715495109558105,
+    "C_own": 14.767070770263672,
+    "F": 14.759203910827637,
+    "R": 14.894106388092041,
+    "R_own": 14.767070770263672
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105032
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.774107694625854,
+    "B_own": 15.637537240982056,
+    "C": 15.79390835762024,
+    "C_own": 15.637537240982056,
+    "F": 15.777270793914795,
+    "R": 15.698896408081055,
+    "R_own": 15.637537240982056
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105033
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.464843511581421,
+    "B_own": 14.536355972290039,
+    "C": 14.514514207839966,
+    "C_own": 14.536355972290039,
+    "F": 14.499416828155518,
+    "R": 14.548717021942139,
+    "R_own": 14.536355972290039
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105034
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.50714921951294,
+    "B_own": 14.536499738693237,
+    "C": 14.533243179321289,
+    "C_own": 14.536499738693237,
+    "F": 14.509430170059204,
+    "R": 14.55040168762207,
+    "R_own": 14.536499738693237
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105035
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.999461889266968,
+    "B_own": 14.959434270858765,
+    "C": 14.936782360076904,
+    "C_own": 14.959434270858765,
+    "F": 15.025906801223755,
+    "R": 15.102831840515137,
+    "R_own": 14.959434270858765
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105036
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.149401187896729,
+    "B_own": 15.246148109436035,
+    "C": 15.111329793930054,
+    "C_own": 15.246148109436035,
+    "F": 15.23017954826355,
+    "R": 15.152831792831421,
+    "R_own": 15.246148109436035
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105037
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.892456293106079,
+    "B_own": 14.060937404632568,
+    "C": 13.816171646118164,
+    "C_own": 14.060937404632568,
+    "F": 13.866315126419067,
+    "R": 13.904295682907104,
+    "R_own": 14.060937404632568
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105038
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.260344505310059,
+    "B_own": 13.248127937316895,
+    "C": 13.283431768417358,
+    "C_own": 13.248127937316895,
+    "F": 13.311275720596313,
+    "R": 13.161667823791504,
+    "R_own": 13.248127937316895
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105039
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.59519910812378,
+    "B_own": 14.961821556091309,
+    "C": 14.684702157974243,
+    "C_own": 14.961821556091309,
+    "F": 14.753629207611084,
+    "R": 14.906708478927612,
+    "R_own": 14.961821556091309
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105040
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.517659425735474,
+    "B_own": 14.362047910690308,
+    "C": 14.497778177261353,
+    "C_own": 14.362047910690308,
+    "F": 14.529095649719238,
+    "R": 14.578478336334229,
+    "R_own": 14.362047910690308
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105041
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.656616926193237,
+    "B_own": 13.608367681503296,
+    "C": 13.6273353099823,
+    "C_own": 13.608367681503296,
+    "F": 13.604977369308472,
+    "R": 13.714169263839722,
+    "R_own": 13.608367681503296
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105042
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.81366491317749,
+    "B_own": 13.824505805969238,
+    "C": 13.796074390411377,
+    "C_own": 13.824505805969238,
+    "F": 13.902755975723267,
+    "R": 13.824427604675293,
+    "R_own": 13.824505805969238
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105043
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.187850952148438,
+    "B_own": 14.261559009552002,
+    "C": 14.197396278381348,
+    "C_own": 14.261559009552002,
+    "F": 14.160593748092651,
+    "R": 14.268967151641846,
+    "R_own": 14.261559009552002
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105044
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.328549861907959,
+    "B_own": 13.253463745117188,
+    "C": 13.235840320587158,
+    "C_own": 13.253463745117188,
+    "F": 13.232697248458862,
+    "R": 13.260159969329834,
+    "R_own": 13.253463745117188
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105045
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.292211771011353,
+    "B_own": 15.41923189163208,
+    "C": 15.357227802276611,
+    "C_own": 15.41923189163208,
+    "F": 15.366628885269165,
+    "R": 15.476534366607666,
+    "R_own": 15.41923189163208
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105046
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.053971767425537,
+    "B_own": 13.806694746017456,
+    "C": 14.127004146575928,
+    "C_own": 13.806694746017456,
+    "F": 13.96205449104309,
+    "R": 13.963094234466553,
+    "R_own": 13.806694746017456
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105047
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 16.035531282424927,
+    "B_own": 16.158648014068604,
+    "C": 15.99551796913147,
+    "C_own": 16.158648014068604,
+    "F": 16.174281358718872,
+    "R": 16.288467407226562,
+    "R_own": 16.158648014068604
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105048
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.432400941848755,
+    "B_own": 13.688289165496826,
+    "C": 13.396244764328003,
+    "C_own": 13.688289165496826,
+    "F": 13.605762481689453,
+    "R": 13.644328594207764,
+    "R_own": 13.688289165496826
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105049
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 11.917160987854004,
+    "B_own": 12.022810697555542,
+    "C": 11.82206130027771,
+    "C_own": 12.022810697555542,
+    "F": 11.855858087539673,
+    "R": 11.90905475616455,
+    "R_own": 12.022810697555542
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105050
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.997665882110596,
+    "B_own": 13.848787784576416,
+    "C": 14.01680040359497,
+    "C_own": 13.848787784576416,
+    "F": 13.999132871627808,
+    "R": 14.034308671951294,
+    "R_own": 13.848787784576416
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105051
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.899072408676147,
+    "B_own": 13.887964487075806,
+    "C": 13.979438781738281,
+    "C_own": 13.887964487075806,
+    "F": 13.9475998878479,
+    "R": 13.953965902328491,
+    "R_own": 13.887964487075806
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105052
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.985713481903076,
+    "B_own": 14.20400881767273,
+    "C": 13.922820806503296,
+    "C_own": 14.20400881767273,
+    "F": 14.024261951446533,
+    "R": 14.081908464431763,
+    "R_own": 14.20400881767273
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105053
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.136651515960693,
+    "B_own": 13.352029085159302,
+    "C": 13.138171911239624,
+    "C_own": 13.352029085159302,
+    "F": 13.223557710647583,
+    "R": 13.330673694610596,
+    "R_own": 13.352029085159302
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105054
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.861575841903687,
+    "B_own": 12.970765829086304,
+    "C": 12.8851318359375,
+    "C_own": 12.970765829086304,
+    "F": 12.95840334892273,
+    "R": 13.027289390563965,
+    "R_own": 12.970765829086304
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105055
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.64544415473938,
+    "B_own": 14.786559581756592,
+    "C": 14.672045469284058,
+    "C_own": 14.786559581756592,
+    "F": 14.797065019607544,
+    "R": 14.770959615707397,
+    "R_own": 14.786559581756592
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105056
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 16.391581296920776,
+    "B_own": 16.477249145507812,
+    "C": 16.338757038116455,
+    "C_own": 16.477249145507812,
+    "F": 16.437204360961914,
+    "R": 16.57613253593445,
+    "R_own": 16.477249145507812
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105057
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.19759202003479,
+    "B_own": 15.164194107055664,
+    "C": 15.119656801223755,
+    "C_own": 15.164194107055664,
+    "F": 15.176671981811523,
+    "R": 15.061112403869629,
+    "R_own": 15.164194107055664
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105058
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 17.039621114730835,
+    "B_own": 17.20529818534851,
+    "C": 17.06398344039917,
+    "C_own": 17.20529818534851,
+    "F": 17.139145612716675,
+    "R": 17.073834896087646,
+    "R_own": 17.20529818534851
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105059
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.255877017974854,
+    "B_own": 13.351365804672241,
+    "C": 13.16958475112915,
+    "C_own": 13.351365804672241,
+    "F": 13.184574842453003,
+    "R": 13.323050737380981,
+    "R_own": 13.351365804672241
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105060
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.88288927078247,
+    "B_own": 15.017245769500732,
+    "C": 14.928775072097778,
+    "C_own": 15.017245769500732,
+    "F": 14.93795657157898,
+    "R": 14.983676671981812,
+    "R_own": 15.017245769500732
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105061
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.576116800308228,
+    "B_own": 13.494727611541748,
+    "C": 13.586414337158203,
+    "C_own": 13.494727611541748,
+    "F": 13.548058032989502,
+    "R": 13.557071208953857,
+    "R_own": 13.494727611541748
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105062
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.24692153930664,
+    "B_own": 15.312026739120483,
+    "C": 15.228071212768555,
+    "C_own": 15.312026739120483,
+    "F": 15.272293090820312,
+    "R": 15.41515564918518,
+    "R_own": 15.312026739120483
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105063
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.225680351257324,
+    "B_own": 13.323784112930298,
+    "C": 13.312804937362671,
+    "C_own": 13.323784112930298,
+    "F": 13.278642177581787,
+    "R": 13.192164897918701,
+    "R_own": 13.323784112930298
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105064
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.238394498825073,
+    "B_own": 13.162259340286255,
+    "C": 13.289798974990845,
+    "C_own": 13.162259340286255,
+    "F": 13.283535957336426,
+    "R": 13.37492036819458,
+    "R_own": 13.162259340286255
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105065
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.684900045394897,
+    "B_own": 13.839698076248169,
+    "C": 13.725133895874023,
+    "C_own": 13.839698076248169,
+    "F": 13.646289587020874,
+    "R": 13.629073143005371,
+    "R_own": 13.839698076248169
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105066
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.920148611068726,
+    "B_own": 13.9757559299469,
+    "C": 13.877110719680786,
+    "C_own": 13.9757559299469,
+    "F": 13.954554080963135,
+    "R": 14.042749643325806,
+    "R_own": 13.9757559299469
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105067
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.072370290756226,
+    "B_own": 14.114430665969849,
+    "C": 14.016404151916504,
+    "C_own": 14.114430665969849,
+    "F": 14.055394649505615,
+    "R": 14.164135932922363,
+    "R_own": 14.114430665969849
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105068
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.112586975097656,
+    "B_own": 14.286691427230835,
+    "C": 14.019698858261108,
+    "C_own": 14.286691427230835,
+    "F": 14.183237552642822,
+    "R": 14.248897552490234,
+    "R_own": 14.286691427230835
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105069
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.33500623703003,
+    "B_own": 14.259316205978394,
+    "C": 14.317610502243042,
+    "C_own": 14.259316205978394,
+    "F": 14.315791130065918,
+    "R": 14.42868709564209,
+    "R_own": 14.259316205978394
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105070
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.12571930885315,
+    "B_own": 13.163429260253906,
+    "C": 13.094108581542969,
+    "C_own": 13.163429260253906,
+    "F": 13.164655208587646,
+    "R": 13.198813438415527,
+    "R_own": 13.163429260253906
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105071
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.230398416519165,
+    "B_own": 15.002683877944946,
+    "C": 15.156410455703735,
+    "C_own": 15.002683877944946,
+    "F": 15.164994955062866,
+    "R": 15.217747449874878,
+    "R_own": 15.002683877944946
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105072
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.014470338821411,
+    "B_own": 15.081839323043823,
+    "C": 14.974000930786133,
+    "C_own": 15.081839323043823,
+    "F": 15.071004629135132,
+    "R": 15.187050342559814,
+    "R_own": 15.081839323043823
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105073
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.944162130355835,
+    "B_own": 12.878066778182983,
+    "C": 12.825841903686523,
+    "C_own": 12.878066778182983,
+    "F": 12.820245027542114,
+    "R": 13.125383377075195,
+    "R_own": 12.878066778182983
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105074
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 16.04245686531067,
+    "B_own": 16.05889630317688,
+    "C": 16.006110668182373,
+    "C_own": 16.05889630317688,
+    "F": 16.0561044216156,
+    "R": 16.081321954727173,
+    "R_own": 16.05889630317688
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105075
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.154666423797607,
+    "B_own": 13.048354387283325,
+    "C": 12.98197078704834,
+    "C_own": 13.048354387283325,
+    "F": 13.095703363418579,
+    "R": 13.170326948165894,
+    "R_own": 13.048354387283325
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105076
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.440565824508667,
+    "B_own": 13.229732751846313,
+    "C": 13.394604444503784,
+    "C_own": 13.229732751846313,
+    "F": 13.331753730773926,
+    "R": 13.494479417800903,
+    "R_own": 13.229732751846313
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105077
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.530055284500122,
+    "B_own": 14.551024198532104,
+    "C": 14.472792863845825,
+    "C_own": 14.551024198532104,
+    "F": 14.470895528793335,
+    "R": 14.650078773498535,
+    "R_own": 14.551024198532104
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105078
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.140810489654541,
+    "B_own": 14.097343683242798,
+    "C": 14.20929217338562,
+    "C_own": 14.097343683242798,
+    "F": 14.168296813964844,
+    "R": 14.17524266242981,
+    "R_own": 14.097343683242798
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105079
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.985490560531616,
+    "B_own": 13.290731191635132,
+    "C": 12.925015687942505,
+    "C_own": 13.290731191635132,
+    "F": 13.018507957458496,
+    "R": 13.232383251190186,
+    "R_own": 13.290731191635132
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105080
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.368213891983032,
+    "B_own": 15.5970139503479,
+    "C": 15.372520923614502,
+    "C_own": 15.5970139503479,
+    "F": 15.410685539245605,
+    "R": 15.48362135887146,
+    "R_own": 15.5970139503479
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105081
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.906536102294922,
+    "B_own": 14.090943574905396,
+    "C": 13.934128761291504,
+    "C_own": 14.090943574905396,
+    "F": 13.981508731842041,
+    "R": 14.108876705169678,
+    "R_own": 14.090943574905396
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105082
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.754611492156982,
+    "B_own": 12.655332803726196,
+    "C": 12.689554214477539,
+    "C_own": 12.655332803726196,
+    "F": 12.684118509292603,
+    "R": 12.793606996536255,
+    "R_own": 12.655332803726196
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105083
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.829734325408936,
+    "B_own": 13.753932476043701,
+    "C": 13.855766773223877,
+    "C_own": 13.753932476043701,
+    "F": 13.855803728103638,
+    "R": 13.90243124961853,
+    "R_own": 13.753932476043701
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105084
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.505650043487549,
+    "B_own": 15.4548921585083,
+    "C": 15.471085786819458,
+    "C_own": 15.4548921585083,
+    "F": 15.560055017471313,
+    "R": 15.578126430511475,
+    "R_own": 15.4548921585083
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105085
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.716843605041504,
+    "B_own": 13.626664876937866,
+    "C": 13.743286848068237,
+    "C_own": 13.626664876937866,
+    "F": 13.659285068511963,
+    "R": 13.588812112808228,
+    "R_own": 13.626664876937866
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105086
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 16.543232679367065,
+    "B_own": 16.508060455322266,
+    "C": 16.58176279067993,
+    "C_own": 16.508060455322266,
+    "F": 16.665541887283325,
+    "R": 16.604228973388672,
+    "R_own": 16.508060455322266
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105087
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.414716005325317,
+    "B_own": 13.754820108413696,
+    "C": 13.546124458312988,
+    "C_own": 13.754820108413696,
+    "F": 13.603576183319092,
+    "R": 13.74910283088684,
+    "R_own": 13.754820108413696
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105088
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.918549060821533,
+    "B_own": 12.836081266403198,
+    "C": 12.88081407546997,
+    "C_own": 12.836081266403198,
+    "F": 12.88396143913269,
+    "R": 12.92655873298645,
+    "R_own": 12.836081266403198
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105089
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.239960670471191,
+    "B_own": 15.122029304504395,
+    "C": 15.132393598556519,
+    "C_own": 15.122029304504395,
+    "F": 15.13834524154663,
+    "R": 15.270879745483398,
+    "R_own": 15.122029304504395
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105090
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.178176641464233,
+    "B_own": 14.319862842559814,
+    "C": 14.309494972229004,
+    "C_own": 14.319862842559814,
+    "F": 14.380846738815308,
+    "R": 14.272509336471558,
+    "R_own": 14.319862842559814
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105091
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.138627290725708,
+    "B_own": 15.195261716842651,
+    "C": 15.05935525894165,
+    "C_own": 15.195261716842651,
+    "F": 15.19602370262146,
+    "R": 15.195886135101318,
+    "R_own": 15.195261716842651
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105092
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.878541946411133,
+    "B_own": 14.81679368019104,
+    "C": 14.830940961837769,
+    "C_own": 14.81679368019104,
+    "F": 14.891917705535889,
+    "R": 14.881030797958374,
+    "R_own": 14.81679368019104
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105093
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.472800254821777,
+    "B_own": 14.373449087142944,
+    "C": 14.413411855697632,
+    "C_own": 14.373449087142944,
+    "F": 14.580296754837036,
+    "R": 14.535590171813965,
+    "R_own": 14.373449087142944
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105094
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.760563850402832,
+    "B_own": 13.950176477432251,
+    "C": 13.723604679107666,
+    "C_own": 13.950176477432251,
+    "F": 13.83637809753418,
+    "R": 13.856263875961304,
+    "R_own": 13.950176477432251
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105095
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.260886192321777,
+    "B_own": 13.408621311187744,
+    "C": 13.171451330184937,
+    "C_own": 13.408621311187744,
+    "F": 13.345588445663452,
+    "R": 13.36594295501709,
+    "R_own": 13.408621311187744
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105096
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.474498748779297,
+    "B_own": 13.675600051879883,
+    "C": 13.451344966888428,
+    "C_own": 13.675600051879883,
+    "F": 13.609753847122192,
+    "R": 13.661468267440796,
+    "R_own": 13.675600051879883
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105097
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.960708618164062,
+    "B_own": 13.913723707199097,
+    "C": 13.911912679672241,
+    "C_own": 13.913723707199097,
+    "F": 13.766239643096924,
+    "R": 13.678062200546265,
+    "R_own": 13.913723707199097
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105098
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.863271713256836,
+    "B_own": 14.924273252487183,
+    "C": 14.748539924621582,
+    "C_own": 14.924273252487183,
+    "F": 14.796877384185791,
+    "R": 14.964397668838501,
+    "R_own": 14.924273252487183
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105099
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.472665786743164,
+    "B_own": 13.50983452796936,
+    "C": 13.424774169921875,
+    "C_own": 13.50983452796936,
+    "F": 13.486349105834961,
+    "R": 13.387850999832153,
+    "R_own": 13.50983452796936
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105100
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.144908428192139,
+    "B_own": 13.21240758895874,
+    "C": 13.072417736053467,
+    "C_own": 13.21240758895874,
+    "F": 13.094414234161377,
+    "R": 13.030147552490234,
+    "R_own": 13.21240758895874
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105101
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.373769521713257,
+    "B_own": 13.357696056365967,
+    "C": 13.383477687835693,
+    "C_own": 13.357696056365967,
+    "F": 13.436675548553467,
+    "R": 13.4623703956604,
+    "R_own": 13.357696056365967
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105102
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.182657480239868,
+    "B_own": 15.271472930908203,
+    "C": 15.139578580856323,
+    "C_own": 15.271472930908203,
+    "F": 15.162949323654175,
+    "R": 15.363556385040283,
+    "R_own": 15.271472930908203
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105103
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.181500673294067,
+    "B_own": 13.24500823020935,
+    "C": 13.146536588668823,
+    "C_own": 13.24500823020935,
+    "F": 13.16422986984253,
+    "R": 13.415875434875488,
+    "R_own": 13.24500823020935
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105104
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.895856380462646,
+    "B_own": 13.709280729293823,
+    "C": 14.03212833404541,
+    "C_own": 13.709280729293823,
+    "F": 13.92285943031311,
+    "R": 14.027715921401978,
+    "R_own": 13.709280729293823
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105105
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.280714273452759,
+    "B_own": 13.20704197883606,
+    "C": 13.279829263687134,
+    "C_own": 13.20704197883606,
+    "F": 13.279062032699585,
+    "R": 13.267328023910522,
+    "R_own": 13.20704197883606
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105106
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.71361780166626,
+    "B_own": 13.659791707992554,
+    "C": 13.689899206161499,
+    "C_own": 13.659791707992554,
+    "F": 13.571760416030884,
+    "R": 13.752937316894531,
+    "R_own": 13.659791707992554
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105107
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 16.103344678878784,
+    "B_own": 16.227362394332886,
+    "C": 16.005254983901978,
+    "C_own": 16.227362394332886,
+    "F": 16.05516266822815,
+    "R": 16.126720428466797,
+    "R_own": 16.227362394332886
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105108
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.814970254898071,
+    "B_own": 13.881089687347412,
+    "C": 13.726255416870117,
+    "C_own": 13.881089687347412,
+    "F": 13.851991415023804,
+    "R": 13.92337942123413,
+    "R_own": 13.881089687347412
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105109
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.175108909606934,
+    "B_own": 14.210103988647461,
+    "C": 14.13235878944397,
+    "C_own": 14.210103988647461,
+    "F": 14.2373526096344,
+    "R": 14.081103086471558,
+    "R_own": 14.210103988647461
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105110
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.841888189315796,
+    "B_own": 16.088205575942993,
+    "C": 15.771547794342041,
+    "C_own": 16.088205575942993,
+    "F": 15.789273977279663,
+    "R": 15.887013912200928,
+    "R_own": 16.088205575942993
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105111
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.275922060012817,
+    "B_own": 13.72606635093689,
+    "C": 13.204423189163208,
+    "C_own": 13.72606635093689,
+    "F": 13.272332191467285,
+    "R": 13.609378337860107,
+    "R_own": 13.72606635093689
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105112
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.856112003326416,
+    "B_own": 15.70740270614624,
+    "C": 15.801067352294922,
+    "C_own": 15.70740270614624,
+    "F": 15.842323541641235,
+    "R": 16.027995347976685,
+    "R_own": 15.70740270614624
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105113
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.885931015014648,
+    "B_own": 14.817158699035645,
+    "C": 14.87120771408081,
+    "C_own": 14.817158699035645,
+    "F": 14.830428838729858,
+    "R": 14.771506547927856,
+    "R_own": 14.817158699035645
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105114
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.161769390106201,
+    "B_own": 13.139166831970215,
+    "C": 13.059080362319946,
+    "C_own": 13.139166831970215,
+    "F": 13.099442958831787,
+    "R": 13.165188074111938,
+    "R_own": 13.139166831970215
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105115
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.676429510116577,
+    "B_own": 14.543975353240967,
+    "C": 14.677564859390259,
+    "C_own": 14.543975353240967,
+    "F": 14.682968139648438,
+    "R": 14.695269346237183,
+    "R_own": 14.543975353240967
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105116
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.173885822296143,
+    "B_own": 15.19583511352539,
+    "C": 15.041131258010864,
+    "C_own": 15.19583511352539,
+    "F": 15.244722843170166,
+    "R": 15.212296962738037,
+    "R_own": 15.19583511352539
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105117
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.88509488105774,
+    "B_own": 13.123066425323486,
+    "C": 12.86139464378357,
+    "C_own": 13.123066425323486,
+    "F": 12.990964651107788,
+    "R": 13.005508661270142,
+    "R_own": 13.123066425323486
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105118
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.294678211212158,
+    "B_own": 14.170603275299072,
+    "C": 14.152786254882812,
+    "C_own": 14.170603275299072,
+    "F": 14.265571117401123,
+    "R": 14.27248215675354,
+    "R_own": 14.170603275299072
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105119
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.739398717880249,
+    "B_own": 13.980570316314697,
+    "C": 13.737891674041748,
+    "C_own": 13.980570316314697,
+    "F": 13.747259378433228,
+    "R": 13.81075382232666,
+    "R_own": 13.980570316314697
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105120
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.596970081329346,
+    "B_own": 14.507949113845825,
+    "C": 14.62530779838562,
+    "C_own": 14.507949113845825,
+    "F": 14.544790983200073,
+    "R": 14.689612865447998,
+    "R_own": 14.507949113845825
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105121
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.64187240600586,
+    "B_own": 13.614656686782837,
+    "C": 13.682262420654297,
+    "C_own": 13.614656686782837,
+    "F": 13.633445024490356,
+    "R": 13.635676622390747,
+    "R_own": 13.614656686782837
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105122
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.012745141983032,
+    "B_own": 15.168670892715454,
+    "C": 15.035605430603027,
+    "C_own": 15.168670892715454,
+    "F": 15.143733739852905,
+    "R": 15.272106647491455,
+    "R_own": 15.168670892715454
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105123
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.93567419052124,
+    "B_own": 15.103677034378052,
+    "C": 14.941776752471924,
+    "C_own": 15.103677034378052,
+    "F": 14.992510557174683,
+    "R": 15.028914213180542,
+    "R_own": 15.103677034378052
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105124
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.848690509796143,
+    "B_own": 13.875243663787842,
+    "C": 13.765493392944336,
+    "C_own": 13.875243663787842,
+    "F": 13.885282516479492,
+    "R": 13.942500591278076,
+    "R_own": 13.875243663787842
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105125
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 17.041357040405273,
+    "B_own": 17.267605304718018,
+    "C": 16.950552225112915,
+    "C_own": 17.267605304718018,
+    "F": 17.109886646270752,
+    "R": 17.28237009048462,
+    "R_own": 17.267605304718018
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105126
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.267015218734741,
+    "B_own": 15.250164985656738,
+    "C": 15.277286529541016,
+    "C_own": 15.250164985656738,
+    "F": 15.37505316734314,
+    "R": 15.501183032989502,
+    "R_own": 15.250164985656738
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105127
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.171809673309326,
+    "B_own": 13.067391395568848,
+    "C": 13.230755805969238,
+    "C_own": 13.067391395568848,
+    "F": 13.235891103744507,
+    "R": 13.273618221282959,
+    "R_own": 13.067391395568848
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105128
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.21284031867981,
+    "B_own": 14.168624877929688,
+    "C": 14.166435480117798,
+    "C_own": 14.168624877929688,
+    "F": 14.218839406967163,
+    "R": 14.286888837814331,
+    "R_own": 14.168624877929688
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105129
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.499719619750977,
+    "B_own": 13.456341743469238,
+    "C": 13.313405752182007,
+    "C_own": 13.456341743469238,
+    "F": 13.450200319290161,
+    "R": 13.534191131591797,
+    "R_own": 13.456341743469238
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105130
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.656622171401978,
+    "B_own": 14.956383466720581,
+    "C": 14.675899267196655,
+    "C_own": 14.956383466720581,
+    "F": 14.783210754394531,
+    "R": 14.81288480758667,
+    "R_own": 14.956383466720581
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105131
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.339800119400024,
+    "B_own": 15.282140970230103,
+    "C": 15.220803022384644,
+    "C_own": 15.282140970230103,
+    "F": 15.280312299728394,
+    "R": 15.188958406448364,
+    "R_own": 15.282140970230103
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105132
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.91899824142456,
+    "B_own": 12.827115774154663,
+    "C": 12.916708946228027,
+    "C_own": 12.827115774154663,
+    "F": 12.969904899597168,
+    "R": 12.887264490127563,
+    "R_own": 12.827115774154663
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105133
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.844420433044434,
+    "B_own": 15.84420919418335,
+    "C": 15.917712211608887,
+    "C_own": 15.84420919418335,
+    "F": 15.94193434715271,
+    "R": 15.939878463745117,
+    "R_own": 15.84420919418335
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105134
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 16.84170913696289,
+    "B_own": 17.20384979248047,
+    "C": 16.690666675567627,
+    "C_own": 17.20384979248047,
+    "F": 16.877978324890137,
+    "R": 17.048137187957764,
+    "R_own": 17.20384979248047
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105135
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.909430980682373,
+    "B_own": 12.981698513031006,
+    "C": 12.718756675720215,
+    "C_own": 12.981698513031006,
+    "F": 12.799531698226929,
+    "R": 12.861133575439453,
+    "R_own": 12.981698513031006
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105136
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.746714353561401,
+    "B_own": 13.884012460708618,
+    "C": 13.668859004974365,
+    "C_own": 13.884012460708618,
+    "F": 13.793457508087158,
+    "R": 13.835135459899902,
+    "R_own": 13.884012460708618
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105137
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.650818586349487,
+    "B_own": 14.453568696975708,
+    "C": 14.47221064567566,
+    "C_own": 14.453568696975708,
+    "F": 14.460222959518433,
+    "R": 14.604276180267334,
+    "R_own": 14.453568696975708
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105138
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.780851602554321,
+    "B_own": 13.593193531036377,
+    "C": 13.682031154632568,
+    "C_own": 13.593193531036377,
+    "F": 13.777159929275513,
+    "R": 13.844904661178589,
+    "R_own": 13.593193531036377
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105139
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.518328428268433,
+    "B_own": 14.742238283157349,
+    "C": 14.628997325897217,
+    "C_own": 14.742238283157349,
+    "F": 14.648248195648193,
+    "R": 14.564640998840332,
+    "R_own": 14.742238283157349
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105140
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.703850507736206,
+    "B_own": 13.616885423660278,
+    "C": 13.617920875549316,
+    "C_own": 13.616885423660278,
+    "F": 13.65310025215149,
+    "R": 13.668516635894775,
+    "R_own": 13.616885423660278
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105141
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.931834697723389,
+    "B_own": 15.043229579925537,
+    "C": 14.897517681121826,
+    "C_own": 15.043229579925537,
+    "F": 14.902926921844482,
+    "R": 14.940105199813843,
+    "R_own": 15.043229579925537
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105142
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.541476964950562,
+    "B_own": 14.652333498001099,
+    "C": 14.381773471832275,
+    "C_own": 14.652333498001099,
+    "F": 14.432591199874878,
+    "R": 14.516669988632202,
+    "R_own": 14.652333498001099
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105143
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.981704235076904,
+    "B_own": 12.944469451904297,
+    "C": 12.903199672698975,
+    "C_own": 12.944469451904297,
+    "F": 12.943330526351929,
+    "R": 13.051146745681763,
+    "R_own": 12.944469451904297
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105144
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.520442485809326,
+    "B_own": 12.551170825958252,
+    "C": 12.48653531074524,
+    "C_own": 12.551170825958252,
+    "F": 12.53106427192688,
+    "R": 12.614317417144775,
+    "R_own": 12.551170825958252
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105145
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.159331321716309,
+    "B_own": 14.23638653755188,
+    "C": 14.20095181465149,
+    "C_own": 14.23638653755188,
+    "F": 14.20902705192566,
+    "R": 14.234783411026001,
+    "R_own": 14.23638653755188
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105146
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.738415956497192,
+    "B_own": 15.860216617584229,
+    "C": 15.744112014770508,
+    "C_own": 15.860216617584229,
+    "F": 15.838280200958252,
+    "R": 15.960912704467773,
+    "R_own": 15.860216617584229
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105147
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.374682664871216,
+    "B_own": 14.32520341873169,
+    "C": 14.313928365707397,
+    "C_own": 14.32520341873169,
+    "F": 14.318263530731201,
+    "R": 14.250767707824707,
+    "R_own": 14.32520341873169
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105148
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.031466960906982,
+    "B_own": 15.319571018218994,
+    "C": 15.055946111679077,
+    "C_own": 15.319571018218994,
+    "F": 15.162694692611694,
+    "R": 15.233731746673584,
+    "R_own": 15.319571018218994
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105149
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.953579902648926,
+    "B_own": 14.305813550949097,
+    "C": 13.837734699249268,
+    "C_own": 14.305813550949097,
+    "F": 13.99482774734497,
+    "R": 14.062203645706177,
+    "R_own": 14.305813550949097
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105150
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.860399007797241,
+    "B_own": 14.619260311126709,
+    "C": 14.83696460723877,
+    "C_own": 14.619260311126709,
+    "F": 14.761935234069824,
+    "R": 14.622803449630737,
+    "R_own": 14.619260311126709
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105151
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.932698249816895,
+    "B_own": 13.351792573928833,
+    "C": 12.88830041885376,
+    "C_own": 13.351792573928833,
+    "F": 13.049558162689209,
+    "R": 13.330884456634521,
+    "R_own": 13.351792573928833
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105152
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.168995380401611,
+    "B_own": 13.556634426116943,
+    "C": 13.08658766746521,
+    "C_own": 13.556634426116943,
+    "F": 13.246543407440186,
+    "R": 13.274903059005737,
+    "R_own": 13.556634426116943
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105153
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.185197830200195,
+    "B_own": 13.862483024597168,
+    "C": 14.317415714263916,
+    "C_own": 13.862483024597168,
+    "F": 14.333525896072388,
+    "R": 14.105506420135498,
+    "R_own": 13.862483024597168
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105154
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.29829454421997,
+    "B_own": 14.23237133026123,
+    "C": 14.239532470703125,
+    "C_own": 14.23237133026123,
+    "F": 14.243313550949097,
+    "R": 14.223657131195068,
+    "R_own": 14.23237133026123
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105155
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.17597246170044,
+    "B_own": 12.351291418075562,
+    "C": 12.210304260253906,
+    "C_own": 12.351291418075562,
+    "F": 12.251628875732422,
+    "R": 12.337212324142456,
+    "R_own": 12.351291418075562
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105156
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.781365871429443,
+    "B_own": 14.880165338516235,
+    "C": 14.670050621032715,
+    "C_own": 14.880165338516235,
+    "F": 14.70483684539795,
+    "R": 14.985292911529541,
+    "R_own": 14.880165338516235
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105157
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.571390628814697,
+    "B_own": 14.594696521759033,
+    "C": 14.601297855377197,
+    "C_own": 14.594696521759033,
+    "F": 14.614546298980713,
+    "R": 14.663702964782715,
+    "R_own": 14.594696521759033
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105158
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.70140266418457,
+    "B_own": 14.587447166442871,
+    "C": 14.58912205696106,
+    "C_own": 14.587447166442871,
+    "F": 14.631704807281494,
+    "R": 14.691277265548706,
+    "R_own": 14.587447166442871
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105159
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.420546054840088,
+    "B_own": 14.64303970336914,
+    "C": 14.416146516799927,
+    "C_own": 14.64303970336914,
+    "F": 14.497476577758789,
+    "R": 14.484395265579224,
+    "R_own": 14.64303970336914
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105160
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.007724523544312,
+    "B_own": 14.250640869140625,
+    "C": 14.052213668823242,
+    "C_own": 14.250640869140625,
+    "F": 14.050862073898315,
+    "R": 14.092057943344116,
+    "R_own": 14.250640869140625
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105161
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.027404546737671,
+    "B_own": 14.304762363433838,
+    "C": 13.968400955200195,
+    "C_own": 14.304762363433838,
+    "F": 14.108020782470703,
+    "R": 14.23829436302185,
+    "R_own": 14.304762363433838
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105162
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.65131425857544,
+    "B_own": 13.66204047203064,
+    "C": 13.680081605911255,
+    "C_own": 13.66204047203064,
+    "F": 13.674530982971191,
+    "R": 13.723163604736328,
+    "R_own": 13.66204047203064
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105163
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.063759326934814,
+    "B_own": 15.148047685623169,
+    "C": 15.090537786483765,
+    "C_own": 15.148047685623169,
+    "F": 15.117588996887207,
+    "R": 15.04665756225586,
+    "R_own": 15.148047685623169
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105164
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.1390380859375,
+    "B_own": 14.87725567817688,
+    "C": 15.10950517654419,
+    "C_own": 14.87725567817688,
+    "F": 15.135828733444214,
+    "R": 15.2302565574646,
+    "R_own": 14.87725567817688
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105165
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.073736906051636,
+    "B_own": 15.19171953201294,
+    "C": 15.151079893112183,
+    "C_own": 15.19171953201294,
+    "F": 15.131945610046387,
+    "R": 15.451737403869629,
+    "R_own": 15.19171953201294
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105166
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.83632755279541,
+    "B_own": 13.794414281845093,
+    "C": 13.585385084152222,
+    "C_own": 13.794414281845093,
+    "F": 13.75115156173706,
+    "R": 13.75348448753357,
+    "R_own": 13.794414281845093
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105167
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.849665641784668,
+    "B_own": 15.75446891784668,
+    "C": 15.859981536865234,
+    "C_own": 15.75446891784668,
+    "F": 15.907746076583862,
+    "R": 15.939831972122192,
+    "R_own": 15.75446891784668
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105168
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.915036678314209,
+    "B_own": 14.982456684112549,
+    "C": 14.777757167816162,
+    "C_own": 14.982456684112549,
+    "F": 14.842255353927612,
+    "R": 14.831485986709595,
+    "R_own": 14.982456684112549
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105169
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.360270738601685,
+    "B_own": 14.295962572097778,
+    "C": 14.379755973815918,
+    "C_own": 14.295962572097778,
+    "F": 14.418673276901245,
+    "R": 14.537694215774536,
+    "R_own": 14.295962572097778
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105170
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.740861892700195,
+    "B_own": 13.752455949783325,
+    "C": 13.75486969947815,
+    "C_own": 13.752455949783325,
+    "F": 13.746539115905762,
+    "R": 13.913047075271606,
+    "R_own": 13.752455949783325
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105171
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.58975100517273,
+    "B_own": 14.862418174743652,
+    "C": 14.410692691802979,
+    "C_own": 14.862418174743652,
+    "F": 14.60502552986145,
+    "R": 14.775941848754883,
+    "R_own": 14.862418174743652
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105172
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.567360877990723,
+    "B_own": 15.55566668510437,
+    "C": 15.586061954498291,
+    "C_own": 15.55566668510437,
+    "F": 15.667819023132324,
+    "R": 15.56049919128418,
+    "R_own": 15.55566668510437
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105173
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.657389640808105,
+    "B_own": 14.651737213134766,
+    "C": 14.489177465438843,
+    "C_own": 14.651737213134766,
+    "F": 14.550437450408936,
+    "R": 14.521441459655762,
+    "R_own": 14.651737213134766
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105174
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.947319030761719,
+    "B_own": 14.125396728515625,
+    "C": 13.939743280410767,
+    "C_own": 14.125396728515625,
+    "F": 14.056740045547485,
+    "R": 14.090575456619263,
+    "R_own": 14.125396728515625
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105175
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.977964401245117,
+    "B_own": 13.877171277999878,
+    "C": 13.987370014190674,
+    "C_own": 13.877171277999878,
+    "F": 14.023064613342285,
+    "R": 13.943500518798828,
+    "R_own": 13.877171277999878
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105176
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.106393098831177,
+    "B_own": 14.287205457687378,
+    "C": 13.994858264923096,
+    "C_own": 14.287205457687378,
+    "F": 14.121572732925415,
+    "R": 14.319273948669434,
+    "R_own": 14.287205457687378
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105177
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.178153991699219,
+    "B_own": 14.185823202133179,
+    "C": 14.177270412445068,
+    "C_own": 14.185823202133179,
+    "F": 14.27660608291626,
+    "R": 14.213222742080688,
+    "R_own": 14.185823202133179
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105178
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.036988258361816,
+    "B_own": 14.113811254501343,
+    "C": 14.062174320220947,
+    "C_own": 14.113811254501343,
+    "F": 14.046978235244751,
+    "R": 14.067754745483398,
+    "R_own": 14.113811254501343
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105179
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.231868505477905,
+    "B_own": 14.294176816940308,
+    "C": 14.039546966552734,
+    "C_own": 14.294176816940308,
+    "F": 14.20050597190857,
+    "R": 14.13814091682434,
+    "R_own": 14.294176816940308
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105180
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.372094631195068,
+    "B_own": 14.391815662384033,
+    "C": 14.308042764663696,
+    "C_own": 14.391815662384033,
+    "F": 14.309781551361084,
+    "R": 14.523435592651367,
+    "R_own": 14.391815662384033
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105181
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.91978120803833,
+    "B_own": 14.143039226531982,
+    "C": 13.948380947113037,
+    "C_own": 14.143039226531982,
+    "F": 14.023870944976807,
+    "R": 13.976731061935425,
+    "R_own": 14.143039226531982
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105182
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 16.675607442855835,
+    "B_own": 16.70339608192444,
+    "C": 16.656161069869995,
+    "C_own": 16.70339608192444,
+    "F": 16.688320875167847,
+    "R": 16.807544708251953,
+    "R_own": 16.70339608192444
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105183
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.199384927749634,
+    "B_own": 12.18468952178955,
+    "C": 12.135454654693604,
+    "C_own": 12.18468952178955,
+    "F": 12.175740242004395,
+    "R": 12.195895671844482,
+    "R_own": 12.18468952178955
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105184
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.006589889526367,
+    "B_own": 14.893410682678223,
+    "C": 15.005599021911621,
+    "C_own": 14.893410682678223,
+    "F": 14.953033924102783,
+    "R": 14.992833852767944,
+    "R_own": 14.893410682678223
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105185
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.18531084060669,
+    "B_own": 13.181952953338623,
+    "C": 13.22022819519043,
+    "C_own": 13.181952953338623,
+    "F": 13.270509481430054,
+    "R": 13.250561237335205,
+    "R_own": 13.181952953338623
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105186
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.197594404220581,
+    "B_own": 14.097455978393555,
+    "C": 14.244726419448853,
+    "C_own": 14.097455978393555,
+    "F": 14.215807437896729,
+    "R": 14.23719334602356,
+    "R_own": 14.097455978393555
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105187
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.72472071647644,
+    "B_own": 13.828876495361328,
+    "C": 13.722906589508057,
+    "C_own": 13.828876495361328,
+    "F": 13.724238634109497,
+    "R": 13.796534061431885,
+    "R_own": 13.828876495361328
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105188
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.32135272026062,
+    "B_own": 15.476781129837036,
+    "C": 15.311096429824829,
+    "C_own": 15.476781129837036,
+    "F": 15.40717363357544,
+    "R": 15.421310901641846,
+    "R_own": 15.476781129837036
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105189
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.512325525283813,
+    "B_own": 14.29521894454956,
+    "C": 14.447701930999756,
+    "C_own": 14.29521894454956,
+    "F": 14.488317251205444,
+    "R": 14.646482229232788,
+    "R_own": 14.29521894454956
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105190
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.53082537651062,
+    "B_own": 14.485841512680054,
+    "C": 14.473634243011475,
+    "C_own": 14.485841512680054,
+    "F": 14.541100263595581,
+    "R": 14.465219974517822,
+    "R_own": 14.485841512680054
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105191
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.143710613250732,
+    "B_own": 15.198317527770996,
+    "C": 14.979008674621582,
+    "C_own": 15.198317527770996,
+    "F": 15.046284914016724,
+    "R": 15.258964538574219,
+    "R_own": 15.198317527770996
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105192
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 16.348129749298096,
+    "B_own": 16.28810477256775,
+    "C": 16.280874013900757,
+    "C_own": 16.28810477256775,
+    "F": 16.32183861732483,
+    "R": 16.46855330467224,
+    "R_own": 16.28810477256775
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105193
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.077715873718262,
+    "B_own": 13.921674728393555,
+    "C": 14.05670166015625,
+    "C_own": 13.921674728393555,
+    "F": 14.062326908111572,
+    "R": 14.03422498703003,
+    "R_own": 13.921674728393555
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105194
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.300945281982422,
+    "B_own": 14.56559419631958,
+    "C": 14.300821304321289,
+    "C_own": 14.56559419631958,
+    "F": 14.328224897384644,
+    "R": 14.41194224357605,
+    "R_own": 14.56559419631958
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105195
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.087114334106445,
+    "B_own": 13.145148515701294,
+    "C": 13.01306414604187,
+    "C_own": 13.145148515701294,
+    "F": 13.130520820617676,
+    "R": 13.226920127868652,
+    "R_own": 13.145148515701294
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105196
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.407757997512817,
+    "B_own": 12.433188199996948,
+    "C": 12.413451910018921,
+    "C_own": 12.433188199996948,
+    "F": 12.370540857315063,
+    "R": 12.252289056777954,
+    "R_own": 12.433188199996948
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105197
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.789471626281738,
+    "B_own": 12.633381128311157,
+    "C": 12.696240425109863,
+    "C_own": 12.633381128311157,
+    "F": 12.704715490341187,
+    "R": 12.958869218826294,
+    "R_own": 12.633381128311157
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105198
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.422548055648804,
+    "B_own": 13.539020776748657,
+    "C": 13.424996137619019,
+    "C_own": 13.539020776748657,
+    "F": 13.490709781646729,
+    "R": 13.455087661743164,
+    "R_own": 13.539020776748657
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105199
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.70948314666748,
+    "B_own": 13.93009090423584,
+    "C": 13.725035905838013,
+    "C_own": 13.93009090423584,
+    "F": 13.812520503997803,
+    "R": 13.87455701828003,
+    "R_own": 13.93009090423584
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105200
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.024725675582886,
+    "B_own": 14.109709024429321,
+    "C": 13.965375900268555,
+    "C_own": 14.109709024429321,
+    "F": 14.06637454032898,
+    "R": 13.867510318756104,
+    "R_own": 14.109709024429321
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105201
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.378145456314087,
+    "B_own": 14.51740550994873,
+    "C": 14.42640995979309,
+    "C_own": 14.51740550994873,
+    "F": 14.464005470275879,
+    "R": 14.319406032562256,
+    "R_own": 14.51740550994873
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105202
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.056885957717896,
+    "B_own": 14.252548694610596,
+    "C": 14.17415976524353,
+    "C_own": 14.252548694610596,
+    "F": 14.180704116821289,
+    "R": 14.414032459259033,
+    "R_own": 14.252548694610596
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105203
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.478475570678711,
+    "B_own": 13.551214694976807,
+    "C": 13.422374486923218,
+    "C_own": 13.551214694976807,
+    "F": 13.37967848777771,
+    "R": 13.55053424835205,
+    "R_own": 13.551214694976807
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105204
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.160633563995361,
+    "B_own": 14.244683027267456,
+    "C": 14.05492091178894,
+    "C_own": 14.244683027267456,
+    "F": 14.159928321838379,
+    "R": 14.197934865951538,
+    "R_own": 14.244683027267456
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105205
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.820242166519165,
+    "B_own": 14.826496124267578,
+    "C": 14.68971037864685,
+    "C_own": 14.826496124267578,
+    "F": 14.733717441558838,
+    "R": 14.795732498168945,
+    "R_own": 14.826496124267578
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105206
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.451777458190918,
+    "B_own": 14.244395017623901,
+    "C": 14.413613080978394,
+    "C_own": 14.244395017623901,
+    "F": 14.393168926239014,
+    "R": 14.412770509719849,
+    "R_own": 14.244395017623901
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105207
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.33077096939087,
+    "B_own": 13.439987421035767,
+    "C": 13.388547658920288,
+    "C_own": 13.439987421035767,
+    "F": 13.39359998703003,
+    "R": 13.454444885253906,
+    "R_own": 13.439987421035767
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105208
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.883940696716309,
+    "B_own": 13.917044401168823,
+    "C": 13.892193794250488,
+    "C_own": 13.917044401168823,
+    "F": 13.962166547775269,
+    "R": 13.918304681777954,
+    "R_own": 13.917044401168823
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105209
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.818943977355957,
+    "B_own": 12.788522958755493,
+    "C": 12.884589910507202,
+    "C_own": 12.788522958755493,
+    "F": 12.805479288101196,
+    "R": 12.91197943687439,
+    "R_own": 12.788522958755493
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105210
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.215461730957031,
+    "B_own": 14.005120515823364,
+    "C": 14.110096454620361,
+    "C_own": 14.005120515823364,
+    "F": 14.17530632019043,
+    "R": 14.298460245132446,
+    "R_own": 14.005120515823364
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105211
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.780943393707275,
+    "B_own": 13.73143982887268,
+    "C": 13.85830569267273,
+    "C_own": 13.73143982887268,
+    "F": 13.885327816009521,
+    "R": 13.966025590896606,
+    "R_own": 13.73143982887268
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105212
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.109693050384521,
+    "B_own": 13.271788120269775,
+    "C": 13.153399467468262,
+    "C_own": 13.271788120269775,
+    "F": 13.116823434829712,
+    "R": 13.070384740829468,
+    "R_own": 13.271788120269775
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105213
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.556390285491943,
+    "B_own": 13.602848768234253,
+    "C": 13.549478769302368,
+    "C_own": 13.602848768234253,
+    "F": 13.61610221862793,
+    "R": 13.561904668807983,
+    "R_own": 13.602848768234253
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105214
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.370492458343506,
+    "B_own": 14.220833778381348,
+    "C": 14.443647861480713,
+    "C_own": 14.220833778381348,
+    "F": 14.462846040725708,
+    "R": 14.4926917552948,
+    "R_own": 14.220833778381348
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105215
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.759401559829712,
+    "B_own": 13.959699630737305,
+    "C": 13.756620645523071,
+    "C_own": 13.959699630737305,
+    "F": 13.85921311378479,
+    "R": 13.904239177703857,
+    "R_own": 13.959699630737305
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105216
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.56549859046936,
+    "B_own": 15.24514627456665,
+    "C": 15.409466743469238,
+    "C_own": 15.24514627456665,
+    "F": 15.523831844329834,
+    "R": 15.439180135726929,
+    "R_own": 15.24514627456665
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105217
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.764009237289429,
+    "B_own": 15.058183431625366,
+    "C": 14.74928879737854,
+    "C_own": 15.058183431625366,
+    "F": 14.819761753082275,
+    "R": 14.933329343795776,
+    "R_own": 15.058183431625366
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105218
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.785147666931152,
+    "B_own": 13.835572481155396,
+    "C": 13.812931776046753,
+    "C_own": 13.835572481155396,
+    "F": 13.883156299591064,
+    "R": 13.986689329147339,
+    "R_own": 13.835572481155396
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105219
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.666699647903442,
+    "B_own": 13.884326457977295,
+    "C": 13.689682722091675,
+    "C_own": 13.884326457977295,
+    "F": 13.693418979644775,
+    "R": 13.84632134437561,
+    "R_own": 13.884326457977295
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105220
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 11.9319908618927,
+    "B_own": 12.240291595458984,
+    "C": 11.810840129852295,
+    "C_own": 12.240291595458984,
+    "F": 11.966539859771729,
+    "R": 12.052030801773071,
+    "R_own": 12.240291595458984
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105221
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.417346954345703,
+    "B_own": 13.449665784835815,
+    "C": 13.334376335144043,
+    "C_own": 13.449665784835815,
+    "F": 13.365346431732178,
+    "R": 13.482300519943237,
+    "R_own": 13.449665784835815
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105222
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.33571481704712,
+    "B_own": 13.388463020324707,
+    "C": 13.3253333568573,
+    "C_own": 13.388463020324707,
+    "F": 13.40562653541565,
+    "R": 13.274293899536133,
+    "R_own": 13.388463020324707
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105223
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.951120615005493,
+    "B_own": 13.152161598205566,
+    "C": 12.892632246017456,
+    "C_own": 13.152161598205566,
+    "F": 13.005446672439575,
+    "R": 13.034456253051758,
+    "R_own": 13.152161598205566
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105224
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.364681959152222,
+    "B_own": 14.512920141220093,
+    "C": 14.406668663024902,
+    "C_own": 14.512920141220093,
+    "F": 14.443856477737427,
+    "R": 14.482636213302612,
+    "R_own": 14.512920141220093
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105225
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.524370193481445,
+    "B_own": 13.606438159942627,
+    "C": 13.493789196014404,
+    "C_own": 13.606438159942627,
+    "F": 13.515451908111572,
+    "R": 13.603689432144165,
+    "R_own": 13.606438159942627
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105226
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.056994676589966,
+    "B_own": 13.120547533035278,
+    "C": 13.098186254501343,
+    "C_own": 13.120547533035278,
+    "F": 13.16915512084961,
+    "R": 13.222776174545288,
+    "R_own": 13.120547533035278
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105227
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.698800086975098,
+    "B_own": 13.642931699752808,
+    "C": 13.664119482040405,
+    "C_own": 13.642931699752808,
+    "F": 13.629558563232422,
+    "R": 13.750399589538574,
+    "R_own": 13.642931699752808
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105228
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.506698369979858,
+    "B_own": 13.550380229949951,
+    "C": 13.555242538452148,
+    "C_own": 13.550380229949951,
+    "F": 13.636191606521606,
+    "R": 13.567765951156616,
+    "R_own": 13.550380229949951
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105229
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.179606437683105,
+    "B_own": 13.330445289611816,
+    "C": 13.180784940719604,
+    "C_own": 13.330445289611816,
+    "F": 13.274954795837402,
+    "R": 13.342519044876099,
+    "R_own": 13.330445289611816
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105230
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.493511438369751,
+    "B_own": 13.48199987411499,
+    "C": 13.484083414077759,
+    "C_own": 13.48199987411499,
+    "F": 13.504081010818481,
+    "R": 13.752427816390991,
+    "R_own": 13.48199987411499
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105231
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.495810508728027,
+    "B_own": 13.524842023849487,
+    "C": 13.534621477127075,
+    "C_own": 13.524842023849487,
+    "F": 13.54282283782959,
+    "R": 13.699201107025146,
+    "R_own": 13.524842023849487
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105232
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.3325674533844,
+    "B_own": 15.500719547271729,
+    "C": 15.36987566947937,
+    "C_own": 15.500719547271729,
+    "F": 15.484639883041382,
+    "R": 15.584964036941528,
+    "R_own": 15.500719547271729
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105233
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.288691282272339,
+    "B_own": 13.61225152015686,
+    "C": 13.390517473220825,
+    "C_own": 13.61225152015686,
+    "F": 13.408749341964722,
+    "R": 13.46000051498413,
+    "R_own": 13.61225152015686
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105234
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.593533515930176,
+    "B_own": 14.52527141571045,
+    "C": 14.45690131187439,
+    "C_own": 14.52527141571045,
+    "F": 14.58751893043518,
+    "R": 14.596677541732788,
+    "R_own": 14.52527141571045
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105235
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.142923593521118,
+    "B_own": 14.290153503417969,
+    "C": 14.24524211883545,
+    "C_own": 14.290153503417969,
+    "F": 14.310625791549683,
+    "R": 14.375993728637695,
+    "R_own": 14.290153503417969
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105236
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.199590921401978,
+    "B_own": 15.434361219406128,
+    "C": 15.139234066009521,
+    "C_own": 15.434361219406128,
+    "F": 15.114067077636719,
+    "R": 15.246790170669556,
+    "R_own": 15.434361219406128
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105237
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.423546314239502,
+    "B_own": 13.498559951782227,
+    "C": 13.410061359405518,
+    "C_own": 13.498559951782227,
+    "F": 13.399721145629883,
+    "R": 13.535939455032349,
+    "R_own": 13.498559951782227
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105238
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.293394088745117,
+    "B_own": 13.133865594863892,
+    "C": 13.168375015258789,
+    "C_own": 13.133865594863892,
+    "F": 13.287868976593018,
+    "R": 13.25353717803955,
+    "R_own": 13.133865594863892
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105239
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.052631378173828,
+    "B_own": 14.14393663406372,
+    "C": 14.072587013244629,
+    "C_own": 14.14393663406372,
+    "F": 14.094942569732666,
+    "R": 14.009649515151978,
+    "R_own": 14.14393663406372
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105240
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.478989601135254,
+    "B_own": 15.487936735153198,
+    "C": 15.553002834320068,
+    "C_own": 15.487936735153198,
+    "F": 15.673214673995972,
+    "R": 15.633735418319702,
+    "R_own": 15.487936735153198
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105241
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.893391370773315,
+    "B_own": 15.841036558151245,
+    "C": 15.822243452072144,
+    "C_own": 15.841036558151245,
+    "F": 15.878516912460327,
+    "R": 15.959901094436646,
+    "R_own": 15.841036558151245
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105242
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.806344270706177,
+    "B_own": 13.770052433013916,
+    "C": 13.798255920410156,
+    "C_own": 13.770052433013916,
+    "F": 13.715266942977905,
+    "R": 13.964173555374146,
+    "R_own": 13.770052433013916
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105243
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.34784722328186,
+    "B_own": 14.377722978591919,
+    "C": 14.336252689361572,
+    "C_own": 14.377722978591919,
+    "F": 14.378614664077759,
+    "R": 14.451526403427124,
+    "R_own": 14.377722978591919
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105244
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.797707557678223,
+    "B_own": 15.76800537109375,
+    "C": 15.578728437423706,
+    "C_own": 15.76800537109375,
+    "F": 15.815082788467407,
+    "R": 15.905895233154297,
+    "R_own": 15.76800537109375
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105245
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.955767154693604,
+    "B_own": 14.012089014053345,
+    "C": 13.861887216567993,
+    "C_own": 14.012089014053345,
+    "F": 13.916158199310303,
+    "R": 14.09218692779541,
+    "R_own": 14.012089014053345
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105246
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.251466751098633,
+    "B_own": 14.217310428619385,
+    "C": 14.215533256530762,
+    "C_own": 14.217310428619385,
+    "F": 14.126504898071289,
+    "R": 14.333173990249634,
+    "R_own": 14.217310428619385
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105247
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.127264738082886,
+    "B_own": 14.336540222167969,
+    "C": 14.153504371643066,
+    "C_own": 14.336540222167969,
+    "F": 14.226306438446045,
+    "R": 14.296837568283081,
+    "R_own": 14.336540222167969
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105248
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.445871114730835,
+    "B_own": 14.491729736328125,
+    "C": 14.359090566635132,
+    "C_own": 14.491729736328125,
+    "F": 14.413165092468262,
+    "R": 14.59092092514038,
+    "R_own": 14.491729736328125
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105249
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.074475049972534,
+    "B_own": 12.50886845588684,
+    "C": 12.125410318374634,
+    "C_own": 12.50886845588684,
+    "F": 12.202184200286865,
+    "R": 12.145610332489014,
+    "R_own": 12.50886845588684
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105250
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.707338094711304,
+    "B_own": 13.689799785614014,
+    "C": 13.690571784973145,
+    "C_own": 13.689799785614014,
+    "F": 13.820239067077637,
+    "R": 13.78400468826294,
+    "R_own": 13.689799785614014
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105251
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.126355171203613,
+    "B_own": 14.043841123580933,
+    "C": 14.069156169891357,
+    "C_own": 14.043841123580933,
+    "F": 13.982017517089844,
+    "R": 14.173924684524536,
+    "R_own": 14.043841123580933
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105252
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.348881006240845,
+    "B_own": 14.282437562942505,
+    "C": 14.33221960067749,
+    "C_own": 14.282437562942505,
+    "F": 14.334196329116821,
+    "R": 14.450580835342407,
+    "R_own": 14.282437562942505
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105253
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.494297981262207,
+    "B_own": 14.629729270935059,
+    "C": 14.517935991287231,
+    "C_own": 14.629729270935059,
+    "F": 14.664619207382202,
+    "R": 14.541894674301147,
+    "R_own": 14.629729270935059
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105254
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.245235443115234,
+    "B_own": 14.599143981933594,
+    "C": 14.205904483795166,
+    "C_own": 14.599143981933594,
+    "F": 14.400716781616211,
+    "R": 14.228557348251343,
+    "R_own": 14.599143981933594
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105255
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.79471755027771,
+    "B_own": 13.787795782089233,
+    "C": 13.692498922348022,
+    "C_own": 13.787795782089233,
+    "F": 13.742263078689575,
+    "R": 13.947312355041504,
+    "R_own": 13.787795782089233
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105256
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.551980972290039,
+    "B_own": 13.704626321792603,
+    "C": 13.558836460113525,
+    "C_own": 13.704626321792603,
+    "F": 13.662821054458618,
+    "R": 13.659974336624146,
+    "R_own": 13.704626321792603
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105257
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.056623220443726,
+    "B_own": 14.11842155456543,
+    "C": 14.011419296264648,
+    "C_own": 14.11842155456543,
+    "F": 14.139816761016846,
+    "R": 14.06062936782837,
+    "R_own": 14.11842155456543
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105258
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.42577838897705,
+    "B_own": 14.580206394195557,
+    "C": 14.367774724960327,
+    "C_own": 14.580206394195557,
+    "F": 14.500562191009521,
+    "R": 14.464861392974854,
+    "R_own": 14.580206394195557
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105259
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.287762880325317,
+    "B_own": 14.091816425323486,
+    "C": 14.219959735870361,
+    "C_own": 14.091816425323486,
+    "F": 14.19414234161377,
+    "R": 14.089611053466797,
+    "R_own": 14.091816425323486
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105260
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.81951117515564,
+    "B_own": 12.782521724700928,
+    "C": 12.872180700302124,
+    "C_own": 12.782521724700928,
+    "F": 12.916292428970337,
+    "R": 12.984476804733276,
+    "R_own": 12.782521724700928
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105261
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 17.12038516998291,
+    "B_own": 17.037526607513428,
+    "C": 17.07164192199707,
+    "C_own": 17.037526607513428,
+    "F": 17.094475984573364,
+    "R": 17.107935905456543,
+    "R_own": 17.037526607513428
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105262
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.731669425964355,
+    "B_own": 12.81837511062622,
+    "C": 12.822837829589844,
+    "C_own": 12.81837511062622,
+    "F": 12.823505640029907,
+    "R": 12.78904914855957,
+    "R_own": 12.81837511062622
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105263
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.717068433761597,
+    "B_own": 12.871901750564575,
+    "C": 12.806597709655762,
+    "C_own": 12.871901750564575,
+    "F": 12.824846506118774,
+    "R": 13.071080207824707,
+    "R_own": 12.871901750564575
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105264
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.35332179069519,
+    "B_own": 14.308112382888794,
+    "C": 14.176121473312378,
+    "C_own": 14.308112382888794,
+    "F": 14.330655574798584,
+    "R": 14.405081510543823,
+    "R_own": 14.308112382888794
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105265
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.38236951828003,
+    "B_own": 14.196749925613403,
+    "C": 14.34975790977478,
+    "C_own": 14.196749925613403,
+    "F": 14.357379674911499,
+    "R": 14.379031419754028,
+    "R_own": 14.196749925613403
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105266
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.153212308883667,
+    "B_own": 13.125470399856567,
+    "C": 13.225828170776367,
+    "C_own": 13.125470399856567,
+    "F": 13.202452421188354,
+    "R": 13.185184478759766,
+    "R_own": 13.125470399856567
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105267
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.746599912643433,
+    "B_own": 13.968738079071045,
+    "C": 13.82436490058899,
+    "C_own": 13.968738079071045,
+    "F": 13.898288488388062,
+    "R": 13.920912265777588,
+    "R_own": 13.968738079071045
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105268
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.424147367477417,
+    "B_own": 14.128226041793823,
+    "C": 14.370404720306396,
+    "C_own": 14.128226041793823,
+    "F": 14.405301809310913,
+    "R": 14.478055477142334,
+    "R_own": 14.128226041793823
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105269
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.186427116394043,
+    "B_own": 13.448453903198242,
+    "C": 13.226565837860107,
+    "C_own": 13.448453903198242,
+    "F": 13.263062953948975,
+    "R": 13.386248111724854,
+    "R_own": 13.448453903198242
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105270
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.772806882858276,
+    "B_own": 13.735531330108643,
+    "C": 13.64547085762024,
+    "C_own": 13.735531330108643,
+    "F": 13.676936626434326,
+    "R": 13.673978328704834,
+    "R_own": 13.735531330108643
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105271
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.282472133636475,
+    "B_own": 13.389748096466064,
+    "C": 13.182291269302368,
+    "C_own": 13.389748096466064,
+    "F": 13.307352304458618,
+    "R": 13.307119369506836,
+    "R_own": 13.389748096466064
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105272
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 16.114160776138306,
+    "B_own": 16.09336757659912,
+    "C": 15.932935237884521,
+    "C_own": 16.09336757659912,
+    "F": 16.16470956802368,
+    "R": 16.15905451774597,
+    "R_own": 16.09336757659912
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105273
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.008954763412476,
+    "B_own": 13.89504623413086,
+    "C": 13.899245500564575,
+    "C_own": 13.89504623413086,
+    "F": 14.061603307723999,
+    "R": 14.043676137924194,
+    "R_own": 13.89504623413086
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105274
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.943334102630615,
+    "B_own": 14.86159873008728,
+    "C": 14.990710973739624,
+    "C_own": 14.86159873008728,
+    "F": 14.876958131790161,
+    "R": 14.953508138656616,
+    "R_own": 14.86159873008728
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105275
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.297056674957275,
+    "B_own": 12.737732410430908,
+    "C": 12.34879183769226,
+    "C_own": 12.737732410430908,
+    "F": 12.450747013092041,
+    "R": 12.599393844604492,
+    "R_own": 12.737732410430908
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105276
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.546297788619995,
+    "B_own": 12.576704263687134,
+    "C": 12.576608896255493,
+    "C_own": 12.576704263687134,
+    "F": 12.576917886734009,
+    "R": 12.617278099060059,
+    "R_own": 12.576704263687134
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105277
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.640020370483398,
+    "B_own": 13.66890263557434,
+    "C": 13.651872158050537,
+    "C_own": 13.66890263557434,
+    "F": 13.694445371627808,
+    "R": 13.771782636642456,
+    "R_own": 13.66890263557434
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105278
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.967587232589722,
+    "B_own": 15.139567852020264,
+    "C": 15.058330059051514,
+    "C_own": 15.139567852020264,
+    "F": 15.113987922668457,
+    "R": 15.232407093048096,
+    "R_own": 15.139567852020264
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105279
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.653515338897705,
+    "B_own": 13.860971450805664,
+    "C": 13.723179578781128,
+    "C_own": 13.860971450805664,
+    "F": 13.761717796325684,
+    "R": 13.897431373596191,
+    "R_own": 13.860971450805664
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105280
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.562357902526855,
+    "B_own": 13.73157286643982,
+    "C": 13.611533880233765,
+    "C_own": 13.73157286643982,
+    "F": 13.57610821723938,
+    "R": 13.66282033920288,
+    "R_own": 13.73157286643982
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105281
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.149640560150146,
+    "B_own": 14.219952583312988,
+    "C": 14.186497449874878,
+    "C_own": 14.219952583312988,
+    "F": 14.156214237213135,
+    "R": 14.140236377716064,
+    "R_own": 14.219952583312988
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105282
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.641032934188843,
+    "B_own": 13.772530555725098,
+    "C": 13.767266511917114,
+    "C_own": 13.772530555725098,
+    "F": 13.691083431243896,
+    "R": 13.726838111877441,
+    "R_own": 13.772530555725098
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105283
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.532579898834229,
+    "B_own": 14.642715215682983,
+    "C": 14.505178689956665,
+    "C_own": 14.642715215682983,
+    "F": 14.52887511253357,
+    "R": 14.67348837852478,
+    "R_own": 14.642715215682983
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105284
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.52920150756836,
+    "B_own": 14.852959394454956,
+    "C": 14.52815055847168,
+    "C_own": 14.852959394454956,
+    "F": 14.579536437988281,
+    "R": 14.589129209518433,
+    "R_own": 14.852959394454956
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105285
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.33250880241394,
+    "B_own": 15.327492237091064,
+    "C": 15.235382556915283,
+    "C_own": 15.327492237091064,
+    "F": 15.377724885940552,
+    "R": 15.389220237731934,
+    "R_own": 15.327492237091064
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105286
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.349737644195557,
+    "B_own": 15.232766389846802,
+    "C": 15.449061870574951,
+    "C_own": 15.232766389846802,
+    "F": 15.288856029510498,
+    "R": 15.165204286575317,
+    "R_own": 15.232766389846802
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105287
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.205820560455322,
+    "B_own": 14.203139781951904,
+    "C": 14.247887134552002,
+    "C_own": 14.203139781951904,
+    "F": 14.320231199264526,
+    "R": 14.253505229949951,
+    "R_own": 14.203139781951904
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105288
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.587168216705322,
+    "B_own": 14.538693189620972,
+    "C": 14.513595819473267,
+    "C_own": 14.538693189620972,
+    "F": 14.604799270629883,
+    "R": 14.728838682174683,
+    "R_own": 14.538693189620972
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105289
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.670729637145996,
+    "B_own": 15.631102561950684,
+    "C": 15.743451356887817,
+    "C_own": 15.631102561950684,
+    "F": 15.699594020843506,
+    "R": 15.650027513504028,
+    "R_own": 15.631102561950684
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105290
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.956588745117188,
+    "B_own": 14.102116346359253,
+    "C": 14.020033597946167,
+    "C_own": 14.102116346359253,
+    "F": 14.082965612411499,
+    "R": 14.010252952575684,
+    "R_own": 14.102116346359253
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105291
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.289294242858887,
+    "B_own": 13.31125545501709,
+    "C": 13.320781946182251,
+    "C_own": 13.31125545501709,
+    "F": 13.358867645263672,
+    "R": 13.37896466255188,
+    "R_own": 13.31125545501709
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105292
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.129907131195068,
+    "B_own": 14.20812201499939,
+    "C": 14.15868878364563,
+    "C_own": 14.20812201499939,
+    "F": 14.192594528198242,
+    "R": 14.199613809585571,
+    "R_own": 14.20812201499939
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105293
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.214837074279785,
+    "B_own": 14.231001377105713,
+    "C": 14.306850671768188,
+    "C_own": 14.231001377105713,
+    "F": 14.29235053062439,
+    "R": 14.292749643325806,
+    "R_own": 14.231001377105713
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105294
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.990957736968994,
+    "B_own": 15.163893461227417,
+    "C": 15.01085901260376,
+    "C_own": 15.163893461227417,
+    "F": 15.154313564300537,
+    "R": 15.10946798324585,
+    "R_own": 15.163893461227417
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105295
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.137205362319946,
+    "B_own": 14.001441955566406,
+    "C": 14.10153841972351,
+    "C_own": 14.001441955566406,
+    "F": 14.180527448654175,
+    "R": 14.233816862106323,
+    "R_own": 14.001441955566406
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105296
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.070242166519165,
+    "B_own": 15.20950436592102,
+    "C": 14.984814405441284,
+    "C_own": 15.20950436592102,
+    "F": 15.086700677871704,
+    "R": 15.191579341888428,
+    "R_own": 15.20950436592102
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105297
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.806690216064453,
+    "B_own": 14.060046911239624,
+    "C": 13.8691246509552,
+    "C_own": 14.060046911239624,
+    "F": 13.892467498779297,
+    "R": 14.170989751815796,
+    "R_own": 14.060046911239624
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105298
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.24807071685791,
+    "B_own": 14.063463687896729,
+    "C": 14.119484901428223,
+    "C_own": 14.063463687896729,
+    "F": 14.183595180511475,
+    "R": 14.171057224273682,
+    "R_own": 14.063463687896729
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105299
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.780867099761963,
+    "B_own": 12.924182891845703,
+    "C": 12.685861587524414,
+    "C_own": 12.924182891845703,
+    "F": 12.776437282562256,
+    "R": 12.720538139343262,
+    "R_own": 12.924182891845703
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105300
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.728323459625244,
+    "B_own": 14.592377424240112,
+    "C": 14.794364213943481,
+    "C_own": 14.592377424240112,
+    "F": 14.710939645767212,
+    "R": 14.751883029937744,
+    "R_own": 14.592377424240112
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105301
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.939764499664307,
+    "B_own": 13.815736293792725,
+    "C": 14.038008213043213,
+    "C_own": 13.815736293792725,
+    "F": 13.87195348739624,
+    "R": 14.049029350280762,
+    "R_own": 13.815736293792725
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105302
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.912176609039307,
+    "B_own": 12.792578220367432,
+    "C": 12.847072124481201,
+    "C_own": 12.792578220367432,
+    "F": 12.783447027206421,
+    "R": 13.010115623474121,
+    "R_own": 12.792578220367432
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105303
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.287845134735107,
+    "B_own": 14.42991852760315,
+    "C": 14.166090250015259,
+    "C_own": 14.42991852760315,
+    "F": 14.175960063934326,
+    "R": 14.410794496536255,
+    "R_own": 14.42991852760315
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105304
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.183069229125977,
+    "B_own": 14.090503931045532,
+    "C": 13.971139669418335,
+    "C_own": 14.090503931045532,
+    "F": 14.1722891330719,
+    "R": 14.084134340286255,
+    "R_own": 14.090503931045532
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105305
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.546209573745728,
+    "B_own": 13.560360193252563,
+    "C": 13.509239673614502,
+    "C_own": 13.560360193252563,
+    "F": 13.497841835021973,
+    "R": 13.561379194259644,
+    "R_own": 13.560360193252563
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105306
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.154993534088135,
+    "B_own": 13.39488935470581,
+    "C": 13.10872745513916,
+    "C_own": 13.39488935470581,
+    "F": 13.148307800292969,
+    "R": 13.302010297775269,
+    "R_own": 13.39488935470581
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105307
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.292954444885254,
+    "B_own": 14.515728950500488,
+    "C": 14.416330814361572,
+    "C_own": 14.515728950500488,
+    "F": 14.386858701705933,
+    "R": 14.490264892578125,
+    "R_own": 14.515728950500488
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105308
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.152398586273193,
+    "B_own": 14.49777364730835,
+    "C": 14.208115339279175,
+    "C_own": 14.49777364730835,
+    "F": 14.19938349723816,
+    "R": 14.216839075088501,
+    "R_own": 14.49777364730835
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105309
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.019357681274414,
+    "B_own": 14.241669654846191,
+    "C": 14.035089015960693,
+    "C_own": 14.241669654846191,
+    "F": 14.190294742584229,
+    "R": 14.148750305175781,
+    "R_own": 14.241669654846191
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105310
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.458802938461304,
+    "B_own": 14.699834108352661,
+    "C": 14.355634450912476,
+    "C_own": 14.699834108352661,
+    "F": 14.49061632156372,
+    "R": 14.714061498641968,
+    "R_own": 14.699834108352661
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105311
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.213545560836792,
+    "B_own": 15.41251254081726,
+    "C": 15.121110677719116,
+    "C_own": 15.41251254081726,
+    "F": 15.19888710975647,
+    "R": 15.416879177093506,
+    "R_own": 15.41251254081726
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105312
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.083529233932495,
+    "B_own": 14.015500783920288,
+    "C": 14.129769563674927,
+    "C_own": 14.015500783920288,
+    "F": 14.016777276992798,
+    "R": 14.19393515586853,
+    "R_own": 14.015500783920288
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105313
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.903399467468262,
+    "B_own": 15.091959238052368,
+    "C": 14.850712776184082,
+    "C_own": 15.091959238052368,
+    "F": 14.879621028900146,
+    "R": 15.042705535888672,
+    "R_own": 15.091959238052368
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105314
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.348642110824585,
+    "B_own": 13.578758955001831,
+    "C": 13.392318725585938,
+    "C_own": 13.578758955001831,
+    "F": 13.316113233566284,
+    "R": 13.466822862625122,
+    "R_own": 13.578758955001831
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105315
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.551365613937378,
+    "B_own": 14.564278841018677,
+    "C": 14.441423177719116,
+    "C_own": 14.564278841018677,
+    "F": 14.52337384223938,
+    "R": 14.538954734802246,
+    "R_own": 14.564278841018677
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105316
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.681947469711304,
+    "B_own": 13.634331941604614,
+    "C": 13.563610792160034,
+    "C_own": 13.634331941604614,
+    "F": 13.72064995765686,
+    "R": 13.654679536819458,
+    "R_own": 13.634331941604614
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105317
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.503325939178467,
+    "B_own": 13.431374073028564,
+    "C": 13.444267988204956,
+    "C_own": 13.431374073028564,
+    "F": 13.455135345458984,
+    "R": 13.46545672416687,
+    "R_own": 13.431374073028564
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105318
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.797888994216919,
+    "B_own": 14.762640953063965,
+    "C": 14.777578115463257,
+    "C_own": 14.762640953063965,
+    "F": 14.699350595474243,
+    "R": 14.836899042129517,
+    "R_own": 14.762640953063965
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105319
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.70082139968872,
+    "B_own": 14.541126728057861,
+    "C": 14.621934652328491,
+    "C_own": 14.541126728057861,
+    "F": 14.730382919311523,
+    "R": 14.805611848831177,
+    "R_own": 14.541126728057861
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105320
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.113195180892944,
+    "B_own": 15.170140504837036,
+    "C": 15.04910159111023,
+    "C_own": 15.170140504837036,
+    "F": 15.165164947509766,
+    "R": 15.136778831481934,
+    "R_own": 15.170140504837036
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105321
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.956180095672607,
+    "B_own": 14.966432094573975,
+    "C": 14.803648233413696,
+    "C_own": 14.966432094573975,
+    "F": 14.936362266540527,
+    "R": 14.996934413909912,
+    "R_own": 14.966432094573975
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105322
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.130376815795898,
+    "B_own": 15.336409568786621,
+    "C": 15.179022789001465,
+    "C_own": 15.336409568786621,
+    "F": 15.305274248123169,
+    "R": 15.399889469146729,
+    "R_own": 15.336409568786621
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105323
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.4951012134552,
+    "B_own": 15.395139217376709,
+    "C": 15.358162879943848,
+    "C_own": 15.395139217376709,
+    "F": 15.34602165222168,
+    "R": 15.373813390731812,
+    "R_own": 15.395139217376709
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105324
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.063300848007202,
+    "B_own": 14.95223069190979,
+    "C": 14.86963677406311,
+    "C_own": 14.95223069190979,
+    "F": 14.968888521194458,
+    "R": 15.037382364273071,
+    "R_own": 14.95223069190979
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105325
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.876781225204468,
+    "B_own": 15.496544361114502,
+    "C": 15.598497867584229,
+    "C_own": 15.496544361114502,
+    "F": 15.643891096115112,
+    "R": 15.743300199508667,
+    "R_own": 15.496544361114502
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105326
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.231889963150024,
+    "B_own": 13.33534574508667,
+    "C": 13.14194107055664,
+    "C_own": 13.33534574508667,
+    "F": 13.172101020812988,
+    "R": 13.164047002792358,
+    "R_own": 13.33534574508667
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105327
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.588233947753906,
+    "B_own": 14.635213136672974,
+    "C": 14.708903789520264,
+    "C_own": 14.635213136672974,
+    "F": 14.662005186080933,
+    "R": 14.772598505020142,
+    "R_own": 14.635213136672974
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105328
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.966500520706177,
+    "B_own": 14.787508487701416,
+    "C": 14.921774864196777,
+    "C_own": 14.787508487701416,
+    "F": 14.960836172103882,
+    "R": 14.970363140106201,
+    "R_own": 14.787508487701416
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105329
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.602128982543945,
+    "B_own": 14.579383850097656,
+    "C": 14.646350622177124,
+    "C_own": 14.579383850097656,
+    "F": 14.63179087638855,
+    "R": 14.658048391342163,
+    "R_own": 14.579383850097656
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105330
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.391083002090454,
+    "B_own": 13.445481538772583,
+    "C": 13.374302864074707,
+    "C_own": 13.445481538772583,
+    "F": 13.406935214996338,
+    "R": 13.52494192123413,
+    "R_own": 13.445481538772583
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105331
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.17653751373291,
+    "B_own": 13.400159120559692,
+    "C": 13.26283049583435,
+    "C_own": 13.400159120559692,
+    "F": 13.195694208145142,
+    "R": 13.302100419998169,
+    "R_own": 13.400159120559692
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105332
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.340197801589966,
+    "B_own": 14.461702346801758,
+    "C": 14.282347917556763,
+    "C_own": 14.461702346801758,
+    "F": 14.340601682662964,
+    "R": 14.471189975738525,
+    "R_own": 14.461702346801758
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105333
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.53933310508728,
+    "B_own": 13.847119092941284,
+    "C": 13.510947942733765,
+    "C_own": 13.847119092941284,
+    "F": 13.492234230041504,
+    "R": 13.601508855819702,
+    "R_own": 13.847119092941284
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105334
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.514074563980103,
+    "B_own": 14.760059356689453,
+    "C": 14.560007572174072,
+    "C_own": 14.760059356689453,
+    "F": 14.670716762542725,
+    "R": 14.672802209854126,
+    "R_own": 14.760059356689453
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105335
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.918792963027954,
+    "B_own": 15.030678272247314,
+    "C": 14.86775016784668,
+    "C_own": 15.030678272247314,
+    "F": 15.043699026107788,
+    "R": 15.032744646072388,
+    "R_own": 15.030678272247314
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105336
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.019883394241333,
+    "B_own": 12.829048156738281,
+    "C": 12.974443435668945,
+    "C_own": 12.829048156738281,
+    "F": 12.971147537231445,
+    "R": 13.100838422775269,
+    "R_own": 12.829048156738281
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105337
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.966887950897217,
+    "B_own": 15.00432014465332,
+    "C": 14.872791528701782,
+    "C_own": 15.00432014465332,
+    "F": 14.876574754714966,
+    "R": 14.82709288597107,
+    "R_own": 15.00432014465332
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105338
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.60624098777771,
+    "B_own": 12.877055644989014,
+    "C": 12.584431171417236,
+    "C_own": 12.877055644989014,
+    "F": 12.760898351669312,
+    "R": 12.877670049667358,
+    "R_own": 12.877055644989014
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105339
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 11.815287113189697,
+    "B_own": 11.808481931686401,
+    "C": 11.674553871154785,
+    "C_own": 11.808481931686401,
+    "F": 11.718971252441406,
+    "R": 11.809955358505249,
+    "R_own": 11.808481931686401
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105340
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.009665966033936,
+    "B_own": 13.800118684768677,
+    "C": 13.840688705444336,
+    "C_own": 13.800118684768677,
+    "F": 13.950789451599121,
+    "R": 14.065406799316406,
+    "R_own": 13.800118684768677
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105341
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.273242235183716,
+    "B_own": 14.418576955795288,
+    "C": 14.284121990203857,
+    "C_own": 14.418576955795288,
+    "F": 14.391663074493408,
+    "R": 14.438542366027832,
+    "R_own": 14.418576955795288
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105342
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.768754482269287,
+    "B_own": 13.87782883644104,
+    "C": 13.762096405029297,
+    "C_own": 13.87782883644104,
+    "F": 13.747895002365112,
+    "R": 13.840725660324097,
+    "R_own": 13.87782883644104
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105343
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.616624116897583,
+    "B_own": 15.571134328842163,
+    "C": 15.479109048843384,
+    "C_own": 15.571134328842163,
+    "F": 15.624872207641602,
+    "R": 15.68069577217102,
+    "R_own": 15.571134328842163
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105344
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.73705244064331,
+    "B_own": 14.77336859703064,
+    "C": 14.826802492141724,
+    "C_own": 14.77336859703064,
+    "F": 14.724714279174805,
+    "R": 14.78604793548584,
+    "R_own": 14.77336859703064
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105345
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.618781805038452,
+    "B_own": 14.64687728881836,
+    "C": 14.581595659255981,
+    "C_own": 14.64687728881836,
+    "F": 14.616204261779785,
+    "R": 14.907373905181885,
+    "R_own": 14.64687728881836
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105346
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.732177495956421,
+    "B_own": 13.813841342926025,
+    "C": 13.745426654815674,
+    "C_own": 13.813841342926025,
+    "F": 13.826056003570557,
+    "R": 13.807448387145996,
+    "R_own": 13.813841342926025
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105347
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.69896388053894,
+    "B_own": 14.852865219116211,
+    "C": 14.636423349380493,
+    "C_own": 14.852865219116211,
+    "F": 14.789231061935425,
+    "R": 15.047639608383179,
+    "R_own": 14.852865219116211
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105348
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.779989242553711,
+    "B_own": 14.813297033309937,
+    "C": 14.720644474029541,
+    "C_own": 14.813297033309937,
+    "F": 14.790845394134521,
+    "R": 14.825607061386108,
+    "R_own": 14.813297033309937
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105349
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.289050817489624,
+    "B_own": 15.184292793273926,
+    "C": 15.346840858459473,
+    "C_own": 15.184292793273926,
+    "F": 15.33601975440979,
+    "R": 15.474053144454956,
+    "R_own": 15.184292793273926
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105350
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.7374906539917,
+    "B_own": 14.813190698623657,
+    "C": 14.697903156280518,
+    "C_own": 14.813190698623657,
+    "F": 14.654840230941772,
+    "R": 14.812841176986694,
+    "R_own": 14.813190698623657
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105351
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.910937309265137,
+    "B_own": 13.079210758209229,
+    "C": 12.967238187789917,
+    "C_own": 13.079210758209229,
+    "F": 12.929072380065918,
+    "R": 13.125111818313599,
+    "R_own": 13.079210758209229
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105352
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.773997068405151,
+    "B_own": 13.992066860198975,
+    "C": 13.782992362976074,
+    "C_own": 13.992066860198975,
+    "F": 13.801201581954956,
+    "R": 13.888395309448242,
+    "R_own": 13.992066860198975
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105353
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.506755352020264,
+    "B_own": 13.598525285720825,
+    "C": 13.643315076828003,
+    "C_own": 13.598525285720825,
+    "F": 13.598750114440918,
+    "R": 13.637300729751587,
+    "R_own": 13.598525285720825
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105354
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 16.47577452659607,
+    "B_own": 16.484060287475586,
+    "C": 16.434049367904663,
+    "C_own": 16.484060287475586,
+    "F": 16.43100905418396,
+    "R": 16.41930603981018,
+    "R_own": 16.484060287475586
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105355
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.541640520095825,
+    "B_own": 15.614693641662598,
+    "C": 15.531999588012695,
+    "C_own": 15.614693641662598,
+    "F": 15.501830339431763,
+    "R": 15.553132772445679,
+    "R_own": 15.614693641662598
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105356
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.791882038116455,
+    "B_own": 14.813180923461914,
+    "C": 14.72687578201294,
+    "C_own": 14.813180923461914,
+    "F": 14.828153848648071,
+    "R": 14.729573726654053,
+    "R_own": 14.813180923461914
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105357
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.749095439910889,
+    "B_own": 13.721817970275879,
+    "C": 13.763897895812988,
+    "C_own": 13.721817970275879,
+    "F": 13.701521873474121,
+    "R": 13.735087871551514,
+    "R_own": 13.721817970275879
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105358
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.270536422729492,
+    "B_own": 15.03420639038086,
+    "C": 15.208695411682129,
+    "C_own": 15.03420639038086,
+    "F": 15.227941989898682,
+    "R": 15.233302354812622,
+    "R_own": 15.03420639038086
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105359
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.663390874862671,
+    "B_own": 14.541490316390991,
+    "C": 14.617115020751953,
+    "C_own": 14.541490316390991,
+    "F": 14.669984579086304,
+    "R": 14.69980263710022,
+    "R_own": 14.541490316390991
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105360
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.710209846496582,
+    "B_own": 14.672285079956055,
+    "C": 14.682455062866211,
+    "C_own": 14.672285079956055,
+    "F": 14.749000787734985,
+    "R": 14.616037607192993,
+    "R_own": 14.672285079956055
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105361
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.74755573272705,
+    "B_own": 14.627442359924316,
+    "C": 14.732821702957153,
+    "C_own": 14.627442359924316,
+    "F": 14.736578226089478,
+    "R": 14.668760776519775,
+    "R_own": 14.627442359924316
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105362
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.606441736221313,
+    "B_own": 14.937350034713745,
+    "C": 14.710410833358765,
+    "C_own": 14.937350034713745,
+    "F": 14.771950244903564,
+    "R": 14.789204120635986,
+    "R_own": 14.937350034713745
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105363
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.126514911651611,
+    "B_own": 15.009531497955322,
+    "C": 15.030680179595947,
+    "C_own": 15.009531497955322,
+    "F": 15.055648565292358,
+    "R": 15.076627254486084,
+    "R_own": 15.009531497955322
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105364
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 12.505396366119385,
+    "B_own": 12.600350856781006,
+    "C": 12.489076852798462,
+    "C_own": 12.600350856781006,
+    "F": 12.513923168182373,
+    "R": 12.55354642868042,
+    "R_own": 12.600350856781006
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105365
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 16.086278438568115,
+    "B_own": 16.186769247055054,
+    "C": 16.015480279922485,
+    "C_own": 16.186769247055054,
+    "F": 16.014492511749268,
+    "R": 16.08097267150879,
+    "R_own": 16.186769247055054
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105366
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.498305082321167,
+    "B_own": 15.511220216751099,
+    "C": 15.49604344367981,
+    "C_own": 15.511220216751099,
+    "F": 15.536208868026733,
+    "R": 15.61780071258545,
+    "R_own": 15.511220216751099
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105367
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.229840993881226,
+    "B_own": 14.248153924942017,
+    "C": 14.275013446807861,
+    "C_own": 14.248153924942017,
+    "F": 14.322806596755981,
+    "R": 14.330143451690674,
+    "R_own": 14.248153924942017
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105368
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.528798341751099,
+    "B_own": 13.585423946380615,
+    "C": 13.559895753860474,
+    "C_own": 13.585423946380615,
+    "F": 13.507643938064575,
+    "R": 13.460857391357422,
+    "R_own": 13.585423946380615
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105369
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.837379693984985,
+    "B_own": 14.774715423583984,
+    "C": 14.791953325271606,
+    "C_own": 14.774715423583984,
+    "F": 14.825148344039917,
+    "R": 14.833500146865845,
+    "R_own": 14.774715423583984
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105370
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.420221328735352,
+    "B_own": 14.413463115692139,
+    "C": 14.377311706542969,
+    "C_own": 14.413463115692139,
+    "F": 14.411877393722534,
+    "R": 14.429672479629517,
+    "R_own": 14.413463115692139
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105371
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.03001880645752,
+    "B_own": 12.986435890197754,
+    "C": 12.947296142578125,
+    "C_own": 12.986435890197754,
+    "F": 13.004550695419312,
+    "R": 13.233335018157959,
+    "R_own": 12.986435890197754
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105372
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.161141872406006,
+    "B_own": 14.20139193534851,
+    "C": 14.087393045425415,
+    "C_own": 14.20139193534851,
+    "F": 14.120097398757935,
+    "R": 14.225976705551147,
+    "R_own": 14.20139193534851
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105373
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.532828330993652,
+    "B_own": 15.51476788520813,
+    "C": 15.483583927154541,
+    "C_own": 15.51476788520813,
+    "F": 15.51024079322815,
+    "R": 15.549186944961548,
+    "R_own": 15.51476788520813
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105374
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.28275179862976,
+    "B_own": 14.345599889755249,
+    "C": 14.265909194946289,
+    "C_own": 14.345599889755249,
+    "F": 14.322665452957153,
+    "R": 14.381462574005127,
+    "R_own": 14.345599889755249
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105375
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.608241319656372,
+    "B_own": 13.703649044036865,
+    "C": 13.532216310501099,
+    "C_own": 13.703649044036865,
+    "F": 13.560611963272095,
+    "R": 13.732317209243774,
+    "R_own": 13.703649044036865
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105376
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 15.059070825576782,
+    "B_own": 15.253904104232788,
+    "C": 15.011600971221924,
+    "C_own": 15.253904104232788,
+    "F": 15.167434930801392,
+    "R": 15.124013185501099,
+    "R_own": 15.253904104232788
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105377
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.459611177444458,
+    "B_own": 14.254363059997559,
+    "C": 14.383227825164795,
+    "C_own": 14.254363059997559,
+    "F": 14.369890689849854,
+    "R": 14.394792556762695,
+    "R_own": 14.254363059997559
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105378
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.597147464752197,
+    "B_own": 13.915167331695557,
+    "C": 13.54137372970581,
+    "C_own": 13.915167331695557,
+    "F": 13.69079875946045,
+    "R": 13.905100107192993,
+    "R_own": 13.915167331695557
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105379
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.925583600997925,
+    "B_own": 14.983216524124146,
+    "C": 14.897468566894531,
+    "C_own": 14.983216524124146,
+    "F": 14.979777574539185,
+    "R": 15.068056583404541,
+    "R_own": 14.983216524124146
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105380
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 14.393523931503296,
+    "B_own": 14.49077582359314,
+    "C": 14.397147178649902,
+    "C_own": 14.49077582359314,
+    "F": 14.39503788948059,
+    "R": 14.557137489318848,
+    "R_own": 14.49077582359314
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105381
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.995973348617554,
+    "B_own": 13.977688550949097,
+    "C": 13.81148648262024,
+    "C_own": 13.977688550949097,
+    "F": 13.979934215545654,
+    "R": 14.041261911392212,
+    "R_own": 13.977688550949097
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105382
+  },
+  {
+   "fixed_arm_identical_across_settings": true,
+   "losses": {
+    "B": 13.305487394332886,
+    "B_own": 13.418948650360107,
+    "C": 13.250570058822632,
+    "C_own": 13.418948650360107,
+    "F": 13.261901617050171,
+    "R": 13.414817571640015,
+    "R_own": 13.418948650360107
+   },
+   "mutations": {
+    "B": 3,
+    "C": 3,
+    "R": 3
+   },
+   "same_final_genome": true,
+   "same_own_reference": true,
+   "seed": 105383
+  }
+ ],
+ "profile": "mech2",
+ "protocol": "cloned-body-vs-cloned-router-row",
+ "record_type": "clone_mechanism_study",
+ "report_section": "5.27",
+ "row_gain": -0.026444680988788605,
+ "seeds": [
+  105000,
+  105001,
+  105002,
+  105003,
+  105004,
+  105005,
+  105006,
+  105007,
+  105008,
+  105009,
+  105010,
+  105011,
+  105012,
+  105013,
+  105014,
+  105015,
+  105016,
+  105017,
+  105018,
+  105019,
+  105020,
+  105021,
+  105022,
+  105023,
+  105024,
+  105025,
+  105026,
+  105027,
+  105028,
+  105029,
+  105030,
+  105031,
+  105032,
+  105033,
+  105034,
+  105035,
+  105036,
+  105037,
+  105038,
+  105039,
+  105040,
+  105041,
+  105042,
+  105043,
+  105044,
+  105045,
+  105046,
+  105047,
+  105048,
+  105049,
+  105050,
+  105051,
+  105052,
+  105053,
+  105054,
+  105055,
+  105056,
+  105057,
+  105058,
+  105059,
+  105060,
+  105061,
+  105062,
+  105063,
+  105064,
+  105065,
+  105066,
+  105067,
+  105068,
+  105069,
+  105070,
+  105071,
+  105072,
+  105073,
+  105074,
+  105075,
+  105076,
+  105077,
+  105078,
+  105079,
+  105080,
+  105081,
+  105082,
+  105083,
+  105084,
+  105085,
+  105086,
+  105087,
+  105088,
+  105089,
+  105090,
+  105091,
+  105092,
+  105093,
+  105094,
+  105095,
+  105096,
+  105097,
+  105098,
+  105099,
+  105100,
+  105101,
+  105102,
+  105103,
+  105104,
+  105105,
+  105106,
+  105107,
+  105108,
+  105109,
+  105110,
+  105111,
+  105112,
+  105113,
+  105114,
+  105115,
+  105116,
+  105117,
+  105118,
+  105119,
+  105120,
+  105121,
+  105122,
+  105123,
+  105124,
+  105125,
+  105126,
+  105127,
+  105128,
+  105129,
+  105130,
+  105131,
+  105132,
+  105133,
+  105134,
+  105135,
+  105136,
+  105137,
+  105138,
+  105139,
+  105140,
+  105141,
+  105142,
+  105143,
+  105144,
+  105145,
+  105146,
+  105147,
+  105148,
+  105149,
+  105150,
+  105151,
+  105152,
+  105153,
+  105154,
+  105155,
+  105156,
+  105157,
+  105158,
+  105159,
+  105160,
+  105161,
+  105162,
+  105163,
+  105164,
+  105165,
+  105166,
+  105167,
+  105168,
+  105169,
+  105170,
+  105171,
+  105172,
+  105173,
+  105174,
+  105175,
+  105176,
+  105177,
+  105178,
+  105179,
+  105180,
+  105181,
+  105182,
+  105183,
+  105184,
+  105185,
+  105186,
+  105187,
+  105188,
+  105189,
+  105190,
+  105191,
+  105192,
+  105193,
+  105194,
+  105195,
+  105196,
+  105197,
+  105198,
+  105199,
+  105200,
+  105201,
+  105202,
+  105203,
+  105204,
+  105205,
+  105206,
+  105207,
+  105208,
+  105209,
+  105210,
+  105211,
+  105212,
+  105213,
+  105214,
+  105215,
+  105216,
+  105217,
+  105218,
+  105219,
+  105220,
+  105221,
+  105222,
+  105223,
+  105224,
+  105225,
+  105226,
+  105227,
+  105228,
+  105229,
+  105230,
+  105231,
+  105232,
+  105233,
+  105234,
+  105235,
+  105236,
+  105237,
+  105238,
+  105239,
+  105240,
+  105241,
+  105242,
+  105243,
+  105244,
+  105245,
+  105246,
+  105247,
+  105248,
+  105249,
+  105250,
+  105251,
+  105252,
+  105253,
+  105254,
+  105255,
+  105256,
+  105257,
+  105258,
+  105259,
+  105260,
+  105261,
+  105262,
+  105263,
+  105264,
+  105265,
+  105266,
+  105267,
+  105268,
+  105269,
+  105270,
+  105271,
+  105272,
+  105273,
+  105274,
+  105275,
+  105276,
+  105277,
+  105278,
+  105279,
+  105280,
+  105281,
+  105282,
+  105283,
+  105284,
+  105285,
+  105286,
+  105287,
+  105288,
+  105289,
+  105290,
+  105291,
+  105292,
+  105293,
+  105294,
+  105295,
+  105296,
+  105297,
+  105298,
+  105299,
+  105300,
+  105301,
+  105302,
+  105303,
+  105304,
+  105305,
+  105306,
+  105307,
+  105308,
+  105309,
+  105310,
+  105311,
+  105312,
+  105313,
+  105314,
+  105315,
+  105316,
+  105317,
+  105318,
+  105319,
+  105320,
+  105321,
+  105322,
+  105323,
+  105324,
+  105325,
+  105326,
+  105327,
+  105328,
+  105329,
+  105330,
+  105331,
+  105332,
+  105333,
+  105334,
+  105335,
+  105336,
+  105337,
+  105338,
+  105339,
+  105340,
+  105341,
+  105342,
+  105343,
+  105344,
+  105345,
+  105346,
+  105347,
+  105348,
+  105349,
+  105350,
+  105351,
+  105352,
+  105353,
+  105354,
+  105355,
+  105356,
+  105357,
+  105358,
+  105359,
+  105360,
+  105361,
+  105362,
+  105363,
+  105364,
+  105365,
+  105366,
+  105367,
+  105368,
+  105369,
+  105370,
+  105371,
+  105372,
+  105373,
+  105374,
+  105375,
+  105376,
+  105377,
+  105378,
+  105379,
+  105380,
+  105381,
+  105382,
+  105383
+ ],
+ "study_hash": "3bcc9e86b575b7a6",
+ "study_id": "study_3bcc9e86b575b7a6",
+ "summary_note": "Section 5.27. R, B and C are the same seed, initial model and data schedule, every event forced to a grow, differing only in whether a grown expert is freshly drawn (R), a clone of the layer's busiest survivor's BODY with a fresh router row (B), or that body with the survivor's router row copied too (C). The three settings choose the same final genome, so B-R is the trained body's contribution and C-B is the routing affinity's. Negative means the first-named run won."
+}

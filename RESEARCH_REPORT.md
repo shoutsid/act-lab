@@ -3602,9 +3602,72 @@ does not carry.
 
 **Cost.** Three fused runs plus three frozen retrains per seed, ~3.7 s/seed.
 
-### 5.27 Result
+### 5.27 Outcome: cloning is two effects, and the body is ~3/4 of it (branch (a))
 
-*(pending: registered blocks 105000-105383 and 106000-106383)*
+Run on the registered fresh blocks 105000-105383 (depth 2) and 106000-106383
+(depth 3), `study_3bcc9e86b575b7a6` and `study_872d33bdd99496a8`. Every built-in
+check held in both blocks, and the three-way pairing is exact: **all three
+settings chose the same final genome in 384/384 seeds, all three frozen
+references are bit-identical in 384/384, and the fixed arm reproduced exactly
+under all three settings in 384/384** - so `B - R` is the trained body's
+contribution and `C - B` the routing affinity's, on one genome.
+
+| | depth 2 (n = 384) | depth 3 (n = 384) |
+|---|---|---|
+| **P1** the body helps: `B` < `R` | **295/384**, mean −0.0744, p 3.4e-27 | **300/384**, mean −0.0844, p 7.0e-30 |
+| **P2** routing affinity adds: `C` < `B` | **242/384**, mean −0.0264, p 1.9e-07 | **238/384**, mean −0.0220, p 1.5e-06 |
+| total clone gain: `C` < `R` | **320/384**, mean −0.1008, p 2.4e-42 | **312/384**, mean −0.1064, p 5.2e-37 |
+
+| contribution | depth 2 | depth 3 | share of the total |
+|---|---|---|---|
+| trained body (`B - R`) | −0.0744 | −0.0844 | **73.8%** / **79.4%** |
+| routing affinity (`C - B`) | −0.0264 | −0.0220 | 26.2% / 20.6% |
+
+**Registered verdict: branch (a) - both contribute, the body more than the row.**
+The prediction was right, and it was right for a reason worth separating from the
+six that preceded it: it came from the disclosed 4-seed smoke (body `-0.0231`, row
+`-0.0172`) rather than from a prior about which axis *should* matter. The caveat I
+attached to that smoke - its per-seed spread exceeds the effect it measures - did
+not bite, but the registered block was what settled it.
+
+**The ordering is the same at both depths, and it is now four-deep**
+(`C < B < F < own < R`):
+
+| | depth 2 mean | depth 3 mean |
+|---|---|---|
+| `C` body + router row cloned | **14.1928** | **13.3470** |
+| `B` body cloned, fresh row | 14.2192 | 13.3690 |
+| `F` unmutated fixed arm | 14.2398 | 13.3947 |
+| `own` frozen retrain of the final genome | 14.2674 | 13.4153 |
+| `R` fresh draw (historical) | 14.2936 | 13.4534 |
+
+So the body clone alone already beats the unmutated arm and the frozen retrain,
+and copying the router row on top beats the body clone alone. Two separable
+mechanisms, both real, each beating the historical behaviour by itself.
+
+**Consequences.** Section 5.26's "twin" framing was right but imprecise: the
+trained body is the larger half, and it is the part that does *not* depend on
+routing affinity, so it would be the minimal change if only one were affordable.
+The row is a real second term (20-26%) and is cheap - it is a row copy - so the
+recommendation stands as the full clone. This also sharpens section 5.25's open
+question about plan section 51's teacher treatment: a teacher would have to beat
+the model's own busiest expert **as a body source** for the larger half, and
+separately solve the routing-row problem the copy solves for free.
+
+**What this does not settle, and one thing it newly raises.**
+- The third arm is missing: this separates *body* from *routing affinity*, but not
+  "clone the busiest survivor" from "clone *any* survivor". A `clone_random` arm
+  (a random survivor's body and row) would test whether busyness matters at all,
+  or whether any trained expert is as good a source. Declared as not carried here.
+- Every clone in this study clones the *same* expert body that survives, so the
+  layer ends with an identical twin pair whose rows tie. Whether that degeneracy
+  costs anything at larger active-expert counts is untested - the toy substrate
+  has `active_experts=2` and, unusually, the degeneracy helped.
+
+**Caveats, as declared.** Toy fidelity, synthetic tokens, one substrate, depths 2
+and 3, `random` arm only, the operation forced rather than drawn (so this is the
+cost of a forced grow, not a deployable policy), and cloning from the layer's
+busiest survivor rather than a trained teacher.
 
 ## 6. Reproducibility
 

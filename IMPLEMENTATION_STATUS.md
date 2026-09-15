@@ -1623,6 +1623,36 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   script; the letters are reconciled to the script, which changes no statistic,
   no threshold and no reading (P2 failed in the exonerating direction, so the
   penalised reading was never available).
+- **Section 5.27 RAN (2026-09-15, blocks 105000-105383 depth 2 / 106000-106383
+  depth 3, `scripts/clone_mechanism_study.py`).** Resolves the mechanism section
+  5.26 declared unresolved: cloning does two things at once (a trained *body*, and
+  a copied *router row*), and a third setting separates them. New opt-in
+  `new_expert_initialization="clone_body"` is identical to `"clone"` except the
+  grown expert keeps a freshly drawn row, so `B - R` is the body's contribution and
+  `C - B` the routing affinity's, on one genome. Registered verdict **branch (a),
+  both contribute**: **P1 the body helps** 295/384 (mean -0.0744, p 3.4e-27) at
+  depth 2 and 300/384 (-0.0844, p 7.0e-30) at depth 3; **P2 routing affinity adds**
+  242/384 (-0.0264, p 1.9e-07) and 238/384 (-0.0220, p 1.5e-06). The split is
+  **body 73.8%/79.4%, row 26.2%/20.6%** of the total clone gain, and the two terms
+  partition it exactly. The ordering is four-deep and the same at both depths -
+  **`C < B < F < own < R`** - so the body clone *alone* already beats the unmutated
+  arm and the frozen retrain, and the row is a real, cheap second term. Three-way
+  pairing asserted, not assumed: same final genome, bit-identical frozen reference
+  and an identical fixed arm in **384/384 seeds**. **Consequence:** section 5.26's
+  "twin" framing was right but imprecise - the body is the larger half, the row is
+  what makes it a twin. It also sharpens plan section 51: a teacher must beat the
+  model's own busiest expert **as a body source** for the larger term. Prediction
+  was correct (second in a row) and came from the disclosed 4-seed smoke rather
+  than from a prior. Declared **not** settled: no `clone_random` arm (any survivor
+  vs the busiest), and the layer ends with a tied twin pair whose cost at larger
+  `active_experts` is untested. Summaries
+  `artifacts/study-summaries/clone-mechanism-{depth2,depth3}-384.json`
+  (`study_3bcc9e86b575b7a6`, `study_872d33bdd99496a8`), pinned by
+  `tests/test_clone_mechanism_summary.py` and `tests/test_new_expert_init.py`.
+  Note: the toy studies stay on **CPU deliberately** - measured 2.6x faster than
+  this 1070 at this shape (5.26 vs 2.04 s/seed), and every committed number in
+  sections 5.16-5.27 was measured on CPU, so a device switch would stop the record
+  reproducing. The real-data legs do use the GPU.
 - **Report-artifact link guard (2026-09-15).** Section 5.19's missing summaries
   were a defect *class*, not an incident: a result can be cited widely while its
   artifact does not exist. `tests/test_report_artifact_links.py` now fails if any

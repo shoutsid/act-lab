@@ -95,6 +95,15 @@ REGISTERED = dict(
     probe_batch_count=2,
     probe_candidate_policy="spread",
     independent_arm_rng=True,
+    # CPU on purpose, and measured rather than assumed. This substrate is far too
+    # small for the card to help: six training runs per seed of a ~50k-parameter
+    # model, each 48 steps, so every op is a kernel launch with the GPU idle in
+    # between. Timed on this machine at the mech2 shape, CUDA is 2.6x SLOWER than
+    # CPU (5.26 vs 2.04 s/seed). CPU is also what every committed number in
+    # sections 5.16-5.26 was measured on, and CUDA's reduction order and RNG
+    # streams differ, so moving a registered block to the GPU would silently stop
+    # the record reproducing. The real-data legs (scripts/train_real_lm.py,
+    # 20.9M params) do use the GPU, where it is worth ~18k tokens/s.
     device="cpu",
     forced_operation="grow",
     preserve_router_on_rebuild=True,
