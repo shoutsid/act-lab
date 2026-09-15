@@ -13,8 +13,11 @@ Design constraints, pre-committed:
 
 - **The exit path never raises.** ``publish_on_exit`` catches every client
   error and records the outcome; a failed remote push must not turn twelve
-  hours of completed local training into a crashed session. The local
-  handoff stays intact either way - the next session can re-push it.
+  hours of completed local training into a crashed session. It retries a
+  bounded number of times first, because this push is the last step before the
+  container (and with it every local pair) is gone - there is no next session
+  that could re-push a *container's* handoff, only one that starts again from
+  the last published version.
 - **Restore fails fast.** ``restore_latest`` raises on client errors: a
   session that requested remote state and cannot get it must stop before
   training, not mid-pair.
@@ -37,6 +40,7 @@ import json
 import shutil
 import tarfile
 import tempfile
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable, Protocol
@@ -48,6 +52,14 @@ KAGGLE_AVAILABLE = importlib.util.find_spec("kaggle") is not None
 METADATA_NAME = "dataset-metadata.json"
 DEFAULT_LICENSE = "CC0-1.0"
 PUBLISH_LOG_NAME = "remote-publish-log.json"
+
+# How many times the exit publish re-attempts its push, and the base delay
+# between attempts (multiplied by the attempt number). The push is the only
+# durable copy of a session's pairs - the handoff roots live in the container
+# overlay, which ends with the kernel - so it is worth a few retries against a
+# transient API or network error, which is what a failed push usually is.
+PUBLISH_ATTEMPTS = 3
+PUBLISH_RETRY_SECONDS = 5.0
 
 STATUS_PUBLISHED = "published"
 STATUS_FAILED = "failed"
@@ -253,6 +265,8 @@ def publish_on_exit(
     version_notes: str | None = None,
     log: Callable[[str], None] | None = None,
     log_path: str | Path | None = None,
+    attempts: int = PUBLISH_ATTEMPTS,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> RemotePublishResult:
     """Push the local handoff dataset to Kaggle; never raises.
 
@@ -261,6 +275,14 @@ def publish_on_exit(
     ``<dataset_root>/<handoff>/`` (zero-copy) with its metadata file
     ensured; the outcome is written beside the dataset root for the
     artifact trail.
+
+    This push is the only durable copy of the session's work: the handoff
+    roots live in the container overlay, which goes away with the kernel, so a
+    transient API or network error here costs every pair the session trained.
+    It is therefore retried a bounded number of times before being recorded as
+    a failure - and the metadata write, which writes *into* the handoff folder
+    and so can fail on a full disk, is inside the same guard rather than
+excepted from it.
     """
     logger = log if log is not None else (lambda message: None)
     folder = Path(dataset_root) / _handoff_dirname()
@@ -278,9 +300,22 @@ def publish_on_exit(
         logger(f"remote publish skipped: no complete seed versions under {folder}")
         _write_log(log_path, dataset_root, result)
         return result
-    ensure_metadata(folder, dataset)
-    try:
-        client.create_version(folder, version_notes)
+
+    failures: list[str] = []
+    for attempt in range(1, max(1, attempts) + 1):
+        try:
+            ensure_metadata(folder, dataset)
+            client.create_version(folder, version_notes)
+        except Exception as error:  # noqa: BLE001 - the exit path never raises
+            failures.append(f"{type(error).__name__}: {error}")
+            logger(
+                f"remote publish attempt {attempt}/{attempts} failed "
+                f"({failures[-1]})"
+            )
+            if attempt < attempts:
+                logger("  retrying: a failed push here loses the session's pairs")
+                sleep(PUBLISH_RETRY_SECONDS * attempt)
+            continue
         result = RemotePublishResult(
             dataset=dataset,
             folder=str(folder),
@@ -291,17 +326,23 @@ def publish_on_exit(
         logger(
             f"remote publish: {dataset} version pushed "
             f"({len(seeds)} seed version(s))"  # type: ignore[decimal]
+            + (f" on attempt {attempt}" if attempt > 1 else "")
         )
-    except Exception as error:  # noqa: BLE001 - the exit path never raises
-        result = RemotePublishResult(
-            dataset=dataset,
-            folder=str(folder),
-            seeds_published=len(seeds),
-            status=STATUS_FAILED,
-            version_notes=version_notes,
-            error=f"{type(error).__name__}: {error}",
-        )
-        logger(f"remote publish FAILED (local handoff intact): {result.error}")
+        _write_log(log_path, dataset_root, result)
+        return result
+
+    result = RemotePublishResult(
+        dataset=dataset,
+        folder=str(folder),
+        seeds_published=len(seeds),
+        status=STATUS_FAILED,
+        version_notes=version_notes,
+        error="; ".join(failures),
+    )
+    logger(
+        f"remote publish FAILED after {attempts} attempt(s) (local handoff "
+        f"intact, but this container ends with the session): {result.error}"
+    )
     _write_log(log_path, dataset_root, result)
     return result
 

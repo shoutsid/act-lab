@@ -580,7 +580,7 @@ Secondary config (if pre-registered): same command with
 | Symptom | Response |
 |---|---|
 | OOM in benchmark or sessions on non-T4 hardware | The decision context is a 16 GB T4. Move the run; never shrink the declared config. |
-| Exit publish fails (`remote_publish.ok=false`) | Never fatal by design. The local handoff under `artifacts/datasets/act-checkpoints/v0-5-1/` is intact; the next session's publish re-pushes it. Check `remote-publish-log.json` beside the dataset root. |
+| Exit publish fails (`remote_publish.status` = `failed`) | Never fatal to the *session*, and now retried 3 times with backoff before it is recorded - but treat it as a loss: the handoff roots live in the container overlay, so when the kernel ends there is no local copy for a later session to push, and every pair this session completed is gone. Check `remote-publish-log.json` (= `remote_publish` in the kernel log) for the error, then relaunch; the queue resumes from the last published version. |
 | Two sessions of one queue running (burn at 2x) | They will not stop each other: `kaggle kernels delete <owner>/<slug> --yes`, then push once (§0.5 gotcha 5). Nothing is published by the abandoned version. |
 | Local per-pair publish fails (`action: publish_failed`) | The pair is **not** recorded complete and the queue stops at that seed, so the session can still exit-publish the seeds that did complete (it would otherwise abort before publishing anything). Fix the substrate - disk space, permissions - and relaunch; the failed pair restarts from scratch. With the handoff roots on the overlay (§0.2) this should not fire. |
 | Restore fails at session start | Fix credentials / `owner/slug` / connectivity; relaunch. Nothing ran, nothing published. |

@@ -259,11 +259,81 @@ def test_publish_on_exit_swallows_client_errors(tmp_path: Path) -> None:
         dataset="owner/act-checkpoints-v0-5-1",
         client=client,
         log=lambda message: None,
+        sleep=lambda seconds: None,
     )
 
     assert result.status == STATUS_FAILED
     assert "RuntimeError" in result.error
     assert seed_summary.is_file()  # local state untouched
+    # The error text says how many attempts were spent, so a deterministic
+    # failure is distinguishable from a flaky one.
+    assert result.error.count("409 version conflict") == kaggle_remote.PUBLISH_ATTEMPTS
+
+
+def test_publish_on_exit_retries_a_transient_push_failure(tmp_path: Path) -> None:
+    """A flaky push must not cost the session its pairs.
+
+    The handoff roots live in the container overlay, so when the kernel ends
+    there is no local copy left to re-push: a failed push here is the one step
+    whose failure discards a whole session's training, and the usual cause is
+    transient (an API error, a dropped connection) rather than deterministic.
+    """
+    dataset_root = _publish_local_seed(tmp_path, 42)
+    client = FakeClient()
+    real_create_version = client.create_version
+    attempts = {"count": 0}
+    slept: list[float] = []
+
+    def flaky_create_version(folder: Path, version_notes: str) -> str:
+        attempts["count"] += 1
+        if attempts["count"] < kaggle_remote.PUBLISH_ATTEMPTS:
+            raise RuntimeError("500 server error")
+        return real_create_version(folder, version_notes)
+
+    client.create_version = flaky_create_version  # type: ignore[method-assign]
+    messages: list[str] = []
+
+    result = publish_on_exit(
+        dataset_root,
+        dataset="owner/act-checkpoints-v0-5-1",
+        client=client,
+        log=messages.append,
+        sleep=slept.append,
+    )
+
+    assert result.status == STATUS_PUBLISHED
+    assert result.seeds_published == 1
+    assert attempts["count"] == kaggle_remote.PUBLISH_ATTEMPTS
+    # Backing off between attempts, once per failure before the successful one.
+    assert len(slept) == kaggle_remote.PUBLISH_ATTEMPTS - 1
+    assert any("retrying" in message for message in messages)
+
+
+def test_publish_on_exit_survives_a_metadata_write_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The metadata write is inside the guard, not an unguarded first step.
+
+    It writes *into* the handoff folder, so it can fail (a full disk) - and it
+    used to run before the try, which made the "never raises" exit path raise.
+    """
+    dataset_root = _publish_local_seed(tmp_path, 42)
+
+    def failing_metadata(folder, dataset):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(kaggle_remote, "ensure_metadata", failing_metadata)
+
+    result = publish_on_exit(
+        dataset_root,
+        dataset="owner/act-checkpoints-v0-5-1",
+        client=FakeClient(),
+        log=lambda message: None,
+        sleep=lambda seconds: None,
+    )
+
+    assert result.status == STATUS_FAILED
+    assert "OSError" in result.error and "No space left on device" in result.error
 
 
 def test_restore_latest_merges_remote_over_local(tmp_path: Path) -> None:

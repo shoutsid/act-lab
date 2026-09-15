@@ -825,6 +825,18 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   seeds restored, and every checksum from the pre-upload manifest verified
   through `restore_seed`. Confirmed to have teeth: dropping the arcname prefix
   reproduces the collision and fails the test.
+- **The exit publish is retried, and can no longer raise on its own first
+  step.** Two defects in the one push whose failure discards a session: the
+  metadata write ran *before* the `try`, so a full disk (it writes into the
+  handoff folder) made the "never raises" exit path raise - turning a finished
+  session into a crashed one; and the push itself was attempted exactly once,
+  so a transient API or network error was recorded as a failure. The push is
+  now attempted up to `PUBLISH_ATTEMPTS` (3) with backoff, inside the same
+  guard as the metadata write, and the recorded error names every attempt so a
+  deterministic failure is distinguishable from a flaky one. Also corrected
+  the docs' claim that a later session re-pushes a failed container's handoff:
+  the handoff roots live in the container overlay, so a failed exit publish
+  loses that session's pairs with no local copy left to push.
 - **The driver refuses to repeat a session that advanced nothing.** A session
   whose clock never fit a pair reports *success* while writing no progress
   (rule 1 idles it), and the loop would push again - up to `--max-sessions`

@@ -323,9 +323,12 @@ def _publish_remote(args: argparse.Namespace, *, tokens_per_second: float) -> No
 
     The remote push is the last step of the launch command, after the local
     handoff has run inside ``run_pair_session``. It never raises: a failed
-    remote push must not turn a completed session into a crashed one (the
-    local handoff stays intact and the next session can re-push it). The
-    outcome is recorded in the publish log beside the dataset root.
+    remote push must not turn a completed session into a crashed one. It does
+    retry before giving up (``publish_on_exit``), because in a kernel this is
+    the only durable copy - the handoff roots live in the container overlay,
+    so a later session cannot re-push *this* session's pairs, only start again
+    from the last published version. The outcome is recorded in the publish log
+    beside the dataset root.
     """
     if args.kaggle_dataset is None:
         return
