@@ -16,7 +16,9 @@ from act.training.session_plan import (
     CHECKPOINT_PAYLOAD_GB,
     FP32_FLOOR_TOKENS_PER_SECOND,
     MAX_CHECKPOINTS,
+    PUBLISH_RESERVE_MINUTES,
     SEED_TOKENS_PER_ARM,
+    USABLE_HOURS,
     PairSchedule,
     deadline_decision,
     decide_dtype,
@@ -110,6 +112,31 @@ def test_a_single_arm_pair_costs_one_arm_time() -> None:
     two = PairSchedule(tokens_per_second=4_694.9, arms=2)
     assert round(one.pair_time_hours, 3) == 1.554
     assert math.isclose(two.pair_time_hours, 2 * one.pair_time_hours - 0.1, abs_tol=1e-9)
+
+
+def test_the_corrected_session_places_exactly_two_pairs() -> None:
+    """The amended plan's packing claim, walked through the deadline rules.
+
+    At the T4's measured fp16 rate a 9 h session completes two pairs and then
+    stops with clock it cannot finish a third in. It must not start that third
+    pair: section 5.2 answers an interrupted pair by restarting it from
+    scratch, so starting one it cannot finish throws the work away rather than
+    deferring it.
+    """
+    pair_time = PairSchedule(tokens_per_second=4_694.9).pair_time_hours
+    remaining = USABLE_HOURS
+    pairs = 0
+    while deadline_decision(remaining, pair_time).action == "start_pair":
+        remaining -= pair_time
+        pairs += 1
+
+    assert pairs == 2
+    # 3.01 h pairs do not pack neatly into 9 h: two pairs leave 2.98 h, just
+    # under one pair, so the session stops with a third of its window unused
+    # rather than starting a pair it cannot finish. Sessions therefore exit
+    # early (and bill for the ~6 h they ran, not the 9 h they were given).
+    assert remaining < pair_time
+    assert math.isclose(9.0 - 2 * pair_time, remaining, abs_tol=1e-9)
 
 
 def test_schedule_rejects_invalid_input() -> None:
