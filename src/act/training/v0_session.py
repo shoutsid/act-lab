@@ -68,7 +68,9 @@ class V0SessionConfig:
     on a single development GPU is an hour or more, and using it as the default
     made every iteration cost a run. The default here is the measured-fastest
     small shape (``DEV_V0_CONFIG``, ~14.9M total / 7.6M active) with a 400-step
-    budget: 1.64M tokens per arm, about 2.8 minutes per arm on a GTX 1070. The
+    budget: 1.64M tokens per arm, about 1.4 minutes per arm on a GTX 1070
+    (measured end to end on the real TinyStories stream by ``scripts/dev_cycle.py``).
+    The
     declared target is built explicitly by ``declared_session_config()`` and
     validated by ``validate_declared_v0_config`` whenever ``declared`` is True.
     """

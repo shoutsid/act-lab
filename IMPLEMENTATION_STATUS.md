@@ -30,9 +30,30 @@ on the GTX 1070, not by preference, and the measurement is the interesting part:
 **at these sizes the MoE block is latency-bound, not FLOP-bound** (one kernel per
 expert per pass), so the smallest candidate was the *slowest* - 10.0M parameters
 ran at 3.6k tokens/s while 14.9M ran at 9.8k. Cycle time is governed by tokens
-per run. Measured end to end through the real session path: 0.61 s/step, 13.4k
-tokens/s across two arms, 0.90 GiB peak, and a 400-step dev cycle (1.64M
-tokens/arm) in **~4.1 minutes** instead of an hour.
+per run.
+
+That latency-bound diagnosis was then acted on: the expert block now folds its
+per-expert launches into batched matmuls (``_MoEFeedForward.forward``), keeping
+the eager dispatch as ``eager_forward`` and pinning the two equal by test
+(float64 agreement 1e-16). Measured on the dev shape, batch 8 x context 512:
+51.8 ms/step eager vs 42.5 ms/step dense (+18%).
+
+End to end through the real session path on the **real TinyStories stream**
+(``scripts/dev_cycle.py``): each arm trains at **19.6k tokens/s** (0.21 s/step),
+0.9 GiB peak, and a two-arm 400-step dev cycle (1.64M tokens/arm) takes
+**2.8 minutes wall** instead of an hour.
+
+```
+PYTHONPATH=src python scripts/dev_cycle.py            # 400 steps, real text
+PYTHONPATH=src python scripts/dev_cycle.py --steps 40 # quick smoke
+```
+
+Precision stays fp32 on the development card. Measured at the dev shape,
+forward+backward+AdamW: fp32 25.5k tokens/s, bf16 20.6k (emulated below compute
+capability 8.0), fp16 10.5k. The fp16 penalty is the arithmetic rate, not the
+guard scaler (disabling it recovers only ~1.5%), so bf16 - which needs no
+scaler - does not recover it. On the declared Turing-class target fp16 is
+native and correct; bf16 remains emulated there too.
 
 The dev budget is not a protocol measurement and must not be read as one: at
 dev scale the probe is 1.5% of training FLOPs, not the declared 0.0942%, and the

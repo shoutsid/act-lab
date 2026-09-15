@@ -110,15 +110,15 @@ not the fastest one. Measured, batch 8, fp16 autocast, 20-step steady state:
 | h512 d6 e8 w512 v16k ctx512 | 39.9M | 6.0k | 1.77 GiB |
 
 Cycle time is therefore governed by tokens per run, not by model size: a
-400-step dev session at batch 8 x context 512 is 1.64M tokens per arm, about
-2.8 minutes per arm on that GPU.
+400-step dev session at batch 8 x context 512 is 1.64M tokens per arm.
 
 Measured end to end through ``run_v0_session`` (both arms, probes, checkpoints,
-40 steps then extrapolated linearly at steady state): **0.61 s/step, 13.4k
-tokens/s across the two arms, a 400-step dev cycle in ~4.1 minutes**, peak
-0.90 GiB. The declared target is 285M parameters and 24.6M tokens per arm, i.e.
-15x the tokens at ~1/3 the throughput - an hour plus per arm - which is why it
-is no longer the default.
+400 steps on the real TinyStories stream) by ``scripts/dev_cycle.py``: **each arm
+19.6k tokens/s (0.21 s/step); a two-arm 400-step dev cycle is 2.8 minutes wall**
+at 14.9M parameters, peak ~0.9 GiB - the 9.8k in the table above was that shape
+before the expert block folded its per-expert launches into batched matmuls. The declared target is 285M parameters and
+24.6M tokens per arm, i.e. 15x the tokens at a fraction of the throughput - an
+hour plus per arm - which is why it is no longer the default.
 """
 
 
@@ -212,7 +212,21 @@ class _SelfAttention(nn.Module):
 
 
 class _MoEFeedForward(nn.Module):
-    """Top-k token routing over uniform bias-free experts (eager dispatch)."""
+    """Top-k token routing over uniform bias-free experts.
+
+    The routing contract is top-k sparse dispatch: every token activates exactly
+    ``active_experts`` experts, and the FLOPs the protocol books are the
+    contract's (``active_parameter_count``), not whatever the kernels happen to
+    do. ``forward`` implements that contract with a *dense* expert evaluation -
+    every expert applied to every token by one batched matmul, then the top-k
+    rows selected and gate-weighted - because at the development model's size
+    eager per-expert dispatch is launch-bound rather than FLOP-bound. Measured on
+    the development GPU (GTX 1070), ``DEV_V0_CONFIG`` at batch 8 x context 512:
+    51.8 ms/step eager vs 42.5 ms/step dense (79k -> 96k tokens/s, +18%). The
+    dense form does up to ``num_experts`` times the arithmetic in three large
+    kernels; ``eager_forward`` keeps the dispatch formulation and is pinned
+    equivalent to it by test.
+    """
 
     def __init__(self, config: V0MoEConfig, expert_ids: tuple[str, ...]) -> None:
         super().__init__()
@@ -229,14 +243,28 @@ class _MoEFeedForward(nn.Module):
         self.active_experts = config.active_experts
         self.last_load = torch.zeros(len(expert_ids))
 
-    def forward(self, hidden: Tensor) -> Tensor:
-        flat = hidden.reshape(-1, hidden.shape[-1])
+    def _route(self, flat: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+        """Gate weights, chosen expert indices, and the recorded routing load."""
         logits = self.router(flat)
         values, indices = logits.topk(self.active_experts, dim=-1)
         weights = values.softmax(dim=-1)
         self.last_load = torch.bincount(
             indices.reshape(-1), minlength=len(self.experts)
         ).float() / max(indices.numel(), 1)
+        return weights, indices, logits
+
+    def _expert_weights(
+        self, dtype: torch.dtype, device: torch.device
+    ) -> tuple[Tensor, Tensor]:
+        """Experts stacked as ``(in, out)`` matmul operands, transposed from ``Linear``."""
+        first = torch.stack([expert[0].weight.transpose(0, 1) for expert in self.experts])
+        second = torch.stack([expert[2].weight.transpose(0, 1) for expert in self.experts])
+        return first.to(dtype=dtype, device=device), second.to(dtype=dtype, device=device)
+
+    def eager_forward(self, hidden: Tensor) -> Tensor:
+        """Per-expert dispatch: the reference formulation of the same contract."""
+        flat = hidden.reshape(-1, hidden.shape[-1])
+        weights, indices, _ = self._route(flat)
         output = torch.zeros_like(flat)
         for expert_index, expert in enumerate(self.experts):
             selected = (indices == expert_index).any(dim=-1)
@@ -253,6 +281,27 @@ class _MoEFeedForward(nn.Module):
                         * weights[positions[slot_mask], slot].unsqueeze(-1)
                     )
             output[positions] += contribution
+        return output.reshape_as(hidden)
+
+    def forward(self, hidden: Tensor) -> Tensor:
+        flat = hidden.reshape(-1, hidden.shape[-1])
+        weights, indices, _ = self._route(flat)
+        first, second = self._expert_weights(flat.dtype, flat.device)
+        # (tokens, hidden) @ (hidden, experts*width) is one big matmul; folding the
+        # expert axis into the column dimension keeps it dense and launch-free.
+        num_experts, hidden_size, width = first.shape
+        wide = first.permute(1, 0, 2).reshape(hidden_size, num_experts * width)
+        hidden_experts = (flat @ wide).reshape(flat.shape[0], num_experts, width)
+        hidden_experts = torch.nn.functional.silu(hidden_experts)
+        # Batched per-expert gemm: (experts, tokens, width) @ (experts, width, hidden).
+        expert_outputs = torch.bmm(hidden_experts.transpose(0, 1), second).transpose(0, 1)
+        # Select the top-k rows per token and gate-weight them.
+        gathered = torch.gather(
+            expert_outputs,
+            1,
+            indices.unsqueeze(-1).expand(-1, -1, expert_outputs.shape[-1]),
+        )
+        output = (gathered * weights.unsqueeze(-1)).sum(dim=1)
         return output.reshape_as(hidden)
 
 

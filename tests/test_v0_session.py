@@ -140,6 +140,31 @@ def test_v0_attention_matches_multihead_attention_under_parameter_parity() -> No
     assert torch.allclose(actual, expected, atol=1e-6)
 
 
+def test_v0_dense_expert_forward_matches_eager_dispatch() -> None:
+    """The fast dense expert path is the same function as per-expert dispatch.
+
+    ``forward`` folds the expert axis into one large matmul for speed; if it
+    drifted from the routing contract, every training loss in the project would
+    silently change. ``eager_forward`` is the reference formulation, so pin
+    them equal (float64 to expose anything but rounding).
+    """
+    from act.model.v0_moe import _MoEFeedForward
+
+    config = V0MoEConfig(**TINY)
+    torch.manual_seed(5)
+    expert_ids = tuple(f"E{index}" for index in range(config.experts_per_layer[0]))
+    feed_forward = _MoEFeedForward(config, expert_ids).to(torch.float64)
+    hidden = torch.randn(4, 5, config.hidden_size, dtype=torch.float64)
+    with torch.no_grad():
+        dense = feed_forward(hidden)
+        eager = feed_forward.eager_forward(hidden)
+    assert torch.allclose(dense, eager, atol=1e-12)
+    # Routing bookkeeping is shared and normalized: every token's top-k load
+    # sums to one, so the recorded per-expert fractions must total 1.
+    assert float(feed_forward.last_load.sum()) == pytest.approx(1.0)
+    assert (feed_forward.last_load > 0).all()
+
+
 def test_v0_rebuild_transfers_expert_weights_by_identity() -> None:
     torch.manual_seed(0)
     genome = create_genome(
