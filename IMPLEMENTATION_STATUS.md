@@ -604,6 +604,23 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   the reduced-fidelity `real-diag` roots (`rich` / `argmax` / `null`) and
   writes a coherent verdict. Pinned by 2 new verdict tests and a driver test
   asserting exit 3 is not treated as a verdict code.
+- **The re-push loop is mechanised** (`scripts/kaggle_queue.py`), because at
+  the measured rate each queue needs six sessions and "re-run the same command
+  until the queue completes" should not depend on someone remembering. It
+  stages the kernel, pushes it, waits for a terminal status, reads the
+  session's own log, and re-pushes until the declared block is complete (exit
+  0 complete, 1 session failed, 2 session budget exhausted). Progress comes
+  from the log, not the dataset: the runner labels every declared seed
+  `skipped_complete` or `completed` as it walks the queue, so the count is
+  cumulative and costs no multi-gigabyte download per session. Staging also
+  encodes a trap that would have silently wasted a session - a Kaggle script
+  kernel receives *only* `code_file` (the CLI sends that file's text and
+  nothing else from the push folder, and the metadata has no environment
+  field), so the staged entry script is generated with the queue mode pinned
+  into its `__main__` guard, and staging fails loudly if that guard moves.
+  Verified by executing a staged entry with no `ACT_T4_MODE` set: it resolves
+  its pinned mode and reaches the mount check instead of the mode error.
+  Pinned by 16 tests.
 - `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (272, including the
   26 report-figure data-assembly tests, 14 session-plan tests pinning the
   section 5.2 schedule/dtype tables, 10 handoff tests covering atomic

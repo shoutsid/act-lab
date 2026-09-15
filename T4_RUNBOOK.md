@@ -73,17 +73,28 @@ no-re-tuning rule are all untouched.
 Sections 1-2c describe what a session *does*; this section is how a session is
 started. The registered commands run as **script kernels** driven by
 `scripts/kaggle_t4.py`, whose behaviour is selected by `ACT_T4_MODE`
-(`preflight`, `session`, `control`, `null`, plus `probe` and `metadata`). Every
-mode copies the attached code dataset into the writable working dir, runs the
-registered command unchanged, and keeps the session log and publish log in the
-kernel output. The metadata for a push is generated, not hand-written:
+(`preflight`, `session`, `control`, `null`, plus `probe`, `verdict` and
+`metadata`). Every mode copies the attached code dataset into the writable
+working dir, runs the registered command unchanged, and keeps the session log
+and publish log in the kernel output.
+
+Drive a queue with `scripts/kaggle_queue.py`, which stages the kernel, pushes
+it, waits for the session, and re-pushes until the declared block is complete.
+One push is one session, so `--max-sessions 1` means "run one session now",
+and the default budget covers the six sessions the primary queue needs:
 
 ```bash
-mkdir -p /tmp/act-t4 && cd /tmp/act-t4
-cp <repo>/scripts/kaggle_t4.py .
-ACT_T4_MODE=metadata ACT_T4_QUEUE=session python kaggle_t4.py
-kaggle kernels push -p .
+python scripts/kaggle_queue.py --queue session
+python scripts/kaggle_queue.py --queue control --max-sessions 8
+python scripts/kaggle_queue.py --queue verdict          # after the three queues
 ```
+
+A script kernel receives **only** `code_file`: the CLI sends that file's text
+and nothing else from the push folder, and the metadata has no field for
+environment variables. The staged entry script is therefore generated with the
+mode pinned inside it (`run-session.py`, `run-verdict.py`, ...). Copying
+`kaggle_t4.py` into a folder and exporting `ACT_T4_MODE` on the pushing side
+does **not** work - the kernel never sees that environment.
 
 Three Kaggle-side facts that are not obvious, recorded because they already
 cost one failed run:
