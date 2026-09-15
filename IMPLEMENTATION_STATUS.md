@@ -711,6 +711,26 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   cannot-tell cases, the gate's boundary, a drive-level refusal that asserts
   no push happened, and a positive control that a coverable week still
   pushes).
+- **The documented verdict command works, and the section 4 path is verified
+  end to end.** `T4_RUNBOOK.md` section 3 told operators to run
+  `kaggle_queue.py --queue verdict`, but `--queue` only accepted the three
+  queues, so the command that produces the final answer failed with an
+  argparse usage error - exactly once, after the whole quota was spent.
+  `--queue verdict` (and `--queue preflight`) are now one-shot jobs: staged,
+  pushed once, waited on, and reported, with no re-push loop and no quota gate.
+  The verdict's registered code is mirrored as the driver's exit code (0 PASS,
+  1 FAIL, 2 PASS with qualification, 3 no verdict), and to make that possible
+  the decision now travels in `v0-5-1-verdict.json` as `exit_code` - the
+  Kaggle-side runner exits 0 whatever the decision, so a reader could
+  otherwise only re-derive PASS/FAIL from the verdict string.
+  Verified by running the real thing: three full 12-seed queues produced by
+  `run_pair_session` with the smoke profile, then `v0_verdict.py` over them -
+  `queue_complete` true, 12 seeds complete, no strays, the pool-matched
+  control and null blocks both evaluated, `measured_cost_percent` 52.2% (far
+  outside the 5% criterion for a tiny config, hence the FAIL), artifact
+  `exit_code` 1 matching the process exit code 1. The reader/writer coupling
+  is now pinned by a test, because the existing verdict tests hand-build their
+  summaries and never fed the script a summary the runner wrote.
 - **The driver refuses to repeat a session that advanced nothing.** A session
   whose clock never fit a pair reports *success* while writing no progress
   (rule 1 idles it), and the loop would push again - up to `--max-sessions`

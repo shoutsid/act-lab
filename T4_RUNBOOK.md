@@ -100,7 +100,17 @@ and the default budget covers the six sessions the primary queue needs:
 python scripts/kaggle_queue.py --queue session
 python scripts/kaggle_queue.py --queue control --max-sessions 8
 python scripts/kaggle_queue.py --queue verdict          # after the three queues
+python scripts/kaggle_queue.py --queue preflight        # one-shot diagnostics
 ```
+
+`preflight` and `verdict` are one-shot jobs rather than queues: they are
+pushed once and reported, with no re-push loop and no quota gate (the verdict
+runs on CPU and bills nothing). `--queue verdict` returns the registered
+section 4 decision as its exit code - **0 PASS, 1 FAIL, 2 PASS with
+qualification, 3 no verdict produced** - so the last step of the run is
+scriptable, and it prints the verdict artifact. The kernel itself always exits
+0 whatever the decision, so the code travels in `v0-5-1-verdict.json`
+(`exit_code`) for the driver to read back.
 
 The driver exits 0 when the queue is complete, 1 on a failed session, 2 when
 the session budget ran out with seeds still missing, **3 when the weekly

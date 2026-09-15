@@ -56,12 +56,21 @@ EXIT_SESSION_FAILED = 1
 EXIT_BUDGET_EXHAUSTED = 2
 EXIT_QUOTA_INSUFFICIENT = 3
 EXIT_NO_PROGRESS = 4
+# scripts/v0_verdict.py's distinct code for "no verdict was produced". It is
+# deliberately not 1, which means a real cost FAIL, so an operator error can
+# never be recorded as the hypothesis being false.
+EXIT_NO_VERDICT = 3
 
 # The weekly accelerator line the session kernels bill against.
 QUOTA_RESOURCE = "GPU"
 
 STATUS_RE = re.compile(r"KernelWorkerStatus\.([A-Z_]+)")
 SESSION_LOG_NAME = "session-log.json"
+VERDICT_NAME = "v0-5-1-verdict.json"
+# Single-job kernels that are pushed once and reported, rather than queues that
+# are re-pushed until a block completes. ``verdict`` is the section 4 decision
+# - the reason the queues were run at all.
+ONE_SHOT_MODES = ("preflight", "verdict")
 
 
 def parse_status(text: str) -> str:
@@ -540,11 +549,65 @@ def drive(
     return EXIT_BUDGET_EXHAUSTED
 
 
+def report_verdict(output_dir: str | Path) -> int:
+    """Print the decision the verdict kernel computed and mirror its code.
+
+    The kernel exits 0 whatever the decision, so the artifact is the only
+    carrier of the answer. Returning the registered code makes
+    ``--queue verdict`` scriptable: 0 PASS, 1 FAIL, 2 PASS-with-qualification
+    (a withholding clause fired), 3 no verdict was produced.
+    """
+    candidates = sorted(Path(output_dir).rglob(VERDICT_NAME), key=lambda p: len(p.parts))
+    if not candidates:
+        print(f"no {VERDICT_NAME} in the kernel output - no verdict produced", flush=True)
+        return EXIT_NO_VERDICT
+    verdict = json.loads(candidates[0].read_text(encoding="utf-8"))
+    print(json.dumps(verdict, indent=2, sort_keys=True), flush=True)
+    code = verdict.get("exit_code")
+    if not isinstance(code, int):
+        print("verdict artifact carries no exit_code", flush=True)
+        return EXIT_NO_VERDICT
+    print(f"VERDICT: {verdict.get('verdict')} (exit {code})", flush=True)
+    return code
+
+
+def run_once(mode: str, *, poll: float, timeout: float) -> int:
+    """Push a single-job kernel and report what it produced.
+
+    No re-push loop and no quota gate: the verdict runs on CPU and bills
+    nothing, and pre-flight is one measurement. Reporting the verdict from the
+    same tool as the queues is the point - it is the step whose output decides
+    whether the whole run was worth its quota.
+    """
+    kernel = str(kaggle_t4.metadata_for(mode)["id"])
+    print(f"=== running {mode} ({kernel}) ===", flush=True)
+    push_dir = stage(Path(tempfile.mkdtemp(prefix=f"act-{mode}-")) / "push", mode)
+    push = _run(["kaggle", "kernels", "push", "-p", str(push_dir)])
+    print(push.stdout.strip() or push.stderr.strip(), flush=True)
+    if push.returncode != 0:
+        return EXIT_SESSION_FAILED
+
+    status = _wait_for_terminal(kernel, poll, timeout)
+    output_dir = Path(tempfile.mkdtemp(prefix=f"act-{mode}-out-"))
+    _run(["kaggle", "kernels", "output", kernel, "-p", str(output_dir)])
+    if status != SUCCESS_STATUS:
+        print(f"{mode} ended with {status}; kernel log follows", flush=True)
+        log = output_dir / f"{kernel.split('/')[-1]}.log"
+        if log.is_file():
+            print(log.read_text(encoding="utf-8")[-4000:], flush=True)
+        return EXIT_SESSION_FAILED
+    if mode == "verdict":
+        return report_verdict(output_dir)
+    print(f"=== {mode} complete ({kernel}) ===", flush=True)
+    return EXIT_COMPLETE
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--queue", choices=sorted(kaggle_t4.QUEUES), default="session",
-        help="which declared queue to drive (default session)",
+        "--queue", choices=sorted((*kaggle_t4.QUEUES, *ONE_SHOT_MODES)), default="session",
+        help="which declared queue to drive, or a one-shot job to run once "
+        "(preflight, verdict); default session",
     )
     parser.add_argument("--hours", type=float, default=None,
                         help="the session window, pinned into the pushed kernel "
@@ -557,6 +620,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="push at most this many sessions (default 8)")
     args = parser.parse_args(argv)
 
+    if args.queue in ONE_SHOT_MODES:
+        return run_once(args.queue, poll=args.poll, timeout=args.timeout)
     # Deliberately *not* set in this process's environment: the kernel runs on
     # Kaggle and would never see it. ``drive`` pins it into the staged body.
     return drive(

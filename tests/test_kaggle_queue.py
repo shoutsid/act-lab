@@ -459,6 +459,67 @@ def test_drive_keeps_going_while_sessions_advance(monkeypatch) -> None:
     assert code == kaggle_queue.EXIT_BUDGET_EXHAUSTED
 
 
+def test_report_verdict_mirrors_the_registered_code(tmp_path: Path) -> None:
+    """The kernel exits 0 whatever the decision, so the artifact carries it."""
+    nested = tmp_path / "act-lab" / "artifacts"
+    nested.mkdir(parents=True)
+    (nested / kaggle_queue.VERDICT_NAME).write_text(
+        json.dumps({"verdict": "FAIL", "exit_code": 1})
+    )
+
+    assert kaggle_queue.report_verdict(tmp_path) == 1
+
+
+def test_report_verdict_reports_no_verdict_distinctly(tmp_path: Path) -> None:
+    """"No verdict produced" must not read as a cost FAIL."""
+    assert kaggle_queue.report_verdict(tmp_path) == kaggle_queue.EXIT_NO_VERDICT
+    assert kaggle_queue.EXIT_NO_VERDICT != 1
+
+    (tmp_path / kaggle_queue.VERDICT_NAME).write_text(json.dumps({"verdict": "PASS"}))
+    assert kaggle_queue.report_verdict(tmp_path) == kaggle_queue.EXIT_NO_VERDICT
+
+
+def test_run_once_pushes_the_verdict_and_returns_its_decision(monkeypatch) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        calls.append(list(argv))
+        if argv[1:3] == ["kernels", "status"]:
+            return subprocess.CompletedProcess(
+                argv, 0, 'has status "KernelWorkerStatus.COMPLETE"', ""
+            )
+        if argv[1:3] == ["kernels", "output"]:
+            target = Path(argv[argv.index("-p") + 1])
+            target.mkdir(parents=True, exist_ok=True)
+            (target / kaggle_queue.VERDICT_NAME).write_text(
+                json.dumps({"verdict": "PASS_WITH_QUALIFICATION", "exit_code": 2})
+            )
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(kaggle_queue, "_run", fake_run)
+
+    code = kaggle_queue.run_once("verdict", poll=0.0, timeout=1.0)
+
+    assert code == 2
+    assert len([argv for argv in calls if argv[1:3] == ["kernels", "push"]]) == 1
+
+
+def test_the_documented_verdict_command_is_accepted(monkeypatch) -> None:
+    """The runbook tells operators to run this; it must not be a usage error."""
+    seen: list[str] = []
+
+    def fake_once(mode: str, *, poll: float, timeout: float) -> int:
+        seen.append(mode)
+        return 0
+
+    monkeypatch.setattr(kaggle_queue, "run_once", fake_once)
+
+    assert kaggle_queue.main(["--queue", "verdict"]) == 0
+    assert seen == ["verdict"]
+    assert kaggle_queue.main(["--queue", "preflight"]) == 0
+    assert seen == ["verdict", "preflight"]
+
+
 def test_burned_note_reports_quota_spent_on_nothing() -> None:
     before = {"remaining_hours": 28.0, "refresh_at": "x"}
     after = {"remaining_hours": 25.5, "refresh_at": "x"}

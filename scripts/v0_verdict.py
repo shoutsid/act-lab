@@ -411,6 +411,11 @@ def compute_verdict(
         "null_control": null,
         "per_seed": pairs,
         "verdict": verdict,
+        # The registered code, carried in the artifact as well as returned: the
+        # Kaggle-side runner exits 0 whatever the decision (the decision *is*
+        # the artifact), so anything that reads the verdict back needs the code
+        # to travel with it rather than re-deriving it from the string.
+        "exit_code": exit_code,
         "gate_4_authorized": verdict == "PASS" and not missing,
         "notes": (
             f"Gate 4 authorization requires all {len(declared_seeds)} declared "

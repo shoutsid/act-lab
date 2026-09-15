@@ -30,6 +30,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import v0_verdict  # noqa: E402
 
 from act.training import V0SessionConfig, run_v0_session  # noqa: E402
+from act.training.v0_runner import run_pair_session  # noqa: E402
 from act.training.session_plan import (  # noqa: E402
     expected_probe_cost_percent,
     tolerance_band,
@@ -229,6 +230,59 @@ def _rewrite_summary(dataset_root: Path, seed: int, summary: dict) -> None:
 # --- the registered PASS branch -------------------------------------------
 
 
+def test_the_verdict_reads_a_summary_the_runner_actually_wrote(tmp_path: Path) -> None:
+    """The reader/writer coupling, which every other test here bypasses.
+
+    ``_write_seed`` hand-builds its summaries, so nothing checked that the
+    verdict script can consume what ``run_pair_session`` publishes - and that
+    coupling *is* the section 4 path: the runner writes it on Kaggle, the
+    verdict reads it back weeks later. A mismatch would only surface once the
+    quota was already spent.
+    """
+    config = V0SessionConfig(
+        seed=15000,
+        arms=("random", "adaptive"),
+        declared=False,
+        device="cpu",
+        batch_size=2,
+        vocab_size=64,
+        context_size=256,
+        hidden_size=64,
+        depth=2,
+        attention_heads=4,
+        expert_count=4,
+        expert_width=32,
+        total_steps=4,
+        mutation_interval=2,
+        mutation_budget=1,
+        probe_candidate_cap=4,
+        probe_batch_count=1,
+        validation_batches=2,
+        checkpoint_interval=2,
+        max_checkpoints=2,
+    )
+    dataset_root = tmp_path / "datasets"
+    run_pair_session(
+        config=config,
+        session_dir=tmp_path / "sessions",
+        dataset_root=dataset_root,
+        code_revision="rev",
+        remaining_hours=1.0,
+        measured_tokens_per_second=1e9,  # instantaneous tiny pair
+        seeds=(15000,),
+    )
+    assert load_seed_summary(dataset_root, 15000)["status"] == "complete"
+
+    verdict = v0_verdict.compute_verdict(
+        dataset_root, probe_batch_count=1, declared_seeds=[15000]
+    )
+
+    assert verdict["seeds_complete"] == [15000]
+    assert verdict["seeds_missing"] == []
+    assert verdict["queue_complete"] is True
+    assert isinstance(verdict["exit_code"], int)
+
+
 def test_full_in_band_queue_passes_and_authorizes_gate_4(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -247,6 +301,10 @@ def test_full_in_band_queue_passes_and_authorizes_gate_4(
     assert exit_code == 0
     verdict = json.loads((tmp_path / "v0-5-1-verdict.json").read_text())
     assert verdict["verdict"] == "PASS"
+    # The artifact carries the registered code, not just the string: the
+    # Kaggle-side runner exits 0 whatever the decision, so a reader (the queue
+    # driver) can only report PASS/FAIL by reading it back from here.
+    assert verdict["exit_code"] == exit_code == 0
     assert verdict["protocol"] == "v0-compute-efficiency-5.1"
     assert verdict["queue_complete"] is True
     assert verdict["seeds_complete"] == DECLARED
