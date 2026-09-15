@@ -1,7 +1,8 @@
 """The committed null-control study summaries stay machine-checked.
 
 These tests pin the versioned records produced by
-``scripts/null_toy_study.py summary`` (report sections 5.9 and 5.10): the
+``scripts/null_toy_study.py summary`` (report sections 5.9, 5.10 and
+5.12): the
 quoted statistics must recompute exactly from the stored per-seed triples,
 the built-in checks must hold, and the stored verdicts must keep their
 labels. They also pin the committed schema: per-seed payloads are kept
@@ -23,6 +24,8 @@ from act.evolution.study import _binomial_survival, _gate_min_wins
 SUMMARIES = {
     "depth1": "null-control-depth1-384.json",
     "depth4": "null-control-depth4-384.json",
+    "depth1-spread": "null-control-depth1-spread-384.json",
+    "depth4-prefix": "null-control-depth4-prefix-384.json",
 }
 QUOTED = {
     # profile -> comparison -> (wins, mean, p): the numbers quoted in the
@@ -37,10 +40,22 @@ QUOTED = {
         "adaptive_vs_null": (218, -0.029696, 4.58e-03),
         "adaptive_vs_random": (263, -0.112999, 1.68e-13),
     },
+    "depth1-spread": {
+        "null_vs_random": (289, -0.076105, 3.54e-24),
+        "adaptive_vs_null": (131, +0.047507, 1.0),
+        "adaptive_vs_random": (231, -0.028598, 4.04e-05),
+    },
+    "depth4-prefix": {
+        "null_vs_random": (266, -0.070072, 1.52e-14),
+        "adaptive_vs_null": (225, -0.037147, 4.43e-04),
+        "adaptive_vs_random": (270, -0.107220, 5.19e-16),
+    },
 }
 OUTCOME_LABEL = {
     "depth1": "branch 2 (1 PASS / 2 FAIL)",
     "depth4": "branch 1 (1+2 PASS)",
+    "depth1-spread": "branch 2 (1 PASS / 2 FAIL)",
+    "depth4-prefix": "branch 1 (1+2 PASS)",
 }
 
 
@@ -106,9 +121,10 @@ def test_null_control_summary_arm_means_and_hash(profile: str, filename: str) ->
     for arm, mean in summary["arm_means"].items():
         recomputed = sum(row["losses"][arm] for row in summary["per_seed"]) / 384
         assert math.isclose(mean, recomputed, rel_tol=0, abs_tol=1e-12)
-    # The depth-1 ordering is null < adaptive < random; at depth 4 it flips.
+    # The depth-1 orderings are null < adaptive < random; at depth 4 they
+    # flip, regardless of the candidate policy (the section-5.12 2x2).
     d1 = summary["arm_means"]
-    if profile == "depth1":
+    if profile.startswith("depth1"):
         assert d1["null"] < d1["adaptive"] < d1["random"]
     else:
         assert d1["adaptive"] < d1["null"] < d1["random"]

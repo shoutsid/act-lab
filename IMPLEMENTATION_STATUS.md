@@ -786,6 +786,18 @@ These remain TODO or DEFERRED until the first gate passes:
   primary contract, executed as new profiles (`depth1-spread`,
   `depth4-prefix`) of `scripts/null_toy_study.py` with committed
   summaries and pinning tests like 5.9/5.10.
+- **Section 5.12 2x2 (RAN 2026-09-14/15, revision `142ad44`)**: both
+  cells completed 384/384 seeds, built-in checks held, verdicts
+  machine-checked, summaries committed and pinned by test (suite at
+  355). Result: **depth, not the candidate policy, separates churn
+  suppression from value creation.** depth 1 + spread: primary 1 PASS
+  (289/384), primary 2 FAIL (131/384, +0.0475) - replicates 5.9;
+  depth 4 + prefix: primary 1 PASS (266/384), primary 2 PASS (225/384,
+  -0.0371, p 4.4e-04) - replicates 5.10. The depth-4 edge does not
+  require the spread policy and spread alone does nothing at depth 1;
+  the 5.10 "richness axis" attribution is revised to depth-driven, and
+  the candidate policy is exchangeable within the registered
+  cap-4/2-batch budget.
 - `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
   `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
   deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer

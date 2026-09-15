@@ -1485,6 +1485,39 @@ doing nothing under this policy?
 **Cost.** ~1.5-2 s/seed at depth 4 on CPU (measured section 9.3),
 sharded 20-way ~1 min wall per cell.
 
+**Outcome (run 2026-09-14/15, revision `142ad44`): DEPTH, not the
+candidate policy, separates churn suppression from value creation.**
+Built-in checks held in 384/384 seeds per cell; verdicts
+machine-checked (`scripts/null_toy_study.py`), committed summaries
+`artifacts/study-summaries/null-control-depth1-spread-384.json` and
+`null-control-depth4-prefix-384.json`, pinned by test like the 5.9/5.10
+records. The registered 2x2, with the two new cells completing it:
+
+- depth 1 + prefix (5.9): primary 2 FAIL (117/384, mean `+0.0508`);
+- depth 1 + spread (72000-72383): primary 1 PASS (null-vs-random
+  289/384, mean `-0.0761`, p `3.5e-24`), primary 2 FAIL
+  (adaptive-vs-null 131/384, mean `+0.0475`, p `1.0`) - ordering null
+  `15.0884` < adaptive `15.1359` < random `15.1645`: branch 2,
+  replicating 5.9 under the spread policy;
+- depth 4 + prefix (73000-73383): primary 1 PASS (266/384, mean
+  `-0.0701`, p `1.5e-14`), **primary 2 PASS (225/384, mean `-0.0371`,
+  p `4.4e-04`)** - ordering adaptive `12.4413` < null `12.4785` <
+  random `12.5485`: branch 1, replicating 5.10 under the prefix policy;
+- depth 4 + spread (5.10): primary 2 PASS (218/384, mean `-0.0297`).
+
+Reading, as pre-registered in the first interpretation branch: the
+depth-4 edge does NOT require the spread policy (the prefix margin,
+`-0.0371`, is if anything larger than 5.10's spread margin, `-0.0297`),
+and the spread policy alone does not create value at depth 1 (`+0.0475`
+versus 5.9's prefix `+0.0508` - the two depth-1 cells are
+indistinguishable). Churn harm passes primary 1 in all four cells. The
+section-5.10 reading ("the richness axis separates suppression from
+creation") is REVISED: depth is the separating factor, and the
+candidate policy is exchangeable within the registered cap-4 / 2-batch
+budget. Gate 3's value-creation claim should be quoted as depth-driven
+at this scale; the depth-1 rows (all four arms' comparisons at depth 1)
+remain churn-suppression phenomena.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
