@@ -993,6 +993,168 @@ def test_null_arm_resume_is_bit_identical(tmp_path: Path) -> None:
     )
 
 
+# --- heuristic arm (report section 5.13): routing-statistics selection ---
+
+
+def _heuristic_config(seed: int, **overrides) -> V0SessionConfig:
+    values = dict(
+        seed=seed,
+        arms=("heuristic",),
+        declared=False,
+        device="cpu",
+        vocab_size=64,
+        context_size=256,
+        hidden_size=64,
+        depth=2,
+        attention_heads=4,
+        expert_count=4,
+        expert_width=32,
+        total_steps=6,
+        mutation_interval=2,
+        mutation_budget=3,
+        probe_batch_count=1,
+        validation_batches=2,
+        checkpoint_interval=2,
+        max_checkpoints=2,
+    )
+    values.update(overrides)
+    return V0SessionConfig(**values)
+
+
+def test_heuristic_config_validation() -> None:
+    """Heuristic sessions must be single-arm."""
+    with pytest.raises(ValueError, match="heuristic"):
+        V0SessionConfig(declared=False, arms=("random", "heuristic"))
+    assert V0SessionConfig(declared=False).arms == ("random", "adaptive")
+
+
+def test_heuristic_arm_grows_at_measured_load_every_slot(tmp_path: Path) -> None:
+    """Every event slot grows the argmax-load layer; no probes are booked.
+
+    The budget guard counts mutations (which happen), so the arm stops at
+    mutation_budget events - with budget 3 and 3 slots, all slots fire.
+    """
+    arm = run_v0_session(
+        _heuristic_config(72), checkpoint_dir=tmp_path / "heuristic"
+    ).arms[0]
+    assert arm.mode == "heuristic"
+    assert arm.mutation_count == 3
+    assert len(arm.mutation_history) == 3
+    assert [event["step"] for event in arm.mutation_history] == [2, 4, 6]
+    for event in arm.mutation_history:
+        assert event["policy"] == "heuristic"
+        assert event["operation"] == "grow"
+        assert event["gate_decision"] == "heuristic_grow"
+        assert event["expert_id"] is not None
+        assert event["probe_candidates"] == 0
+        assert event["architecture_hash_after"] != event["architecture_hash_before"]
+    assert arm.search_flops > 0
+    assert arm.architecture_hash != arm.mutation_history[0]["architecture_hash_before"]
+
+
+def test_heuristic_event_targets_the_argmax_load_layer(tmp_path: Path) -> None:
+    """The event grows the layer whose max routing load is currently highest."""
+    from act.training.v0_session import (
+        _SessionState,
+        _genome_from_config,
+        _heuristic_event,
+        _prepare_model,
+    )
+    from act.model import v0_moe_model_from_genome
+
+    config = _heuristic_config(73)
+    genome = _genome_from_config(config)
+    model = _prepare_model(v0_moe_model_from_genome(genome).to("cpu"), config)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
+    # Populate real routing statistics with a training-shaped forward.
+    tokens = torch.randint(0, config.vocab_size, (2, config.context_size))
+    model.loss(tokens)
+    loads = model.routing_load
+    expected = max(
+        (layer for layer in genome.layers if len(layer.experts) < 16),
+        key=lambda layer: max(loads[layer.index]),
+    )
+    state = _SessionState(genome=genome)
+    _heuristic_event(state, model, optimizer, config, 2, torch.device("cpu"))
+    event = state.mutation_history[-1]
+    assert event["operation"] == "grow"
+    assert event["layer_id"] == expected.id
+    assert state.mutations == 1
+    assert len(next(l for l in genome.layers if l.id == expected.id).experts) == 5
+
+
+def test_heuristic_event_rebuilds_exactly_once(tmp_path: Path) -> None:
+    """One accepted grow, one rebuild - no probe rebuilds on any path.
+
+    Pinned via the global torch RNG stream: the event must consume exactly
+    the randomness of a single post-grow rebuild (fresh-expert init).
+    """
+    from copy import deepcopy
+
+    from act.training.v0_session import (
+        _SessionState,
+        _genome_from_config,
+        _heuristic_event,
+        _prepare_model,
+    )
+    from act.model import v0_moe_model_from_genome
+
+    config = _heuristic_config(74)
+    genome = _genome_from_config(config)
+    model = _prepare_model(v0_moe_model_from_genome(genome).to("cpu"), config)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
+    tokens = torch.randint(0, config.vocab_size, (2, config.context_size))
+    model.loss(tokens)
+    loads = model.routing_load
+    target = max(
+        (layer for layer in genome.layers if len(layer.experts) < 16),
+        key=lambda layer: max(loads[layer.index]),
+    )
+    before_genome = deepcopy(genome)
+    state = _SessionState(genome=deepcopy(genome))
+    snapshot = torch.random.get_rng_state()
+    _heuristic_event(state, model, optimizer, config, 2, torch.device("cpu"))
+    after_event = torch.random.get_rng_state()
+    # Control: restore the pre-mutation genome, apply the same grow, and
+    # rebuild once manually from the same RNG position.
+    torch.random.set_rng_state(snapshot)
+    control_genome = deepcopy(before_genome)
+    assert grow_expert(control_genome, target.id, 2) is not None
+    rebuild_v0_moe_from_genome(model, control_genome)
+    after_manual = torch.random.get_rng_state()
+    assert torch.equal(after_event, after_manual)
+
+
+def test_heuristic_arm_cost_ratio_is_zero() -> None:
+    """No probes: the predicted search cost is exactly zero."""
+    assert predicted_cost_ratio(_heuristic_config(75)) == 0.0
+
+
+def test_heuristic_arm_resume_is_bit_identical(tmp_path: Path) -> None:
+    """A mid-run resume reproduces the heuristic arm exactly."""
+    config = _heuristic_config(76, total_steps=8, mutation_interval=4)
+    reference = run_v0_session(config, checkpoint_dir=tmp_path / "ref")
+    arm_dir = tmp_path / "resume" / "seed-76" / "arm-heuristic"
+    run_v0_session(config, checkpoint_dir=tmp_path / "resume")
+    newest = max(
+        arm_dir.glob("checkpoint-*.pt"), key=lambda p: int(p.stem.split("-")[-1])
+    )
+    assert newest.stem.endswith("0008")
+    newest.unlink()  # force a mid-run resume from the step-6 checkpoint
+    resumed = run_v0_session(config, checkpoint_dir=tmp_path / "resume")
+    arm = resumed.arms[0]
+    before = reference.arms[0]
+    assert arm.final_loss == before.final_loss
+    assert arm.architecture_hash == before.architecture_hash
+    assert (arm.training_flops, arm.search_flops) == (
+        before.training_flops,
+        before.search_flops,
+    )
+    assert json.dumps(arm.mutation_history, sort_keys=True) == json.dumps(
+        before.mutation_history, sort_keys=True
+    )
+
+
 # --- substrate audit (report section 9): candidate policy and pool control ---
 
 

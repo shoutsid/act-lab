@@ -182,6 +182,16 @@ class V0SessionConfig:
     # rejected every draw and every fallback on the diagnostic block, the
     # null arm should reproduce the gated arm's losses bit-for-bit on the
     # same seeds - a built-in replication check of the section-5.4 run.
+    # Routing-statistics heuristic (report section 5.13, the section-5.11
+    # contract's named direction off probe-derived selection): a deterministic,
+    # probe-free policy - grow one expert at the argmax-routing-load layer
+    # (the same load statistic the random arm's fallback reads), every event,
+    # no chooser draw, no probes, no rollback. It is the minimal non-probe
+    # selection signal: the only information used is the load imbalance the
+    # training forwards already produce. Single-arm like gated/null, sharing
+    # the random arm's init identity; paired against the published null arms
+    # to answer "can DIRECTED churn beat doing nothing?" after probe-ordered
+    # and gated churn both lost to it.
 
     def __post_init__(self) -> None:
         if self.total_steps < 1 or self.batch_size < 1:
@@ -208,11 +218,15 @@ class V0SessionConfig:
             raise ValueError("the gated arm runs as its own single-arm session (arms=('gated',))")
         if "null" in self.arms and self.arms != ("null",):
             raise ValueError("the null arm runs as its own single-arm session (arms=('null',))")
+        if "heuristic" in self.arms and self.arms != ("heuristic",):
+            raise ValueError(
+                "the heuristic arm runs as its own single-arm session (arms=('heuristic',))"
+            )
         if self.dtype not in {"fp32", "fp16"}:
             raise ValueError(f"unsupported session dtype: {self.dtype}")
         if self.validation_batches < 1:
             raise ValueError("validation_batches must be positive")
-        unknown = [arm for arm in self.arms if arm not in {"random", "adaptive", "gated", "null"}]
+        unknown = [arm for arm in self.arms if arm not in {"random", "adaptive", "gated", "null", "heuristic"}]
         if unknown:
             raise ValueError(f"unsupported V0 session arms: {unknown}")
         if len(set(self.arms)) != len(self.arms):
@@ -260,6 +274,10 @@ def predicted_cost_ratio(config: V0SessionConfig) -> float:
         return search / training
     if config.arms == ("null",):
         # The do-nothing control books nothing: no probes, no rebuilds.
+        return 0.0
+    if config.arms == ("heuristic",):
+        # The routing-statistics heuristic books no probes; its only extra
+        # cost is the post-grow rebuild every mutating arm books anyway.
         return 0.0
     per_candidate = probe_tokens * 2 * active
     if config.probe_finetune_steps > 0:
@@ -869,6 +887,95 @@ def _gated_event(
     return model, optimizer
 
 
+def _heuristic_event(
+    arm_state: _SessionState,
+    model: V0MoECausalLM,
+    optimizer: torch.optim.Optimizer,
+    config: V0SessionConfig,
+    step: int,
+    device: torch.device,
+) -> tuple[V0MoECausalLM, torch.optim.Optimizer]:
+    """Apply the routing-statistics heuristic (report section 5.13).
+
+    The section-5.11 contract's named non-probe direction: grow one expert
+    at the argmax-routing-load layer, every event, deterministically. The
+    only information used is the load imbalance the training forwards
+    already produce - the same per-layer key (max over the layer's expert
+    loads) the random arm's load-fallback reads - so the policy is fully
+    determined by the training stream and consumes no chooser RNG. Among
+    layers that can still grow (the operators cap layers at 16 experts),
+    the highest-load layer wins; ties resolve to the lowest layer index
+    (``max`` semantics, as in the fallback). If no layer can grow, the
+    event is a recorded no-op. No probes are booked: search_flops only
+    carries the post-grow rebuild every mutating arm books.
+    """
+    before_hash = genome_hash(arm_state.genome)
+    growable = [
+        layer
+        for layer in arm_state.genome.layers
+        if len(layer.experts) < 16
+    ]
+    if not growable:
+        arm_state.mutation_history.append(
+            {
+                "step": step,
+                "policy": "heuristic",
+                "operation": "noop",
+                "layer_id": None,
+                "expert_id": None,
+                "gate_decision": "heuristic_noop",
+                "gate_margin": None,
+                "architecture_hash_before": before_hash,
+                "architecture_hash_after": before_hash,
+                "mutation_count": arm_state.mutations,
+                "probe_candidates": 0,
+            }
+        )
+        return model, optimizer
+    target = max(growable, key=lambda layer: max(model.routing_load[layer.index]))
+    expert_id = grow_expert(arm_state.genome, target.id, step)
+    if expert_id is None:
+        # Unreachable while ``growable`` filters the operator cap, but a
+        # validation rollback would land here: record the no-op.
+        arm_state.mutation_history.append(
+            {
+                "step": step,
+                "policy": "heuristic",
+                "operation": "noop",
+                "layer_id": target.id,
+                "expert_id": None,
+                "gate_decision": "heuristic_noop",
+                "gate_margin": None,
+                "architecture_hash_before": before_hash,
+                "architecture_hash_after": genome_hash(arm_state.genome),
+                "mutation_count": arm_state.mutations,
+                "probe_candidates": 0,
+            }
+        )
+        return model, optimizer
+    arm_state.mutations += 1
+    rebuilt = rebuild_v0_moe_from_genome(model, arm_state.genome).to(device)
+    arm_state.search_flops += rebuilt.parameter_count * 4
+    _prepare_model(rebuilt, config)
+    new_optimizer = torch.optim.AdamW(rebuilt.parameters(), lr=config.learning_rate)
+    arm_state.mutation_history.append(
+        {
+            "step": step,
+            "policy": "heuristic",
+            "operation": "grow",
+            "layer_id": target.id,
+            "expert_id": expert_id,
+            "gate_decision": "heuristic_grow",
+            "gate_margin": None,
+            "architecture_hash_before": before_hash,
+            "architecture_hash_after": genome_hash(arm_state.genome),
+            "mutation_count": arm_state.mutations,
+            "probe_candidates": 0,
+        }
+    )
+    return rebuilt, new_optimizer
+
+
 def _null_event(
     arm_state: _SessionState,
     config: V0SessionConfig,
@@ -989,7 +1096,7 @@ def _train_arm(
     # gated session at gate_margin=inf reproduces the random arm EXACTLY -
     # the built-in budget-matched random control - and at any finite margin
     # the trajectory diverges only where the gate intervenes.
-    arm_seed = config.seed * 10 + {"random": 1, "adaptive": 2, "gated": 1, "null": 1}[mode]
+    arm_seed = config.seed * 10 + {"random": 1, "adaptive": 2, "gated": 1, "null": 1, "heuristic": 1}[mode]
     # fp16 sessions train under autocast with a GradScaler over fp32 master
     # weights; fp32 sessions keep the plain path. Both are created here so a
     # resume restores into the same object graph either way.
@@ -1136,6 +1243,10 @@ def _train_arm(
                 )
             elif mode == "null":
                 _null_event(arm_state, config, step)
+            elif mode == "heuristic":
+                model, optimizer = _heuristic_event(
+                    arm_state, model, optimizer, config, step, device
+                )
             else:
                 model, optimizer = _random_event(
                     arm_state, model, optimizer, config, step, device

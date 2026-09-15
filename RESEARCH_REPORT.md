@@ -1520,6 +1520,55 @@ budget. Gate 3's value-creation claim should be quoted as depth-driven
 at this scale; the depth-1 rows (all four arms' comparisons at depth 1)
 remain churn-suppression phenomena.
 
+### 5.13 Pre-registration: the routing-statistics heuristic against the null arm (designed, not yet run)
+
+**Motivation.** Section 5.11's falsification branch named the next
+real-data direction: off probe-derived selection entirely, starting
+with routing-statistics heuristics. The minimal such policy is also the
+one the training loop already computes for free: grow one expert at the
+argmax-routing-load layer (the same per-layer load key the random arm's
+fallback reads), every event, deterministically - no chooser draw, no
+probes, zero search FLOPs beyond the post-grow rebuild. After
+probe-ORDERED churn (5.3) and probe-GATED churn (5.4/5.11) both lost to
+doing nothing, this asks the last open real-text question: can DIRECTED
+churn beat doing nothing?
+
+**Design.** Single-arm sessions on the V0 diagnostic path (steps 600,
+interval 200, budget 3, cap 4 / 1 probe batch) on the fresh block
+**9008-9017** (10 seeds) - the theta sweep's block, whose published null
+arms are the control. The heuristic arm shares the random arm's init
+identity and training stream, consumes no chooser RNG, and grows at the
+measured argmax-load layer each event (operator cap: layers grow to 16
+experts, so the policy is structurally alive at expert_count=8).
+Primary: one-tailed sign test on per-seed heuristic-minus-null final-loss
+deltas (heuristic < null = directed churn beats doing nothing) against
+Bonferroni alpha/2 = `0.025` (bar 9/10; n = 10 as in 5.11).
+
+**Built-in checks.** Zero probe FLOPs; every mutation is a grow at the
+layer that was argmax-load at the event (recorded per event); mutation
+count 3/3 seeds (the budget guard counts mutations, which happen). The
+null values on this block are already published, so the comparison
+involves no new control run.
+
+**Pre-registered interpretation.**
+- Heuristic clears the bar: directed churn carries real signal on real
+  text - the non-probe selection program OPENS; pre-register a powered
+  block (>= 32 seeds) plus the load-threshold family (grow only when the
+  argmax load exceeds a margin) as the follow-up.
+- Heuristic loses or ties: the real-text ladder closes at the top too -
+  no topology mutation policy beats doing nothing at this fidelity - and
+  the next direction is NO real-data topology mutation at this scale;
+  resources move to Gate 4's compute-efficiency protocol, the one
+  remaining open gate.
+
+**Secondary (reported, not gating).** The grow-layer histogram (targeting
+footprint); per-seed deltas against the published random arms at
+9008-9011 (4 pairs, descriptive only); cost (predicted 0 probe ratio;
+rebuild bookings only).
+
+**Cost.** ~10 single-arm sessions at ~2.5 min each, ~25 min on the local
+GPU; idempotent (skip-completed), resumable.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

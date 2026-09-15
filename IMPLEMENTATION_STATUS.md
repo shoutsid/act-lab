@@ -798,6 +798,15 @@ These remain TODO or DEFERRED until the first gate passes:
   the 5.10 "richness axis" attribution is revised to depth-driven, and
   the candidate policy is exchangeable within the registered
   cap-4/2-batch budget.
+- **Section 5.13 pre-registration (designed, not yet run)**: the
+  routing-statistics heuristic arm - the section-5.11 contract's named
+  non-probe direction: deterministic grow at the argmax-routing-load
+  layer every event, no chooser draw, no probes, zero search FLOPs
+  beyond the rebuild. Implemented as `V0SessionConfig(arms=("heuristic",))`
+  (single-arm, shares the random arm's init identity), wired into the
+  diagnostic as the `heuristic` variant, 7 new tests (suite at 362).
+  Runs on the theta sweep's block 9008-9017 against its published null
+  arms; primary: sign test vs null at Bonferroni alpha/2 (bar 9/10).
 - `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
   `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
   deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer

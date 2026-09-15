@@ -246,8 +246,8 @@ def _run_one_pair(
     arms = {arm.mode: arm.final_loss for arm in result.arms}
     logger(f"seed {seed}: pair complete ({arms})")
     # Single-arm sessions (gated, report section 5.4; null, report section
-    # 5.8) publish one arm; the baseline comparison lives in the paired-block
-    # summaries, not here.
+    # 5.8; heuristic, report section 5.13) publish one arm; the baseline
+    # comparison lives in the paired-block summaries, not here.
     return {
         "seed": seed,
         "action": "completed",
@@ -255,6 +255,7 @@ def _run_one_pair(
         "adaptive_final_loss": arms.get("adaptive"),
         "gated_final_loss": arms.get("gated"),
         "null_final_loss": arms.get("null"),
+        "heuristic_final_loss": arms.get("heuristic"),
         "training_flops_by_arm": {
             arm.mode: arm.training_flops for arm in result.arms
         },

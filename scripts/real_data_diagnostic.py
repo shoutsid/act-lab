@@ -155,9 +155,36 @@ replication check is EXACT - max |null - gated| = 0.000000 on all eight
 seeds, the null arm reproducing the gated run bit-for-bit as the section
 5.7 degeneracy reading predicted. Every section-5.3 variant's loss is
 partly churn harm; the theta sweep's control should be the null arm; the
-honest real-text ladder for Gate 4 is null < random < adaptive. Verdict
-machine-checked by ``scripts/null_verdict.py``; write-up in report
+honest real-text ladder for Gate 4 is null < random < adaptive.Verdict machine-checked by ``scripts/null_verdict.py``; write-up in report
 section 5.8.
+
+- ``heuristic`` : the section-5.13 routing-statistics heuristic - the
+  section-5.11 contract's named non-probe direction. A single-arm session
+  (``V0SessionConfig(arms=("heuristic",))``): deterministic, grow-only,
+  growing one expert at the argmax-routing-load layer (the same per-layer
+  load key the random arm's fallback reads) every event, no chooser draw,
+  no probes, zero search FLOPs beyond the post-grow rebuild. Paired
+  against the theta sweep's published null arms on the same seeds, it
+  asks the last open real-text question: can DIRECTED churn beat doing
+  nothing when probe-ordered and gated churn both lost to it?
+
+Pre-registered outcome contract for ``heuristic`` (fixed before running):
+(a) heuristic beats the paired null arms (sign test, 9/10 on the fresh
+block 9008-9017, Bonferroni alpha/2 = 0.025): directed churn carries
+real signal on real text - the non-probe selection program OPENS, and a
+powered follow-up gets pre-registered. (b) heuristic loses (or ties):
+the real-text ladder closes at the top too - no topology mutation policy
+beats doing nothing at this fidelity, and the next direction is no
+real-data topology mutation at this scale (resources move to Gate 4's
+compute-efficiency protocol). Built-in checks: zero probe FLOPs, all
+mutations are grows at the measured argmax-load layer, and every
+heuristic loss must sit within the block's observed loss range (a far
+outlier means the stream identity broke). Should the null block ever be
+reproduced elsewhere, expect bit-identical null values - the heuristic
+arm does not perturb them (it consumes no chooser RNG and shares the
+null arm's init identity and stream).
+
+OUTCOME (2026-09-15, revision ``<pending>``): recorded after the run.
 
 Per-event probe cost scales as candidates x batches, so ``var`` quadruples
 the baseline cost (~1% -> ~4% of training FLOPs, measured 3.99%) and
@@ -225,6 +252,11 @@ VARIANTS: dict[str, dict[str, object]] = {
     # arms; its losses should reproduce the gated run bit-for-bit on the
     # same seeds, because the gated arm accepted nothing.
     "null": {"arms": ("null",)},
+    # Section 5.13: the routing-statistics heuristic (the section-5.11
+    # contract's named non-probe direction): deterministic grow at the
+    # argmax-routing-load layer, every event, no probes. Single-arm, paired
+    # against the theta sweep's published null arms on the same seeds.
+    "heuristic": {"arms": ("heuristic",)},
 }
 
 
@@ -397,6 +429,40 @@ def _gate_stats(dataset_root: Path, seeds: tuple[int, ...]) -> dict:
     }
 
 
+def _heuristic_stats(dataset_root: Path, seeds: tuple[int, ...]) -> dict:
+    """Aggregate the heuristic arm's bookkeeping from published summaries.
+
+    Reports the mutation count (all grows, one per event at this config),
+    the per-layer grow histogram (the load-argmax targeting's footprint),
+    and the total search FLOPs (the post-grow rebuilds only - zero probe
+    bookings is the built-in check).
+    """
+    mutations = 0
+    grows: dict[str, int] = {}
+    search_flops = 0
+    for seed in seeds:
+        path = (
+            dataset_root / "act-checkpoints" / "v0-5-1" / f"seed-{seed:04d}"
+            / "reports" / "seed-summary.json"
+        )
+        if not path.is_file():
+            continue
+        summary = json.loads(path.read_text())
+        if summary.get("status") != "complete":
+            continue
+        arm = summary["arms"].get("heuristic", {})
+        mutations += int(arm.get("mutation_count", 0))
+        search_flops += int(arm.get("search_flops", 0))
+        for event in arm.get("mutation_history", []):
+            if event.get("operation") == "grow":
+                grows[str(event.get("layer_id"))] = grows.get(str(event.get("layer_id")), 0) + 1
+    return {
+        "mutations": mutations,
+        "grow_layers": dict(sorted(grows.items())),
+        "search_flops": search_flops,
+    }
+
+
 def _null_stats(dataset_root: Path, seeds: tuple[int, ...]) -> dict:
     """Aggregate the null arm's bookkeeping (zero mutations by construction).
 
@@ -435,7 +501,9 @@ def analyze(seeds: tuple[int, ...], steps: int) -> dict:
         root = DIAG_ROOT / name / "datasets"
         single_arm = overrides.get("arms")
         arm_names = (
-            single_arm if single_arm in (("gated",), ("null",)) else ("random", "adaptive")
+            single_arm
+            if single_arm in (("gated",), ("null",), ("heuristic",))
+            else ("random", "adaptive")
         )
         losses = _seed_losses(root, seeds, arm_names)
         treatment = arm_names[0] if len(arm_names) == 1 else "adaptive"
@@ -482,6 +550,8 @@ def analyze(seeds: tuple[int, ...], steps: int) -> dict:
             report["variants"][name]["gate"] = _gate_stats(root, seeds)
         if treatment == "null":
             report["variants"][name]["null"] = _null_stats(root, seeds)
+        if treatment == "heuristic":
+            report["variants"][name]["heuristic"] = _heuristic_stats(root, seeds)
     return report
 
 
