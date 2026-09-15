@@ -65,6 +65,18 @@ def is_terminal(status: str) -> bool:
     return status in TERMINAL_STATUSES
 
 
+def should_adopt(status: str) -> bool:
+    """Is a session already live, so the driver must join it rather than push?
+
+    Pushing a new version does **not** supersede the running one (measured
+    2026-09-15: a second push left the first session running and doubled the
+    GPU burn, 2.00x against 1.00x). A driver started while a session is live
+    must therefore adopt that session instead of adding a second - and an
+    unknown/empty status (the kernel does not exist yet) means push.
+    """
+    return bool(status) and not is_terminal(status)
+
+
 def queue_progress(session_log: Mapping[str, object]) -> tuple[int, int]:
     """``(cumulative complete seeds, declared queue size)`` from one log.
 
@@ -133,6 +145,12 @@ def _run(argv: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(argv, capture_output=True, text=True)
 
 
+def active_status(kernel: str) -> str:
+    """The kernel's current status, or ``""`` when it cannot be queried."""
+    result = _run(["kaggle", "kernels", "status", kernel])
+    return parse_status(result.stdout + result.stderr)
+
+
 def _wait_for_terminal(kernel: str, poll: float, timeout: float) -> str:
     """Poll the kernel until a terminal status, then return it."""
     deadline = time.monotonic() + timeout
@@ -168,10 +186,20 @@ def drive(
 
     for session in range(1, max_sessions + 1):
         print(f"--- session {session}/{max_sessions} ---", flush=True)
-        push = _run(["kaggle", "kernels", "push", "-p", str(push_dir)])
-        print(push.stdout.strip() or push.stderr.strip(), flush=True)
-        if push.returncode != 0:
-            return EXIT_SESSION_FAILED
+        live = active_status(queue.kernel_id)
+        if should_adopt(live):
+            # Never run two sessions of one queue: they would double the GPU
+            # burn and race for the same dataset and handoff roots.
+            print(
+                f"  a session is already {live}; adopting it instead of "
+                "pushing a second",
+                flush=True,
+            )
+        else:
+            push = _run(["kaggle", "kernels", "push", "-p", str(push_dir)])
+            print(push.stdout.strip() or push.stderr.strip(), flush=True)
+            if push.returncode != 0:
+                return EXIT_SESSION_FAILED
 
         status = _wait_for_terminal(queue.kernel_id, poll, timeout)
         output_dir.mkdir(parents=True, exist_ok=True)

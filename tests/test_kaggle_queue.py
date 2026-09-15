@@ -51,6 +51,23 @@ def test_only_stopped_states_are_terminal() -> None:
     assert not kaggle_queue.is_terminal("")
 
 
+def test_a_live_session_is_adopted_rather_than_duplicated() -> None:
+    """Pushing a version does not stop the running one.
+
+    Measured 2026-09-15: a second push left the first session running and the
+    GPU burn doubled (2.00x against 1.00x). Two sessions of one queue would
+    also race for the same dataset and the same handoff roots.
+    """
+    assert kaggle_queue.should_adopt("RUNNING")
+    assert kaggle_queue.should_adopt("QUEUED")
+    assert kaggle_queue.should_adopt("NEW_SCRIPT")
+    # Finished, cancelled, or never pushed: the driver should push.
+    assert not kaggle_queue.should_adopt("COMPLETE")
+    assert not kaggle_queue.should_adopt("ERROR")
+    assert not kaggle_queue.should_adopt("CANCEL_ACKNOWLEDGED")
+    assert not kaggle_queue.should_adopt("")
+
+
 def test_progress_counts_skips_and_completions_but_not_interruptions() -> None:
     session_log = {
         "declared_seed_queue": list(range(15000, 15012)),

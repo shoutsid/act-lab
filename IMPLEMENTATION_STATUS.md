@@ -665,6 +665,19 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   then the only copy of that session's completions); outside a kernel the root
   is the repository itself, so the reclaim is a hard no-op there and is tested
   to be one.
+- **Pushing a kernel does not supersede a running session** (measured
+  2026-09-15): a second `kaggle kernels push` left the first session running,
+  and the burn rate against the weekly quota line went 1.00x -> 2.00x while
+  only the latest version is reported by `kernels status`. This was hit for
+  real: a corrected session was pushed over a running one and both burned GPU
+  for ~15 min (~0.8 GPU-h) before it was caught by sampling the quota line
+  twice and differencing it - a burn rate is the only way to see a second
+  session. `kaggle kernels delete <owner>/<slug> --yes` does stop the runs
+  (verified: burn fell to 0.00x), but it stops every version, so recovery is
+  delete-then-push-once; stopping a single version is impossible (the CLI's
+  versioned form raises in argument parsing and the API has no version
+  parameter). Prevented in code now: `kaggle_queue.should_adopt` makes the
+  driver adopt a live session instead of adding a second, pinned by a test.
 - `PYTHONPATH=src python -m pytest -q` -> all unit tests pass (272, including the
   26 report-figure data-assembly tests, 14 session-plan tests pinning the
   section 5.2 schedule/dtype tables, 10 handoff tests covering atomic

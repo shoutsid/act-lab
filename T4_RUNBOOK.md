@@ -134,9 +134,24 @@ cost one failed run:
    `/kaggle/working` the run dies on disk during its second pair — and because
    the per-pair local publish is not try/guarded, an `ENOSPC` there aborts the
    kernel *before* the exit publish, so the session publishes nothing. Hence
-   the mode-scoped overlay roots (`/tmp/act-lab-<mode>/artifacts/...`) in
+   the run-scoped overlay roots (`/tmp/act-lab-<mode>-<token>/artifacts/...`) in
    §0.2: nothing in those roots needs to survive the session, since the
    published dataset is restored at session start and pushed again at exit.
+5. **A push does not supersede a running session.** `kaggle kernels push` adds a
+   version and runs it *alongside* whatever is still going: measured
+   2026-09-15, a second push left the first session running and the burn rate
+   against the weekly quota line went from 1.00x to 2.00x - the one failure
+   mode that costs quota without producing evidence, and `kernels status`
+   reports only the latest version so the overlap is invisible from there.
+   Sampling the quota line twice and differencing it is how it was caught. Run
+   one session per queue: `scripts/kaggle_queue.py` refuses to add a second and
+   adopts the live session instead. `kaggle kernels delete <owner>/<slug>
+   --yes` *does* stop the runs (verified: the burn fell to 0.00x), but it stops
+   every version including the one you want, so the only way back is
+   delete-then-push-once. The CLI advertises
+   `delete <owner>/<slug>/<version>` but raises in argument parsing before it
+   calls anything, and the API has no version parameter, so stopping one
+   version is not possible.
 
 **Session-1 inputs, measured on a Kaggle T4 (2026-09-15, `--steps 50`).** These
 replace the section 5.2 feasibility assumptions; the launch command re-derives
@@ -388,6 +403,7 @@ Secondary config (if pre-registered): same command with
 |---|---|
 | OOM in benchmark or sessions on non-T4 hardware | The decision context is a 16 GB T4. Move the run; never shrink the declared config. |
 | Exit publish fails (`remote_publish.ok=false`) | Never fatal by design. The local handoff under `artifacts/datasets/act-checkpoints/v0-5-1/` is intact; the next session's publish re-pushes it. Check `remote-publish-log.json` beside the dataset root. |
+| Two sessions of one queue running (burn at 2x) | They will not stop each other: `kaggle kernels delete <owner>/<slug> --yes`, then push once (§0.5 gotcha 5). Nothing is published by the abandoned version. |
 | Local per-pair publish fails (`action: publish_failed`) | The pair is **not** recorded complete and the queue stops at that seed, so the session can still exit-publish the seeds that did complete (it would otherwise abort before publishing anything). Fix the substrate - disk space, permissions - and relaunch; the failed pair restarts from scratch. With the handoff roots on the overlay (§0.2) this should not fire. |
 | Restore fails at session start | Fix credentials / `owner/slug` / connectivity; relaunch. Nothing ran, nothing published. |
 | Session died mid-pair (reboot, timeout) | Relaunch the same command. The pair restarts from scratch; the stale `in-progress` version is ignored. |
