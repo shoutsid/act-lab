@@ -2,8 +2,10 @@
 
 ``T4_RUNBOOK.md`` section 3 says "re-run the same command until the queue
 completes; no scheduling decisions are made by hand". At the measured T4 rate
-that is six sessions for the primary queue alone, so the re-push loop is
-mechanised here instead of depending on an operator remembering to click push.
+that is two sessions for the primary queue, but ~47 GPU-h for the three queues
+against a 30 GPU-h week - so the re-push loop is mechanised here, with a quota
+gate, instead of depending on an operator remembering to click push and to
+stop.
 
 Per session this stages the identical kernel (``scripts/kaggle_t4.py`` plus the
 metadata :func:`kaggle_t4.metadata_for` generates), pushes it, waits for a
@@ -509,8 +511,9 @@ def quota_shortfall(
     A session that runs out of weekly quota part-way still bills every hour it
     used and produces nothing, so the gate is the whole declared window, not a
     partial one. This is the one scheduling decision the driver does make, and
-    it makes it because the alternative is spending the quota: at the measured
-    rate the primary queue alone is six sessions against a 30 GPU-h week.
+    it makes it because the alternative is spending the quota: the three queues
+    at the measured rate are ~47 GPU-h against a 30 GPU-h week, so a session
+    pushed into the tail of a week is a session that bills and never finishes.
     """
     if quota is None:
         return None

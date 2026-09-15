@@ -94,7 +94,8 @@ and publish log in the kernel output.
 Drive a queue with `scripts/kaggle_queue.py`, which stages the kernel, pushes
 it, waits for the session, and re-pushes until the declared block is complete.
 One push is one session, so `--max-sessions 1` means "run one session now",
-and the default budget covers the six sessions the primary queue needs:
+and the default budget of eight covers the two sessions the primary queue needs
+(with slack for a session that advances less than a full block):
 
 ```bash
 python scripts/kaggle_queue.py --queue session
@@ -605,3 +606,24 @@ Secondary config (if pre-registered): same command with
   `<owner>/<slug>`, each with a checksummed manifest.
 - `v0-5-1-verdict.json` — the final machine-checked §5.1 verdict.
 - `remote-publish-log.json` — the exit-publish audit trail.
+
+### Where the durable copy is, and what a crashed session costs
+
+The published dataset version is the *only* thing that survives a session. The
+handoff roots live in the container overlay (`/tmp`, ~1.1 TiB) rather than
+`/kaggle/working` (a 20 GiB loopback) because a completed seed publishes its
+final checkpoint per arm including the AdamW moments — ~6.4 GiB per seed,
+~77 GiB over the 12-seed block — and the overlay is deleted at session end
+once the publish has succeeded.
+
+The exit publish is one `create_version` for the whole handoff, so it is
+front-loaded with everything the session completed and its payload grows to the
+full block by the last session. **That is why seeds are pushed at exit rather
+than as they complete**: a per-seed push would re-upload the entire cumulative
+handoff each time (tens of GiB, minutes of billed GPU per pair) to bound a loss
+that only a crash can cause. The trade is deliberate: a session that dies
+before its exit publish loses every pair it trained, section 5.2 restarts those
+pairs from scratch, and the driver stops rather than re-pushing so the cause is
+fixed first. Watch the `remote publish:` line and the push duration in the
+exit log; if a push ever takes longer than the pairs it protects, revisit this
+choice with that number rather than an assumption.

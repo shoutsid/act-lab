@@ -672,9 +672,11 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   the reduced-fidelity `real-diag` roots (`rich` / `argmax` / `null`) and
   writes a coherent verdict. Pinned by 2 new verdict tests and a driver test
   asserting exit 3 is not treated as a verdict code.
-- **The re-push loop is mechanised** (`scripts/kaggle_queue.py`), because at
-  the measured rate each queue needs six sessions and "re-run the same command
-  until the queue completes" should not depend on someone remembering. It
+- **The re-push loop is mechanised** (`scripts/kaggle_queue.py`), because the
+  three queues are ~47 GPU-h against a 30 GPU-h week (two sessions each at the
+  measured rate, with one arm per device) and "re-run the same command until
+  the queue completes" should not depend on someone remembering - nor on
+  someone remembering to stop when the week's quota is nearly gone. It
   stages the kernel, pushes it, waits for a terminal status, reads the
   session's own log, and re-pushes until the declared block is complete (exit
   0 complete, 1 session failed, 2 session budget exhausted). Progress comes
