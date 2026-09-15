@@ -578,7 +578,8 @@ def drive(
     print(f"=== driving queue {queue_mode!r}: {queue.dataset} ===", flush=True)
     # The kernel runs the mounted code, so what it executes has to be the
     # committed tree - checked before any quota is spent, not after.
-    ensure_code_dataset(Path(__file__).resolve().parent.parent)
+    repo = Path(__file__).resolve().parent.parent
+    staged_revision = ensure_code_dataset(repo)
     work = Path(tempfile.mkdtemp(prefix=f"act-queue-{queue_mode}-"))
     push_dir = stage(work / "push", queue_mode, declared_hours)
     output_dir = work / "output"
@@ -602,6 +603,21 @@ def drive(
             if shortfall is not None:
                 print(f"  {shortfall}", flush=True)
                 return EXIT_QUOTA_INSUFFICIENT
+            # A session staged now may be pushed hours from now, and the code
+            # the kernel actually imports comes from the dataset, not from the
+            # body - so re-check the dataset on every push. Without this, a
+            # publish in between (another queue's drive, or a fix) silently
+            # runs the kernel body against different training code than the
+            # revision the session will record.
+            current = ensure_code_dataset(repo)
+            if current != staged_revision:
+                print(
+                    f"  code dataset moved to {current[:12]} since staging; "
+                    "re-staging the kernel body from the same tree",
+                    flush=True,
+                )
+                push_dir = stage(work / f"push-{session}", queue_mode, declared_hours)
+                staged_revision = current
             push = _run(["kaggle", "kernels", "push", "-p", str(push_dir)])
             print(push.stdout.strip() or push.stderr.strip(), flush=True)
             if push.returncode != 0:

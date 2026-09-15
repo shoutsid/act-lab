@@ -646,13 +646,17 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   `KAGGLE_KEY`, or `kaggle.json`, and `dataset_list(mine=True)` returns the
   account's datasets. So the section 2 restore/publish legs need no User
   Secrets - only `enable_internet: true`, which the generated metadata sets.
-- **Quota plan for the section 5.1 queues** (measured, not assumed): at
-  3.585 h per pair the primary queue is ~43 GPU-hours, the section 2b
-  pool-matched control queue ~43 more, and the 2c null queue ~0.3 - about
-  86 GPU-hours against the free tier's 30 GPU-h/week, i.e. roughly three
-  weeks of sessions. The primary queue launched 2026-09-15 with `--hours 9`
-  (the registered usable window), which at the measured rate places exactly
-  two completed pairs per session.
+- **Quota plan for the section 5.1 queues** (measured, not assumed). Superseded
+  twice, and the corrected figure is ~47 GPU-hours against the free tier's
+  30 GPU-h/week - about two weeks of sessions, not three. First the 3.585 h
+  pair time came from the fp32 rate the dtype *rule* reads while the arms train
+  fp16 (2.27x pessimistic), then it charged two waves of arms where one arm per
+  device is available on the two-T4 shape (2x). At the measured fp16 rate with
+  one arm per device a pair is 1.36 h, so each of the three queues is ~16
+  GPU-hours (12 pairs) and two sessions each at `--hours 9` (the registered
+  usable window) place six completed pairs. Both queues and the null queue bill
+  only the time they actually train: the deadline rules stop a session early
+  rather than fill the window.
 - **The section 4 verdict is reachable after a Kaggle run, and its exit codes
   are now unambiguous.** That command reads *local* dataset roots, which are
   empty once the queues live in published Kaggle datasets, so
@@ -769,7 +773,7 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   kernel.** `kaggle_queue.py` reads `kaggle quota --format json` before each
   push and refuses when remaining GPU hours are below the declared window
   (exit 3), because a session cut off by quota still bills every hour it used
-  and produces nothing - the dominant failure mode of an ~86 GPU-hour plan
+  and produces nothing - the dominant failure mode of a ~47 GPU-hour plan
   against a 30 GPU-h/week line. An unreadable quota line never blocks (it can
   only spend less), and a live session is adopted rather than gated. Fixing
   this exposed the flag it depends on: `--hours` set `ACT_T4_HOURS` in the

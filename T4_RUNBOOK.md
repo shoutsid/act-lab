@@ -128,8 +128,9 @@ which is the one loop that can spend a week's budget producing nothing. Fix
 the cause - usually `--hours` - then re-run. It reads `kaggle quota --format json` before every push and
 refuses when the remaining GPU hours are below the declared window, because a
 session stopped part-way still bills every hour it used and produces nothing.
-Over the ~12-session, ~86 GPU-hour plan against a 30 GPU-h/week quota that is
-the difference between waiting a day and losing the quota. An unreadable quota
+Over the ~47 GPU-hour plan for the three queues against a 30 GPU-h/week
+quota (about two weeks of sessions) that is the difference between waiting a
+day and losing the quota. An unreadable quota
 line never blocks (it can only ever spend less), and a session that is already
 live is adopted instead of gated.
 

@@ -461,6 +461,52 @@ def test_drive_keeps_going_while_sessions_advance(monkeypatch) -> None:
     assert code == kaggle_queue.EXIT_BUDGET_EXHAUSTED
 
 
+def test_drive_re_stages_when_the_code_dataset_moves_between_sessions(
+    monkeypatch,
+) -> None:
+    """A body staged at 09:00 and pushed at 18:00 must run the code it reports.
+
+    The kernel body is embedded from the tree, but ``src/`` is imported from
+    the mounted dataset - so if the dataset moves between staging and a push
+    (another queue's drive, or a fix landed while this one waited), the kernel
+    would silently run different training code than the revision its session
+    records.
+    """
+    calls: list[list[str]] = []
+    staged: list[str] = []
+    # Start-up check, then the check before each of the two pushes: the second
+    # push is the one that finds the dataset has moved.
+    revisions = iter(["aaaa", "aaaa", "bbbb"])
+
+    def fake_stage(directory, queue_mode, hours=None):
+        staged.append(str(directory))
+        folder = Path(directory)
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "kernel-metadata.json").write_text("{}\n")
+        return folder
+
+    logs = [
+        {"declared_seed_queue": DECLARED_QUEUE, "pairs": [{"action": "completed"}]},
+        {
+            "declared_seed_queue": DECLARED_QUEUE,
+            "pairs": [{"action": "completed"}, {"action": "completed"}],
+        },
+    ]
+    monkeypatch.setattr(kaggle_queue, "_run", _fake_kaggle(calls, logs))
+    monkeypatch.setattr(kaggle_queue, "stage", fake_stage)
+    monkeypatch.setattr(
+        kaggle_queue, "ensure_code_dataset", lambda *a, **k: next(revisions)
+    )
+
+    kaggle_queue.drive("session", hours=9.0, poll=0.0, timeout=1.0, max_sessions=2)
+
+    pushes = [argv for argv in calls if argv[1:3] == ["kernels", "push"]]
+    assert len(pushes) == 2
+    # Staged once at start, then re-staged for the push whose dataset moved.
+    assert len(staged) == 2
+    assert pushes[0][pushes[0].index("-p") + 1] != pushes[1][pushes[1].index("-p") + 1]
+
+
 def test_report_verdict_mirrors_the_registered_code(tmp_path: Path) -> None:
     """The kernel exits 0 whatever the decision, so the artifact carries it."""
     nested = tmp_path / "act-lab" / "artifacts"
