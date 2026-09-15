@@ -556,6 +556,22 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   +5.12. The artifact is `artifacts/v0-benchmark.json` (gitignored) and was
   downloaded from the kernel output, so the launch command's input exists and
   is not a hand-edited file.
+- **The schedule was built on the wrong dtype's rate (found and fixed
+  2026-09-15).** Section 5.2's rule reads the *fp32* rate to choose a dtype,
+  but the schedule was parameterized from that same fp32 number while the
+  sessions train fp16. Measured on the T4 with `--queue dtypeprobe`: fp32
+  **2,066.3** tokens/s -> pair 3.404 h / 2 pairs/session / 6 sessions, fp16
+  **4,694.9** -> pair **1.554 h / 5 pairs/session / 3 sessions**. Scheduling
+  from fp32 was therefore 2.27x too pessimistic: every session's deadline rule
+  stops with usable clock left, so the run buys roughly twice the sessions and
+  twice the ~86 GPU-h quota plan. The benchmark now measures the decided dtype
+  as well and records `schedule_tokens_per_second` + `tokens_per_second_by_dtype`
+  beside the fp32 `measured_tokens_per_second`, and the launch command
+  schedules from the former while still enforcing the pre-committed rule
+  against the latter. This changes session packing only: the seeds, the steps,
+  the probe cost and the section 4 verdict are untouched, which section 5.2
+  already pre-registered ("dtype is an execution detail touching no
+  pre-registered criterion").
 - The whole run is now reproducible code, not operator lore:
   `scripts/kaggle_t4.py` drives every session kind as a script kernel
   (`ACT_T4_MODE` = `metadata` / `probe` / `preflight` / `session` / `control` /

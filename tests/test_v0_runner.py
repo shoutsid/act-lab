@@ -345,18 +345,22 @@ def test_interrupted_exception_carries_step() -> None:
 # --- CLI wrapper (--mode pair-session) --------------------------------------
 
 
-def _write_benchmark(path: Path, tokens_per_second: float, dtype: str) -> None:
+def _write_benchmark(
+    path: Path,
+    tokens_per_second: float,
+    dtype: str,
+    schedule_tokens_per_second: float | None = None,
+) -> None:
     """A minimal-but-honest benchmark artifact as the benchmark script writes it."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(
-            {
-                "benchmark": "v0-throughput-5.2",
-                "measured_tokens_per_second": tokens_per_second,
-                "dtype_decision": dtype,
-            }
-        )
-    )
+    payload = {
+        "benchmark": "v0-throughput-5.2",
+        "measured_tokens_per_second": tokens_per_second,
+        "dtype_decision": dtype,
+    }
+    if schedule_tokens_per_second is not None:
+        payload["schedule_tokens_per_second"] = schedule_tokens_per_second
+    path.write_text(json.dumps(payload))
 
 
 def _cli_argv(extra: list[str], benchmark: Path | None = None, profile: bool = True) -> list[str]:
@@ -535,6 +539,103 @@ def test_cli_default_queue_is_the_declared_block(tmp_path: Path, monkeypatch) ->
     assert captured["config"].dtype == "fp32"
     assert captured["config"].max_checkpoints == 2  # registered pin
     assert captured["config"].declared is True  # no --profile model overrides
+
+
+def test_cli_schedules_from_the_trained_dtype_rate(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """Pair time must come from the rate the session will actually run at.
+
+    The pre-committed rule reads the fp32 number, but the session trains the
+    decided dtype, and on the T4 fp16 does 2.27x the tokens/s (4,695 vs 2,066).
+    Scheduling from the fp32 number made every session stop with usable clock
+    left and bought twice the sessions it needed.
+    """
+    import sys
+
+    from act.training import cli
+
+    benchmark = tmp_path / "v0-benchmark.json"
+    _write_benchmark(benchmark, 2_000.0, "fp16", schedule_tokens_per_second=4_500.0)
+    captured: dict = {}
+
+    def fake_run_pair_session(**kwargs):
+        captured.update(kwargs)
+        return {
+            "protocol": "v0-compute-efficiency-5.2",
+            "seeds_requested": list(kwargs["seeds"]),
+            "declared_seed_queue": [9000],
+            "remaining_hours_at_entry": kwargs["remaining_hours"],
+            "measured_tokens_per_second": kwargs["measured_tokens_per_second"],
+            "pair_time_hours": 0.1,
+            "pairs_completed": 0,
+            "latest_published_seed": None,
+            "pairs": [],
+        }
+
+    monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--benchmark", str(benchmark),
+                "--seeds", "9000",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+            ]
+        ),
+    )
+    cli.main()
+
+    assert captured["config"].dtype == "fp16"
+    assert captured["measured_tokens_per_second"] == 4_500.0
+    printed = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert printed["dtype_rule_tokens_per_second"] == 2_000.0
+    assert printed["schedule_tokens_per_second"] == 4_500.0
+    assert printed["dtype"] == "fp16"
+
+
+def test_cli_falls_back_for_artifacts_without_a_schedule_rate(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """An artifact written before the field existed schedules from its own rate."""
+    import sys
+
+    from act.training import cli
+
+    benchmark = tmp_path / "v0-benchmark.json"
+    _write_benchmark(benchmark, 2_000.0, "fp16")  # no schedule_tokens_per_second
+    captured: dict = {}
+
+    def fake_run_pair_session(**kwargs):
+        captured.update(kwargs)
+        return {
+            "protocol": "v0-compute-efficiency-5.2",
+            "seeds_requested": list(kwargs["seeds"]),
+            "declared_seed_queue": [9000],
+            "remaining_hours_at_entry": kwargs["remaining_hours"],
+            "measured_tokens_per_second": kwargs["measured_tokens_per_second"],
+            "pair_time_hours": 0.1,
+            "pairs_completed": 0,
+            "latest_published_seed": None,
+            "pairs": [],
+        }
+
+    monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--benchmark", str(benchmark),
+                "--seeds", "9000",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+            ]
+        ),
+    )
+    cli.main()
+
+    assert captured["measured_tokens_per_second"] == 2_000.0
 
 
 def test_cli_defaults_to_the_registered_probe_knobs(tmp_path: Path, monkeypatch) -> None:

@@ -86,10 +86,12 @@ def run_pair_session(
     """Run the section 5.2 session loop over the seed queue.
 
     ``remaining_hours`` is the session clock at entry (12-hour Kaggle limit
-    minus boot/restore). ``measured_tokens_per_second`` is the session-1
-    benchmark's number: it parameterizes pair time, and the dtype rule lives
-    with the benchmark, not here. ``clock`` optionally supplies wall time for
-    tests; production uses ``time.monotonic``.
+    minus boot/restore). ``measured_tokens_per_second`` parameterizes pair
+    time, so it must be the rate of the dtype the session will train - the
+    benchmark records that as ``schedule_tokens_per_second`` - and not the fp32
+    rate the pre-committed dtype rule reads. The dtype rule itself lives with
+    the benchmark, not here. ``clock`` optionally supplies wall time for tests;
+    production uses ``time.monotonic``.
     """
     logger = _make_log(log)
     if measured_tokens_per_second <= 0:

@@ -237,18 +237,32 @@ is a rate on the device training used (`device_name: Tesla T4`); the artifact's
 
 | Field | Section 5.2 assumption | Measured on T4 |
 |---|---|---|
-| `measured_tokens_per_second` | 10,000 | **1,958.7** |
+| `measured_tokens_per_second` (fp32) | 10,000 | **1,958.7** |
 | `dtype_decision` | fp32 | **fp16** (below the 2,500 floor - the registered contingency) |
-| `pair_time_hours` | ~0.78 | **3.585** |
-| `full_pairs_per_session` | 11 | **2** |
-| `sessions_for_primary` | 2 | **6** |
 
-The consequence is a quota plan, not a knob change: at 3.585 h per pair the
-primary queue is ~43 GPU-hours, the 2b control queue ~43 more, and 2c ~0.3 -
-about 86 GPU-hours against the free tier's 30 GPU-h/week, i.e. roughly three
-weeks of sessions. Pass `--hours 9` (the registered usable window): at the
-measured rate the deadline rules then place exactly two completed pairs and
-never start a third the clock cannot finish.
+**The schedule is derived from the rate of the dtype the session trains.** The
+fp32 number above is the pre-committed rule's *input*; it is not what the arms
+run at. Measured on the T4 (`--queue dtypeprobe`, 2026-09-15):
+
+| dtype | tokens/s | `pair_time_hours` | `full_pairs_per_session` | `sessions_for_primary` |
+|---|---|---|---|---|
+| fp32 | 2,066.3 | 3.404 | 2 | 6 |
+| **fp16** (the decided dtype) | **4,694.9** | **1.554** | **5** | **3** |
+
+Scheduling from the fp32 rate while the sessions train fp16 is 2.27x too
+pessimistic: each session's deadline rule stops with usable clock left and the
+run buys about twice the sessions it needs. The consequence is a quota plan,
+not a knob change - the same seeds, the same steps, the same probe cost, and no
+pre-registered criterion or verdict, since section 5.2 makes dtype an execution
+detail. At 1.554 h per pair the primary queue is ~19 GPU-hours, the 2b control
+queue ~19 more, and 2c ~0.3 - about 38 GPU-hours against the free tier's 30
+GPU-h/week, i.e. roughly two weeks of sessions instead of three.
+
+Pass `--hours 9` (the registered usable window): at the fp16 rate the deadline
+rules then place five completed pairs per session. The benchmark now measures
+the decided dtype and records both numbers (`schedule_tokens_per_second`,
+`tokens_per_second_by_dtype`), and the launch command schedules from the former
+while still enforcing the pre-committed rule against the latter.
 
 A kernel that requests a GPU accelerator queues when no T4 is free (status
 `QUEUED`, which consumes no quota); the queue clears on its own.
@@ -276,9 +290,11 @@ Read from the printed JSON and record:
 
 | Field | Meaning |
 |---|---|
-| `measured_tokens_per_second` | the step-loop measurement (fwd+bwd+AdamW, activation checkpointing on, as the sessions will run) |
+| `measured_tokens_per_second` | the **fp32** step-loop measurement (fwd+bwd+AdamW, activation checkpointing on) - the pre-committed rule's input |
 | `dtype_decision` | `fp32` if ≥ 2,500 tokens/s, else `fp16` (pre-committed rule; not a choice) |
-| `schedule.pair_time_hours` | time per random+adaptive pair at the measured rate |
+| `schedule_tokens_per_second` | the rate the schedule was derived from: the **decided dtype's**, measured in that dtype (equal to the fp32 rate when fp32 is decided, or on a device with no fp16 path) |
+| `tokens_per_second_by_dtype` | both measured rates, so the two can never be confused after the fact |
+| `schedule.pair_time_hours` | time per random+adaptive pair at `schedule_tokens_per_second` |
 | `schedule.full_pairs_per_session` | pairs a 12-hour clock fits per the deadline rules |
 | `schedule.sessions_for_primary` / `sessions_total` | expected number of sessions for the 12-seed queue |
 | `schedule.working_dir_headroom_gb` | must be positive (20 GB limit − steady state) |
@@ -292,7 +308,8 @@ Expected outcomes and responses:
   tokens/s floor. The sessions then train under autocast + GradScaler with
   fp32 master weights (checkpoint contract version 5 carries the scaler state;
   fp16 resume is bit-identical). Nothing to configure — the launch command
-  re-derives the same decision from the artifact.
+  re-derives the same decision from the artifact, and the benchmark measures
+  that dtype too so the schedule is built on the rate the arms actually run at.
 
 The benchmark is safe to re-run per session (it re-measures; the dtype rule
 re-derives the same decision for the same rate class). Each session's artifact

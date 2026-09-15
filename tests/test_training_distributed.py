@@ -128,3 +128,14 @@ def test_benchmark_artifact_carries_the_gpu_inventory(tmp_path) -> None:
     assert report["gpu_inventory"] == gpu_inventory()
     assert report["device"] == "cpu"
     assert report["measured_tokens_per_second"] > 0
+
+    # The schedule names the rate it was derived from, so a run that trains a
+    # different dtype than the rule read cannot hide that in the artifact.
+    assert report["schedule_dtype"] == report["dtype_decision"]
+    assert report["schedule_tokens_per_second"] > 0
+    assert report["tokens_per_second_by_dtype"]["fp32"] == report[
+        "measured_tokens_per_second"
+    ]
+    if report["device"] == "cpu":
+        # No CPU fp16 path exists, so the schedule must fall back to fp32.
+        assert report["schedule_tokens_per_second"] == report["measured_tokens_per_second"]

@@ -25,7 +25,7 @@ from pathlib import Path
 import torch
 
 from act.model import V0MoECausalLM, estimated_parameter_count
-from act.training.runtime import gpu_inventory, resolve_device
+from act.training.runtime import _autocast_context, gpu_inventory, resolve_device
 from act.training.session_plan import (
     FP32_FLOOR_TOKENS_PER_SECOND,
     MAX_CHECKPOINTS,
@@ -56,11 +56,17 @@ def measure_tokens_per_second(
     device: torch.device,
     steps: int,
     warmup: int = 5,
+    dtype: str = "fp32",
 ) -> tuple[float, dict[str, float]]:
     """Time the true step loop: loss fwd + backward + AdamW, like _train_arm.
 
-    Returns (tokens/s over the timed steps, timing detail dict).
+    ``dtype`` selects the loop the session will actually run: ``fp16`` adds the
+    autocast context and the GradScaler over fp32 master weights that
+    ``V0SessionConfig(dtype="fp16")`` trains with. Returns (tokens/s over the
+    timed steps, timing detail dict).
     """
+    if dtype not in ("fp32", "fp16"):
+        raise ValueError(f"dtype must be fp32 or fp16, got {dtype!r}")
     generator = torch.Generator(device="cpu")
     generator.manual_seed(15012)  # benchmark data, not a protocol seed stream
     batch_shape = (config.batch_size, config.context_size)
@@ -69,12 +75,19 @@ def measure_tokens_per_second(
     # the measured throughput must reflect the config that will actually run.
     model.activation_checkpointing = True
     model.train()
+    scaler = torch.amp.GradScaler(device.type, enabled=dtype == "fp16")
 
     def one_step(tokens: torch.Tensor) -> None:
         optimizer.zero_grad(set_to_none=True)
-        loss = model.loss(tokens)
-        loss.backward()
-        optimizer.step()
+        with _autocast_context(device, "fp16" if dtype == "fp16" else "off"):
+            loss = model.loss(tokens)
+        if dtype == "fp16":
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            loss.backward()
+            optimizer.step()
 
     for _ in range(warmup):
         tokens = torch.randint(
@@ -146,27 +159,50 @@ def main() -> int:
         ),
     )
     device = resolve_device(args.device)
-    if not args.profile:
-        try:
-            model, total, active = build_declared_model(device)
-            rate, timing = measure_tokens_per_second(
-                model, session_config, device, args.steps, args.warmup
-            )
-        except torch.OutOfMemoryError as error:
-            raise SystemExit(
-                "the declared 285M model does not fit this device in fp32 "
-                f"({error}); the section 5.2 decision context is a 16 GB T4 - "
-                "run there, or use --profile for a local smoke check"
-            ) from error
-    else:
-        model = V0MoECausalLM(session_config.model_config()).to(device)
-        total, active = estimated_parameter_count(session_config.model_config())
-        rate, timing = measure_tokens_per_second(
-            model, session_config, device, args.steps, args.warmup
+
+    def measure(dtype: str) -> tuple[float, dict[str, float]]:
+        """One dtype's rate, on a freshly built model.
+
+        A fresh model per dtype is what makes the comparison a comparison:
+        reusing one would time the second pass through the first pass's AdamW
+        state and warmed allocator.
+        """
+        if args.profile:
+            fresh = V0MoECausalLM(session_config.model_config()).to(device)
+        else:
+            fresh, _, _ = build_declared_model(device)
+        return measure_tokens_per_second(
+            fresh, session_config, device, args.steps, args.warmup, dtype=dtype
         )
 
+    try:
+        rate, timing = measure("fp32")
+        fp16_rate = (
+            measure("fp16")[0]
+            if decide_dtype(rate) == "fp16" and device.type == "cuda"
+            else None
+        )
+    except torch.OutOfMemoryError as error:
+        raise SystemExit(
+            "the declared 285M model does not fit this device in fp32 "
+            f"({error}); the section 5.2 decision context is a 16 GB T4 - "
+            "run there, or use --profile for a local smoke check"
+        ) from error
+
+    total, active = estimated_parameter_count(session_config.model_config())
     dtype = decide_dtype(rate)
-    schedule = PairSchedule(tokens_per_second=rate)
+    # The pre-committed rule reads the fp32 rate, but the schedule is arithmetic
+    # about the session that will run - and the session trains the *decided*
+    # dtype. Scheduling from the fp32 number measured 2,066 tok/s on the T4
+    # where the config that runs does 4,695, i.e. 2.27x too pessimistic: every
+    # session stopped with usable clock left and the run bought twice the
+    # sessions it needed. Dtype is an execution detail that touches no
+    # pre-registered criterion (section 5.2), so only the packing changes.
+    rates = {"fp32": rate}
+    if fp16_rate is not None:
+        rates["fp16"] = fp16_rate
+    schedule_rate = fp16_rate if fp16_rate is not None else rate
+    schedule = PairSchedule(tokens_per_second=schedule_rate)
 
     report = {
         "benchmark": "v0-throughput-5.2",
@@ -180,7 +216,12 @@ def main() -> int:
         "torch_version": torch.__version__,
         "steps": args.steps,
         "warmup_steps": args.warmup,
+        # The dtype rule's input (fp32, section 5.2). ``schedule_*`` are the
+        # rate the pair-time arithmetic used, in the dtype the session trains.
         "measured_tokens_per_second": rate,
+        "schedule_tokens_per_second": schedule_rate,
+        "schedule_dtype": dtype,
+        "tokens_per_second_by_dtype": rates,
         "fp32_floor_tokens_per_second": FP32_FLOOR_TOKENS_PER_SECOND,
         "dtype_decision": dtype,
         "declared_parameter_count": total,

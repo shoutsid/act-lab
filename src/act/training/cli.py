@@ -126,13 +126,19 @@ def _git_revision() -> str:
 
 def _resolve_dtype(
     benchmark: Path | None, tokens_per_second: float | None
-) -> tuple[float, str]:
-    """Measured throughput + dtype from the benchmark artifact or a flag.
+) -> tuple[float, str, float]:
+    """Rule rate, dtype decision, and the rate that parameterizes pair time.
 
     The section 5.2 dtype rule is pre-committed, so the CLI re-derives the
-    decision from the measured throughput and refuses an artifact whose
+    decision from the measured *fp32* throughput and refuses an artifact whose
     recorded ``dtype_decision`` disagrees with its own measured number (a
     stale or hand-edited artifact must not launch a session).
+
+    ``measured_tokens_per_second`` is that fp32 number, which is the rule's
+    input - but the schedule is arithmetic about the session that will run, and
+    the session trains the decided dtype. The benchmark records that rate as
+    ``schedule_tokens_per_second``; artifacts written before the field existed
+    fall back to the rule rate, which is what they were scheduled from.
     """
     if benchmark is not None:
         if not benchmark.is_file():
@@ -150,18 +156,24 @@ def _resolve_dtype(
                 f"{benchmark}: recorded dtype_decision {recorded!r} disagrees with "
                 f"the measured throughput ({derived}); artifact is stale or edited"
             )
-        return tokens_per_second, derived
+        schedule_rate = float(measured.get("schedule_tokens_per_second", tokens_per_second))
+        if schedule_rate <= 0:
+            raise SystemExit(
+                f"{benchmark}: schedule_tokens_per_second must be positive, "
+                f"got {schedule_rate}"
+            )
+        return tokens_per_second, derived, schedule_rate
     if tokens_per_second is None:
         raise SystemExit(
             "provide --benchmark (the session-1 artifact) or --tokens-per-second"
         )
     if tokens_per_second <= 0:
         raise SystemExit("--tokens-per-second must be positive")
-    return tokens_per_second, decide_dtype(tokens_per_second)
+    return tokens_per_second, decide_dtype(tokens_per_second), tokens_per_second
 
 
 def _run_pair_session(args: argparse.Namespace) -> None:
-    tokens_per_second, dtype = _resolve_dtype(
+    rule_rate, dtype, schedule_rate = _resolve_dtype(
         args.benchmark, args.tokens_per_second
     )
     if args.dtype is not None and args.dtype != dtype:
@@ -258,11 +270,17 @@ def _run_pair_session(args: argparse.Namespace) -> None:
         dataset_root=args.dataset_root,
         code_revision=_git_revision(),
         remaining_hours=args.hours,
-        measured_tokens_per_second=tokens_per_second,
+        measured_tokens_per_second=schedule_rate,
         output=args.output,
         log=print,
     )
-    _publish_remote(args, tokens_per_second=tokens_per_second)
+    # Both numbers belong on the trail: the fp32 rate is the pre-committed
+    # dtype rule's input, the schedule rate is what set the pair time. They
+    # differ by design whenever the session trains fp16.
+    summary["dtype_rule_tokens_per_second"] = rule_rate
+    summary["schedule_tokens_per_second"] = schedule_rate
+    summary["dtype"] = dtype
+    _publish_remote(args, tokens_per_second=schedule_rate)
     print(
         json.dumps(
             {
@@ -273,6 +291,9 @@ def _run_pair_session(args: argparse.Namespace) -> None:
                     "declared_seed_queue",
                     "remaining_hours_at_entry",
                     "measured_tokens_per_second",
+                    "dtype_rule_tokens_per_second",
+                    "schedule_tokens_per_second",
+                    "dtype",
                     "pair_time_hours",
                     "pairs_completed",
                     "latest_published_seed",
