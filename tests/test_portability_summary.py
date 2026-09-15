@@ -159,3 +159,95 @@ def test_portability_summary_means_and_discovery_ordering() -> None:
     # The adaptive topology is smaller than the initial one, so no win here is
     # bought with active parameters.
     assert summary["adaptive_active_params_lower_than_initial_seeds"] > 300
+
+
+# Section 5.19: the same four transports at depths 2 and 3, on the registered
+# blocks 85000-85383 and 86000-86383 with donors +2000. Its registered branch
+# table is SEPARATE from the module-level letters above - its second primary is
+# O < O_fixed, not D < F - so its verdict is read from those two rows here.
+# These summaries were regenerated from the surviving shards; see report 5.19.
+SHALLOW = {
+    "portability-depth2-384.json": {
+        "study_id": "study_436e3cfb83e13fc0",
+        "block": (85000, 85384),
+        "quoted": {
+            "pairing_difference_in_differences": (219, -0.044341, 3.38e-03, True),
+            "O_vs_O_fixed": (260, -0.061844, 1.68e-12, True),
+            "D_vs_F": (211, -0.017502, 2.94e-02, False),
+            "O_vs_D": (177, 0.037571, 9.43e-01, False),
+        },
+    },
+    "portability-depth3-384.json": {
+        "study_id": "study_ea20b7b1ace9534b",
+        "block": (86000, 86384),
+        "quoted": {
+            "pairing_difference_in_differences": (226, -0.064137, 3.05e-04, True),
+            "O_vs_O_fixed": (270, -0.104181, 5.19e-16, True),
+            "D_vs_F": (216, -0.040044, 8.18e-03, True),
+            "O_vs_D": (202, -0.087132, 1.66e-01, False),
+        },
+    },
+}
+SHALLOW_ALPHA = 0.0125
+SHALLOW_BAR = 215
+
+
+def _load_named(name: str) -> dict:
+    path = summaries_dir() / name
+    if not path.exists():
+        pytest.fail(f"missing committed study summary: {path}")
+    return json.loads(path.read_text())
+
+
+@pytest.mark.parametrize("name", sorted(SHALLOW))
+def test_section_5_19_record_recomputes_and_keeps_its_registered_branch(name: str) -> None:
+    spec = SHALLOW[name]
+    summary = _load_named(name)
+    assert summary["record_type"] == "portability_study"
+    assert summary["study_id"] == spec["study_id"]
+    assert summary["per_primary_alpha"] == SHALLOW_ALPHA
+    assert summary["declared_bar"] == SHALLOW_BAR == _gate_min_wins(384, SHALLOW_ALPHA)
+    assert summary["donor_offset"] == 2000
+    start, stop = spec["block"]
+    assert summary["seeds"] == list(range(start, stop))
+    assert summary["donor_seeds"] == [seed + 2000 for seed in summary["seeds"]]
+    assert all(summary["built_in_checks"].values()), summary["built_in_checks"]
+
+    for comparison_name, quoted in spec["quoted"].items():
+        comparison = summary["comparisons"][comparison_name]
+        deltas = _deltas(summary, comparison_name)
+        wins = sum(delta < 0 for delta in deltas)
+        assert comparison["wins"] == wins == quoted[0]
+        assert math.isclose(comparison["mean_delta"], quoted[1], rel_tol=0, abs_tol=5e-5)
+        assert math.isclose(
+            comparison["binomial_p"], quoted[2], rel_tol=5e-2
+        )
+        assert comparison["passes"] is quoted[3]
+        assert comparison["min_wins"] == SHALLOW_BAR
+
+    # Registered branch (c): BOTH primaries pass at BOTH depths, which is what
+    # redirects the project to controller research.
+    assert summary["comparisons"]["pairing_difference_in_differences"]["passes"] is True
+    assert summary["comparisons"]["O_vs_O_fixed"]["passes"] is True
+
+
+def test_section_5_19_auto_label_letters_index_section_5_18_not_5_19() -> None:
+    """Pin the collision the report warns about, so it cannot drift silently.
+
+    The script's automatic ``outcome`` string uses section 5.18's branch letters,
+    so the depth-2 record says "branch (b)" while section 5.19's registered
+    reading (both primaries pass) is branch (c). A reader must not quote the
+    stored label as this section's verdict.
+    """
+    depth2 = _load_named("portability-depth2-384.json")
+    depth3 = _load_named("portability-depth3-384.json")
+    assert depth2["outcome"].startswith("branch (b)")
+    assert depth3["outcome"].startswith("branch (d)")
+    # ...whereas the section's own branch, read from its two primaries, is (c).
+    for summary in (depth2, depth3):
+        comparisons = summary["comparisons"]
+        both_pass = (
+            comparisons["pairing_difference_in_differences"]["passes"]
+            and comparisons["O_vs_O_fixed"]["passes"]
+        )
+        assert both_pass is True

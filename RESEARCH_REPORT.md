@@ -2532,6 +2532,44 @@ Machinery smoke-tests run on spent blocks only; the verdicts use 85000-85383 and
 cheaper per seed than depth 4, so ~45 min of CPU total across 20 shards per
 block.
 
+### 5.19 Outcome: both depths pass - the matched-init value is not depth-limited (branch (c))
+
+The registered blocks 85000-85383 (depth 2) and 86000-86383 (depth 3), donors
++2000, 384 seeds each. **A bookkeeping gap is recorded here:** this run's
+committed summaries were never written - section 5.20's motivation cites its
+numbers (`260/384`, `270/384`) with no artifact behind them. The shards survived
+under `artifacts/toy-portability-study/{depth2,depth3}` and the summaries are now
+generated from them: `study_436e3cfb83e13fc0` and `study_ea20b7b1ace9534b`. Both
+built-in validity checks hold in both blocks (own rewind reproduces the fixed
+arm exactly; donor rewind replaces every tensor of the unmutated genome).
+
+| | depth 2 (n = 384) | depth 3 (n = 384) |
+|---|---|---|
+| **P1** pairing, difference-in-differences | **219/384**, mean −0.0443, p 3.38e-03 | **226/384**, mean −0.0641, p 3.05e-04 |
+| **P2** `O` < `O_fixed` (matched topology value) | **260/384**, mean −0.0618, p 1.68e-12 | **270/384**, mean −0.1042, p 5.19e-16 |
+| secondary `D` < `F` (portability) | 211/384, mean −0.0175, p 2.94e-02 | 216/384, mean −0.0400, p 8.18e-03 |
+| secondary `O` < `D` (raw, contaminated) | 177/384, mean +0.0376, p 9.43e-01 | 202/384, mean −0.0871, p 1.66e-01 |
+
+**Registered verdict: branch (c).** Both depths pass both primaries, so the
+topology mechanism is **not** depth-limited at these sizes and section 5.15's
+depth-4 onset is a property of **probe-based selection**, not of the substrate.
+The pre-registered consequence is a redirect to controller research - why does
+the probe fail to find structure that is demonstrably there? - and a
+deprioritisation of the section-52 scale-up. The raw own-minus-donor secondary
+fails at both depths, exactly as section 5.18.1's correction predicted.
+
+**Prediction wrong again, in the same direction.** Section 5.19 declared that
+*both* primaries would fail at *both* depths; all four passed. That is the fourth
+of my last six predictions to be wrong and the fourth to understate an effect.
+
+**One trap worth naming.** `scripts/portability_study.py` prints an automatic
+`outcome` label whose letters index **section 5.18's** four-branch contract
+(its primaries are the DiD and `D` < `F`), so the depth-2 record carries the
+string "branch (b) ... the genome is not portable". That label is *not* section
+5.19's registered branch, which is (c) as read from the two primaries above. The
+report is authoritative; the script's label is retained for continuity with the
+committed depth-4 record rather than silently relabelled.
+
 ### 5.20 Pre-registration: is the shallow-depth topology value *selection*-specific?
 
 **Motivation.** Section 5.19 measured, at depths 2 and 3, a large
@@ -2624,6 +2662,73 @@ verdicts use 89000-89383 and 91000-91383 and nothing else.
 
 **Cost.** 2 blocks x (1 discovery + 3 transports) per seed, ~3.5 s/seed at these
 depths; ~45 min of CPU across 20 shards per block.
+
+### 5.20 Result: selection-specific at both depths (branch (a))
+
+Run on the registered blocks only (89000-89383 depth 2, 91000-91383 depth 3),
+`study_f10d1b1cd3812bc1` and `study_b6455e54f8801fd8`. Transport validity held:
+the unmutated genome rewound to the seed's own initial model reproduced the fixed
+arm's own discovery run exactly in **384/384 seeds at both depths**, so every
+delta below is a topology effect with initialization matched on all three sides.
+
+| | depth 2 (n = 384) | depth 3 (n = 384) |
+|---|---|---|
+| **P1** `A_own` < `R_own` (selection-specific) | **243/384**, mean −0.0515, p 1.09e-07 | **248/384**, mean −0.0817, p 5.86e-09 |
+| **P2** `A_own` < `F_own` (replicates §5.19) | **264/384**, mean −0.0729, p 7.64e-14 | **265/384**, mean −0.0829, p 3.43e-14 |
+| control `R_own` < `F_own` (churn alone) | 213/384, mean −0.0213, p 1.81e-02 | 197/384, mean −0.0012, p 3.23e-01 |
+
+Bar 215 at the pre-registered `alpha/4 = 0.0125`; P1 and P2 pass at both depths.
+
+**Registered verdict: branch (a).** The shallow-depth topology value is
+**selection-specific**, so section 5.15's depth-4 onset is a *selection* onset,
+section 5.19's branch (c) stands, and the controller - not the substrate - is
+what fails at shallow depth. The pre-registered consequence is a redirect to
+controller research and a **deprioritisation of the section-52 scale-up**.
+
+**My prediction was wrong, in the same direction as before.** I declared P1
+"fail at depth 2, pass at depth 3", reasoning that the selection signal should be
+weakest where section 5.15 found its while-training value weakest. P1 passed at
+depth 2 by a wide margin. This is the third of my last five predictions to be
+wrong, and all three understated an effect; the pattern is recorded rather than
+explained away.
+
+**The control is clean at depth 3, and not decisively zero at depth 2.** At
+depth 3 the random-churn topology is indistinguishable from the initial one
+(mean −0.0012, 1.5% of the total). At depth 2 churn contributes a real fraction -
+mean −0.0213, about 29% of the total `A_own`-vs-`F_own` effect, nominally
+significant (p 0.018) though failing the declared Bonferroni bar. So the depth-2
+result is *largely* selection-specific rather than purely so, and the direct
+P1 contrast (−0.0515, p 1.09e-07) is the number to quote, not the total.
+
+**Capacity does not explain it.** The adaptive topology is smaller than the
+random-churn one in 257/384 (depth 2) and 250/384 (depth 3) seeds - an advantage,
+not a dominant one - and the random-churn topology is the same size as the
+initial one in **0/384** seeds at both depths. Churn therefore did prune, in
+every seed, and still produced no retraining advantage: shrinking is not the
+mechanism.
+
+### 5.20.1 Amendment (made after the block ran): the coincidence guard
+
+The first verdict attempt **withheld the depth-2 block**, because a built-in
+check asserted that the adaptive and random arms end on different genomes in
+*every* seed and one seed (89193, of 384) does not. Depth 2's feasible topology
+space is 2 layers x 4 experts over 3 mutations, so two independent draws landing
+on the same genome is expected, not degenerate. The check was replaced by what
+it needs to assert:
+
+- coincident arms must be **exact ties** - same genome *and* same
+  initialization, so the seed's delta is exactly 0 and it can never be counted a
+  win; and
+- coincident arms must be **rare** (<= 1% of the block).
+
+The amendment cannot manufacture the result, and this is the point worth
+checking: it changes no statistic. The *declared* reading - all 384 seeds, the
+tie counted as a non-win - already passes P1 (243/384, p 1.09e-07) and P2
+(264/384, p 7.64e-14). Dropping the tie seed moves nothing: P1 243/383,
+p 7.92e-08; P2 263/383, p 1.05e-13. A tie can only be a non-win, so this
+ambiguity is conservative in the direction of the primary. The per-seed data is
+committed in both summaries, so the differ-only statistics recompute from the
+artifact. The depth-3 block was unaffected (0/384 coincident).
 
 ## 6. Reproducibility
 

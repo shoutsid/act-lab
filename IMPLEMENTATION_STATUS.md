@@ -1451,6 +1451,37 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   `artifacts/study-summaries/portability-depth4-384.json`
   (`study_757e78b90de8a510`), pinned by `tests/test_portability_summary.py`
   (suite at 523).
+- **Section 5.19 RAN (2026-09-15, blocks 85000-85383 depth 2 / 86000-86383 depth
+  3, donors +2000).** Its committed summaries were missing while its numbers
+  were already being cited; regenerated from the surviving shards as
+  `portability-depth2-384.json` (`study_436e3cfb83e13fc0`) and
+  `portability-depth3-384.json` (`study_ea20b7b1ace9534b`). Registered verdict:
+  **branch (c)** - both primaries pass at both depths - so the matched-init
+  topology value is NOT depth-limited and section 5.15's depth-4 onset is a
+  property of probe-based selection, not the substrate (redirect to controller
+  research; section-52 scale-up deprioritised). Recorded trap: the script's
+  automatic `outcome` label uses section 5.18's branch letters, so the depth-2
+  record says "branch (b)" while 5.19's registered reading is (c); pinned by
+  `test_section_5_19_auto_label_letters_index_section_5_18_not_5_19`.
+- **Section 5.20 RAN (2026-09-15, blocks 89000-89383 depth 2 / 91000-91383
+  depth 3, `scripts/specificity_study.py`).** The selection-specificity control
+  the earlier studies lacked: three rewound transports per seed on the seed's own
+  initial model. **P1 `A_own` < `R_own`: 243/384 (depth 2) and 248/384 (depth 3),
+  both PASS**; P2 `A_own` < `F_own` replicates at 264/384 and 265/384. Registered
+  verdict **branch (a) - the shallow-depth topology value is selection-specific**
+  (my declared prediction that P1 would fail at depth 2 was wrong). The
+  random-churn control is neutral at depth 3 (mean -0.0012) and only nominally
+  non-zero at depth 2 (mean -0.0213, 29% of the effect, failing the Bonferroni
+  bar); capacity does not explain it (random-churn topologies are never the
+  initial size in 0/384 seeds, yet gain nothing). Summaries
+  `specificity-depth2-384.json` (`study_f10d1b1cd3812bc1`) and
+  `specificity-depth3-384.json` (`study_b6455e54f8801fd8`), pinned by
+  `tests/test_specificity_summary.py`. **Amendment 5.20.1:** a one-seed-in-384
+  chance coincidence of the two arms' genomes tripped an all-384-differ guard and
+  withheld the depth-2 block; the guard now requires coincidences to be *exact
+  ties* and *rare*, which changes no statistic - the declared reading passes with
+  the tie counted as a non-win. Architecture hashes are carried per seed so the
+  guard is recomputable from the artifact.
 - `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
   `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
   deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer

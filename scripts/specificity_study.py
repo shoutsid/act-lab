@@ -202,6 +202,16 @@ def _comparison(deltas: list[float]) -> dict:
     }
 
 
+def _coincident_arm_seeds(experiments: list[dict]) -> int:
+    """Seeds whose adaptive and random arms discovered the same genome."""
+    return sum(
+        1
+        for exp in experiments
+        if exp["transport"]["A_own"]["architecture_hash"]
+        == exp["transport"]["R_own"]["architecture_hash"]
+    )
+
+
 def _built_in_checks(experiments: list[dict], profile: str) -> dict:
     return {
         "declared_bar_matches_exact_binomial": _gate_min_wins(
@@ -221,10 +231,22 @@ def _built_in_checks(experiments: list[dict], profile: str) -> dict:
             for exp in experiments
             for label in TRANSPORTS
         ),
-        "adaptive_and_random_topologies_differ": all(
-            exp["transport"]["A_own"]["architecture_hash"]
-            != exp["transport"]["R_own"]["architecture_hash"]
+        # The two arms draw independently, so a chance coincidence is possible
+        # where the feasible topology space is small - depth 2 is 2 layers x 4
+        # experts over 3 mutations, and one seed in 384 lands on the same
+        # genome. A coincidence is harmless only if the transports are then the
+        # SAME architecture on the SAME initialization, so the seed's delta is
+        # exactly zero and it can never be counted as a win; and only if such
+        # seeds are too rare to make the comparison architecture-to-itself.
+        # Section 5.20.1 records why this replaced an all-384-differ assertion.
+        "coincident_arm_topologies_are_exact_ties": all(
+            exp["transport"]["A_own"]["loss"] == exp["transport"]["R_own"]["loss"]
             for exp in experiments
+            if exp["transport"]["A_own"]["architecture_hash"]
+            == exp["transport"]["R_own"]["architecture_hash"]
+        ),
+        "coincident_arm_topologies_are_rare": (
+            _coincident_arm_seeds(experiments) <= max(1, 0.01 * len(experiments))
         ),
         "adaptive_mutated_3": all(
             exp["discovery"]["mutations"]["adaptive"] == 3 for exp in experiments
@@ -289,6 +311,12 @@ def summarize(profile: str) -> dict:
                     label: exp["transport"][label]["active_parameter_count"]
                     for label in TRANSPORTS
                 },
+                # Carried so the coincidence guard of section 5.20.1 is
+                # recomputable from the artifact rather than taken on trust.
+                "transport_architecture_hashes": {
+                    label: exp["transport"][label]["architecture_hash"]
+                    for label in TRANSPORTS
+                },
             }
             for exp in experiments
         ],
@@ -299,6 +327,10 @@ def summarize(profile: str) -> dict:
             for arm in ("random", "adaptive", "fixed")
         },
         "mean_active_parameters": active,
+        # Seeds where the two arms independently landed on the same genome. They
+        # are exact ties and can only bias AGAINST primary 1, so the primary is
+        # also computed without them (``*_differ_only``) in section 5.20.1.
+        "coincident_arm_topology_seeds": _coincident_arm_seeds(experiments),
         "adaptive_smaller_than_random_seeds": sum(
             1
             for exp in experiments

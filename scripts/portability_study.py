@@ -337,6 +337,12 @@ def summarize(profile: str) -> dict:
         ),
         "D_vs_O_fixed": _comparison(delta("D", "O_fixed"), alpha),
     }
+    # NOTE: these branch letters index SECTION 5.18's contract - its primaries are
+    # the difference-in-differences and D < F. They are NOT the branch letters of
+    # section 5.19's registered table, whose second primary is O < O_fixed, so a
+    # shallow-depth profile's label must not be quoted as that section's verdict
+    # (report section 5.19 names the collision). Kept unchanged so the committed
+    # depth-4 record keeps its meaning.
     p1 = comparisons["pairing_difference_in_differences"]["passes"]
     p2 = comparisons["D_vs_F"]["passes"]
     if p1 and p2:
