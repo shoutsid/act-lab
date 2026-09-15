@@ -807,6 +807,17 @@ These remain TODO or DEFERRED until the first gate passes:
   diagnostic as the `heuristic` variant, 7 new tests (suite at 362).
   Runs on the theta sweep's block 9008-9017 against its published null
   arms; primary: sign test vs null at Bonferroni alpha/2 (bar 9/10).
+- **Section 5.13 outcome (RAN 2026-09-15, revision `0ef29de`)**: the
+  heuristic LOSES to doing nothing on every seed - 0/10 wins, mean
+  delta +0.1218 (per-seed +0.049 to +0.410, all positive), p 1.0.
+  Built-in checks held: 30/30 grows at the measured argmax-load layer
+  (L5 x10, L7 x6, L4 x5, L0 x4, L6 x3, L3 x2), rebuild-only search
+  FLOPs. **The real-data topology program is CLOSED**: probe-ordered
+  (5.3), probe-gated (5.4/5.11), and load-directed (5.13) churn all
+  lose to doing nothing; the null arm is the only winning policy on
+  real text at this fidelity. The project's one remaining open gate is
+  Gate 4 (the section-5.5 compute-efficiency protocol, block
+  15000-15011, unspent).
 - `PYTHONPATH=src python scripts/train_real_lm.py` (and inference via
   `scripts/real_lm_infer.py`) -> the real-data leg the plan's data sections
   deferred: TinyStories (real English corpus) downloaded, a BPE tokenizer

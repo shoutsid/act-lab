@@ -184,7 +184,14 @@ reproduced elsewhere, expect bit-identical null values - the heuristic
 arm does not perturb them (it consumes no chooser RNG and shares the
 null arm's init identity and stream).
 
-OUTCOME (2026-09-15, revision ``<pending>``): recorded after the run.
+OUTCOME (2026-09-15, revision ``0ef29de``): interpretation branch (b) -
+the heuristic LOSES to the null arm on every seed (0/10 wins, mean
++0.1218, per-seed +0.049 to +0.410, p 1.0 vs the 9/10 bar). Directed
+churn is still churn: growing an untrained expert at the argmax-load
+layer is the maximally disruptive single mutation. Built-in checks
+held (30/30 grows at the measured load-argmax layer, rebuild-only
+search FLOPs). The real-text topology program is CLOSED at this
+fidelity; the one remaining open gate is Gate 4.
 
 Per-event probe cost scales as candidates x batches, so ``var`` quadruples
 the baseline cost (~1% -> ~4% of training FLOPs, measured 3.99%) and

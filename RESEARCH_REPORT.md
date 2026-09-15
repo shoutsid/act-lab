@@ -1569,6 +1569,38 @@ rebuild bookings only).
 **Cost.** ~10 single-arm sessions at ~2.5 min each, ~25 min on the local
 GPU; idempotent (skip-completed), resumable.
 
+**Outcome (run 2026-09-15, revision `0ef29de`): interpretation branch
+(b) - the heuristic loses to doing nothing on EVERY seed, and the
+real-text ladder closes at the top.** Wins 0/10 vs the published null
+arms, mean delta `+0.1218` (per-seed `+0.049` to `+0.410`, all
+positive), p `1.0000` against the 9/10 Bonferroni bar. Built-in checks
+held: 30/30 mutations all grows at the measured argmax-load layer
+(histogram L5 x10, L7 x6, L4 x5, L0 x4, L6 x3, L3 x2 - L1/L2 never
+targeted), and search FLOPs carry rebuild bookings only (a single probe
+evaluation would exceed the arm's whole search-FLOPs total). Reading:
+growing an untrained expert exactly where routing mass concentrates is
+the maximally disruptive single mutation - directed churn is STILL
+harmful, and the direction did not save it. Secondary: against the
+published random arms at 9008-9011 the heuristic averages `-0.109`
+(1/4 wins; the mean is dominated by the 9008 random churn catastrophe,
+`4.128`). The complete real-text picture at this fidelity:
+
+- probe-ORDERED churn loses to doing nothing (5.3, all five variants);
+- probe-GATED churn loses to doing nothing at every threshold (5.4,
+  5.11);
+- load-DIRECTED churn loses to doing nothing on every seed (this
+  section);
+- the null arm is the only policy that wins, and it wins against
+  everything.
+
+**Consequence, as pre-registered.** No topology mutation policy beats
+doing nothing on real text at this scale; the real-data topology
+program is CLOSED, and the project's one remaining open gate is Gate 4
+(the compute-efficiency protocol of section 5.5, block 15000-15011,
+unspent). The toy factor map (5.9-5.12) stands on its own: depth-driven
+value creation exists at depth 4 there, and closing the real-text leg
+removes the transfer assumption, not the toy result.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
