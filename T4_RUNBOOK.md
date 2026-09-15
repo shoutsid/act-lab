@@ -304,6 +304,15 @@ Expected outcomes and responses:
 - **OOM**: the script exits with a message pointing at the 16 GB T4 decision
   context. Do **not** shrink the config — run on a T4. `--profile` is for local
   smoke checks only and never produces launch input.
+- **Unusable schedule**: the benchmark refuses to write an artifact when the
+  measured pair time exceeds the usable window, because that yields
+  `full_pairs_per_session: 0` — a session that bills its clock and publishes
+  nothing, and the deadline rules never start a pair the clock cannot finish,
+  so it fails silently. Measured cause (2026-09-15): a GPU whose *decided*
+  dtype runs slower than fp32 — a Pascal card's fp16 path measured 411.6
+  tokens/s against 1,733.1 in fp32, where the T4 does 4,694.9. The rule's
+  decision context is a T4 (tensor cores: 65 vs 8.1 TFLOP/s); run there rather
+  than recording a zero-session plan.
 - **dtype = fp16**: expected on a T4 if throughput lands under the 2,500
   tokens/s floor. The sessions then train under autocast + GradScaler with
   fp32 master weights (checkpoint contract version 5 carries the scaler state;

@@ -561,7 +561,7 @@ def test_cli_schedules_from_the_trained_dtype_rate(
 
     def fake_run_pair_session(**kwargs):
         captured.update(kwargs)
-        return {
+        summary = {
             "protocol": "v0-compute-efficiency-5.2",
             "seeds_requested": list(kwargs["seeds"]),
             "declared_seed_queue": [9000],
@@ -572,6 +572,8 @@ def test_cli_schedules_from_the_trained_dtype_rate(
             "latest_published_seed": None,
             "pairs": [],
         }
+        summary.update(kwargs.get("summary_extra") or {})  # as the real runner does
+        return summary
 
     monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
     monkeypatch.setattr(
@@ -589,6 +591,12 @@ def test_cli_schedules_from_the_trained_dtype_rate(
 
     assert captured["config"].dtype == "fp16"
     assert captured["measured_tokens_per_second"] == 4_500.0
+    # The runner records both rates in the durable session log it writes.
+    assert captured["summary_extra"] == {
+        "dtype": "fp16",
+        "dtype_rule_tokens_per_second": 2_000.0,
+        "schedule_tokens_per_second": 4_500.0,
+    }
     printed = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
     assert printed["dtype_rule_tokens_per_second"] == 2_000.0
     assert printed["schedule_tokens_per_second"] == 4_500.0
@@ -609,7 +617,7 @@ def test_cli_falls_back_for_artifacts_without_a_schedule_rate(
 
     def fake_run_pair_session(**kwargs):
         captured.update(kwargs)
-        return {
+        summary = {
             "protocol": "v0-compute-efficiency-5.2",
             "seeds_requested": list(kwargs["seeds"]),
             "declared_seed_queue": [9000],
@@ -620,6 +628,8 @@ def test_cli_falls_back_for_artifacts_without_a_schedule_rate(
             "latest_published_seed": None,
             "pairs": [],
         }
+        summary.update(kwargs.get("summary_extra") or {})
+        return summary
 
     monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
     monkeypatch.setattr(

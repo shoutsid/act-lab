@@ -22,8 +22,42 @@ from act.training.session_plan import (
     decide_dtype,
     expected_probe_cost_percent,
     tolerance_band,
+    unusable_schedule_reason,
     working_dir_headroom_gb,
 )
+
+
+def test_recorded_t4_measurements_derive_the_recorded_schedule() -> None:
+    """The 2026-09-15 T4 dtype probe, re-derived from its measured rates.
+
+    fp32 is the pre-committed rule's input; fp16 is the dtype the sessions
+    train, so it is the one the schedule is built on.
+    """
+    fp32 = PairSchedule(tokens_per_second=2_066.3)
+    assert (fp32.full_pairs_per_session, fp32.sessions_for_primary) == (2, 6)
+
+    fp16 = PairSchedule(tokens_per_second=4_694.9)
+    assert round(fp16.pair_time_hours, 3) == 1.554
+    assert (fp16.full_pairs_per_session, fp16.sessions_for_primary) == (5, 3)
+
+
+def test_unusable_schedule_reason_flags_a_plan_that_cannot_start_a_pair() -> None:
+    """A pair time above the usable window yields zero pairs, not one.
+
+    The benchmark wrote exactly this artifact on a GPU where the decided dtype
+    runs *slower* than fp32 (a Pascal card's fp16 path is 4x down). Every
+    session would have billed its window to publish nothing, and the deadline
+    rules never start a pair the clock cannot finish, so zero is silent.
+    """
+    infeasible = PairSchedule(tokens_per_second=415.19)  # the measured rate there
+    assert infeasible.full_pairs_per_session == 0
+    reason = unusable_schedule_reason(infeasible)
+    assert reason is not None
+    assert "does not fit" in reason and "16.54 h" in reason
+
+    # Every runnable plan passes, including opposite ends of the range.
+    assert unusable_schedule_reason(PairSchedule(tokens_per_second=10_000.0)) is None
+    assert unusable_schedule_reason(PairSchedule(tokens_per_second=4_694.9)) is None
 
 
 def test_decide_dtype_follows_precommitted_floor() -> None:

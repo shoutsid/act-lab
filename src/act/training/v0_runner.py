@@ -82,6 +82,7 @@ def run_pair_session(
     output: str | Path | None = None,
     log: Callable[[str], None] | None = None,
     clock: Callable[[], float] | None = None,
+    summary_extra: dict[str, object] | None = None,
 ) -> dict:
     """Run the section 5.2 session loop over the seed queue.
 
@@ -176,6 +177,10 @@ def run_pair_session(
         "pairs": pair_results,
         "latest_published_seed": latest[0] if latest is not None else None,
     }
+    # Extra provenance from the caller (the CLI records the dtype the rule
+    # decided and the rate the schedule used beside the one pair time used),
+    # recorded here so the durable log is written by one writer in one format.
+    summary.update(summary_extra or {})
     if output is not None:
         output_path = Path(output)
         output_path.parent.mkdir(parents=True, exist_ok=True)

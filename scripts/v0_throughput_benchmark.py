@@ -34,6 +34,7 @@ from act.training.session_plan import (
     deadline_decision,
     expected_probe_cost_percent,
     tolerance_band,
+    unusable_schedule_reason,
     working_dir_headroom_gb,
 )
 from act.training.v0_session import V0SessionConfig
@@ -203,6 +204,22 @@ def main() -> int:
         rates["fp16"] = fp16_rate
     schedule_rate = fp16_rate if fp16_rate is not None else rate
     schedule = PairSchedule(tokens_per_second=schedule_rate)
+
+    # An artifact is launch input, so it must describe a plan that can start a
+    # pair. A pair time above the usable window silently yields zero pairs per
+    # session - a run that bills quota and publishes nothing - so refuse it here
+    # rather than hand the launch command a plan it cannot execute.
+    reason = unusable_schedule_reason(schedule)
+    if reason is not None:
+        slower = fp16_rate is not None and fp16_rate < rate
+        detail = (
+            f"; the decided dtype is {dtype} and measures {fp16_rate:.1f} tokens/s"
+            f" against {rate:.1f} in fp32, so fp16 is slower on this device. The"
+            " rule's decision context is a T4 (tensor cores: 65 vs 8.1 TFLOP/s)"
+            if slower
+            else ""
+        )
+        raise SystemExit(f"unusable section 5.2 schedule: {reason}{detail}")
 
     report = {
         "benchmark": "v0-throughput-5.2",

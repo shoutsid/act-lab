@@ -273,32 +273,39 @@ def _run_pair_session(args: argparse.Namespace) -> None:
         measured_tokens_per_second=schedule_rate,
         output=args.output,
         log=print,
+        # Both numbers belong on the trail: the fp32 rate is the pre-committed
+        # dtype rule's input, the schedule rate is what set the pair time. They
+        # differ by design whenever the session trains fp16, so a log that
+        # carried only one of them could not be audited later.
+        summary_extra={
+            "dtype": dtype,
+            "dtype_rule_tokens_per_second": rule_rate,
+            "schedule_tokens_per_second": schedule_rate,
+        },
     )
-    # Both numbers belong on the trail: the fp32 rate is the pre-committed
-    # dtype rule's input, the schedule rate is what set the pair time. They
-    # differ by design whenever the session trains fp16.
-    summary["dtype_rule_tokens_per_second"] = rule_rate
-    summary["schedule_tokens_per_second"] = schedule_rate
-    summary["dtype"] = dtype
     _publish_remote(args, tokens_per_second=schedule_rate)
+    printed = {
+        key: summary[key]
+        for key in (
+            "protocol",
+            "seeds_requested",
+            "declared_seed_queue",
+            "remaining_hours_at_entry",
+            "measured_tokens_per_second",
+            "pair_time_hours",
+            "pairs_completed",
+            "latest_published_seed",
+        )
+    }
+    # Stated from the CLI's own inputs rather than read back out of the runner's
+    # summary: the durable session log carries them (via ``summary_extra``), but
+    # what the CLI reports must not depend on that write succeeding.
+    printed["dtype"] = dtype
+    printed["dtype_rule_tokens_per_second"] = rule_rate
+    printed["schedule_tokens_per_second"] = schedule_rate
     print(
         json.dumps(
-            {
-                key: summary[key]
-                for key in (
-                    "protocol",
-                    "seeds_requested",
-                    "declared_seed_queue",
-                    "remaining_hours_at_entry",
-                    "measured_tokens_per_second",
-                    "dtype_rule_tokens_per_second",
-                    "schedule_tokens_per_second",
-                    "dtype",
-                    "pair_time_hours",
-                    "pairs_completed",
-                    "latest_published_seed",
-                )
-            },
+            printed,
             sort_keys=True,
         )
     )

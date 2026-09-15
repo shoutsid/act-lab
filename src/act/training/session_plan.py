@@ -201,3 +201,22 @@ def tolerance_band(probe_batch_count: int) -> tuple[float, float]:
     """Pre-committed [0.5, 2] x predicted-cost band for the primary config."""
     prediction = expected_probe_cost_percent(probe_batch_count)
     return 0.5 * prediction, 2.0 * prediction
+
+
+def unusable_schedule_reason(schedule: PairSchedule) -> str | None:
+    """Why this schedule can never start a pair, or ``None`` if it can.
+
+    A pair is atomic and is never begun unless the whole thing fits the usable
+    window, so a pair time above :data:`USABLE_HOURS` gives
+    ``full_pairs_per_session == 0`` - an artifact describing a session that does
+    nothing at all while billing quota. Measured 2026-09-15: the benchmark wrote
+    exactly that on a GPU whose decided dtype runs *slower* than fp32, because
+    the pre-committed rule selects fp16 on the fp32 rate and says nothing about
+    whether fp16 is faster on the device in hand.
+    """
+    if schedule.full_pairs_per_session < 1:
+        return (
+            f"a {schedule.pair_time_hours:.2f} h pair does not fit the "
+            f"{USABLE_HOURS:g} h usable window, so no pair can ever start"
+        )
+    return None

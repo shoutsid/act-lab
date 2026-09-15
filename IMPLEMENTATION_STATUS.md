@@ -571,7 +571,13 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   against the latter. This changes session packing only: the seeds, the steps,
   the probe cost and the section 4 verdict are untouched, which section 5.2
   already pre-registered ("dtype is an execution detail touching no
-  pre-registered criterion").
+  pre-registered criterion"). The benchmark also refuses to write an artifact
+  whose schedule fits no pair at all. That is not hypothetical: on a non-T4 GPU
+  the decided fp16 measured 4.2x *slower* than fp32, and the artifact described
+  a session with `full_pairs_per_session: 0` - billing a whole window to
+  publish nothing, silently, because the deadline rules never start a pair the
+  clock cannot finish. The refusal names the cause and the rule's decision
+  context (a T4 with tensor cores).
 - The whole run is now reproducible code, not operator lore:
   `scripts/kaggle_t4.py` drives every session kind as a script kernel
   (`ACT_T4_MODE` = `metadata` / `probe` / `preflight` / `session` / `control` /
