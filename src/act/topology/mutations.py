@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Mapping, Sequence
 
 from .genome import ArchitectureGenome, ExpertGene, validate_genome
 
@@ -66,6 +66,47 @@ def feasible_expert_mutations(
             for expert in layer.experts:
                 candidates.append(("prune", layer.id, expert.id))
     return tuple(candidates)
+
+
+def quietest_prune_index(
+    candidates: Sequence[tuple[str, str, str | None]],
+    layer_experts: Mapping[str, Sequence[str]],
+    loads: Mapping[str, Sequence[float]],
+    fallback: int = 0,
+) -> int:
+    """Index of the prune candidate whose expert carries the least recorded load.
+
+    Shared by both probe paths so the rule cannot drift between them. The probe
+    enumerates *every* feasible candidate (``feasible_expert_mutations``) and scores
+    them by probe loss; this helper answers the different question of which expert a
+    cheap load rule would remove instead, so the two selectors can be compared.
+
+    ``candidates`` is the pool **in the order it was decided on** (for the probe
+    paths that is probe-loss order) and the return value indexes that same sequence.
+    Non-prune candidates are ignored, and an expert whose load was never recorded is
+    skipped rather than guessed at. ``fallback`` is returned when the pool holds no
+    scoreable prune, so the caller's existing rule decides in that case rather than
+    an arbitrary pick. Ties resolve to the lowest index, deterministically.
+    """
+    best_load: float | None = None
+    best_index = fallback
+    for index, (operation, layer_id, expert_id) in enumerate(candidates):
+        if operation != "prune" or expert_id is None:
+            continue
+        experts = layer_experts.get(layer_id)
+        recorded = loads.get(layer_id)
+        if not experts or not recorded:
+            continue
+        if expert_id not in experts:
+            continue
+        position = experts.index(expert_id)
+        if position >= len(recorded):
+            continue
+        load = float(recorded[position])
+        if best_load is None or load < best_load:
+            best_load = load
+            best_index = index
+    return best_index
 
 
 def prune_expert(genome: ArchitectureGenome, layer_id: str, expert_id: str) -> bool:

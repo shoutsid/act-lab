@@ -396,10 +396,13 @@ def main() -> None:
         "section 5.5 primary, a deterministic subset of the whole feasible set)",
     )
     parser.add_argument(
-        "--probe-selection", choices=("argmin", "argmax", "random"), default="argmin",
+        "--probe-selection",
+        choices=("argmin", "argmax", "random", "quietest"),
+        default="argmin",
         help="decision rule over probed candidates: 'argmin' (registered "
-        "default), 'argmax' (inverted control) or 'random' (the adopted "
-        "pool-matched loss-blind control arm)",
+        "default), 'argmax' (inverted control), 'random' (the adopted "
+        "pool-matched loss-blind control arm) or 'quietest' (prune the "
+        "least-loaded expert in the probed pool, otherwise the probe's pick)",
     )
     parser.add_argument("--checkpoint-dir", default="artifacts/v0-sessions")
     parser.add_argument("--output", type=Path, default=None)

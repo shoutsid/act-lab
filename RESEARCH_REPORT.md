@@ -4517,6 +4517,91 @@ directly. The one prediction in this run that mattered was that both statistics 
 that one was made because the power arithmetic was written down before the block rather than
 estimated after it.
 
+### 5.33 Pre-registration: is the probe's own prune target better than a load rule?
+
+**Motivation, and it is a correction as much as a question.** Section 5.32's
+pre-registered interpretation (a) said "the discovery controller should prefer the
+quietest expert". That is wrong as written, and the reason is structural rather than
+statistical: `prune_expert_policy` is **inert** on the probe-guided path.
+`_mutate_by_probe` enumerates every feasible candidate through
+`feasible_expert_mutations` - including one prune candidate per expert in every MoE
+layer - and returns before the branch that consults the setting is reached. Measured,
+not argued: with `adaptive_policy="probe_loss"` the three policies give bit-identical
+losses and identical pruned experts, pinned by
+`test_the_knob_is_inert_on_the_probe_guided_discovery_path`.
+
+So the discovery controller *already* owns the prune-target lever and exercises it by
+measured probe loss. What is untested is whether it exercises it **well** - whether its
+own target choice beats the cheap load rule that section 5.32 validated on the
+non-probe paths. That needs the load rule to exist on the probe path, which is what
+`probe_selection="quietest"` adds, on both probe paths so they cannot drift.
+
+**The rule isolates the target.** It fires only when the probe's own pick (index 0 of
+the loss-sorted pool) is a prune, and then removes the least-loaded expert in the
+probed pool instead. When the probe would have grown, its pick stands. So the
+difference between the two selectors is the prune target and nothing else - not which
+operation happens, not which event - and that is asserted at the code level rather than
+intended.
+
+**Design.** The section 5.30 registered configuration with the section 5.28
+recommended settings (`new_expert_initialization="clone"`,
+`preserve_router_on_rebuild=True`), so this is the configuration the delivery pipeline
+would actually run. Four selection rules over the same pool at the same probe cost:
+
+- `A` `probe_selection="argmin"` - the registered default and the historical run;
+- `Q` `probe_selection="quietest"` - the load rule on the prune target;
+- `M` `probe_selection="random"` - the pool-matched loss-blind control;
+- `G` `probe_selection="argmax"` - the inverted control;
+- `F` the fixed arm, identical under all four;
+- `A_own` / `Q_own` each fused run's final genome retrained from its own initialization.
+
+**Statistic**, declared in advance: the one section 5.32 adopted after section 5.31
+showed the paired sign test needs ~4x the block for the same effect - a one-sided
+paired **sign-flip permutation test on the mean** of the per-seed deltas (20,000
+permutations, seeded), against `alpha/4 = 0.0125`. Both statistics are stored side by
+side. **Blocks:** 1536 seeds per depth, fresh (`119000-120535`, `121000-122535`).
+
+**Primaries per depth**, on the fused loss (the deployed number under section 5.28's
+keep-the-fused-run recommendation):
+1. **the probe's selection carries information here** - `fused(A)` < `fused(M)`.
+2. **the probe beats the cheap load rule** - `fused(A)` < `fused(Q)`.
+
+**Prediction.** P1 passes; on this substrate selection informativeness has already been
+established at depth 4 (section 9.9's confirmation: `argmin` vs uniform 255/384 and a
+paired increment 236/384), so P1 is largely a replication on a new configuration. P2 is
+the genuine question and I predict it **passes** - the probe scores candidates by the
+loss that actually matters and the load rule is a proxy for it - while declaring it the
+uncertain half: section 5.32 found the load rule effective on the non-probe paths, so
+the two signals could well be comparable in quality, and the sign tests at 53-54% win
+rates on the earlier blocks show how small a difference of this kind can be.
+
+**Pre-registered interpretation.**
+- (a) both pass: the probe's prune choice is informed **and** beats the load rule -
+  section 5.32's lever is not reachable more cheaply, and the discovery residual is
+  not a prune-target problem.
+- (b) P2 passes, P1 fails: the load rule beats the probe while the probe is no better
+  than its own pool-matched control - an indictment of the selection rule on this
+  configuration, and a much larger claim than a target effect.
+- (c) P1 passes, P2 fails: the probe's selection is informative but a two-line load
+  rule is no worse on the prune target. That is the **most useful** outcome if true -
+  it replaces the probe's prune decision with a cheap rule and shortens the search.
+- (d) neither passes: on this configuration the prune-target choice carries no
+  measurable information under either rule.
+
+**Secondaries.** `Q` vs `M` (does the load rule alone beat random?), `A` vs `G`
+(inverted control), each of `A`/`Q` against `F`, `A_own` vs `Q_own`, and the penalty
+`own - fused` for both - which section 5.32 showed is the column that answers "does the
+delivered artifact improve?", as distinct from the fused column.
+
+**Scope limits.** As sections 5.30-5.32: toy fidelity, synthetic tokens, depths 2 and
+3, and a fixed probe budget (cap 4, 2 batches, `spread`). One limit is new: `Q` is
+compared against `A` **as the probe would have chosen it**, so this measures the value
+of overriding the probe's prune target, not whether a load rule would survive without
+the probe at all.
+
+**Cost.** Five adaptive/fixed runs plus two frozen retrains per seed, ~2.3 s/seed;
+1536 seeds x 2 depths, ~6 minutes wall over 20 cores.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

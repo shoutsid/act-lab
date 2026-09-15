@@ -3,6 +3,7 @@
 from .genome import ArchitectureGenome, create_genome, genome_hash, validate_genome
 from .mutations import (
     feasible_expert_mutations,
+    quietest_prune_index,
     grow_expert,
     clone_expert,
     merge_experts,
@@ -20,6 +21,7 @@ __all__ = [
     "create_genome",
     "genome_hash",
     "feasible_expert_mutations",
+    "quietest_prune_index",
     "grow_expert",
     "clone_expert",
     "MutationResult",

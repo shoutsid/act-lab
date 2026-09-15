@@ -78,6 +78,55 @@ def test_the_quietest_policy_removes_the_lowest_load_expert() -> None:
     ]
 
 
+def test_the_knob_is_inert_on_the_probe_guided_discovery_path() -> None:
+    """Where this knob does NOT apply, asserted so nobody relies on it there.
+
+    The probe-guided adaptive path calls ``_mutate_by_probe`` and returns before the
+    branch that consults ``prune_expert_policy``. It does not need it: the probe
+    enumerates **every** feasible candidate through ``feasible_expert_mutations`` -
+    including one prune candidate per expert in every MoE layer - and chooses by
+    measured probe loss. So the discovery controller already has the prune-target
+    lever, and it uses a better-informed selector than a load rule for it.
+
+    Section 5.32's pre-registered interpretation (a) said "the discovery controller
+    should prefer the quietest expert". That is wrong as stated and this test is why:
+    the discovery path cannot see the setting at all, and the identical result below
+    is the measurement, not the argument. The lever applies to the paths that do
+    consult it (the ``random`` arm and non-probe adaptive policies), which is where
+    section 5.32 measured it.
+    """
+    common = dict(
+        BASE,
+        arms="adaptive",
+        steps=24,
+        mutation_interval=12,
+        mutation_budget=2,
+        adaptive_policy="probe_loss",
+        probe_candidate_cap=4,
+        probe_batch_count=2,
+        probe_candidate_policy="spread",
+    )
+    for seed in (1, 2):
+        outcomes = {}
+        for policy in ("random", "busiest", "quietest"):
+            arm = run_experiment(
+                ExperimentConfig(**common, seed=seed, prune_expert_policy=policy)
+            ).arms[0]
+            outcomes[policy] = (
+                arm.final_loss,
+                tuple(event["operation"] for event in arm.mutation_history),
+                tuple(event["expert_id"] for event in arm.mutation_history),
+                tuple(
+                    event["architecture_hash_after"] for event in arm.mutation_history
+                ),
+            )
+        assert len(set(outcomes.values())) == 1, (
+            "the probe path now reads prune_expert_policy: section 5.32's consequence "
+            "may apply to discovery after all, and that needs measuring rather than "
+            "assumed"
+        )
+
+
 def _load(name: str) -> dict:
     path = summaries_dir() / name
     if not path.exists():

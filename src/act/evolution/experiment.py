@@ -10,7 +10,7 @@ import torch
 
 from act.model import StaticMoECausalLM, model_from_genome, rebuild_model_from_genome
 from act.evolution.controller import AdaptiveController
-from act.topology import ArchitectureGenome, create_genome, feasible_expert_mutations, genome_hash, grow_expert, prune_expert
+from act.topology import ArchitectureGenome, create_genome, feasible_expert_mutations, genome_hash, grow_expert, prune_expert, quietest_prune_index
 from act.training.runtime import resolve_device
 
 
@@ -227,7 +227,7 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
         raise ValueError("probe_candidate_cap must be at least 1")
     if config.probe_candidate_policy not in {"prefix", "spread"}:
         raise ValueError("unsupported probe_candidate_policy")
-    if config.probe_selection not in {"argmin", "argmax", "random"}:
+    if config.probe_selection not in {"argmin", "argmax", "random", "quietest"}:
         raise ValueError("unsupported probe_selection")
     if config.forced_operation not in {None, "grow", "prune"}:
         raise ValueError("forced_operation must be None, 'grow' or 'prune'")
@@ -536,6 +536,28 @@ def _mutate_by_probe(
         # probe cost, chosen without reference to probe loss. Seeded from the
         # event's seed so re-runs redraw the identical choice.
         selected_index = random.Random(sampler_seed).randrange(len(evaluated))
+    elif probe_selection == "quietest":
+        # The section 5.32 lever applied to the probe pool, isolating the TARGET:
+        # the rule only fires when the probe's own pick (index 0 of the loss-sorted
+        # pool) is a prune, and then removes the expert carrying the least recorded
+        # routing load instead. If the probe would have grown, its pick stands - so
+        # the comparison against "argmin" differs in the prune target and nothing
+        # else, rather than quietly also switching the operation.
+        pool = [(item[2], item[3], item[4]) for item in evaluated]
+        selected_index = 0
+        if pool and pool[0][0] == "prune":
+            selected_index = quietest_prune_index(
+                pool,
+                {
+                    layer.id: [expert.id for expert in layer.experts]
+                    for layer in arm.genome.layers
+                },
+                {
+                    layer.id: arm.model.routing_load[layer.index]
+                    for layer in arm.genome.layers
+                },
+                fallback=0,
+            )
     else:
         selected_index = 0
     probe_loss, _, operation, layer_id, expert_id, winner = evaluated[selected_index]

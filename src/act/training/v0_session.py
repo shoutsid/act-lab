@@ -53,6 +53,7 @@ from act.topology import (
     genome_hash,
     grow_expert,
     prune_expert,
+    quietest_prune_index,
 )
 from act.training.runtime import move_optimizer_state, resolve_device
 from act.training.session import SessionCheckpointPolicy, retain_checkpoints
@@ -219,7 +220,7 @@ class V0SessionConfig:
             raise ValueError("mutation_interval and mutation_budget must be positive")
         if self.probe_candidate_cap < 1 or self.probe_batch_count < 1:
             raise ValueError("probe budgets must be positive")
-        if self.probe_selection not in {"argmin", "argmax", "random"}:
+        if self.probe_selection not in {"argmin", "argmax", "random", "quietest"}:
             raise ValueError(f"unsupported probe_selection: {self.probe_selection}")
         if self.probe_candidate_policy not in {"prefix", "spread"}:
             raise ValueError(
@@ -670,6 +671,27 @@ def _adaptive_event(
         selected_index = random.Random(config.seed * 1_000_003 + step).randrange(
             len(evaluated)
         )
+    elif config.probe_selection == "quietest":
+        # The section 5.32 lever applied to the probe pool, isolating the TARGET;
+        # mirrors the toy evolution path so the two cannot drift. The rule fires
+        # only when the probe's own pick is a prune, and then takes the least-loaded
+        # expert instead - so the contrast against "argmin" differs in the prune
+        # target alone, not in which operation happens.
+        pool = [(item[2], item[3], item[4]) for item in evaluated]
+        selected_index = 0
+        if pool and pool[0][0] == "prune":
+            selected_index = quietest_prune_index(
+                pool,
+                {
+                    layer.id: [expert.id for expert in layer.experts]
+                    for layer in arm_state.genome.layers
+                },
+                {
+                    layer.id: model.routing_load[layer.index]
+                    for layer in arm_state.genome.layers
+                },
+                fallback=0,
+            )
     else:
         selected_index = 0
     probe_loss, _, operation, layer_id, expert_id, winner_genome = evaluated[
