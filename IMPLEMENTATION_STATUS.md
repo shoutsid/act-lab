@@ -818,6 +818,13 @@ These remain TODO or DEFERRED until the first gate passes:
   real text at this fidelity. The project's one remaining open gate is
   Gate 4 (the section-5.5 compute-efficiency protocol, block
   15000-15011, unspent).
+- **Section 5.15 pre-registered (2026-09-15, revision `1e4528d`)**: the
+  **depth dose-response** - the two missing cells (depth 2 on fresh block
+  74000-74383, depth 3 on 75000-75383, prefix policy) that locate where
+  value creation onset begins on the depth axis the 5.12 2x2 identified.
+  Same three-arm machinery, same primaries, Bonferroni alpha/2; four
+  pre-registered branches (monotone onset between 1-2 / 3-4 / 2-3, or a
+  non-monotone response suspending the depth-axis reading).
 - **Section 5.14 pre-registered (2026-09-15, revision `4e26de9`)**: the
   **do-nothing clause for Gate 4**. The 5.1/5.5 verdict structure predates
   the null arm - its harm guard compares adaptive against RANDOM churn

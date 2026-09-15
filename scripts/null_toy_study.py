@@ -74,6 +74,24 @@ PROFILES: dict[str, dict] = {
         "report_section": "5.12",
         "summary": "artifacts/study-summaries/null-control-depth4-prefix-384.json",
     },
+    # Section 5.15: the depth dose-response. The 2x2 established that DEPTH
+    # separates churn suppression (depth 1) from value creation (depth 4);
+    # these two cells place depths 2 and 3 on the same axis (prefix policy,
+    # the registered default), locating where the onset begins. Fresh blocks.
+    "depth2": {
+        "seeds": tuple(range(74000, 74384)),
+        "overrides": {"depth": 2},
+        "run_revision": "PLACEHOLDER-REV",
+        "report_section": "5.15",
+        "summary": "artifacts/study-summaries/null-control-depth2-384.json",
+    },
+    "depth3": {
+        "seeds": tuple(range(75000, 75384)),
+        "overrides": {"depth": 3},
+        "run_revision": "PLACEHOLDER-REV",
+        "report_section": "5.15",
+        "summary": "artifacts/study-summaries/null-control-depth3-384.json",
+    },
 }
 REGISTERED = dict(
     hidden_size=24,

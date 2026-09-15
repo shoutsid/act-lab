@@ -1690,6 +1690,55 @@ the queue, plus per-session restore/publish overhead. It runs as
 regular sessions in the same 12-hour Kaggle windows, after the primary
 queue completes (the runbook order).
 
+### 5.15 Pre-registration: the depth dose-response of value creation (designed, not yet run)
+
+**Motivation.** The 2x2 (5.12) established that DEPTH - not the candidate
+policy - separates churn suppression (depth 1: adaptive loses to the
+null arm at 131/384 and 117/384) from value creation (depth 4: adaptive
+beats the null arm at 225/384 and 218/384). But two points do not locate
+an ONSET: the transition could sit anywhere in (1, 4]. This study places
+depths 2 and 3 on the same axis, with the prefix policy (the registered
+default) held fixed, completing a depth-1/2/3/4 series at otherwise
+identical registered configs.
+
+**Design.** Two new profiles of the 5.9-5.12 machinery (three arms
+`random,adaptive,null` per experiment, `independent_arm_rng`, cap-4/
+2-batch probes, 48 steps, interval 12, budget 3): depth 2 on fresh block
+**74000-74383**, depth 3 on fresh block **75000-75383** - both disjoint
+from every spent block (70000-70383, 71000-71383, 72000-72384,
+73000-73384) and from all real-text blocks. 384 experiments per cell,
+20-way CPU sharding as in 5.9-5.12.
+
+**Primaries (per cell, Bonferroni alpha/2 = `0.025`, n = 384, bar
+214/384):** (1) null < random (churn harm present at this depth);
+(2) adaptive < null (value creation beyond doing nothing at this depth).
+
+**Pre-registered interpretation (fixed before running).** Let w(d) be
+primary-2 wins at depth d (w(1) = 131, w(4) = 225 from 5.12):
+- (a) w(2) and w(3) both clear: value creation onset begins at or below
+  depth 2, and the 5.9 depth-1 failure is a narrowly shallow-substrate
+  effect - the depth axis sharpens to a threshold between 1 and 2.
+- (b) w(2) and w(3) both fail: onset sits between depth 3 and 4 - a
+  sharp late threshold consistent with depth-4-specific expressiveness.
+- (c) w(2) fails, w(3) clears: onset is between 2 and 3; the monotone
+  reading of the depth axis is confirmed with the threshold located.
+- (d) w(2) clears, w(3) fails: a NON-monotone response - value creation
+  is not a pure function of depth; the 5.12 attribution would need a
+  third factor, and the depth axis reading is suspended until a
+  follow-up isolates it (no re-tuning of existing cells).
+Primary 1 is expected to clear at every depth (churn harm is
+substrate-general per 5.8-5.13); a primary-1 failure at any depth is
+recorded as a revision of the churn-harm generality claim, not a
+protocol deviation.
+
+**Built-in checks.** Identical to 5.9-5.12 (zero null mutations and
+search FLOPs; matched budgets; arm-RNG isolation via the 2-arm ==
+3-arm invariant).
+
+**Cost.** ~2 s/seed at depth 1 scaled by depth (deeper models are
+cheaper per seed than the depth-4 cell's ~2.4 s), so roughly 13-16 min
+per cell across 20 shards; ~30 min total.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
