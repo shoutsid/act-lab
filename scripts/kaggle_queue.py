@@ -70,7 +70,7 @@ VERDICT_NAME = "v0-5-1-verdict.json"
 # Single-job kernels that are pushed once and reported, rather than queues that
 # are re-pushed until a block completes. ``verdict`` is the section 4 decision
 # - the reason the queues were run at all.
-ONE_SHOT_MODES = ("preflight", "verdict")
+ONE_SHOT_MODES = ("preflight", "verdict", "dtypeprobe")
 
 
 def parse_status(text: str) -> str:
@@ -130,6 +130,14 @@ CODE_PATHS = (
 )
 CODE_DATASET_SLUG = "act-lab-code"
 REVISION_MARKER = "revision.txt"
+# The tree is uploaded as one archive, not as directories. Kaggle's uploader
+# with its default ``dir_mode`` **silently drops every subdirectory**, so a
+# folder-shaped push published a code dataset containing only the loose files
+# at the top level - no ``src/``, no ``scripts/`` - while still reporting a
+# successful version. Every kernel then died at bootstrap on "no code dataset
+# under /kaggle/input". The service extracts uploaded archives and keeps their
+# internal paths, which is the same route the checkpoint handoff uses.
+CODE_ARCHIVE_NAME = "code.tar"
 
 
 def code_dataset_id() -> str:
@@ -180,21 +188,38 @@ def code_files(repo: str | Path) -> list[str]:
 
 
 def stage_code_dataset(repo: str | Path, directory: str | Path, revision: str) -> Path:
-    """Copy the code the kernel runs into a pushable dataset folder."""
-    import shutil
+    """Stage the code the kernel runs as one archive, plus its metadata.
+
+    ``pyproject.toml`` and ``src/act`` are also read back out of the archive
+    before returning, so a staging bug fails here rather than on Kaggle - the
+    kernel's own mount search looks for exactly that pair.
+    """
+    import tarfile
 
     root = Path(repo)
     folder = Path(directory)
     folder.mkdir(parents=True, exist_ok=True)
-    for name in code_files(root):
-        target = folder / name
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(root / name, target)
-    if not (folder / "pyproject.toml").is_file() or not (folder / "src" / "act").is_dir():
+    names = code_files(root)
+    if "pyproject.toml" not in names or not any(
+        name.startswith("src/act/") for name in names
+    ):
         raise SystemExit(
             "staged code dataset lacks pyproject.toml + src/act, which is exactly "
             "what the kernel's mount search looks for"
         )
+    archive = folder / CODE_ARCHIVE_NAME
+    with tarfile.open(archive, "w") as tar:
+        for name in names:
+            tar.add(root / name, arcname=name)
+        marker = root / REVISION_MARKER
+        marker.write_text(f"{revision}\n", encoding="utf-8")
+        tar.add(marker, arcname=REVISION_MARKER)
+    with tarfile.open(archive) as tar:
+        archived = set(tar.getnames())
+    if "pyproject.toml" not in archived or not any(
+        name.startswith("src/act/") for name in archived
+    ):
+        raise SystemExit(f"{archive} does not carry the package tree")
     (folder / REVISION_MARKER).write_text(f"{revision}\n", encoding="utf-8")
     (folder / "dataset-metadata.json").write_text(
         json.dumps(
@@ -212,18 +237,46 @@ def stage_code_dataset(repo: str | Path, directory: str | Path, revision: str) -
     return folder
 
 
+def download_code_dataset(dataset: str, *, work: str | Path) -> Path | None:
+    """Download and unzip the published code dataset into ``work``.
+
+    A few hundred KB, which is cheap enough to do before every push - and the
+    only way to know what the kernel will actually run. Returns ``None`` when
+    the download fails.
+    """
+    here = Path(work)
+    result = _run(
+        ["kaggle", "datasets", "download", "-d", dataset, "-p", str(here), "--unzip"]
+    )
+    return here if result.returncode == 0 else None
+
+
+def code_payload_defect(directory: str | Path) -> str | None:
+    """What a downloaded code dataset is missing to run the kernels, if any.
+
+    The revision marker alone is not evidence: it is a loose top-level file,
+    so it survives the uploader's silent drop of subdirectories while the
+    package tree does not - which is exactly how a code dataset with no
+    ``src/`` was read as current. The kernel's mount search looks for
+    ``src/act`` beside ``pyproject.toml``, so the check is the same one.
+    """
+    folder = Path(directory)
+    if not (folder / "pyproject.toml").is_file():
+        return "pyproject.toml"
+    if not (folder / "src" / "act").is_dir():
+        return "src/act"
+    return None
+
+
 def published_code_revision(
     dataset: str, *, work: str | Path | None = None
 ) -> str | None:
-    """The revision marker in the published dataset, or ``None`` if unknown.
-
-    The marker is a few hundred KB of download, which is cheap enough to check
-    before every push and is the only way to know what the kernel will run.
-    """
+    """The revision marker in the published dataset, or ``None`` if unknown."""
     here = Path(work) if work is not None else Path(tempfile.mkdtemp(prefix="act-code-check-"))
-    download = _run(["kaggle", "datasets", "download", "-d", dataset, "-p", str(here), "--unzip"])
+    if download_code_dataset(dataset, work=here) is None:
+        return None
     marker = here / REVISION_MARKER
-    if download.returncode != 0 or not marker.is_file():
+    if not marker.is_file():
         return None
     return marker.read_text(encoding="utf-8").strip() or None
 
@@ -241,13 +294,22 @@ def ensure_code_dataset(repo: str | Path, *, log=print) -> str:
     dataset = code_dataset_id()
     revision = code_revision(repo)
     probe = Path(tempfile.mkdtemp(prefix="act-code-check-"))
-    published = published_code_revision(dataset, work=probe)
-    if published == revision:
+    fetch = Path(tempfile.mkdtemp(prefix="act-code-fetch-"))
+    if download_code_dataset(dataset, work=fetch) is not None:
+        published = published_code_revision(dataset, work=probe)
+        defect = code_payload_defect(fetch)
+    else:
+        published, defect = None, None
+    if published == revision and defect is None:
         log(f"  code dataset {dataset} is at {revision[:12]}", flush=True)
         return revision
+    why = (
+        f"is at {(published or 'unknown')[:12]}"
+        if defect is None
+        else f"carries no {defect}"
+    )
     log(
-        f"  code dataset {dataset} is at {(published or 'unknown')[:12]}, "
-        f"republishing from {revision[:12]}",
+        f"  code dataset {dataset} {why}, republishing from {revision[:12]}",
         flush=True,
     )
     staging = Path(tempfile.mkdtemp(prefix="act-code-publish-"))
@@ -261,6 +323,18 @@ def ensure_code_dataset(repo: str | Path, *, log=print) -> str:
                 f"could not publish the code dataset {dataset}: "
                 f"{(result.stderr or result.stdout).strip()} / "
                 f"{(created.stderr or created.stdout).strip()}"
+            )
+    # Read it back: a version that dropped the package tree still reports as
+    # published, and every kernel then dies at bootstrap.
+    verify = Path(tempfile.mkdtemp(prefix="act-code-verify-"))
+    if download_code_dataset(dataset, work=verify) is not None:
+        still = code_payload_defect(verify)
+        marker = published_code_revision(dataset, work=verify)
+        if still is not None or marker != revision:
+            raise SystemExit(
+                f"published {dataset} is not usable: "
+                f"{'missing ' + still if still else f'at {marker}'} "
+                f"(expected {revision[:12]} with a package tree)"
             )
     log(f"  published code dataset {dataset} at {revision[:12]}", flush=True)
     return revision

@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import sys
+import tarfile
 from pathlib import Path
 
 import pytest
@@ -575,7 +576,15 @@ def test_code_revision_refuses_an_unpublishable_tree(monkeypatch) -> None:
         kaggle_queue.code_revision(ROOT)
 
 
-def test_stage_code_dataset_marks_the_revision(tmp_path: Path, monkeypatch) -> None:
+def test_stage_code_dataset_archives_the_package(tmp_path: Path, monkeypatch) -> None:
+    """The tree must travel as an archive, not as directories.
+
+    Kaggle's uploader with its default ``dir_mode`` silently drops every
+    subdirectory, so a folder-shaped push produced a code dataset with no
+    ``src/`` - every kernel then died at bootstrap on "no code dataset under
+    /kaggle/input" - while the loose ``revision.txt`` survived and made it look
+    current. The archive's internal paths are what the service restores.
+    """
     monkeypatch.setattr(
         kaggle_queue, "code_files", lambda repo: ["pyproject.toml", "src/act/__init__.py"]
     )
@@ -584,7 +593,65 @@ def test_stage_code_dataset_marks_the_revision(tmp_path: Path, monkeypatch) -> N
     assert (folder / kaggle_queue.REVISION_MARKER).read_text().strip() == "cafe1234"
     metadata = json.loads((folder / "dataset-metadata.json").read_text())
     assert metadata["id"].endswith("/act-lab-code")
-    assert (folder / "src" / "act" / "__init__.py").is_file()
+    # The package lives in the archive; nothing is pushed as a bare directory.
+    assert not (folder / "src").exists()
+    with tarfile.open(folder / kaggle_queue.CODE_ARCHIVE_NAME) as archive:
+        names = set(archive.getnames())
+    assert {"pyproject.toml", "src/act/__init__.py", kaggle_queue.REVISION_MARKER} <= names
+
+
+def test_code_payload_defect_catches_the_subdirectory_drop(tmp_path: Path) -> None:
+    """A marker alone is not evidence the code is there."""
+    (tmp_path / kaggle_queue.REVISION_MARKER).write_text("cafe1234\n")
+    assert kaggle_queue.code_payload_defect(tmp_path) == "pyproject.toml"
+
+    (tmp_path / "pyproject.toml").write_text("[project]\n")
+    # Exactly the published state that slipped through: the marker and the
+    # top-level files are present, the package tree is not.
+    assert kaggle_queue.code_payload_defect(tmp_path) == "src/act"
+
+    (tmp_path / "src" / "act").mkdir(parents=True)
+    assert kaggle_queue.code_payload_defect(tmp_path) is None
+
+
+def test_ensure_code_dataset_republishes_a_marker_current_but_empty_dataset(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Revision match plus a missing tree must still count as stale."""
+    calls: list[list[str]] = []
+
+    def fake_run(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        calls.append(list(argv))
+        if argv[1:3] == ["datasets", "version"]:
+            return subprocess.CompletedProcess(argv, 0, "version pushed", "")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    served = {"count": 0}
+
+    def fake_download(dataset: str, *, work) -> Path:
+        here = Path(work)
+        here.mkdir(parents=True, exist_ok=True)
+        (here / kaggle_queue.REVISION_MARKER).write_text("cafe1234\n")
+        # Defective on the pre-publish probe (the marker is there, the tree is
+        # not), healthy afterwards, so the post-publish read-back passes.
+        if served["count"]:
+            (here / "pyproject.toml").write_text("[project]\n")
+            (here / "src" / "act").mkdir(parents=True, exist_ok=True)
+        served["count"] += 1
+        return here
+
+    monkeypatch.setattr(kaggle_queue, "_run", fake_run)
+    monkeypatch.setattr(kaggle_queue, "download_code_dataset", fake_download)
+    monkeypatch.setattr(kaggle_queue, "code_revision", lambda repo: "cafe1234")
+    monkeypatch.setattr(
+        kaggle_queue, "stage_code_dataset", lambda repo, directory, revision: Path(directory)
+    )
+
+    revision = kaggle_queue.ensure_code_dataset(tmp_path)
+
+    assert revision == "cafe1234"
+    # The marker matched, and the dataset was still republished.
+    assert [argv for argv in calls if argv[1:3] == ["datasets", "version"]]
 
 
 def test_stage_code_dataset_fails_loudly_without_the_package(tmp_path: Path, monkeypatch) -> None:

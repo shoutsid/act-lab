@@ -278,6 +278,7 @@ def kernel_metadata(
 # who it is on the Kaggle API, so it must not queue behind one.
 DIAGNOSTIC_MODES = {
     "probe": ("act-t4-probe", False),
+    "dtypeprobe": ("act-t4-dtypeprobe", True),
     "preflight": ("act-t4-preflight", True),
 }
 PUSH_MODES = (*DIAGNOSTIC_MODES, "verdict", *QUEUES)
@@ -558,6 +559,79 @@ def mode_session(queue: Queue) -> None:
     _log(f"=== {queue.mode} session finished after {(time.time() - started) / 3600:.2f} h ===")
 
 
+def mode_dtypeprobe() -> None:
+    """Diagnostic: the declared step loop timed in fp32 and in fp16.
+
+    The section 5.2 dtype rule reads the *fp32* rate and, below 2,500
+    tokens/s, selects fp16 - but the schedule is derived from that same fp32
+    number. On a T4 fp16 runs on tensor cores (65 vs 8.1 TFLOP/s), so if the
+    two rates differ the plan and the configuration that actually runs have
+    come apart, and the run buys more sessions than it needs.
+    """
+    import torch
+
+    _bootstrap()
+    from act.model.v0_moe import V0MoECausalLM
+    from act.training.session_plan import PairSchedule
+    from act.training.v0_session import V0SessionConfig
+
+    config = V0SessionConfig()
+    steps, warmup = 10, 3
+    _log("=== ACT lab: dtype throughput probe ===")
+    _log(f"declared config: batch {config.batch_size} x context {config.context_size}")
+
+    def measure(dtype: str) -> float:
+        torch.manual_seed(15012)  # outside the reserved 15000-15011 block
+        model = V0MoECausalLM(config.model_config()).to("cuda")
+        # The declared config trains with checkpointed activations, so the
+        # comparison must too - otherwise it measures a loop nobody runs.
+        model.activation_checkpointing = True
+        model.train()
+        optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
+        scaler = torch.amp.GradScaler("cpu", enabled=dtype == "fp16")
+        generator = torch.Generator(device="cpu")
+        generator.manual_seed(15012)
+        shape = (config.batch_size, config.context_size)
+
+        def one_step() -> None:
+            tokens = torch.randint(
+                0, config.vocab_size, shape, generator=generator
+            ).to("cuda")
+            optimizer.zero_grad(set_to_none=True)
+            if dtype == "fp16":
+                with torch.autocast("cuda", dtype=torch.float16):
+                    loss = model.loss(tokens)
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                loss = model.loss(tokens)
+                loss.backward()
+                optimizer.step()
+
+        for _ in range(warmup):
+            one_step()
+        torch.cuda.synchronize()
+        started = time.perf_counter()
+        for _ in range(steps):
+            one_step()
+        torch.cuda.synchronize()
+        elapsed = time.perf_counter() - started
+        del model, optimizer
+        torch.cuda.empty_cache()
+        return steps * config.batch_size * config.context_size / elapsed
+
+    for dtype in ("fp32", "fp16"):
+        rate = measure(dtype)
+        schedule = PairSchedule(tokens_per_second=rate)
+        _log(
+            f"{dtype}: {rate:.1f} tokens/s -> pair {schedule.pair_time_hours:.3f} h, "
+            f"{schedule.full_pairs_per_session} pairs/session, "
+            f"{schedule.sessions_for_primary} sessions for the primary queue"
+        )
+    _log("=== DTYPE PROBE COMPLETE ===")
+
+
 def mode_verdict() -> None:
     """Runbook 4: restore all three queues from Kaggle and compute the verdict."""
     work, env = _bootstrap()
@@ -600,6 +674,9 @@ def main() -> int:
         return 0
     if mode == "preflight":
         mode_preflight()
+        return 0
+    if mode == "dtypeprobe":
+        mode_dtypeprobe()
         return 0
     if mode in QUEUES:
         mode_session(QUEUES[mode])
