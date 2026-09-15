@@ -629,6 +629,44 @@ def test_report_verdict_mirrors_the_registered_code(tmp_path: Path) -> None:
     assert kaggle_queue.report_verdict(tmp_path) == 1
 
 
+def test_report_verdict_refuses_a_provisional_pass_on_an_incomplete_block(
+    tmp_path: Path, capsys
+) -> None:
+    """The script's provisional verdict must not become the run's exit code.
+
+    On an incomplete block the verdict script deliberately still reports a
+    provisional PASS with Gate 4 withheld and `queue_complete: false`. The
+    driver's exit code is about the run, so reading it as PASS would let a
+    scripted caller treat a partial block as the registered decision.
+    """
+    (tmp_path / kaggle_queue.VERDICT_NAME).write_text(
+        json.dumps(
+            {
+                "verdict": "PASS",
+                "exit_code": 0,
+                "queue_complete": False,
+                "seeds_missing": [15011],
+                "gate_4_authorized": False,
+            }
+        )
+    )
+
+    assert kaggle_queue.report_verdict(tmp_path) == kaggle_queue.EXIT_NO_VERDICT
+    out = capsys.readouterr().out
+    assert "provisional" in out and "keep driving the queues" in out
+
+
+def test_report_verdict_mirrors_a_complete_blocks_code(tmp_path: Path) -> None:
+    """Positive control: a complete block still returns its registered code."""
+    (tmp_path / kaggle_queue.VERDICT_NAME).write_text(
+        json.dumps(
+            {"verdict": "PASS", "exit_code": 0, "queue_complete": True}
+        )
+    )
+
+    assert kaggle_queue.report_verdict(tmp_path) == 0
+
+
 def test_report_verdict_reports_no_verdict_distinctly(tmp_path: Path) -> None:
     """"No verdict produced" must not read as a cost FAIL."""
     assert kaggle_queue.report_verdict(tmp_path) == kaggle_queue.EXIT_NO_VERDICT

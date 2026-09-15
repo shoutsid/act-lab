@@ -635,6 +635,17 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   it, before any session assumed it. Nothing else moved: the same tiny pairs
   produce the same losses, FLOPs and architecture hashes however the arms are
   scheduled.
+- **A provisional verdict on a partial block is not the driver's exit code.**
+  The verdict script deliberately computes a provisional verdict on an
+  incomplete declared block (it records `seeds_missing`, prints a warning and
+  withholds Gate 4), which is useful as a progress report - but it returns 0
+  for a provisional `PASS`, and the driver mirrors that code as the run's
+  outcome, so a scripted caller could read a partial block as the registered
+  decision. The driver now checks `queue_complete` in the artifact and returns
+  3 (`no verdict produced`) when it is false, printing the reason and the
+  number of missing seeds. The script's semantics are untouched - its own tests
+  still pin the provisional PASS/exit 0 - because the ambiguity is in the
+  driver's contract about the *run*, not in the analysis.
 - **The driver reports whether a session's pairs survived.** The exit publish
   is the only durable copy, so its outcome is the number that matters in an
   unattended multi-hour drive - and it was previously visible only to someone

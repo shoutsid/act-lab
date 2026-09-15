@@ -116,7 +116,12 @@ section 4 decision as its exit code - **0 PASS, 1 FAIL, 2 PASS with
 qualification, 3 no verdict produced** - so the last step of the run is
 scriptable, and it prints the verdict artifact. The kernel itself always exits
 0 whatever the decision, so the code travels in `v0-5-1-verdict.json`
-(`exit_code`) for the driver to read back.
+(`exit_code`) for the driver to read back. If that artifact says the declared
+block is incomplete (`queue_complete: false`) the driver reports the verdict
+but returns **3**, not the provisional PASS/FAIL: the script deliberately still
+computes a provisional verdict on a partial block (seeds missing, Gate 4
+withheld), but the driver's exit code is about the run, and a partial block has
+not produced the registered decision.
 
 The driver exits 0 when the queue is complete, 1 on a failed session, 2 when
 the session budget ran out with seeds still missing, **3 when the weekly
@@ -205,9 +210,12 @@ cost one failed run:
    `count` is 2, the measured 1,958.7 tok/s is a one-device rate and the pairs
    - two independent arms - could train one arm per device for the same
    tokens, halving wall-clock and (since one session bills ~1.0x of the quota
-   line regardless of devices, measured above) plausibly halving the ~86
-   GPU-hour plan; that is a *schedule* change, so it re-runs the section 5.2
-   benchmark and re-derives `full_pairs_per_session` rather than being assumed.
+   line regardless of devices, measured above) plausibly halving the plan;
+   that is a *schedule* change, so it re-runs the section 5.2 benchmark and
+   re-derives `full_pairs_per_session` rather than being assumed. **Settled
+   2026-09-15: `count` is 2**, one arm now trains per device (see the schedule
+   section above), and the corrected three-queue plan is ~47 GPU-hours rather
+   than the ~86 the fp32 sequential arithmetic implied.
 7. **The kernel runs the mounted dataset, not this working tree.** The staged
    kernel body is embedded from the tree, but `src/`, `scripts/` and `tests/`
    are copied from the attached `act-lab-code` dataset, so a dataset that lags

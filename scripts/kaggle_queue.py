@@ -757,6 +757,22 @@ def report_verdict(output_dir: str | Path) -> int:
     if not isinstance(code, int):
         print("verdict artifact carries no exit_code", flush=True)
         return EXIT_NO_VERDICT
+    # The script legitimately reports a provisional verdict on an incomplete
+    # block (it records `seeds_missing` and withholds Gate 4), but this
+    # function's code is about the *run*, and a block with declared seeds
+    # missing has not produced the registered decision. Returning the
+    # provisional PASS would let a scripted caller read a partial block as the
+    # answer, so it reports "no verdict" instead - the artifact still carries
+    # the provisional numbers for a human.
+    if verdict.get("queue_complete") is False:
+        missing = verdict.get("seeds_missing") or []
+        print(
+            f"VERDICT (provisional, NOT the registered decision): "
+            f"{verdict.get('verdict')} on an incomplete block - "
+            f"{len(missing)} declared seed(s) missing; keep driving the queues",
+            flush=True,
+        )
+        return EXIT_NO_VERDICT
     print(f"VERDICT: {verdict.get('verdict')} (exit {code})", flush=True)
     return code
 
