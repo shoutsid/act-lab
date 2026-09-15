@@ -1340,7 +1340,9 @@ no value (null < adaptive < random); at depth 4 with the spread policy it
 creates real value on top of not churning harmfully (adaptive < null <
 random). The richness axis separates suppression from creation - coherent
 with sections 5.3-5.6 - and Gate 3's depth-4 evidence stands, now with a
-third control under it.
+third control under it. (Revised by section 5.12: the depth x policy 2x2
+shows DEPTH, not the candidate policy, is the separating factor - the
+attribution above is confounded and superseded.)
 
 ### 5.11 Pre-registration: the intermediate-theta sweep against the null arm (designed, not yet run)
 
