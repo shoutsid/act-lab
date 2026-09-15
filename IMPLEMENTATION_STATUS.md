@@ -1530,6 +1530,37 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   `tests/test_optimizer_reset_summary.py` (which also pins that the rebuild's
   cost is 0.8-1.2x the 5.22 penalty, so the decomposition cannot silently stop
   closing) and `tests/test_optimizer_reset_control.py`.
+- **Section 5.24 RAN (2026-09-15, blocks 96000-96383 depth 2 / 97000-97383 depth
+  3, `scripts/router_preservation_study.py`) - and it found a REAL DEFECT.** A
+  layer's router weight is `hidden x experts`, so its shape changes with the
+  expert count and `rebuild_model_from_genome` (which carries only same-shape
+  keys) **re-draws the mutated layer's entire learned routing head at random at
+  every mutation** - while the experts' own weights survive by id and unmutated
+  layers' routers are copied. Verified directly, not inferred. Every fused run to
+  date therefore discarded a layer's learned routing function three times.
+  `rebuild_model_from_genome(preserve_router=True)` copies surviving rows by id
+  and leaves only a grown expert's row fresh. Registered verdict **branch (b)
+  - partial**: preserving the routing head removes **55.1% / 54.3%** of the
+  penalty (`Rp` < `R`: 264/384 and 270/384, mean -0.0542 / -0.0694) and a
+  residual `-0.0441` / `-0.0583` survives (`Rp_own` < `Rp`: 254/384, 258/384).
+  **So the dominant term of the effect section 5.22 changed the delivery path
+  for was an avoidable implementation defect, not an intrinsic cost of mutating
+  a live run.** The study is perfectly paired and that was checked, not assumed:
+  both settings make the same architectural choices, so final genomes are
+  identical in 384/384 seeds and the frozen references are bit-identical in
+  384/384 (`R_own == Rp_own` exactly). **The `preserve_router=False` default is
+  deliberately retained** even though the discard is unintended, because every
+  committed number in sections 5.16-5.23 was measured under it and flipping it
+  would silently invalidate the record; new work should set
+  `preserve_router_on_rebuild=True`. Prediction (branch (b)) was right, second in
+  a row, with the report stating plainly that the two spent-block smokes
+  disagreed with each other. Remaining: the residual `~0.05` is either a pruned
+  expert's lost capacity or a grown expert's fresh initialization, which this
+  design cannot separate. Summaries
+  `artifacts/study-summaries/router-preservation-depth{2,3}-384.json`
+  (`study_18c56d8bf539e2f3`, `study_65103c230c610378`), pinned by
+  `tests/test_router_preservation_summary.py` (which also pins the defect itself,
+  teeth-checked by flipping the default).
 - **Report-artifact link guard (2026-09-15).** Section 5.19's missing summaries
   were a defect *class*, not an incident: a result can be cited widely while its
   artifact does not exist. `tests/test_report_artifact_links.py` now fails if any

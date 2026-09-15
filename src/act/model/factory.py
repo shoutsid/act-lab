@@ -62,13 +62,27 @@ def rebuild_model_from_genome(
     *,
     context_size: int = 32,
     num_heads: int | None = None,
+    preserve_router: bool = False,
 ) -> DenseCausalLM | StaticMoECausalLM:
-    """Build a mutated model while retaining every compatible parameter."""
+    """Build a mutated model while retaining every compatible parameter.
+
+    ``preserve_router`` controls what happens to a mutated layer's router (the
+    bias-free ``hidden x experts`` routing head). Its weight shape depends on the
+    expert count, so the generic same-shape copy below CANNOT carry it across a
+    mutation: by default the whole routing head is therefore re-drawn at random
+    whenever that layer's expert count changes, discarding the learned routing
+    function while the experts' own weights survive by id. That default is kept
+    because it is the behaviour every published study measured. With
+    ``preserve_router`` the surviving experts' rows are copied by id and only
+    genuinely new experts (a grow) keep the fresh draw - the treatment used to
+    test whether the mid-training penalty is this discard (report section 5.24).
+    """
     rebuilt = model_from_genome(genome, context_size=context_size, num_heads=num_heads)
     source_state = previous.state_dict()
     target_state = rebuilt.state_dict()
 
     expert_prefixes: set[str] = set()
+    handled: set[str] = set()
     if isinstance(previous, StaticMoECausalLM) and isinstance(rebuilt, StaticMoECausalLM):
         for layer_index, target_block in enumerate(rebuilt.blocks):
             source_block = previous.blocks[layer_index]
@@ -84,8 +98,25 @@ def rebuild_model_from_genome(
                     target_key = target_prefix + suffix
                     source_key = source_prefix + suffix
                     target_state[target_key].copy_(source_state[source_key])
+            if not preserve_router:
+                continue
+            router_key = f"blocks.{layer_index}.router.weight"
+            if router_key not in source_state or router_key not in target_state:
+                continue
+            handled.add(router_key)
+            # Row i of the router is expert i's routing vector, so a surviving
+            # expert keeps its learned row; a grown expert's row stays as drawn.
+            for target_index, expert_id in enumerate(target_block.expert_ids):
+                source_index = source_ids.get(expert_id)
+                if source_index is None:
+                    continue
+                target_state[router_key][target_index].copy_(
+                    source_state[router_key][source_index]
+                )
 
     for key, value in target_state.items():
+        if key in handled:
+            continue
         if any(key.startswith(prefix) for prefix in expert_prefixes):
             continue
         if key in source_state and source_state[key].shape == value.shape:

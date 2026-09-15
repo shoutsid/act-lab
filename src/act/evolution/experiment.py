@@ -74,6 +74,15 @@ class ExperimentConfig:
     # the architecture-change cost. Empty (the default) leaves every published
     # number untouched.
     optimizer_reset_steps: tuple[int, ...] = ()
+    # Whether a mid-training rebuild carries the mutated layer's learned router
+    # (the ``hidden x experts`` routing head) across the mutation. Off by default
+    # because its shape changes with the expert count, so the historical rebuild
+    # re-draws it at random whenever that layer's expert count changes - the
+    # behaviour every published study measured. On, the surviving experts keep
+    # their learned routing rows by id (`rebuild_model_from_genome
+    # (preserve_router=True)`). Report section 5.24 tests whether the
+    # mid-training penalty is this discard.
+    preserve_router_on_rebuild: bool = False
     arms: str = "fixed,random,adaptive"
     device: str = "cpu"
 
@@ -155,6 +164,7 @@ class _Arm:
     mutation_history: list[dict[str, object]] | None = None
     device: torch.device = torch.device("cpu")
     probe_batches: tuple[torch.Tensor, ...] = ()
+    preserve_router: bool = False
 
 
 def _parse_arms(spec: str) -> tuple[str, ...]:
@@ -247,6 +257,7 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
             config.learning_rate,
             device,
             probe_batches,
+            config.preserve_router_on_rebuild,
         )
         for mode in arm_modes
     )
@@ -316,6 +327,7 @@ def _make_arm(
     learning_rate: float,
     device: torch.device,
     probe_batches: tuple[torch.Tensor, ...],
+    preserve_router: bool = False,
 ) -> _Arm:
     cloned_model = deepcopy(model)
     cloned_genome = deepcopy(genome)
@@ -332,6 +344,7 @@ def _make_arm(
         previous_load={},
         mutation_history=[],
         probe_batches=probe_batches,
+        preserve_router=preserve_router,
     )
 
 
@@ -480,6 +493,7 @@ def _mutate_by_probe(
         arm.genome,
         context_size=arm.model.config.context_size,
         num_heads=arm.model.config.num_heads,
+        preserve_router=arm.preserve_router,
     )
     if not isinstance(rebuilt, StaticMoECausalLM):
         raise TypeError("mutation changed the baseline model family")
@@ -615,6 +629,7 @@ def _mutate_arm(
         arm.genome,
         context_size=arm.model.config.context_size,
         num_heads=arm.model.config.num_heads,
+        preserve_router=arm.preserve_router,
     )
     if not isinstance(rebuilt, StaticMoECausalLM):
         raise TypeError("mutation changed the baseline model family")

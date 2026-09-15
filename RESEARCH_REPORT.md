@@ -3063,6 +3063,140 @@ component that a grow introduces - a **fresh random initialization for the new
 expert** - is not isolated by this design at all; it is now the leading candidate
 for what remains inside "the architecture change".
 
+### 5.24 Pre-registration: is the penalty the discarded routing head?
+
+**Motivation, and a defect rather than a hypothesis.** Section 5.23 left "the
+architecture change" as the whole penalty without saying what inside it costs.
+Inspecting the rebuild path found a concrete candidate: a layer's router weight is
+`hidden x experts`, so **its shape changes whenever that layer's expert count
+changes**, and `rebuild_model_from_genome` carries weights across a mutation only
+when shapes match. The consequence, verified directly rather than inferred: on a
+prune, the surviving experts' weights are copied by id while the mutated layer's
+**entire learned routing head is re-drawn at random**; on a grow, every surviving
+expert keeps its weights and every surviving router *row* is still discarded. The
+unmutated layers' routers survive, which is what makes the loss visible.
+
+So every mutation event in every fused run to date has thrown away a layer's
+learned routing function. `rebuild_model_from_genome(preserve_router=True)` copies
+the surviving experts' routing rows by id and leaves only a grown expert's row
+fresh; the default is unchanged, so no published number moves.
+
+**Design.** Per seed, one initial model and one data schedule, `arms="fixed,random"`:
+
+| run | what it is |
+|---|---|
+| `F` | the fixed arm - must be identical under both settings |
+| `R` | the fused random arm, routing head discarded on rebuild (historical) |
+| `R_own` | `R`'s final genome retrained from its own initialization |
+| `Rp` | the same fused arm with the routing head preserved |
+| `Rp_own` | `Rp`'s final genome retrained from its own initialization |
+
+Fresh blocks, 20-way sharding: **depth 2 = 96000-96383**, **depth 3 =
+97000-97383**.
+
+**Primaries (per depth, n = 384), Bonferroni `alpha/4 = 0.0125` -> bar 215.**
+1. **preservation helps** - `Rp` < `R`.
+2. **residual penalty** - `Rp_own` < `Rp`: does a penalty remain once the routing
+   head survives the mutation?
+
+**Prediction (declared before the registered blocks, and the smokes disagree with
+each other - which is stated rather than resolved in the prediction's favour).**
+Two spent-block checks were run, and they point in opposite directions. A 5-seed
+direct check (seeds 73000-73004, penalty measured as fused minus its own frozen
+retrain) showed preservation *slightly worsening* the mean penalty (`+0.048` ->
+`+0.071`, per-seed spread `0.03` to `0.18`). A 4-seed check in this study's own
+format showed the opposite (`-0.125` -> `-0.069`: the penalty roughly halved,
+with a residual still present). Both are far too small to separate a `~0.07`
+effect from a per-seed spread several times larger. The declared prediction is
+**P1 passes and P2 passes: branch (b)** - preservation helps partially and a
+residual penalty survives - chosen because it is the reading the second smoke's
+direction *and* magnitude both support, and flagged here as weakly held.
+
+**Pre-registered interpretation (fixed before running).**
+- (a) P1 passes and P2 fails: the discarded routing head **is** the mechanism and
+  is sufficient, so a one-line fix removes the penalty, section 5.22's delivery
+  change is qualified, and the fused pipeline becomes viable again.
+- (b) P1 passes and P2 passes: **partial** - the routing head is part of the cost
+  and the rest is intrinsic to changing the architecture mid-run.
+- (c) P1 fails and P2 passes: the routing head is **not** the mechanism; the cost
+  is intrinsic. Section 5.22 stands unqualified, and the remaining candidates are
+  the pruned expert's lost capacity and a grown expert's fresh initialization.
+- (d) P1 fails and P2 fails: **inconclusive** - preserved and discarded runs
+  differ without either helping or leaving a penalty. Recorded with no reading.
+
+**Secondaries (reported, not verdict-bearing).** The historical penalty `R_own`
+vs `R` on this block, for continuity with section 5.22; the two penalty
+magnitudes side by side; and whether the two settings' final genomes differ at all.
+
+**Scope limits (pre-declared).** Toy fidelity, synthetic tokens, one substrate,
+`spread` policy, the `random` arm only (the adaptive arm is not re-run here so
+that the two settings differ in exactly one variable). Preservation carries rows
+for surviving experts; a **grown** expert's row remains freshly drawn, so this
+design tests the discard of learned routing and not the cost of a fresh expert's
+initialization - which stays the leading contender if P1 fails.
+
+**Cost.** 2 fused runs plus 2 frozen retrains per seed, ~2 s/seed at these depths.
+
+### 5.24 Outcome: a real defect carried over half the penalty (branch (b))
+
+Run on the registered fresh blocks 96000-96383 (depth 2) and 97000-97383 (depth
+3), `study_18c56d8bf539e2f3` and `study_65103c230c610378`. Every built-in check
+held in both blocks, including that the flag leaves the fixed arm bit-identical
+and that transporting the unmutated genome still reproduces it exactly.
+
+| | depth 2 (n = 384) | depth 3 (n = 384) |
+|---|---|---|
+| **P1** preservation helps: `Rp` < `R` | **264/384**, mean −0.0542, p 7.64e-14 | **270/384**, mean −0.0694, p 5.19e-16 |
+| **P2** residual penalty: `Rp_own` < `Rp` | **254/384**, mean −0.0441, p 1.22e-10 | **258/384**, mean −0.0583, p 7.33e-12 |
+| context: historical penalty `R_own` < `R` | 304/384, mean −0.0983, p 3.78e-32 | 301/384, mean −0.1277, p 1.94e-30 |
+
+| penalty | depth 2 | depth 3 |
+|---|---|---|
+| routing head discarded (historical) | −0.0983 | −0.1277 |
+| routing head preserved | −0.0441 | −0.0583 |
+| **removed by keeping the router** | **55.1%** | **54.3%** |
+
+**Registered verdict: branch (b) - partial.** Keeping a mutated layer's learned
+routing head removes **just over half** of the mid-training penalty at both
+depths, and a residual penalty of `~0.044`/`~0.058` survives. So a genuine
+implementation defect - not a design property of mutating a live run - was
+carrying the majority of the effect that section 5.22's delivery-path change was
+adopted for. The change remains warranted (a residual cost is real and
+replicated), but it is now clear that the dominant term was avoidable rather
+than intrinsic.
+
+**This study is unusually cleanly paired, which is worth stating because it was
+checked rather than assumed.** The random arm's mutation choice comes from its own
+seeded `random.Random(seed + step)` and preservation consumes no randomness, so
+the two settings make the *same* architectural choices: the final genomes are
+identical in **384/384 seeds at both depths**, and the two frozen retrains are
+bit-identical in **384/384 seeds** (`R_own == Rp_own` exactly, at both depths).
+The residual penalty is therefore measured against the same frozen reference on
+the same final topology - it cannot be a topology difference, and it is a
+within-seed paired contrast by construction.
+
+**Prediction correct, second in a row, and from a disclosed conflict.** The
+prediction was branch (b), declared while stating plainly that the two spent-block
+smokes *disagreed with each other* (a 5-seed direct check showed no gain, a 4-seed
+check in the study's own format showed the penalty halving) and that the
+per-seed spread was several times the effect. The prediction was right on
+direction and magnitude; the honest reason it was right is the second smoke, and
+the reason it cannot be credited to judgement is that the first said the opposite.
+
+**Consequence for the code, and a deliberate non-change.** The default
+`preserve_router=False` is retained even though the discard is evidently
+unintended, because it is the behaviour every number in sections 5.16-5.23 was
+measured under; flipping the default would silently invalidate the committed
+record and break the reproducibility of every one of those studies. New work
+should set `preserve_router_on_rebuild=True`, and this paragraph is the reason a
+reader will find the default looking wrong.
+
+**What is left.** The residual `~0.044`/`~0.058` is now the only unexplained part,
+and this design cannot separate its two candidates: a **pruned** expert's lost
+capacity, and a **grown** expert's fresh random initialization (preservation
+carries surviving rows and leaves a new expert's row freshly drawn). Section
+5.23's between-topology caveat also still applies.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

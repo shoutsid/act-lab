@@ -1,0 +1,8150 @@
+{
+ "alpha": 0.05,
+ "built_in_checks": {
+  "block_matches_declared_n": true,
+  "both_fused_runs_used_the_full_budget": true,
+  "declared_bar_matches_exact_binomial": true,
+  "fixed_transport_reproduces_the_fixed_arm_under_both_settings": true,
+  "preservation_leaves_the_fixed_arm_alone": true
+ },
+ "comparisons": {
+  "R_own_vs_R": {
+   "bar_and_p_agree": true,
+   "binomial_p": 3.782591305314107e-32,
+   "mean_delta": -0.09833429257074992,
+   "min_wins": 215,
+   "n": 384,
+   "passes": true,
+   "wins": 304
+  },
+  "Rp_own_vs_Rp": {
+   "bar_and_p_agree": true,
+   "binomial_p": 1.21657334841747e-10,
+   "mean_delta": -0.044129970173041023,
+   "min_wins": 215,
+   "n": 384,
+   "passes": true,
+   "wins": 254
+  },
+  "Rp_vs_R": {
+   "bar_and_p_agree": true,
+   "binomial_p": 7.643097711377475e-14,
+   "mean_delta": -0.05420432239770889,
+   "min_wins": 215,
+   "n": 384,
+   "passes": true,
+   "wins": 264
+  }
+ },
+ "config": {
+  "active_experts": 2,
+  "adaptive_expert_metric": "random",
+  "adaptive_policy": "probe_loss",
+  "batch_size": 2,
+  "depth": 2,
+  "device": "cpu",
+  "expert_count": 4,
+  "hidden_size": 24,
+  "independent_arm_rng": true,
+  "learning_rate": 0.0003,
+  "mutation_budget": 3,
+  "mutation_interval": 12,
+  "probe_batch_count": 2,
+  "probe_candidate_cap": 4,
+  "probe_candidate_policy": "spread",
+  "sequence_length": 12,
+  "steps": 48,
+  "validation_batches": 4,
+  "vocab_size": 32
+ },
+ "config_hash": "d0835b8617165896",
+ "declared_bar": 215,
+ "depth": 2,
+ "loss_means": {
+  "F": 14.358898611118397,
+  "R": 14.45427793636918,
+  "R_own": 14.355943643798431,
+  "Rp": 14.400073613971472,
+  "Rp_own": 14.355943643798431
+ },
+ "outcome": "branch (b) partial: preservation helps but a residual penalty survives, so the mechanism is more than the routing head",
+ "penalty_discarded": -0.09833429257074992,
+ "penalty_preserved": -0.044129970173041023,
+ "per_primary_alpha": 0.0125,
+ "per_seed": [
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.66485333442688,
+    "R": 14.894007444381714,
+    "R_own": 14.72037410736084,
+    "Rp": 14.815274477005005,
+    "Rp_own": 14.72037410736084
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96000
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.98621416091919,
+    "R": 14.172025680541992,
+    "R_own": 14.172516107559204,
+    "Rp": 14.112621545791626,
+    "Rp_own": 14.172516107559204
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96001
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.840301752090454,
+    "R": 13.005932569503784,
+    "R_own": 12.942345142364502,
+    "Rp": 12.892187356948853,
+    "Rp_own": 12.942345142364502
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96002
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.145143508911133,
+    "R": 14.365951299667358,
+    "R_own": 14.194831371307373,
+    "Rp": 14.287312746047974,
+    "Rp_own": 14.194831371307373
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96003
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.777955055236816,
+    "R": 15.998474359512329,
+    "R_own": 15.798686265945435,
+    "Rp": 15.770878076553345,
+    "Rp_own": 15.798686265945435
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96004
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.451610565185547,
+    "R": 15.59844970703125,
+    "R_own": 15.578893661499023,
+    "Rp": 15.53170108795166,
+    "Rp_own": 15.578893661499023
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96005
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.002408981323242,
+    "R": 14.17637825012207,
+    "R_own": 13.910025835037231,
+    "Rp": 13.977294683456421,
+    "Rp_own": 13.910025835037231
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96006
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.151154518127441,
+    "R": 13.38978624343872,
+    "R_own": 13.046513557434082,
+    "Rp": 13.270798921585083,
+    "Rp_own": 13.046513557434082
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96007
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.004953622817993,
+    "R": 14.158028602600098,
+    "R_own": 14.05954360961914,
+    "Rp": 14.01089859008789,
+    "Rp_own": 14.05954360961914
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96008
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.297710657119751,
+    "R": 14.464086055755615,
+    "R_own": 14.235978841781616,
+    "Rp": 14.317754030227661,
+    "Rp_own": 14.235978841781616
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96009
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.56142520904541,
+    "R": 15.363576650619507,
+    "R_own": 15.471304178237915,
+    "Rp": 15.357945680618286,
+    "Rp_own": 15.471304178237915
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96010
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.297049045562744,
+    "R": 14.31933069229126,
+    "R_own": 14.15248441696167,
+    "Rp": 14.172556638717651,
+    "Rp_own": 14.15248441696167
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96011
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.412570714950562,
+    "R": 13.383241415023804,
+    "R_own": 13.371182918548584,
+    "Rp": 13.391610145568848,
+    "Rp_own": 13.371182918548584
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96012
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.82831859588623,
+    "R": 14.976783514022827,
+    "R_own": 14.904167175292969,
+    "Rp": 14.890603065490723,
+    "Rp_own": 14.904167175292969
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96013
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.112229108810425,
+    "R": 13.976196765899658,
+    "R_own": 13.965718746185303,
+    "Rp": 13.978797435760498,
+    "Rp_own": 13.965718746185303
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96014
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.24842381477356,
+    "R": 14.22730302810669,
+    "R_own": 14.216633558273315,
+    "Rp": 14.400132179260254,
+    "Rp_own": 14.216633558273315
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96015
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.049869775772095,
+    "R": 15.40684962272644,
+    "R_own": 15.264419317245483,
+    "Rp": 15.274315118789673,
+    "Rp_own": 15.264419317245483
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96016
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.446570873260498,
+    "R": 15.631317615509033,
+    "R_own": 15.569229364395142,
+    "Rp": 15.51029372215271,
+    "Rp_own": 15.569229364395142
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96017
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.577507019042969,
+    "R": 15.693278789520264,
+    "R_own": 15.826647281646729,
+    "Rp": 15.645893812179565,
+    "Rp_own": 15.826647281646729
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96018
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.335697174072266,
+    "R": 13.176416635513306,
+    "R_own": 13.21021819114685,
+    "Rp": 13.192486763000488,
+    "Rp_own": 13.21021819114685
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96019
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.088908433914185,
+    "R": 13.850150346755981,
+    "R_own": 13.603005647659302,
+    "Rp": 14.112074851989746,
+    "Rp_own": 13.603005647659302
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96020
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.78968858718872,
+    "R": 15.02774953842163,
+    "R_own": 14.663640260696411,
+    "Rp": 14.876911640167236,
+    "Rp_own": 14.663640260696411
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96021
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.640921115875244,
+    "R": 14.40272045135498,
+    "R_own": 14.594202280044556,
+    "Rp": 14.55850100517273,
+    "Rp_own": 14.594202280044556
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96022
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.97642469406128,
+    "R": 13.944048881530762,
+    "R_own": 13.86834454536438,
+    "Rp": 13.900423049926758,
+    "Rp_own": 13.86834454536438
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96023
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.524487495422363,
+    "R": 14.418139934539795,
+    "R_own": 14.530289649963379,
+    "Rp": 14.488784074783325,
+    "Rp_own": 14.530289649963379
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96024
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.345786571502686,
+    "R": 13.414549112319946,
+    "R_own": 13.419288158416748,
+    "Rp": 13.369118452072144,
+    "Rp_own": 13.419288158416748
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96025
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.51167893409729,
+    "R": 13.843272924423218,
+    "R_own": 13.432313919067383,
+    "Rp": 13.517907857894897,
+    "Rp_own": 13.432313919067383
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96026
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.707711219787598,
+    "R": 13.817944526672363,
+    "R_own": 13.666698217391968,
+    "Rp": 13.649515390396118,
+    "Rp_own": 13.666698217391968
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96027
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.50801157951355,
+    "R": 14.756664991378784,
+    "R_own": 14.652138710021973,
+    "Rp": 14.775993824005127,
+    "Rp_own": 14.652138710021973
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96028
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.577581405639648,
+    "R": 12.938181638717651,
+    "R_own": 12.533926963806152,
+    "Rp": 12.62191891670227,
+    "Rp_own": 12.533926963806152
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96029
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.663865327835083,
+    "R": 15.839473724365234,
+    "R_own": 15.700644493103027,
+    "Rp": 15.814994096755981,
+    "Rp_own": 15.700644493103027
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96030
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.918444871902466,
+    "R": 14.775104999542236,
+    "R_own": 14.865140914916992,
+    "Rp": 14.889761686325073,
+    "Rp_own": 14.865140914916992
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96031
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.437246561050415,
+    "R": 15.571955680847168,
+    "R_own": 15.364687204360962,
+    "Rp": 15.436047315597534,
+    "Rp_own": 15.364687204360962
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96032
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.944754362106323,
+    "R": 14.959315538406372,
+    "R_own": 14.86258840560913,
+    "Rp": 14.894227981567383,
+    "Rp_own": 14.86258840560913
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96033
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 16.002187490463257,
+    "R": 16.31949019432068,
+    "R_own": 16.15959596633911,
+    "Rp": 16.111581325531006,
+    "Rp_own": 16.15959596633911
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96034
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.496639251708984,
+    "R": 14.61920690536499,
+    "R_own": 14.540229558944702,
+    "Rp": 14.55918550491333,
+    "Rp_own": 14.540229558944702
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96035
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.358127355575562,
+    "R": 13.403356552124023,
+    "R_own": 13.425326347351074,
+    "Rp": 13.462276935577393,
+    "Rp_own": 13.425326347351074
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96036
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.352221250534058,
+    "R": 13.446961641311646,
+    "R_own": 13.370726823806763,
+    "Rp": 13.419709920883179,
+    "Rp_own": 13.370726823806763
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96037
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.793514013290405,
+    "R": 15.180071592330933,
+    "R_own": 15.021490097045898,
+    "Rp": 14.961445808410645,
+    "Rp_own": 15.021490097045898
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96038
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.63376235961914,
+    "R": 14.433183670043945,
+    "R_own": 14.683303833007812,
+    "Rp": 14.657898664474487,
+    "Rp_own": 14.683303833007812
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96039
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.122071266174316,
+    "R": 14.083926916122437,
+    "R_own": 13.90404462814331,
+    "Rp": 13.991781234741211,
+    "Rp_own": 13.90404462814331
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96040
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.744386434555054,
+    "R": 15.89368224143982,
+    "R_own": 15.791482925415039,
+    "Rp": 15.908291578292847,
+    "Rp_own": 15.791482925415039
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96041
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.826347589492798,
+    "R": 14.952459335327148,
+    "R_own": 14.755658149719238,
+    "Rp": 14.969480514526367,
+    "Rp_own": 14.755658149719238
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96042
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.685659408569336,
+    "R": 13.805809497833252,
+    "R_own": 13.653844833374023,
+    "Rp": 13.721913576126099,
+    "Rp_own": 13.653844833374023
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96043
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.185649394989014,
+    "R": 12.44133186340332,
+    "R_own": 12.387109994888306,
+    "Rp": 12.298128128051758,
+    "Rp_own": 12.387109994888306
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96044
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.748575448989868,
+    "R": 12.934373140335083,
+    "R_own": 12.841447114944458,
+    "Rp": 12.788827657699585,
+    "Rp_own": 12.841447114944458
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96045
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.716640949249268,
+    "R": 13.911835432052612,
+    "R_own": 13.739472389221191,
+    "Rp": 13.920327186584473,
+    "Rp_own": 13.739472389221191
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96046
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.17292308807373,
+    "R": 15.24972414970398,
+    "R_own": 15.2153480052948,
+    "Rp": 15.209582328796387,
+    "Rp_own": 15.2153480052948
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96047
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.394403219223022,
+    "R": 13.51194167137146,
+    "R_own": 13.576342105865479,
+    "Rp": 13.401710510253906,
+    "Rp_own": 13.576342105865479
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96048
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.037476539611816,
+    "R": 13.873291015625,
+    "R_own": 13.738187551498413,
+    "Rp": 13.8960440158844,
+    "Rp_own": 13.738187551498413
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96049
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.155823469161987,
+    "R": 14.242069482803345,
+    "R_own": 14.104358673095703,
+    "Rp": 14.177427768707275,
+    "Rp_own": 14.104358673095703
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96050
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 16.00485348701477,
+    "R": 15.988198280334473,
+    "R_own": 15.935615301132202,
+    "Rp": 16.142401695251465,
+    "Rp_own": 15.935615301132202
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96051
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.450772523880005,
+    "R": 13.224689960479736,
+    "R_own": 13.262749195098877,
+    "Rp": 13.325791358947754,
+    "Rp_own": 13.262749195098877
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96052
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.92340350151062,
+    "R": 15.869585275650024,
+    "R_own": 16.039149284362793,
+    "Rp": 15.959818124771118,
+    "Rp_own": 16.039149284362793
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96053
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.891823530197144,
+    "R": 14.849365711212158,
+    "R_own": 14.672902345657349,
+    "Rp": 14.85990595817566,
+    "Rp_own": 14.672902345657349
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96054
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.248720645904541,
+    "R": 14.158528327941895,
+    "R_own": 14.006397485733032,
+    "Rp": 14.078866004943848,
+    "Rp_own": 14.006397485733032
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96055
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.624505043029785,
+    "R": 14.598842144012451,
+    "R_own": 14.593550682067871,
+    "Rp": 14.589027166366577,
+    "Rp_own": 14.593550682067871
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96056
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.958688735961914,
+    "R": 14.075049638748169,
+    "R_own": 13.922640562057495,
+    "Rp": 13.932356357574463,
+    "Rp_own": 13.922640562057495
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96057
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.47279691696167,
+    "R": 14.751217365264893,
+    "R_own": 14.632304191589355,
+    "Rp": 14.568956136703491,
+    "Rp_own": 14.632304191589355
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96058
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.177090644836426,
+    "R": 14.20500135421753,
+    "R_own": 14.150628805160522,
+    "Rp": 14.129954814910889,
+    "Rp_own": 14.150628805160522
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96059
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 16.41270875930786,
+    "R": 16.710365056991577,
+    "R_own": 16.358004093170166,
+    "Rp": 16.50831413269043,
+    "Rp_own": 16.358004093170166
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96060
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.965019226074219,
+    "R": 14.11100721359253,
+    "R_own": 14.02575135231018,
+    "Rp": 13.96995759010315,
+    "Rp_own": 14.02575135231018
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96061
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.481586694717407,
+    "R": 14.545718908309937,
+    "R_own": 14.379099369049072,
+    "Rp": 14.506754875183105,
+    "Rp_own": 14.379099369049072
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96062
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.51826024055481,
+    "R": 14.790805578231812,
+    "R_own": 14.67472219467163,
+    "Rp": 14.609466552734375,
+    "Rp_own": 14.67472219467163
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96063
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.492380380630493,
+    "R": 13.57416844367981,
+    "R_own": 13.485059261322021,
+    "Rp": 13.388211965560913,
+    "Rp_own": 13.485059261322021
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96064
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.5870361328125,
+    "R": 15.576204776763916,
+    "R_own": 15.491403818130493,
+    "Rp": 15.638599634170532,
+    "Rp_own": 15.491403818130493
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96065
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.998225927352905,
+    "R": 14.89137053489685,
+    "R_own": 14.793091297149658,
+    "Rp": 14.857630491256714,
+    "Rp_own": 14.793091297149658
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96066
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.868143320083618,
+    "R": 12.896769762039185,
+    "R_own": 12.8730788230896,
+    "Rp": 12.825238227844238,
+    "Rp_own": 12.8730788230896
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96067
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.547784805297852,
+    "R": 14.91111969947815,
+    "R_own": 14.543830633163452,
+    "Rp": 14.768981695175171,
+    "Rp_own": 14.543830633163452
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96068
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.629665851593018,
+    "R": 14.822749853134155,
+    "R_own": 14.727900743484497,
+    "Rp": 14.769620895385742,
+    "Rp_own": 14.727900743484497
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96069
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.5633704662323,
+    "R": 15.837172985076904,
+    "R_own": 15.6583731174469,
+    "Rp": 15.706202983856201,
+    "Rp_own": 15.6583731174469
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96070
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.483375787734985,
+    "R": 15.628968000411987,
+    "R_own": 15.421496868133545,
+    "Rp": 15.471038818359375,
+    "Rp_own": 15.421496868133545
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96071
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.943612098693848,
+    "R": 14.17383623123169,
+    "R_own": 14.120105266571045,
+    "Rp": 13.829646110534668,
+    "Rp_own": 14.120105266571045
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96072
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.481500387191772,
+    "R": 15.53698182106018,
+    "R_own": 15.371795415878296,
+    "Rp": 15.51098346710205,
+    "Rp_own": 15.371795415878296
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96073
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 16.093388319015503,
+    "R": 16.303828716278076,
+    "R_own": 15.942654371261597,
+    "Rp": 16.07106328010559,
+    "Rp_own": 15.942654371261597
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96074
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.313476800918579,
+    "R": 14.290053129196167,
+    "R_own": 14.324606895446777,
+    "Rp": 14.341068744659424,
+    "Rp_own": 14.324606895446777
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96075
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.503984451293945,
+    "R": 15.67377233505249,
+    "R_own": 15.600974321365356,
+    "Rp": 15.575056552886963,
+    "Rp_own": 15.600974321365356
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96076
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.320994138717651,
+    "R": 13.581089735031128,
+    "R_own": 13.471316814422607,
+    "Rp": 13.460704326629639,
+    "Rp_own": 13.471316814422607
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96077
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.178966522216797,
+    "R": 14.329944849014282,
+    "R_own": 14.096936464309692,
+    "Rp": 14.129974365234375,
+    "Rp_own": 14.096936464309692
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96078
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.334909200668335,
+    "R": 15.649274587631226,
+    "R_own": 15.442403554916382,
+    "Rp": 15.470248222351074,
+    "Rp_own": 15.442403554916382
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96079
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.423708438873291,
+    "R": 15.471410036087036,
+    "R_own": 15.278377532958984,
+    "Rp": 15.433938026428223,
+    "Rp_own": 15.278377532958984
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96080
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.404195308685303,
+    "R": 14.458600997924805,
+    "R_own": 14.4365234375,
+    "Rp": 14.560660123825073,
+    "Rp_own": 14.4365234375
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96081
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.352875709533691,
+    "R": 13.790392398834229,
+    "R_own": 13.381183385848999,
+    "Rp": 13.553824424743652,
+    "Rp_own": 13.381183385848999
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96082
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.7780020236969,
+    "R": 15.844026327133179,
+    "R_own": 15.873618841171265,
+    "Rp": 15.937988042831421,
+    "Rp_own": 15.873618841171265
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96083
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.344218492507935,
+    "R": 13.369885683059692,
+    "R_own": 13.376476287841797,
+    "Rp": 13.281216144561768,
+    "Rp_own": 13.376476287841797
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96084
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.002904176712036,
+    "R": 14.093721866607666,
+    "R_own": 13.802484512329102,
+    "Rp": 14.08812427520752,
+    "Rp_own": 13.802484512329102
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96085
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.932382583618164,
+    "R": 14.014179706573486,
+    "R_own": 13.862316608428955,
+    "Rp": 13.963884115219116,
+    "Rp_own": 13.862316608428955
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96086
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.085404872894287,
+    "R": 14.168144464492798,
+    "R_own": 14.12012004852295,
+    "Rp": 13.978458642959595,
+    "Rp_own": 14.12012004852295
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96087
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.499532222747803,
+    "R": 14.558800458908081,
+    "R_own": 14.448562383651733,
+    "Rp": 14.545183420181274,
+    "Rp_own": 14.448562383651733
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96088
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.611502885818481,
+    "R": 14.595706701278687,
+    "R_own": 14.690686225891113,
+    "Rp": 14.569895267486572,
+    "Rp_own": 14.690686225891113
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96089
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.670894384384155,
+    "R": 13.817357540130615,
+    "R_own": 13.625659942626953,
+    "Rp": 13.711501121520996,
+    "Rp_own": 13.625659942626953
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96090
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.492729663848877,
+    "R": 13.792946815490723,
+    "R_own": 13.440215826034546,
+    "Rp": 13.466401100158691,
+    "Rp_own": 13.440215826034546
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96091
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.42909550666809,
+    "R": 15.600674629211426,
+    "R_own": 15.549164772033691,
+    "Rp": 15.634666919708252,
+    "Rp_own": 15.549164772033691
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96092
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.139539003372192,
+    "R": 14.158777713775635,
+    "R_own": 14.106369018554688,
+    "Rp": 14.200792789459229,
+    "Rp_own": 14.106369018554688
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96093
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.669309377670288,
+    "R": 14.911826610565186,
+    "R_own": 14.708183288574219,
+    "Rp": 14.716036319732666,
+    "Rp_own": 14.708183288574219
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96094
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.660758972167969,
+    "R": 12.509698629379272,
+    "R_own": 12.646520853042603,
+    "Rp": 12.49880838394165,
+    "Rp_own": 12.646520853042603
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96095
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.2091064453125,
+    "R": 15.129783868789673,
+    "R_own": 15.129428386688232,
+    "Rp": 15.172646522521973,
+    "Rp_own": 15.129428386688232
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96096
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.464935302734375,
+    "R": 15.52472710609436,
+    "R_own": 15.547232627868652,
+    "Rp": 15.509043216705322,
+    "Rp_own": 15.547232627868652
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96097
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.074445486068726,
+    "R": 14.258045434951782,
+    "R_own": 14.119499206542969,
+    "Rp": 14.152997732162476,
+    "Rp_own": 14.119499206542969
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96098
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.761102199554443,
+    "R": 13.925792694091797,
+    "R_own": 13.866678953170776,
+    "Rp": 13.919420719146729,
+    "Rp_own": 13.866678953170776
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96099
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.915571689605713,
+    "R": 14.043691635131836,
+    "R_own": 13.750490188598633,
+    "Rp": 13.992363691329956,
+    "Rp_own": 13.750490188598633
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96100
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.781790256500244,
+    "R": 15.102161169052124,
+    "R_own": 14.76514983177185,
+    "Rp": 15.033309936523438,
+    "Rp_own": 14.76514983177185
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96101
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.56993842124939,
+    "R": 13.73372197151184,
+    "R_own": 13.400272607803345,
+    "Rp": 13.812020778656006,
+    "Rp_own": 13.400272607803345
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96102
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.069522380828857,
+    "R": 15.172657251358032,
+    "R_own": 15.093127965927124,
+    "Rp": 15.199118375778198,
+    "Rp_own": 15.093127965927124
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96103
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.907554149627686,
+    "R": 13.85572361946106,
+    "R_own": 13.712670803070068,
+    "Rp": 13.902775526046753,
+    "Rp_own": 13.712670803070068
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96104
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.922960996627808,
+    "R": 14.974431991577148,
+    "R_own": 14.734568357467651,
+    "Rp": 14.965789318084717,
+    "Rp_own": 14.734568357467651
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96105
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.285097122192383,
+    "R": 15.45678424835205,
+    "R_own": 15.46774435043335,
+    "Rp": 15.421383380889893,
+    "Rp_own": 15.46774435043335
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96106
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.821962594985962,
+    "R": 15.110545873641968,
+    "R_own": 14.764244794845581,
+    "Rp": 15.029956579208374,
+    "Rp_own": 14.764244794845581
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96107
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.997682332992554,
+    "R": 14.06846022605896,
+    "R_own": 13.881824731826782,
+    "Rp": 14.01557970046997,
+    "Rp_own": 13.881824731826782
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96108
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.058912992477417,
+    "R": 14.350280046463013,
+    "R_own": 14.348804950714111,
+    "Rp": 14.340309381484985,
+    "Rp_own": 14.348804950714111
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96109
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.877938032150269,
+    "R": 12.859403133392334,
+    "R_own": 12.666745901107788,
+    "Rp": 12.7611563205719,
+    "Rp_own": 12.666745901107788
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96110
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.422246217727661,
+    "R": 13.637240886688232,
+    "R_own": 13.440698623657227,
+    "Rp": 13.56411623954773,
+    "Rp_own": 13.440698623657227
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96111
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.89719295501709,
+    "R": 16.182925939559937,
+    "R_own": 15.877040147781372,
+    "Rp": 15.94858694076538,
+    "Rp_own": 15.877040147781372
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96112
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.455854177474976,
+    "R": 13.438721656799316,
+    "R_own": 13.46536898612976,
+    "Rp": 13.513634443283081,
+    "Rp_own": 13.46536898612976
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96113
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.681799411773682,
+    "R": 13.720718622207642,
+    "R_own": 13.735656023025513,
+    "Rp": 13.66686487197876,
+    "Rp_own": 13.735656023025513
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96114
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.57038164138794,
+    "R": 13.569764852523804,
+    "R_own": 13.635738134384155,
+    "Rp": 13.54178261756897,
+    "Rp_own": 13.635738134384155
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96115
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.715198278427124,
+    "R": 13.015124797821045,
+    "R_own": 13.007017612457275,
+    "Rp": 12.891051530838013,
+    "Rp_own": 13.007017612457275
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96116
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.31897759437561,
+    "R": 13.315392971038818,
+    "R_own": 13.197386503219604,
+    "Rp": 13.357734680175781,
+    "Rp_own": 13.197386503219604
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96117
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.72788143157959,
+    "R": 12.897776126861572,
+    "R_own": 12.711572170257568,
+    "Rp": 12.925768375396729,
+    "Rp_own": 12.711572170257568
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96118
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.917810916900635,
+    "R": 15.064016342163086,
+    "R_own": 14.975160360336304,
+    "Rp": 15.129900693893433,
+    "Rp_own": 14.975160360336304
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96119
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.583006143569946,
+    "R": 15.67152714729309,
+    "R_own": 15.742827653884888,
+    "Rp": 15.716577529907227,
+    "Rp_own": 15.742827653884888
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96120
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.639132261276245,
+    "R": 14.76818561553955,
+    "R_own": 14.607195854187012,
+    "Rp": 14.642315149307251,
+    "Rp_own": 14.607195854187012
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96121
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.154433012008667,
+    "R": 12.501450538635254,
+    "R_own": 12.34358811378479,
+    "Rp": 12.335636615753174,
+    "Rp_own": 12.34358811378479
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96122
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.67683720588684,
+    "R": 15.750708103179932,
+    "R_own": 15.886855125427246,
+    "Rp": 15.657617092132568,
+    "Rp_own": 15.886855125427246
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96123
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.764858722686768,
+    "R": 12.78522276878357,
+    "R_own": 12.704708576202393,
+    "Rp": 12.743762493133545,
+    "Rp_own": 12.704708576202393
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96124
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.91226077079773,
+    "R": 13.840514898300171,
+    "R_own": 13.791389465332031,
+    "Rp": 13.844135046005249,
+    "Rp_own": 13.791389465332031
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96125
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.381465911865234,
+    "R": 13.461966276168823,
+    "R_own": 13.450282096862793,
+    "Rp": 13.493616104125977,
+    "Rp_own": 13.450282096862793
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96126
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 16.471397638320923,
+    "R": 16.508951425552368,
+    "R_own": 16.302368879318237,
+    "Rp": 16.516355752944946,
+    "Rp_own": 16.302368879318237
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96127
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.822070598602295,
+    "R": 13.236008167266846,
+    "R_own": 12.856237888336182,
+    "Rp": 12.99697732925415,
+    "Rp_own": 12.856237888336182
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96128
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.270242691040039,
+    "R": 14.292068004608154,
+    "R_own": 14.284754991531372,
+    "Rp": 14.333470344543457,
+    "Rp_own": 14.284754991531372
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96129
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.322768926620483,
+    "R": 14.74763298034668,
+    "R_own": 14.555582523345947,
+    "Rp": 14.57833194732666,
+    "Rp_own": 14.555582523345947
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96130
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.343088865280151,
+    "R": 13.514856338500977,
+    "R_own": 13.436429262161255,
+    "Rp": 13.42475962638855,
+    "Rp_own": 13.436429262161255
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96131
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.580470085144043,
+    "R": 12.451778650283813,
+    "R_own": 12.579161882400513,
+    "Rp": 12.56983995437622,
+    "Rp_own": 12.579161882400513
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96132
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.522798776626587,
+    "R": 13.726574420928955,
+    "R_own": 13.58011770248413,
+    "Rp": 13.630218029022217,
+    "Rp_own": 13.58011770248413
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96133
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.275131225585938,
+    "R": 14.679931879043579,
+    "R_own": 14.396453619003296,
+    "Rp": 14.433337926864624,
+    "Rp_own": 14.396453619003296
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96134
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.52056884765625,
+    "R": 14.626559734344482,
+    "R_own": 14.262426376342773,
+    "Rp": 14.58716368675232,
+    "Rp_own": 14.262426376342773
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96135
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.937103748321533,
+    "R": 14.823635816574097,
+    "R_own": 14.74811863899231,
+    "Rp": 14.827767133712769,
+    "Rp_own": 14.74811863899231
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96136
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.699549674987793,
+    "R": 15.63534426689148,
+    "R_own": 15.685332536697388,
+    "Rp": 15.657071113586426,
+    "Rp_own": 15.685332536697388
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96137
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.14303994178772,
+    "R": 14.409966230392456,
+    "R_own": 14.193717241287231,
+    "Rp": 14.151945352554321,
+    "Rp_own": 14.193717241287231
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96138
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.921648740768433,
+    "R": 15.937381982803345,
+    "R_own": 15.862405061721802,
+    "Rp": 15.8384530544281,
+    "Rp_own": 15.862405061721802
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96139
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.608812808990479,
+    "R": 15.51865005493164,
+    "R_own": 15.580641984939575,
+    "Rp": 15.586446523666382,
+    "Rp_own": 15.580641984939575
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96140
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.45147442817688,
+    "R": 13.54511284828186,
+    "R_own": 13.434699535369873,
+    "Rp": 13.435464859008789,
+    "Rp_own": 13.434699535369873
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96141
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.090505123138428,
+    "R": 13.958006381988525,
+    "R_own": 13.889499425888062,
+    "Rp": 13.948393821716309,
+    "Rp_own": 13.889499425888062
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96142
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.190460205078125,
+    "R": 13.532428503036499,
+    "R_own": 13.450913906097412,
+    "Rp": 13.612609624862671,
+    "Rp_own": 13.450913906097412
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96143
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.912579774856567,
+    "R": 14.720829725265503,
+    "R_own": 14.633361339569092,
+    "Rp": 14.762312412261963,
+    "Rp_own": 14.633361339569092
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96144
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.309309959411621,
+    "R": 15.171809673309326,
+    "R_own": 15.198477268218994,
+    "Rp": 15.222785234451294,
+    "Rp_own": 15.198477268218994
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96145
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.220534324645996,
+    "R": 15.230398654937744,
+    "R_own": 15.242170572280884,
+    "Rp": 15.300748825073242,
+    "Rp_own": 15.242170572280884
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96146
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.574171543121338,
+    "R": 14.860615730285645,
+    "R_own": 14.368046998977661,
+    "Rp": 14.64401626586914,
+    "Rp_own": 14.368046998977661
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96147
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.887270450592041,
+    "R": 15.248634099960327,
+    "R_own": 14.957087516784668,
+    "Rp": 14.889548063278198,
+    "Rp_own": 14.957087516784668
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96148
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.987239599227905,
+    "R": 14.089864730834961,
+    "R_own": 13.88619351387024,
+    "Rp": 13.977824687957764,
+    "Rp_own": 13.88619351387024
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96149
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.979149341583252,
+    "R": 13.101557970046997,
+    "R_own": 12.872382402420044,
+    "Rp": 12.950358152389526,
+    "Rp_own": 12.872382402420044
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96150
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.997463941574097,
+    "R": 15.183120965957642,
+    "R_own": 15.0823814868927,
+    "Rp": 15.039144039154053,
+    "Rp_own": 15.0823814868927
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96151
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.663095951080322,
+    "R": 15.542924404144287,
+    "R_own": 15.625716209411621,
+    "Rp": 15.682430267333984,
+    "Rp_own": 15.625716209411621
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96152
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.14431881904602,
+    "R": 14.06649923324585,
+    "R_own": 14.47797179222107,
+    "Rp": 14.16416621208191,
+    "Rp_own": 14.47797179222107
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96153
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.827698707580566,
+    "R": 14.838830709457397,
+    "R_own": 14.682293891906738,
+    "Rp": 14.757425308227539,
+    "Rp_own": 14.682293891906738
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96154
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.83228087425232,
+    "R": 14.683993816375732,
+    "R_own": 14.673462629318237,
+    "Rp": 14.808348178863525,
+    "Rp_own": 14.673462629318237
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96155
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.94398045539856,
+    "R": 13.080982208251953,
+    "R_own": 12.955877542495728,
+    "Rp": 12.960042238235474,
+    "Rp_own": 12.955877542495728
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96156
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.575382471084595,
+    "R": 14.86124062538147,
+    "R_own": 14.61587405204773,
+    "Rp": 14.788646459579468,
+    "Rp_own": 14.61587405204773
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96157
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.450181722640991,
+    "R": 15.517073392868042,
+    "R_own": 15.45524549484253,
+    "Rp": 15.399243831634521,
+    "Rp_own": 15.45524549484253
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96158
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.722466945648193,
+    "R": 15.647974252700806,
+    "R_own": 15.66364336013794,
+    "Rp": 15.716427564620972,
+    "Rp_own": 15.66364336013794
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96159
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.291857481002808,
+    "R": 15.315828084945679,
+    "R_own": 15.3015296459198,
+    "Rp": 15.35642671585083,
+    "Rp_own": 15.3015296459198
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96160
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.03854489326477,
+    "R": 13.115989446640015,
+    "R_own": 13.06088399887085,
+    "Rp": 13.033505916595459,
+    "Rp_own": 13.06088399887085
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96161
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.121416807174683,
+    "R": 15.203762292861938,
+    "R_own": 15.167242288589478,
+    "Rp": 15.264729022979736,
+    "Rp_own": 15.167242288589478
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96162
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 16.37600064277649,
+    "R": 16.57005023956299,
+    "R_own": 16.25386381149292,
+    "Rp": 16.299423456192017,
+    "Rp_own": 16.25386381149292
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96163
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.202027320861816,
+    "R": 14.354793071746826,
+    "R_own": 14.053666353225708,
+    "Rp": 14.186537742614746,
+    "Rp_own": 14.053666353225708
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96164
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.204994678497314,
+    "R": 14.446747064590454,
+    "R_own": 14.250054121017456,
+    "Rp": 14.204232931137085,
+    "Rp_own": 14.250054121017456
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96165
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.358702659606934,
+    "R": 13.548827409744263,
+    "R_own": 13.401437759399414,
+    "Rp": 13.389998197555542,
+    "Rp_own": 13.401437759399414
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96166
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.43717098236084,
+    "R": 14.619488954544067,
+    "R_own": 14.582262992858887,
+    "Rp": 14.42237138748169,
+    "Rp_own": 14.582262992858887
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96167
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.141178846359253,
+    "R": 14.891929864883423,
+    "R_own": 14.857161521911621,
+    "Rp": 14.956392049789429,
+    "Rp_own": 14.857161521911621
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96168
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.597825050354004,
+    "R": 14.855376958847046,
+    "R_own": 14.609358310699463,
+    "Rp": 14.581453561782837,
+    "Rp_own": 14.609358310699463
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96169
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.754568576812744,
+    "R": 14.748693704605103,
+    "R_own": 14.82931661605835,
+    "Rp": 14.675001382827759,
+    "Rp_own": 14.82931661605835
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96170
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.278138875961304,
+    "R": 14.355003356933594,
+    "R_own": 14.376857042312622,
+    "Rp": 14.34517788887024,
+    "Rp_own": 14.376857042312622
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96171
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.837914228439331,
+    "R": 14.760371446609497,
+    "R_own": 14.80853009223938,
+    "Rp": 14.711117029190063,
+    "Rp_own": 14.80853009223938
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96172
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.45070219039917,
+    "R": 13.49134373664856,
+    "R_own": 13.378237009048462,
+    "Rp": 13.368569612503052,
+    "Rp_own": 13.378237009048462
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96173
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.842193126678467,
+    "R": 12.897051334381104,
+    "R_own": 12.852542877197266,
+    "Rp": 12.820577383041382,
+    "Rp_own": 12.852542877197266
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96174
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.2380051612854,
+    "R": 14.395378589630127,
+    "R_own": 14.266061544418335,
+    "Rp": 14.297405242919922,
+    "Rp_own": 14.266061544418335
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96175
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.50603199005127,
+    "R": 14.632429838180542,
+    "R_own": 14.493038892745972,
+    "Rp": 14.47818398475647,
+    "Rp_own": 14.493038892745972
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96176
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.588788747787476,
+    "R": 14.783608436584473,
+    "R_own": 14.452216148376465,
+    "Rp": 14.635782480239868,
+    "Rp_own": 14.452216148376465
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96177
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.60072135925293,
+    "R": 14.821306228637695,
+    "R_own": 14.733856678009033,
+    "Rp": 14.565478324890137,
+    "Rp_own": 14.733856678009033
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96178
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.512274742126465,
+    "R": 14.599709272384644,
+    "R_own": 14.283278942108154,
+    "Rp": 14.537264108657837,
+    "Rp_own": 14.283278942108154
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96179
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.275758981704712,
+    "R": 13.582915782928467,
+    "R_own": 13.32502555847168,
+    "Rp": 13.400508642196655,
+    "Rp_own": 13.32502555847168
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96180
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.988136529922485,
+    "R": 12.938979625701904,
+    "R_own": 12.965660572052002,
+    "Rp": 12.978792667388916,
+    "Rp_own": 12.965660572052002
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96181
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.173519849777222,
+    "R": 14.645744562149048,
+    "R_own": 14.367330551147461,
+    "Rp": 14.50995397567749,
+    "Rp_own": 14.367330551147461
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96182
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.25497841835022,
+    "R": 14.31391453742981,
+    "R_own": 14.13922119140625,
+    "Rp": 14.22478175163269,
+    "Rp_own": 14.13922119140625
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96183
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.094770669937134,
+    "R": 13.22797966003418,
+    "R_own": 13.140766859054565,
+    "Rp": 13.019650936126709,
+    "Rp_own": 13.140766859054565
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96184
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.525648832321167,
+    "R": 13.572107315063477,
+    "R_own": 13.521305084228516,
+    "Rp": 13.549267768859863,
+    "Rp_own": 13.521305084228516
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96185
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.27855634689331,
+    "R": 14.26045823097229,
+    "R_own": 14.14902663230896,
+    "Rp": 14.250666856765747,
+    "Rp_own": 14.14902663230896
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96186
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.845513105392456,
+    "R": 15.790677070617676,
+    "R_own": 15.589800596237183,
+    "Rp": 15.715040683746338,
+    "Rp_own": 15.589800596237183
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96187
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.540553092956543,
+    "R": 14.627505540847778,
+    "R_own": 14.673202991485596,
+    "Rp": 14.650077819824219,
+    "Rp_own": 14.673202991485596
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96188
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.288452386856079,
+    "R": 14.418742656707764,
+    "R_own": 14.396515607833862,
+    "Rp": 14.372364521026611,
+    "Rp_own": 14.396515607833862
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96189
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.876538276672363,
+    "R": 14.8364896774292,
+    "R_own": 14.944992065429688,
+    "Rp": 14.938210725784302,
+    "Rp_own": 14.944992065429688
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96190
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.235134601593018,
+    "R": 12.21976637840271,
+    "R_own": 12.179885625839233,
+    "Rp": 12.207119703292847,
+    "Rp_own": 12.179885625839233
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96191
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.418728828430176,
+    "R": 15.355050325393677,
+    "R_own": 15.412275791168213,
+    "Rp": 15.334415435791016,
+    "Rp_own": 15.412275791168213
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96192
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 16.208391666412354,
+    "R": 16.446962356567383,
+    "R_own": 16.608564853668213,
+    "Rp": 16.46060562133789,
+    "Rp_own": 16.608564853668213
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96193
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.804084062576294,
+    "R": 14.890840291976929,
+    "R_own": 14.825786590576172,
+    "Rp": 14.872330665588379,
+    "Rp_own": 14.825786590576172
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96194
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.668606281280518,
+    "R": 13.750712394714355,
+    "R_own": 13.725576877593994,
+    "Rp": 13.85598111152649,
+    "Rp_own": 13.725576877593994
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96195
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.62570571899414,
+    "R": 13.91444206237793,
+    "R_own": 13.857832908630371,
+    "Rp": 13.722180843353271,
+    "Rp_own": 13.857832908630371
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96196
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.726714372634888,
+    "R": 12.84966230392456,
+    "R_own": 12.765037536621094,
+    "Rp": 12.854569911956787,
+    "Rp_own": 12.765037536621094
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96197
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 16.627697229385376,
+    "R": 16.970959186553955,
+    "R_own": 16.992430925369263,
+    "Rp": 16.90161108970642,
+    "Rp_own": 16.992430925369263
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96198
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.500411987304688,
+    "R": 13.54469084739685,
+    "R_own": 13.535977840423584,
+    "Rp": 13.51181960105896,
+    "Rp_own": 13.535977840423584
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96199
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.600689172744751,
+    "R": 14.78055477142334,
+    "R_own": 14.725177764892578,
+    "Rp": 14.573209047317505,
+    "Rp_own": 14.725177764892578
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96200
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.059839725494385,
+    "R": 15.023985862731934,
+    "R_own": 14.79923129081726,
+    "Rp": 14.8927583694458,
+    "Rp_own": 14.79923129081726
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96201
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.914599657058716,
+    "R": 13.84750509262085,
+    "R_own": 13.80845856666565,
+    "Rp": 13.979440450668335,
+    "Rp_own": 13.80845856666565
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96202
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.790934801101685,
+    "R": 14.95546269416809,
+    "R_own": 14.830350160598755,
+    "Rp": 14.842998027801514,
+    "Rp_own": 14.830350160598755
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96203
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.229360342025757,
+    "R": 14.264520645141602,
+    "R_own": 14.165079832077026,
+    "Rp": 14.329743146896362,
+    "Rp_own": 14.165079832077026
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96204
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.138061285018921,
+    "R": 13.249310970306396,
+    "R_own": 13.12229061126709,
+    "Rp": 13.180859565734863,
+    "Rp_own": 13.12229061126709
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96205
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.156230449676514,
+    "R": 15.279535293579102,
+    "R_own": 15.255369424819946,
+    "Rp": 15.100173950195312,
+    "Rp_own": 15.255369424819946
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96206
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.908334255218506,
+    "R": 15.931988000869751,
+    "R_own": 16.05871844291687,
+    "Rp": 15.941108703613281,
+    "Rp_own": 16.05871844291687
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96207
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.339593887329102,
+    "R": 14.509736776351929,
+    "R_own": 14.358270168304443,
+    "Rp": 14.485697984695435,
+    "Rp_own": 14.358270168304443
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96208
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.287437200546265,
+    "R": 15.286515712738037,
+    "R_own": 15.107322454452515,
+    "Rp": 15.274144172668457,
+    "Rp_own": 15.107322454452515
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96209
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.663523435592651,
+    "R": 14.20936107635498,
+    "R_own": 14.028996706008911,
+    "Rp": 14.130844831466675,
+    "Rp_own": 14.028996706008911
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96210
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.332382678985596,
+    "R": 14.497420072555542,
+    "R_own": 14.234987497329712,
+    "Rp": 14.417094469070435,
+    "Rp_own": 14.234987497329712
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96211
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.101945638656616,
+    "R": 14.483384370803833,
+    "R_own": 14.197518587112427,
+    "Rp": 14.28641963005066,
+    "Rp_own": 14.197518587112427
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96212
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.622766017913818,
+    "R": 12.80919599533081,
+    "R_own": 12.741946697235107,
+    "Rp": 12.485219240188599,
+    "Rp_own": 12.741946697235107
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96213
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.141808271408081,
+    "R": 14.30530858039856,
+    "R_own": 14.17656660079956,
+    "Rp": 14.245903015136719,
+    "Rp_own": 14.17656660079956
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96214
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.918298244476318,
+    "R": 15.221446752548218,
+    "R_own": 15.018187284469604,
+    "Rp": 14.976112604141235,
+    "Rp_own": 15.018187284469604
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96215
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.128504753112793,
+    "R": 14.145013570785522,
+    "R_own": 14.109326124191284,
+    "Rp": 14.121585607528687,
+    "Rp_own": 14.109326124191284
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96216
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.937055826187134,
+    "R": 14.133171796798706,
+    "R_own": 13.951874732971191,
+    "Rp": 14.059066772460938,
+    "Rp_own": 13.951874732971191
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96217
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.266161441802979,
+    "R": 13.454193115234375,
+    "R_own": 13.443896055221558,
+    "Rp": 13.36841368675232,
+    "Rp_own": 13.443896055221558
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96218
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.133933067321777,
+    "R": 15.399466753005981,
+    "R_own": 15.154816389083862,
+    "Rp": 15.228134155273438,
+    "Rp_own": 15.154816389083862
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96219
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.819839715957642,
+    "R": 15.934656381607056,
+    "R_own": 15.851513147354126,
+    "Rp": 15.9402494430542,
+    "Rp_own": 15.851513147354126
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96220
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.419949054718018,
+    "R": 14.493248701095581,
+    "R_own": 14.265854120254517,
+    "Rp": 14.531433820724487,
+    "Rp_own": 14.265854120254517
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96221
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.15367078781128,
+    "R": 13.212138414382935,
+    "R_own": 13.133599281311035,
+    "Rp": 13.08850622177124,
+    "Rp_own": 13.133599281311035
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96222
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.892383337020874,
+    "R": 13.970232009887695,
+    "R_own": 13.867620468139648,
+    "Rp": 14.006284952163696,
+    "Rp_own": 13.867620468139648
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96223
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.5562903881073,
+    "R": 13.699350357055664,
+    "R_own": 13.716673374176025,
+    "Rp": 13.751323461532593,
+    "Rp_own": 13.716673374176025
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96224
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.679012298583984,
+    "R": 12.463059425354004,
+    "R_own": 12.485990524291992,
+    "Rp": 12.534875869750977,
+    "Rp_own": 12.485990524291992
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96225
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.325859069824219,
+    "R": 13.709439516067505,
+    "R_own": 13.615358352661133,
+    "Rp": 13.50997018814087,
+    "Rp_own": 13.615358352661133
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96226
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.363144874572754,
+    "R": 12.310805082321167,
+    "R_own": 12.281254291534424,
+    "Rp": 12.463951587677002,
+    "Rp_own": 12.281254291534424
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96227
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.858730792999268,
+    "R": 14.955838203430176,
+    "R_own": 14.804948091506958,
+    "Rp": 14.956486463546753,
+    "Rp_own": 14.804948091506958
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96228
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.776484489440918,
+    "R": 14.744860172271729,
+    "R_own": 14.808246850967407,
+    "Rp": 14.82453441619873,
+    "Rp_own": 14.808246850967407
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96229
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.616313219070435,
+    "R": 14.737598896026611,
+    "R_own": 14.604888200759888,
+    "Rp": 14.8615140914917,
+    "Rp_own": 14.604888200759888
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96230
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.903757095336914,
+    "R": 13.901239156723022,
+    "R_own": 14.076640605926514,
+    "Rp": 13.985158205032349,
+    "Rp_own": 14.076640605926514
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96231
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.669481992721558,
+    "R": 15.899290084838867,
+    "R_own": 15.661293506622314,
+    "Rp": 15.74765133857727,
+    "Rp_own": 15.661293506622314
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96232
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.188137531280518,
+    "R": 15.363187551498413,
+    "R_own": 15.185406923294067,
+    "Rp": 15.251554489135742,
+    "Rp_own": 15.185406923294067
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96233
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.423177003860474,
+    "R": 13.438242673873901,
+    "R_own": 13.222757339477539,
+    "Rp": 13.267112255096436,
+    "Rp_own": 13.222757339477539
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96234
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.246916770935059,
+    "R": 14.475626945495605,
+    "R_own": 14.135385990142822,
+    "Rp": 14.334392309188843,
+    "Rp_own": 14.135385990142822
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96235
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.905509948730469,
+    "R": 14.851680040359497,
+    "R_own": 14.860867977142334,
+    "Rp": 14.857560873031616,
+    "Rp_own": 14.860867977142334
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96236
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.737720727920532,
+    "R": 15.866256952285767,
+    "R_own": 15.852090835571289,
+    "Rp": 15.783809185028076,
+    "Rp_own": 15.852090835571289
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96237
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.98188328742981,
+    "R": 13.963417530059814,
+    "R_own": 14.119529962539673,
+    "Rp": 13.962378978729248,
+    "Rp_own": 14.119529962539673
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96238
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.434190511703491,
+    "R": 13.493801593780518,
+    "R_own": 13.334666967391968,
+    "Rp": 13.4562406539917,
+    "Rp_own": 13.334666967391968
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96239
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.849269390106201,
+    "R": 13.839976072311401,
+    "R_own": 13.98310899734497,
+    "Rp": 13.93083667755127,
+    "Rp_own": 13.98310899734497
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96240
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 16.27139711380005,
+    "R": 16.04629611968994,
+    "R_own": 16.23080587387085,
+    "Rp": 16.30635094642639,
+    "Rp_own": 16.23080587387085
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96241
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.715299606323242,
+    "R": 15.973103284835815,
+    "R_own": 15.60120439529419,
+    "Rp": 15.7616286277771,
+    "Rp_own": 15.60120439529419
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96242
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.70648455619812,
+    "R": 12.67019271850586,
+    "R_own": 12.468574047088623,
+    "Rp": 12.551687002182007,
+    "Rp_own": 12.468574047088623
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96243
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.668068170547485,
+    "R": 13.717376708984375,
+    "R_own": 13.727318048477173,
+    "Rp": 13.69965147972107,
+    "Rp_own": 13.727318048477173
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96244
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.22774338722229,
+    "R": 15.292977809906006,
+    "R_own": 15.257959365844727,
+    "Rp": 15.269943475723267,
+    "Rp_own": 15.257959365844727
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96245
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.166889190673828,
+    "R": 12.19105052947998,
+    "R_own": 12.231093645095825,
+    "Rp": 12.270123720169067,
+    "Rp_own": 12.231093645095825
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96246
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.452530860900879,
+    "R": 14.607973575592041,
+    "R_own": 14.451425552368164,
+    "Rp": 14.605700731277466,
+    "Rp_own": 14.451425552368164
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96247
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.579838037490845,
+    "R": 13.764677286148071,
+    "R_own": 13.631371974945068,
+    "Rp": 13.796165704727173,
+    "Rp_own": 13.631371974945068
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96248
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 16.695556163787842,
+    "R": 16.601674795150757,
+    "R_own": 16.586898803710938,
+    "Rp": 16.590290069580078,
+    "Rp_own": 16.586898803710938
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96249
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.171867370605469,
+    "R": 15.10678219795227,
+    "R_own": 15.067952632904053,
+    "Rp": 15.294381380081177,
+    "Rp_own": 15.067952632904053
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96250
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 16.04296088218689,
+    "R": 16.100111484527588,
+    "R_own": 15.9287748336792,
+    "Rp": 16.07617950439453,
+    "Rp_own": 15.9287748336792
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96251
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.652517318725586,
+    "R": 13.839111089706421,
+    "R_own": 13.79603624343872,
+    "Rp": 13.80155611038208,
+    "Rp_own": 13.79603624343872
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96252
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.636071681976318,
+    "R": 13.510332822799683,
+    "R_own": 13.325130939483643,
+    "Rp": 13.399865627288818,
+    "Rp_own": 13.325130939483643
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96253
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.367995500564575,
+    "R": 13.520432233810425,
+    "R_own": 13.377188205718994,
+    "Rp": 13.379828453063965,
+    "Rp_own": 13.377188205718994
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96254
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.845026731491089,
+    "R": 14.771191596984863,
+    "R_own": 14.877166986465454,
+    "Rp": 14.912410020828247,
+    "Rp_own": 14.877166986465454
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96255
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.056628227233887,
+    "R": 14.33318305015564,
+    "R_own": 14.155991792678833,
+    "Rp": 14.067377090454102,
+    "Rp_own": 14.155991792678833
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96256
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.649281978607178,
+    "R": 14.640886545181274,
+    "R_own": 14.628072738647461,
+    "Rp": 14.64666485786438,
+    "Rp_own": 14.628072738647461
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96257
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.018532276153564,
+    "R": 15.072667121887207,
+    "R_own": 15.035281658172607,
+    "Rp": 15.068294286727905,
+    "Rp_own": 15.035281658172607
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96258
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.481370449066162,
+    "R": 13.752049684524536,
+    "R_own": 13.560928583145142,
+    "Rp": 13.545024394989014,
+    "Rp_own": 13.560928583145142
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96259
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.125447273254395,
+    "R": 14.052634954452515,
+    "R_own": 14.127985000610352,
+    "Rp": 14.045548677444458,
+    "Rp_own": 14.127985000610352
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96260
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.768750667572021,
+    "R": 14.761780261993408,
+    "R_own": 14.68424391746521,
+    "Rp": 14.792098999023438,
+    "Rp_own": 14.68424391746521
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96261
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.767458438873291,
+    "R": 13.867133140563965,
+    "R_own": 13.795883417129517,
+    "Rp": 13.811631679534912,
+    "Rp_own": 13.795883417129517
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96262
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.464586973190308,
+    "R": 14.617420673370361,
+    "R_own": 14.521804571151733,
+    "Rp": 14.69785761833191,
+    "Rp_own": 14.521804571151733
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96263
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.523491382598877,
+    "R": 15.661710262298584,
+    "R_own": 15.438814878463745,
+    "Rp": 15.59156847000122,
+    "Rp_own": 15.438814878463745
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96264
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.25708556175232,
+    "R": 13.835918188095093,
+    "R_own": 14.101993083953857,
+    "Rp": 14.146373748779297,
+    "Rp_own": 14.101993083953857
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96265
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.29594373703003,
+    "R": 15.284632682800293,
+    "R_own": 15.459882259368896,
+    "Rp": 15.374709129333496,
+    "Rp_own": 15.459882259368896
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96266
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.12322449684143,
+    "R": 13.414015054702759,
+    "R_own": 13.193969964981079,
+    "Rp": 13.310762405395508,
+    "Rp_own": 13.193969964981079
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96267
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.870936870574951,
+    "R": 14.958354711532593,
+    "R_own": 14.903000354766846,
+    "Rp": 14.960196018218994,
+    "Rp_own": 14.903000354766846
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96268
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.770005941390991,
+    "R": 13.741894245147705,
+    "R_own": 13.72185230255127,
+    "Rp": 13.706303834915161,
+    "Rp_own": 13.72185230255127
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96269
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.298800706863403,
+    "R": 14.446272373199463,
+    "R_own": 14.276931524276733,
+    "Rp": 14.231778860092163,
+    "Rp_own": 14.276931524276733
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96270
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.908614158630371,
+    "R": 14.048693895339966,
+    "R_own": 13.880332708358765,
+    "Rp": 13.824127197265625,
+    "Rp_own": 13.880332708358765
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96271
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.07836389541626,
+    "R": 13.072348833084106,
+    "R_own": 12.905218601226807,
+    "Rp": 13.143761396408081,
+    "Rp_own": 12.905218601226807
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96272
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.113711595535278,
+    "R": 15.4432692527771,
+    "R_own": 15.339405298233032,
+    "Rp": 15.242573738098145,
+    "Rp_own": 15.339405298233032
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96273
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.504088401794434,
+    "R": 12.536426305770874,
+    "R_own": 12.642181873321533,
+    "Rp": 12.556637525558472,
+    "Rp_own": 12.642181873321533
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96274
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.387953042984009,
+    "R": 13.549224138259888,
+    "R_own": 13.369421005249023,
+    "Rp": 13.384726285934448,
+    "Rp_own": 13.369421005249023
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96275
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.765467643737793,
+    "R": 14.934150457382202,
+    "R_own": 14.75357723236084,
+    "Rp": 14.947666645050049,
+    "Rp_own": 14.75357723236084
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96276
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.42734956741333,
+    "R": 14.550728797912598,
+    "R_own": 14.389775276184082,
+    "Rp": 14.535966873168945,
+    "Rp_own": 14.389775276184082
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96277
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.356298685073853,
+    "R": 13.598288774490356,
+    "R_own": 13.392136812210083,
+    "Rp": 13.459694385528564,
+    "Rp_own": 13.392136812210083
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96278
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.39594054222107,
+    "R": 14.402418375015259,
+    "R_own": 14.518298864364624,
+    "Rp": 14.401153802871704,
+    "Rp_own": 14.518298864364624
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96279
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.572198152542114,
+    "R": 13.602959871292114,
+    "R_own": 13.484469413757324,
+    "Rp": 13.63892674446106,
+    "Rp_own": 13.484469413757324
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96280
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.311195135116577,
+    "R": 14.214099884033203,
+    "R_own": 14.29446291923523,
+    "Rp": 14.217897891998291,
+    "Rp_own": 14.29446291923523
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96281
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.629973888397217,
+    "R": 14.635256290435791,
+    "R_own": 14.81067967414856,
+    "Rp": 14.742064952850342,
+    "Rp_own": 14.81067967414856
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96282
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.48074984550476,
+    "R": 14.36171269416809,
+    "R_own": 14.45584774017334,
+    "Rp": 14.434635639190674,
+    "Rp_own": 14.45584774017334
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96283
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.213505983352661,
+    "R": 13.261523723602295,
+    "R_own": 13.120165824890137,
+    "Rp": 13.063624143600464,
+    "Rp_own": 13.120165824890137
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96284
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.613819122314453,
+    "R": 13.865678787231445,
+    "R_own": 13.65206003189087,
+    "Rp": 13.747034788131714,
+    "Rp_own": 13.65206003189087
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96285
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.173132419586182,
+    "R": 13.279003381729126,
+    "R_own": 13.25350046157837,
+    "Rp": 13.19922947883606,
+    "Rp_own": 13.25350046157837
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96286
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 16.417112350463867,
+    "R": 16.1422061920166,
+    "R_own": 16.04533362388611,
+    "Rp": 16.38897442817688,
+    "Rp_own": 16.04533362388611
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96287
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.800872802734375,
+    "R": 14.870139360427856,
+    "R_own": 14.88929533958435,
+    "Rp": 14.794233560562134,
+    "Rp_own": 14.88929533958435
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96288
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.839468240737915,
+    "R": 15.895943403244019,
+    "R_own": 15.805572748184204,
+    "Rp": 15.875298261642456,
+    "Rp_own": 15.805572748184204
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96289
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.197356700897217,
+    "R": 14.176815032958984,
+    "R_own": 14.011924266815186,
+    "Rp": 14.100768566131592,
+    "Rp_own": 14.011924266815186
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96290
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.301585674285889,
+    "R": 13.580191135406494,
+    "R_own": 13.13765549659729,
+    "Rp": 13.469228506088257,
+    "Rp_own": 13.13765549659729
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96291
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.85961103439331,
+    "R": 12.927746295928955,
+    "R_own": 13.143164873123169,
+    "Rp": 12.969070434570312,
+    "Rp_own": 13.143164873123169
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96292
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.398962497711182,
+    "R": 15.607556581497192,
+    "R_own": 15.274304389953613,
+    "Rp": 15.450201272964478,
+    "Rp_own": 15.274304389953613
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96293
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.96988558769226,
+    "R": 16.01114511489868,
+    "R_own": 15.973209857940674,
+    "Rp": 16.050231218338013,
+    "Rp_own": 15.973209857940674
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96294
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.81130599975586,
+    "R": 13.973085641860962,
+    "R_own": 13.589453935623169,
+    "Rp": 13.85588026046753,
+    "Rp_own": 13.589453935623169
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96295
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.65607213973999,
+    "R": 13.8642418384552,
+    "R_own": 13.838277101516724,
+    "Rp": 13.843720197677612,
+    "Rp_own": 13.838277101516724
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96296
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.73787260055542,
+    "R": 15.907363891601562,
+    "R_own": 15.779101610183716,
+    "Rp": 15.84072470664978,
+    "Rp_own": 15.779101610183716
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96297
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.18124771118164,
+    "R": 14.1228346824646,
+    "R_own": 13.896667718887329,
+    "Rp": 14.128667831420898,
+    "Rp_own": 13.896667718887329
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96298
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.438259840011597,
+    "R": 13.607328176498413,
+    "R_own": 13.1467444896698,
+    "Rp": 13.4854097366333,
+    "Rp_own": 13.1467444896698
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96299
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.765881538391113,
+    "R": 13.689573049545288,
+    "R_own": 13.802457571029663,
+    "Rp": 13.845959901809692,
+    "Rp_own": 13.802457571029663
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96300
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.252551555633545,
+    "R": 14.351991176605225,
+    "R_own": 14.4133882522583,
+    "Rp": 14.265081882476807,
+    "Rp_own": 14.4133882522583
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96301
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.394065618515015,
+    "R": 13.408966064453125,
+    "R_own": 13.2913818359375,
+    "Rp": 13.321668148040771,
+    "Rp_own": 13.2913818359375
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96302
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.674505710601807,
+    "R": 15.684641599655151,
+    "R_own": 15.475036859512329,
+    "Rp": 15.663655042648315,
+    "Rp_own": 15.475036859512329
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96303
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.467939615249634,
+    "R": 13.772811651229858,
+    "R_own": 13.731336832046509,
+    "Rp": 13.58768606185913,
+    "Rp_own": 13.731336832046509
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96304
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.591508865356445,
+    "R": 14.652524471282959,
+    "R_own": 14.486655473709106,
+    "Rp": 14.628902435302734,
+    "Rp_own": 14.486655473709106
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96305
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.563920259475708,
+    "R": 14.536134719848633,
+    "R_own": 14.49544906616211,
+    "Rp": 14.553066730499268,
+    "Rp_own": 14.49544906616211
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96306
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.58989691734314,
+    "R": 14.610357761383057,
+    "R_own": 14.679425716400146,
+    "Rp": 14.770463943481445,
+    "Rp_own": 14.679425716400146
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96307
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.188338041305542,
+    "R": 13.066624402999878,
+    "R_own": 13.054121017456055,
+    "Rp": 13.047997951507568,
+    "Rp_own": 13.054121017456055
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96308
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.35048508644104,
+    "R": 14.57408332824707,
+    "R_own": 14.336578845977783,
+    "Rp": 14.531033039093018,
+    "Rp_own": 14.336578845977783
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96309
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.511379957199097,
+    "R": 13.289470434188843,
+    "R_own": 13.267697811126709,
+    "Rp": 13.325657367706299,
+    "Rp_own": 13.267697811126709
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96310
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.892055749893188,
+    "R": 13.983377695083618,
+    "R_own": 13.869442701339722,
+    "Rp": 13.911855936050415,
+    "Rp_own": 13.869442701339722
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96311
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.548783540725708,
+    "R": 12.62598204612732,
+    "R_own": 12.555931806564331,
+    "Rp": 12.556678771972656,
+    "Rp_own": 12.555931806564331
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96312
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.70201587677002,
+    "R": 13.764652967453003,
+    "R_own": 13.948773622512817,
+    "Rp": 13.841832876205444,
+    "Rp_own": 13.948773622512817
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96313
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.657888412475586,
+    "R": 15.784224033355713,
+    "R_own": 15.723399877548218,
+    "Rp": 15.700330257415771,
+    "Rp_own": 15.723399877548218
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96314
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.186700820922852,
+    "R": 15.145910501480103,
+    "R_own": 15.110183000564575,
+    "Rp": 15.143555641174316,
+    "Rp_own": 15.110183000564575
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96315
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.586928606033325,
+    "R": 14.7242751121521,
+    "R_own": 14.630499839782715,
+    "Rp": 14.635115623474121,
+    "Rp_own": 14.630499839782715
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96316
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.498412847518921,
+    "R": 15.626592874526978,
+    "R_own": 15.35436487197876,
+    "Rp": 15.572993278503418,
+    "Rp_own": 15.35436487197876
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96317
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.144111394882202,
+    "R": 15.26279067993164,
+    "R_own": 15.21832537651062,
+    "Rp": 15.17893671989441,
+    "Rp_own": 15.21832537651062
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96318
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.959022998809814,
+    "R": 13.04174017906189,
+    "R_own": 13.006816864013672,
+    "Rp": 12.921367883682251,
+    "Rp_own": 13.006816864013672
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96319
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.770128965377808,
+    "R": 13.826878309249878,
+    "R_own": 13.736267805099487,
+    "Rp": 13.706214904785156,
+    "Rp_own": 13.736267805099487
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96320
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.657012224197388,
+    "R": 13.794939517974854,
+    "R_own": 13.708003759384155,
+    "Rp": 13.782401323318481,
+    "Rp_own": 13.708003759384155
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96321
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.889559745788574,
+    "R": 13.827520847320557,
+    "R_own": 13.745653629302979,
+    "Rp": 13.753617286682129,
+    "Rp_own": 13.745653629302979
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96322
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.096014022827148,
+    "R": 13.531567335128784,
+    "R_own": 13.115616798400879,
+    "Rp": 13.239490270614624,
+    "Rp_own": 13.115616798400879
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96323
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 16.104512453079224,
+    "R": 16.196863412857056,
+    "R_own": 15.932760000228882,
+    "Rp": 16.14691686630249,
+    "Rp_own": 15.932760000228882
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96324
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.178659915924072,
+    "R": 14.25178861618042,
+    "R_own": 14.086327075958252,
+    "Rp": 14.13885760307312,
+    "Rp_own": 14.086327075958252
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96325
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.772838830947876,
+    "R": 13.550932884216309,
+    "R_own": 13.440922498703003,
+    "Rp": 13.519404411315918,
+    "Rp_own": 13.440922498703003
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96326
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.59244680404663,
+    "R": 14.833502531051636,
+    "R_own": 14.68134593963623,
+    "Rp": 14.884541034698486,
+    "Rp_own": 14.68134593963623
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96327
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.406359195709229,
+    "R": 14.401549339294434,
+    "R_own": 14.362278461456299,
+    "Rp": 14.43643569946289,
+    "Rp_own": 14.362278461456299
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96328
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.398508071899414,
+    "R": 14.602982521057129,
+    "R_own": 14.441128730773926,
+    "Rp": 14.521427631378174,
+    "Rp_own": 14.441128730773926
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96329
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.327576398849487,
+    "R": 14.549157857894897,
+    "R_own": 14.496460914611816,
+    "Rp": 14.55012845993042,
+    "Rp_own": 14.496460914611816
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96330
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.900375604629517,
+    "R": 15.829716205596924,
+    "R_own": 15.918108940124512,
+    "Rp": 16.031851053237915,
+    "Rp_own": 15.918108940124512
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96331
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 12.91588020324707,
+    "R": 13.090470790863037,
+    "R_own": 12.931062936782837,
+    "Rp": 12.945582151412964,
+    "Rp_own": 12.931062936782837
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96332
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.369702577590942,
+    "R": 15.425559759140015,
+    "R_own": 15.446782350540161,
+    "Rp": 15.522971630096436,
+    "Rp_own": 15.446782350540161
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96333
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.304993391036987,
+    "R": 15.420304536819458,
+    "R_own": 15.306589603424072,
+    "Rp": 15.323779106140137,
+    "Rp_own": 15.306589603424072
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96334
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.470453262329102,
+    "R": 13.556452989578247,
+    "R_own": 13.509748697280884,
+    "Rp": 13.579169511795044,
+    "Rp_own": 13.509748697280884
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96335
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.134115219116211,
+    "R": 13.353551626205444,
+    "R_own": 13.050121545791626,
+    "Rp": 13.18032455444336,
+    "Rp_own": 13.050121545791626
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96336
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.165865659713745,
+    "R": 14.113314867019653,
+    "R_own": 14.008033037185669,
+    "Rp": 14.147577047348022,
+    "Rp_own": 14.008033037185669
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96337
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.046520233154297,
+    "R": 14.1635103225708,
+    "R_own": 14.040714025497437,
+    "Rp": 14.083446741104126,
+    "Rp_own": 14.040714025497437
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96338
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.230491399765015,
+    "R": 15.407736539840698,
+    "R_own": 15.015887975692749,
+    "Rp": 15.309044122695923,
+    "Rp_own": 15.015887975692749
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96339
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.372101306915283,
+    "R": 14.632333755493164,
+    "R_own": 14.50670576095581,
+    "Rp": 14.405016899108887,
+    "Rp_own": 14.50670576095581
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96340
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.841381072998047,
+    "R": 14.072895765304565,
+    "R_own": 14.060577630996704,
+    "Rp": 13.902837991714478,
+    "Rp_own": 14.060577630996704
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96341
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.92873215675354,
+    "R": 16.054901361465454,
+    "R_own": 16.059852123260498,
+    "Rp": 15.935629606246948,
+    "Rp_own": 16.059852123260498
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96342
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.504004001617432,
+    "R": 15.478731155395508,
+    "R_own": 15.47757863998413,
+    "Rp": 15.567002058029175,
+    "Rp_own": 15.47757863998413
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96343
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.577921628952026,
+    "R": 13.467934846878052,
+    "R_own": 13.63297724723816,
+    "Rp": 13.653167724609375,
+    "Rp_own": 13.63297724723816
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96344
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.295374631881714,
+    "R": 15.204304933547974,
+    "R_own": 15.333944082260132,
+    "Rp": 15.235647201538086,
+    "Rp_own": 15.333944082260132
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96345
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.271132707595825,
+    "R": 15.470267057418823,
+    "R_own": 15.415066242218018,
+    "Rp": 15.497744798660278,
+    "Rp_own": 15.415066242218018
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96346
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.157859802246094,
+    "R": 13.347418308258057,
+    "R_own": 13.229640483856201,
+    "Rp": 13.175298929214478,
+    "Rp_own": 13.229640483856201
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96347
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.254162311553955,
+    "R": 14.15702199935913,
+    "R_own": 14.433724641799927,
+    "Rp": 14.231542348861694,
+    "Rp_own": 14.433724641799927
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96348
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.298490524291992,
+    "R": 14.398316383361816,
+    "R_own": 14.37408185005188,
+    "Rp": 14.376782417297363,
+    "Rp_own": 14.37408185005188
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96349
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.486696720123291,
+    "R": 13.613242626190186,
+    "R_own": 13.506246328353882,
+    "Rp": 13.409677505493164,
+    "Rp_own": 13.506246328353882
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96350
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 16.035463094711304,
+    "R": 16.164387941360474,
+    "R_own": 16.130900859832764,
+    "Rp": 15.996052265167236,
+    "Rp_own": 16.130900859832764
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96351
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.463999032974243,
+    "R": 13.57265830039978,
+    "R_own": 13.292823553085327,
+    "Rp": 13.534148454666138,
+    "Rp_own": 13.292823553085327
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96352
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.767149686813354,
+    "R": 15.82472276687622,
+    "R_own": 15.85293960571289,
+    "Rp": 15.873670816421509,
+    "Rp_own": 15.85293960571289
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96353
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.10596776008606,
+    "R": 15.15216064453125,
+    "R_own": 14.967528581619263,
+    "Rp": 15.111912965774536,
+    "Rp_own": 14.967528581619263
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96354
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.370890855789185,
+    "R": 13.465543031692505,
+    "R_own": 13.328394174575806,
+    "Rp": 13.451490879058838,
+    "Rp_own": 13.328394174575806
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96355
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.922112703323364,
+    "R": 13.879485368728638,
+    "R_own": 13.86117172241211,
+    "Rp": 13.830775737762451,
+    "Rp_own": 13.86117172241211
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96356
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.985838174819946,
+    "R": 15.993649005889893,
+    "R_own": 15.939327955245972,
+    "Rp": 15.885108470916748,
+    "Rp_own": 15.939327955245972
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96357
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.466403722763062,
+    "R": 14.541010856628418,
+    "R_own": 14.483348369598389,
+    "Rp": 14.515454769134521,
+    "Rp_own": 14.483348369598389
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96358
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.444712400436401,
+    "R": 15.780268430709839,
+    "R_own": 15.558200597763062,
+    "Rp": 15.617066144943237,
+    "Rp_own": 15.558200597763062
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96359
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.893041372299194,
+    "R": 15.879201412200928,
+    "R_own": 15.850080490112305,
+    "Rp": 15.867575645446777,
+    "Rp_own": 15.850080490112305
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96360
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 17.27995491027832,
+    "R": 17.229976892471313,
+    "R_own": 17.143905878067017,
+    "Rp": 17.238866806030273,
+    "Rp_own": 17.143905878067017
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96361
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.35076093673706,
+    "R": 15.66641092300415,
+    "R_own": 15.3970205783844,
+    "Rp": 15.407002449035645,
+    "Rp_own": 15.3970205783844
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96362
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.636945486068726,
+    "R": 15.016103029251099,
+    "R_own": 14.683317422866821,
+    "Rp": 14.801928997039795,
+    "Rp_own": 14.683317422866821
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96363
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.2423734664917,
+    "R": 14.660569667816162,
+    "R_own": 14.258746862411499,
+    "Rp": 14.38777208328247,
+    "Rp_own": 14.258746862411499
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96364
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.466897964477539,
+    "R": 14.467705011367798,
+    "R_own": 14.539067029953003,
+    "Rp": 14.385135173797607,
+    "Rp_own": 14.539067029953003
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96365
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.174689292907715,
+    "R": 15.2841796875,
+    "R_own": 15.188068151473999,
+    "Rp": 15.229817152023315,
+    "Rp_own": 15.188068151473999
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96366
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.397761583328247,
+    "R": 15.617008209228516,
+    "R_own": 15.430416584014893,
+    "Rp": 15.633923530578613,
+    "Rp_own": 15.430416584014893
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96367
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.211386442184448,
+    "R": 14.434395551681519,
+    "R_own": 14.363287210464478,
+    "Rp": 14.361201524734497,
+    "Rp_own": 14.363287210464478
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96368
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.037724733352661,
+    "R": 14.259219408035278,
+    "R_own": 13.967456817626953,
+    "Rp": 14.116393327713013,
+    "Rp_own": 13.967456817626953
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96369
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.660089254379272,
+    "R": 13.78803014755249,
+    "R_own": 13.660964727401733,
+    "Rp": 13.657166004180908,
+    "Rp_own": 13.660964727401733
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96370
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.743685722351074,
+    "R": 14.794299125671387,
+    "R_own": 14.535627841949463,
+    "Rp": 14.717994689941406,
+    "Rp_own": 14.535627841949463
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96371
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.593947649002075,
+    "R": 14.543460845947266,
+    "R_own": 14.596324920654297,
+    "Rp": 14.640698671340942,
+    "Rp_own": 14.596324920654297
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96372
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.195292234420776,
+    "R": 14.255109310150146,
+    "R_own": 14.03579068183899,
+    "Rp": 14.177841186523438,
+    "Rp_own": 14.03579068183899
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96373
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.524531364440918,
+    "R": 14.480423212051392,
+    "R_own": 14.503347635269165,
+    "Rp": 14.5297691822052,
+    "Rp_own": 14.503347635269165
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96374
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.150640487670898,
+    "R": 14.10818362236023,
+    "R_own": 14.209937334060669,
+    "Rp": 14.119468450546265,
+    "Rp_own": 14.209937334060669
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96375
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 14.370154619216919,
+    "R": 14.652904272079468,
+    "R_own": 14.234493017196655,
+    "Rp": 14.536513328552246,
+    "Rp_own": 14.234493017196655
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96376
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.050021409988403,
+    "R": 14.827932357788086,
+    "R_own": 14.814954996109009,
+    "Rp": 14.934229612350464,
+    "Rp_own": 14.814954996109009
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96377
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 16.096965551376343,
+    "R": 16.270661115646362,
+    "R_own": 16.181527137756348,
+    "Rp": 16.238077402114868,
+    "Rp_own": 16.181527137756348
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96378
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.506667375564575,
+    "R": 13.423505783081055,
+    "R_own": 13.4366614818573,
+    "Rp": 13.33469843864441,
+    "Rp_own": 13.4366614818573
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96379
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.379798173904419,
+    "R": 13.566164255142212,
+    "R_own": 13.39072847366333,
+    "Rp": 13.416860818862915,
+    "Rp_own": 13.39072847366333
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96380
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 15.1922607421875,
+    "R": 15.35193920135498,
+    "R_own": 15.238802433013916,
+    "Rp": 15.265890121459961,
+    "Rp_own": 15.238802433013916
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96381
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.191221475601196,
+    "R": 13.334144592285156,
+    "R_own": 13.301213264465332,
+    "Rp": 13.264139413833618,
+    "Rp_own": 13.301213264465332
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96382
+  },
+  {
+   "fixed_check": {
+    "discarded_reproduces": true,
+    "preservation_leaves_the_fixed_arm_alone": true,
+    "preserved_reproduces": true
+   },
+   "losses": {
+    "F": 13.679444074630737,
+    "R": 13.931448936462402,
+    "R_own": 13.65742039680481,
+    "Rp": 13.730425834655762,
+    "Rp_own": 13.65742039680481
+   },
+   "mutations": {
+    "R": 3,
+    "Rp": 3
+   },
+   "routers_differ": false,
+   "seed": 96383
+  }
+ ],
+ "preservation_gain": -0.05420432239770889,
+ "profile": "router2",
+ "protocol": "discarded-routing-head-vs-preserved",
+ "record_type": "router_preservation_study",
+ "report_section": "5.24",
+ "seeds": [
+  96000,
+  96001,
+  96002,
+  96003,
+  96004,
+  96005,
+  96006,
+  96007,
+  96008,
+  96009,
+  96010,
+  96011,
+  96012,
+  96013,
+  96014,
+  96015,
+  96016,
+  96017,
+  96018,
+  96019,
+  96020,
+  96021,
+  96022,
+  96023,
+  96024,
+  96025,
+  96026,
+  96027,
+  96028,
+  96029,
+  96030,
+  96031,
+  96032,
+  96033,
+  96034,
+  96035,
+  96036,
+  96037,
+  96038,
+  96039,
+  96040,
+  96041,
+  96042,
+  96043,
+  96044,
+  96045,
+  96046,
+  96047,
+  96048,
+  96049,
+  96050,
+  96051,
+  96052,
+  96053,
+  96054,
+  96055,
+  96056,
+  96057,
+  96058,
+  96059,
+  96060,
+  96061,
+  96062,
+  96063,
+  96064,
+  96065,
+  96066,
+  96067,
+  96068,
+  96069,
+  96070,
+  96071,
+  96072,
+  96073,
+  96074,
+  96075,
+  96076,
+  96077,
+  96078,
+  96079,
+  96080,
+  96081,
+  96082,
+  96083,
+  96084,
+  96085,
+  96086,
+  96087,
+  96088,
+  96089,
+  96090,
+  96091,
+  96092,
+  96093,
+  96094,
+  96095,
+  96096,
+  96097,
+  96098,
+  96099,
+  96100,
+  96101,
+  96102,
+  96103,
+  96104,
+  96105,
+  96106,
+  96107,
+  96108,
+  96109,
+  96110,
+  96111,
+  96112,
+  96113,
+  96114,
+  96115,
+  96116,
+  96117,
+  96118,
+  96119,
+  96120,
+  96121,
+  96122,
+  96123,
+  96124,
+  96125,
+  96126,
+  96127,
+  96128,
+  96129,
+  96130,
+  96131,
+  96132,
+  96133,
+  96134,
+  96135,
+  96136,
+  96137,
+  96138,
+  96139,
+  96140,
+  96141,
+  96142,
+  96143,
+  96144,
+  96145,
+  96146,
+  96147,
+  96148,
+  96149,
+  96150,
+  96151,
+  96152,
+  96153,
+  96154,
+  96155,
+  96156,
+  96157,
+  96158,
+  96159,
+  96160,
+  96161,
+  96162,
+  96163,
+  96164,
+  96165,
+  96166,
+  96167,
+  96168,
+  96169,
+  96170,
+  96171,
+  96172,
+  96173,
+  96174,
+  96175,
+  96176,
+  96177,
+  96178,
+  96179,
+  96180,
+  96181,
+  96182,
+  96183,
+  96184,
+  96185,
+  96186,
+  96187,
+  96188,
+  96189,
+  96190,
+  96191,
+  96192,
+  96193,
+  96194,
+  96195,
+  96196,
+  96197,
+  96198,
+  96199,
+  96200,
+  96201,
+  96202,
+  96203,
+  96204,
+  96205,
+  96206,
+  96207,
+  96208,
+  96209,
+  96210,
+  96211,
+  96212,
+  96213,
+  96214,
+  96215,
+  96216,
+  96217,
+  96218,
+  96219,
+  96220,
+  96221,
+  96222,
+  96223,
+  96224,
+  96225,
+  96226,
+  96227,
+  96228,
+  96229,
+  96230,
+  96231,
+  96232,
+  96233,
+  96234,
+  96235,
+  96236,
+  96237,
+  96238,
+  96239,
+  96240,
+  96241,
+  96242,
+  96243,
+  96244,
+  96245,
+  96246,
+  96247,
+  96248,
+  96249,
+  96250,
+  96251,
+  96252,
+  96253,
+  96254,
+  96255,
+  96256,
+  96257,
+  96258,
+  96259,
+  96260,
+  96261,
+  96262,
+  96263,
+  96264,
+  96265,
+  96266,
+  96267,
+  96268,
+  96269,
+  96270,
+  96271,
+  96272,
+  96273,
+  96274,
+  96275,
+  96276,
+  96277,
+  96278,
+  96279,
+  96280,
+  96281,
+  96282,
+  96283,
+  96284,
+  96285,
+  96286,
+  96287,
+  96288,
+  96289,
+  96290,
+  96291,
+  96292,
+  96293,
+  96294,
+  96295,
+  96296,
+  96297,
+  96298,
+  96299,
+  96300,
+  96301,
+  96302,
+  96303,
+  96304,
+  96305,
+  96306,
+  96307,
+  96308,
+  96309,
+  96310,
+  96311,
+  96312,
+  96313,
+  96314,
+  96315,
+  96316,
+  96317,
+  96318,
+  96319,
+  96320,
+  96321,
+  96322,
+  96323,
+  96324,
+  96325,
+  96326,
+  96327,
+  96328,
+  96329,
+  96330,
+  96331,
+  96332,
+  96333,
+  96334,
+  96335,
+  96336,
+  96337,
+  96338,
+  96339,
+  96340,
+  96341,
+  96342,
+  96343,
+  96344,
+  96345,
+  96346,
+  96347,
+  96348,
+  96349,
+  96350,
+  96351,
+  96352,
+  96353,
+  96354,
+  96355,
+  96356,
+  96357,
+  96358,
+  96359,
+  96360,
+  96361,
+  96362,
+  96363,
+  96364,
+  96365,
+  96366,
+  96367,
+  96368,
+  96369,
+  96370,
+  96371,
+  96372,
+  96373,
+  96374,
+  96375,
+  96376,
+  96377,
+  96378,
+  96379,
+  96380,
+  96381,
+  96382,
+  96383
+ ],
+ "study_hash": "18c56d8bf539e2f3",
+ "study_id": "study_18c56d8bf539e2f3",
+ "summary_note": "Section 5.24. R and Rp are the same seed, initial model and data schedule, differing only in whether a mutated layer's learned router survives the rebuild. R_own and Rp_own are the frozen retrains of each fused run's own final genome, so R_own-R and Rp_own-Rp are the two penalties. Negative means the first-named run won."
+}
