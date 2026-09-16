@@ -1,0 +1,628 @@
+{
+ "all_identical": true,
+ "alpha": 0.05,
+ "built_in_checks": {
+  "every_seed_is_bit_identical_on_the_fixed_arm": true,
+  "every_seed_is_bit_identical_on_the_fused_loss": true,
+  "every_seed_selected_the_same_candidate": true
+ },
+ "config": {
+  "active_experts": 2,
+  "adaptive_expert_metric": "random",
+  "adaptive_policy": "probe_loss",
+  "batch_size": 2,
+  "depth": 2,
+  "device": "cpu",
+  "expert_count": 4,
+  "forced_operation": null,
+  "hidden_size": 24,
+  "independent_arm_rng": true,
+  "learning_rate": 0.0003,
+  "mutation_budget": 3,
+  "mutation_interval": 12,
+  "new_expert_initialization": "clone",
+  "preserve_router_on_rebuild": true,
+  "probe_batch_count": 2,
+  "probe_candidate_cap": 1,
+  "probe_candidate_policy": "spread",
+  "probe_selection": "argmin",
+  "sequence_length": 12,
+  "steps": 48,
+  "validation_batches": 4,
+  "vocab_size": 32
+ },
+ "config_hash": "4bfab70db0526984",
+ "declared_n": 384,
+ "depth": 2,
+ "kind": "identity",
+ "n_permutations": 20000,
+ "per_primary_alpha": 0.0125,
+ "per_seed": [
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128000
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128001
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128002
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128003
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128004
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128005
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128006
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128007
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128008
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128009
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128010
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128011
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128012
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128013
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128014
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128015
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128016
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128017
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128018
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128019
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128020
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128021
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128022
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128023
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128024
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128025
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128026
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128027
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128028
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128029
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128030
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128031
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128032
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128033
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128034
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128035
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128036
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128037
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128038
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128039
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128040
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128041
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128042
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128043
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128044
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128045
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128046
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128047
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128048
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128049
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128050
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128051
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128052
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": false,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128053
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128054
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128055
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128056
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128057
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128058
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128059
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128060
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128061
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128062
+  },
+  {
+   "fused_delta": 0.0,
+   "identical_fixed": true,
+   "identical_flops": true,
+   "identical_fused": true,
+   "identical_selection": true,
+   "seed": 128063
+  }
+ ],
+ "profile": "id2",
+ "protocol": "probe-scored-in-the-default-rebuild-vs-the-applied-rebuild",
+ "record_type": "probe_scoring_study",
+ "report_section": "5.34",
+ "search_flops_identical_fraction": 0.984375,
+ "seeds": [
+  128000,
+  128001,
+  128002,
+  128003,
+  128004,
+  128005,
+  128006,
+  128007,
+  128008,
+  128009,
+  128010,
+  128011,
+  128012,
+  128013,
+  128014,
+  128015,
+  128016,
+  128017,
+  128018,
+  128019,
+  128020,
+  128021,
+  128022,
+  128023,
+  128024,
+  128025,
+  128026,
+  128027,
+  128028,
+  128029,
+  128030,
+  128031,
+  128032,
+  128033,
+  128034,
+  128035,
+  128036,
+  128037,
+  128038,
+  128039,
+  128040,
+  128041,
+  128042,
+  128043,
+  128044,
+  128045,
+  128046,
+  128047,
+  128048,
+  128049,
+  128050,
+  128051,
+  128052,
+  128053,
+  128054,
+  128055,
+  128056,
+  128057,
+  128058,
+  128059,
+  128060,
+  128061,
+  128062,
+  128063
+ ],
+ "study_hash": "d0e6d60e9d22f4cb",
+ "study_id": "study_d0e6d60e9d22f4cb",
+ "summary_note": "Section 5.34's integrity check, run at probe_candidate_cap=1 so the probed pool holds exactly one candidate and the score cannot decide what gets applied. probe_scoring must then change nothing: the two settings must be bit-identical on the fixed arm, the fused loss, the selected candidates and the booked search FLOPs. A non-identical seed would falsify the claim that the knob changes only the score used to rank a pool whose membership it does not touch - and would mean this study is measuring something else."
+}

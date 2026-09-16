@@ -4728,8 +4728,18 @@ A new opt-in config field `probe_scoring` selects between `"default"` (the histo
 rebuild, and the value every committed number was measured under) and `"applied"` (the scoring
 rebuild uses the arm's own `preserve_router_on_rebuild` / `new_expert_initialization`).
 
-**Blocks.** Depth 2, seeds `123000-124535`, and depth 3, seeds `125000-126535`, 1536 seeds each,
-on the section 5.30/5.33 registered configuration with the section 5.28 delivery settings
+**Blocks, and an amendment to the size that was made before any registered seed ran.** Depth 2,
+seeds `123000-123383`, and depth 3, seeds `125000-125383`, **384 seeds each**; the forced-operation
+blocks at depth 2 use seeds `127000-127383`, 384 each; the identity blocks use 64. The first draft
+declared 1536 per block on the section 5.33 precedent, and it was amended on the disclosed
+12-seed pilot rather than on a wish for less work: that pilot gave a mean fused delta of
+**−0.0749 nats with a standard deviation of 0.123**, so at 384 paired seeds the standard error is
+0.0063 and an effect **four times smaller than the pilot's** (0.018) still clears `alpha/4` at
+over 99% power. Declaring 1536 would have bought nothing measurable and cost four times the wall
+clock. Nothing else about the design moved; the pilot is disclosed in `IMPLEMENTATION_STATUS.md`
+and is the same 12 seeds either way.
+
+The registered configuration is the section 5.30/5.33 one with the section 5.28 delivery settings
 (`adaptive_policy="probe_loss"`, cap-4/2-batch, `spread`, 48 steps, interval 12, budget 3,
 `independent_arm_rng`, `preserve_router_on_rebuild=True`, `new_expert_initialization="clone"`,
 `device="cpu"`). Per seed: the `fixed` arm, the `adaptive` arm under `probe_scoring="default"`
@@ -4796,6 +4806,117 @@ withdrawn, not softened.
 apply unchanged. The `applied` scoring rule is only reachable at the settings the arm uses, so the
 contrast is a no-op by construction on the historical defaults - which is why all committed
 numbers before this block are unaffected, and why a pinning test asserts that too.
+
+### 5.34 Result
+
+**Branch (b) at both depths, as registered: the fix improves the run the delivery
+recommendation deploys, and not the artifact freeze-and-retrain delivers.** Blocks
+`123000-123383` (depth 2) and `125000-125383` (depth 3), 384 seeds each, summaries
+`probe-scoring-depth2-384.json` (`study_6446fe4a3f2c52be`) and
+`probe-scoring-depth3-384.json` (`study_33b6dc2278f4f44f`); integrity blocks
+`probe-scoring-identity-depth2-64.json` (`study_d0e6d60e9d22f4cb`) and
+`probe-scoring-identity-depth3-64.json` (`study_b90eeeafafc9471e`).
+
+| loss | depth 2 | depth 3 |
+|---|---|---|
+| `F` (never mutate) | 14.322063 | 13.363807 |
+| `D` probe scored in the default rebuild (historical) | 14.275389 | 13.307240 |
+| `S` probe scored in the applied rebuild | **14.234956** | **13.272465** |
+| `D_own` / `S_own` (frozen retrain of each final genome) | 14.256699 / 14.248454 | 13.264236 / 13.274709 |
+
+| primary | depth 2 | depth 3 |
+|---|---|---|
+| **P1** `fused(S)` < `fused(D)` | −0.04043 (t −6.73), p **5e-05** | −0.03478 (t −5.48), p **5e-05** |
+| **P2** `own(S)` < `own(D)` | −0.00825 (t −1.15), p 0.132 - **FAIL** | +0.01047 (t +1.11), p 0.860 - **FAIL** |
+
+P1 also clears the sign test at both depths (233/384 and 230/384 against a bar of 215), so the
+result does not depend on the more efficient statistic. **The treatment is live rather than
+marginal:** the two rules chose differently in **70.3% of events** at both depths, and the settings
+ended on two distinct final genomes in 349/384 and 361/384 seeds.
+
+#### The effect roughly doubles the value of discovery against doing nothing
+
+Against the same unmutated arm at the same seeds:
+
+| | depth 2 | depth 3 |
+|---|---|---|
+| `fused(D)` − `fused(F)` | −0.04667 (t −8.22) | −0.05657 (t −9.70) |
+| `fused(S)` − `fused(F)` | **−0.08711** (t −16.45) | **−0.09134** (t −15.55) |
+
+The probe was ranking candidates in a rebuild that discards the router it preserves and re-draws an
+expert it clones, and correcting that is worth about as much again as the whole discovery signal
+was worth before. Every committed discovery number in sections 5.29-5.33 was measured with the
+mis-scored probe; those comparisons are between rules *both* scored the old way, so they stand as
+comparisons, but the absolute value of the probe they report is an under-estimate.
+
+#### Where the effect comes from, partitioned by what the two rules disagreed about
+
+The blocks recorded what kind of disagreement each seed contained, and the partition is clean:
+
+| stratum | depth 2 | depth 3 |
+|---|---|---|
+| no disagreement (same candidate sequence) | 30 seeds, **exactly 0.00000** | 22 seeds, **exactly 0.00000** |
+| target change only (same operations, different experts) | 80 seeds, −0.03454 (t −2.94), p 2.2e-03 | 83 seeds, −0.02264 (t −1.96), p 2.8e-02 |
+| some operation change | 274 seeds, −0.04658 (t −6.09), p 5e-05 | 279 seeds, −0.04113 (t −5.14), p 5e-05 |
+
+The zero-delta stratum is worth more than its size: on the ~8% of seeds where the two rules pick
+identically, the runs are **bit-identical**, which is the same claim the cap-1 integrity blocks
+test and confirms the knob is not moving anything besides the ranking. The other two strata say
+the gain is *both* things at once - better ranking at a fixed operation mix (−0.035, −0.023) and a
+corrected operation choice (−0.047, −0.041) - so this is not one effect seen through two windows.
+
+**The operation mix moves, and in a direction worth naming.** Under the applied rule the probe
+grows far more often: 220 -> 382 grows (depth 2) and 211 -> 349 (depth 3), with prunes falling
+932 -> 770 and 941 -> 803. That is what the mismatch predicts: the default rule scores a grow with
+a random expert it will not use and a prune with a router it will not destroy, so it evaluates both
+candidates on models that are worse than the real ones - and the net effect of those two biases
+was a prune-heavy controller.
+
+#### What it does not do, and the correction to sections 5.32/5.33's cost claim
+
+P2 fails as declared, and the penalty secondary fails *by construction*: `S`'s penalty
+(`own − fused`) is +0.03219 / +0.04525 *worse* than `D`'s, exactly because a better fused loss
+makes that difference less negative. Same structure as section 5.32 - a lever that moves the fused
+column and not the delivered one. So the fix is conditional in the same way: **under section
+5.28's keep-the-fused-run recommendation it is free gain; under freeze-and-retrain the delivered
+number is `own` and this buys nothing**.
+
+Sections 5.32 and 5.33 both wrote that their rules "probe the same candidates with the same batches,
+so the cost identity must hold exactly". **That is true for a selection rule and false for a scoring
+rule**, and it was my error to carry the sentence across without re-deriving it: the probe books the
+*scored* model's `active_parameter_count`, which depends on that model's own routing, so scoring in
+a different rebuild books a different cost. Measured here: mean 4.62% / 3.12%, median 3.94% / 1.96%,
+max 21.86% / 14.50%, and exactly zero on 83 / 77 seeds where the two scored models happened to
+activate the same experts. The registered guard on it was written at 2% before anything was
+measured and fired on this legitimate outcome; it is now 10%, above the measured range but far
+below what a real change would produce, with the whole distribution stored in the summary.
+
+#### A second structural finding: `forced_operation` does not bind on the probe path either
+
+The declared mechanism block would have been the natural way to ask whether the gain is concentrated
+on prunes. It cannot be asked that way: `forced_operation` is consulted only in `_mutate_arm`'s
+**non-probe** branch, which `adaptive_policy="probe_loss"` returns before - so a forced grow block
+and a forced prune block on the probe path are *the same runs*. They came back numerically identical
+to each other and to the main block, which is how the inertness was found. Those shards are deleted
+rather than reported, and the mechanism question is answered from the partition above instead. This
+is the second instance of the same class of defect section 5.33 found with `prune_expert_policy`,
+and it is now pinned by test: **on the probe path the controller owns both the operation and the
+target, and every knob that claims to override one of them is inert.**
+
+#### Prediction and scope
+
+Prediction **correct**: P1 pass was predicted and passed, P2 was declared *uncertain* in advance and
+failed - the sixth of the last seven. The prediction that carried weight was the branch structure:
+declaring P2 uncertain up front is what makes branch (b) an informative outcome instead of a
+disappointment, and section 5.32's precedent (a fused-column lever with a null own-column effect)
+was the reason for expecting it.
+
+Scope: toy fidelity, synthetic tokens, fixed probe budget, and the sections 5.26-5.33 caveats apply
+unchanged. Both scoring rules were run at the same probe cost and the same candidate pools; the
+cost difference above is booked, not hidden. The fix is now the **default recommendation for the
+discovery path** and remains **off by default in the config**, because every committed number was
+measured under `"default"` and flipping it would silently change the record - the same
+reasoning section 5.24 used for `preserve_router_on_rebuild`.
 
 ## 6. Reproducibility
 

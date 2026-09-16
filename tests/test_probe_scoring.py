@@ -183,6 +183,112 @@ def test_the_applied_rebuild_does_not_depend_on_the_rng_state() -> None:
     )
 
 
+SUMMARIES = {
+    2: Path("artifacts/study-summaries/probe-scoring-depth2-384.json"),
+    3: Path("artifacts/study-summaries/probe-scoring-depth3-384.json"),
+}
+IDENTITY = {
+    2: Path("artifacts/study-summaries/probe-scoring-identity-depth2-64.json"),
+    3: Path("artifacts/study-summaries/probe-scoring-identity-depth3-64.json"),
+}
+
+
+def _reload(path: Path) -> dict:
+    return json.loads(path.read_text())
+
+
+def test_the_committed_verdict_is_branch_b_at_both_depths() -> None:
+    """The registered verdicts, re-derived from the stored per-seed rows.
+
+    The means and win counts quoted in section 5.34 are recomputed here from the
+    per-seed losses, so a tampered summary cannot keep its quoted numbers.
+    """
+    expected_mean = {2: -0.04043, 3: -0.03478}
+    for depth, path in SUMMARIES.items():
+        summary = _reload(path)
+        deltas = [
+            exp["losses"]["S"] - exp["losses"]["D"]
+            for exp in summary["per_seed"]
+        ]
+        assert len(deltas) == 384
+        assert sum(deltas) / len(deltas) == pytest.approx(expected_mean[depth], abs=5e-05)
+        fused = summary["comparisons"]["fused_S_vs_D"]
+        assert sum(d < 0 for d in deltas) == fused["wins"]
+        assert fused["passes"]  # P1: the fused run improves
+        assert not summary["comparisons"]["own_S_vs_D"]["passes"]  # P2 fails
+        assert summary["outcome"].startswith("branch (b)")
+        # The penalty secondary fails *because* the fused loss improved.
+        assert summary["comparisons"]["penalty_S_less_than_D"]["mean_delta"] > 0
+
+
+def test_the_undisagreed_seeds_are_bit_identical() -> None:
+    """A design check the block carries for free: same selection, same run.
+
+    On every seed where the two rules chose the same candidate sequence the fused
+    losses must be exactly equal. This is the same claim the cap-1 identity blocks
+    test, but at the registered cap and without being arranged.
+    """
+    for path in SUMMARIES.values():
+        summary = _reload(path)
+        undisagreed = [
+            exp for exp in summary["per_seed"] if exp["selection_changes"] == 0
+        ]
+        assert undisagreed, "no seeds agreed; the check would be vacuous"
+        for exp in undisagreed:
+            assert exp["losses"]["D"] == exp["losses"]["S"]
+            assert exp["losses"]["D_own"] == exp["losses"]["S_own"]
+
+
+def test_the_identity_blocks_are_all_bit_identical() -> None:
+    for path in IDENTITY.values():
+        summary = _reload(path)
+        assert summary["all_identical"] is True
+        assert len(summary["per_seed"]) == 64
+        assert all(exp["identical_fused"] for exp in summary["per_seed"])
+
+
+def test_the_search_cost_difference_is_booked_not_hidden() -> None:
+    """The scoring rule books the scored model's active parameters, so cost differs.
+
+    Sections 5.32/5.33's "the cost identity holds exactly" is a selection-rule
+    claim; this pins that the scoring-rule variant is not held to it, and that the
+    measured difference is recorded rather than asserted away.
+    """
+    for path in SUMMARIES.values():
+        summary = _reload(path)
+        assert 0.0 < summary["search_flops_relative_delta_mean"] < 0.10
+        assert summary["search_flops_relative_delta_max"] >= (
+            summary["search_flops_relative_delta_mean"]
+        )
+        zeroed = [
+            exp for exp in summary["per_seed"] if exp["search_flops_relative_delta"] == 0
+        ]
+        assert zeroed, "no seed booked identical cost; the mechanism claim is untested"
+
+
+def test_forced_operation_is_inert_on_the_probe_path() -> None:
+    """The structural finding: this knob cannot force a probe-path operation.
+
+    ``forced_operation`` is consulted only in ``_mutate_arm``'s non-probe branch, so
+    on the probe path both values produce the identical run - which is why section
+    5.34's forced blocks were deleted and the mechanism answered by partition.
+    """
+    runs = {
+        operation: _adaptive(123000, forced_operation=operation)
+        for operation in (None, "grow", "prune")
+    }
+    reference = runs[None]
+    for operation, arm in runs.items():
+        assert arm.final_loss == reference.final_loss, operation
+        assert [
+            (event["operation"], event["layer_id"], event["expert_id"])
+            for event in arm.mutation_history
+        ] == [
+            (event["operation"], event["layer_id"], event["expert_id"])
+            for event in reference.mutation_history
+        ], operation
+
+
 def test_cap_one_makes_the_scoring_rule_a_no_op() -> None:
     """The registered integrity check: with one candidate the score decides nothing."""
     default = _adaptive(128000, probe_candidate_cap=1)

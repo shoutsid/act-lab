@@ -1,5 +1,37 @@
 # ACT Implementation Status
 
+## Section 5.34: the probe was scoring candidates in the wrong rebuild (2026-09-16)
+
+The probe ranks candidates by the loss of a model it builds, and it was building that
+model with `rebuild_model_from_genome`'s **historical defaults** - a freshly drawn router
+and a random new expert - while the event then applied the winner with the arm's own
+settings (`preserve_router_on_rebuild=True`, `new_expert_initialization="clone"`). A new
+opt-in field `probe_scoring="applied"` makes the probe score in the rebuild it applies.
+
+**Result (branch (b), both depths, 384 seeds each):** the fused run improves decisively
+(-0.04043 and -0.03478 nats, p 5e-05, sign test passing at both depths) and the delivered
+artifact does not (-0.00825 p 0.13, +0.01047 p 0.86). Value over doing nothing roughly
+doubles: -0.0467 -> -0.0871 at depth 2, -0.0566 -> -0.0913 at depth 3. The two rules chose
+differently in 70.3% of events and the operation mix moves the way the mismatch predicts
+(grows 220 -> 382), so the controller had been pruning mostly because the default scoring
+made both candidates look worse than the models the pipeline would actually build.
+
+**Two things this session cost that it should not have.** First, an honest correction:
+sections 5.32/5.33's "the cost identity must hold exactly" is a claim about *selection*
+rules and it is false for a *scoring* rule, which books the scored model's active-parameter
+count. Measured mean 4.62%/3.12%, max 21.86%/14.50%, exactly zero on 83/77 seeds. Second,
+the declared forced-operation mechanism block was **deleted, not reported**: on the probe
+path `forced_operation` never binds (`adaptive_policy="probe_loss"` returns before the
+branch that reads it), so a forced grow block and a forced prune block are the same runs -
+which is exactly what the numbers said. The mechanism is answered from a partition of the
+stored blocks instead, and both facts are pinned by `tests/test_probe_scoring.py`.
+
+**Fast-iteration note.** The block sizes were amended *before* the run on the disclosed
+12-seed pilot (mean -0.0749, sd 0.123): at 384 paired seeds the standard error is 0.0063, so
+an effect four times smaller than the pilot's still clears `alpha/4` at over 99% power.
+Declaring 1536 would have bought nothing measurable. All six block kinds together ran in
+6m43s wall on the 20-core box (`xargs -P 18`, `OMP_NUM_THREADS=1` per process).
+
 Updated: 2026-09-14
 
 This document compares the current workspace against
