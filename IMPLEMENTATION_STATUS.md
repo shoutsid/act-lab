@@ -1,5 +1,28 @@
 # ACT Implementation Status
 
+## Section 5.46: the declared launch path could not specify the rebuild treatment (2026-09-16)
+
+Found by auditing the launch command against the adopted sections. Section 5.16 ("new work
+should set `preserve_router_on_rebuild=True`") and section 5.38.3 ("a real-scale protocol
+should be specified with the treatment on") both say what the declared run should carry,
+and `cli._run_pair_session` had **no way to express it**: no CLI flag, no override passed
+into `declared_session_config`, and no test or paragraph pinning the declared run's rebuild
+policy. The protocol was registered (§5.5, 2026-09-14) before the treatment existed
+(§5.16-5.28), so an unflagged launch always ran the historical rebuild.
+
+| | |
+|---|---|
+| Measured consequence (§5.39 stored rows) | churn harm **0.16449** untreated vs **0.11279** repaired - the treatment is worth **1.46x** on the quantity §5.44's clause reads |
+| Compared with the effect it gates | 0.0517 nats, above the clean-arm effect (0.04042) - so the missing flag can decide Gate 4 |
+| Undone now (additive, no default moved) | `--preserve-router-on-rebuild`, `--new-expert {random,clone}`, threaded into `declared_session_config` for both the declared and `--profile` shapes; `clone` without preservation refused with a one-line `SystemExit`; 3 tests pin the default, the treatment, and the refusal |
+| Fell out of the audit | the published seed summary already records all 35 config fields, so **which rebuild policy a run used is checkable from its own artifacts** |
+| Deliberately not done | the runbook's command is unchanged - registering the declared protocol on the treatment is a sign-off decision. `T4_RUNBOOK.md` carries a **DECISION PENDING** callout at the command so T4 cannot start without noticing |
+
+**Still open:** the verdict never compares a published run's recorded config against the
+registered protocol. An additive `config_conformance` block (descriptive, per §5.41's
+precedent) is the next thing to build, deferred only because one of its fields is this
+decision. Record: `RESEARCH_REPORT.md` §5.46.
+
 ## Section 5.44: the quality-premise clause was shipped in one direction only (2026-09-16)
 
 Section 5.5 change 3 was **ADOPTED** (2026-09-14) and reads "if the pool-matched arm's

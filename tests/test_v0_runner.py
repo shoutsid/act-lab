@@ -786,6 +786,106 @@ def test_cli_passes_the_adopted_probe_knobs_into_the_session(
     assert captured["seeds"] == (15000, 15001)
 
 
+# --- The section 5.28 rebuild treatment on the declared launch path ----------
+
+
+def _fake_pair_session_result(kwargs: dict) -> dict:
+    return {
+        "protocol": "v0-compute-efficiency-5.2",
+        "seeds_requested": list(kwargs["seeds"]),
+        "declared_seed_queue": [],
+        "remaining_hours_at_entry": kwargs["remaining_hours"],
+        "measured_tokens_per_second": kwargs["measured_tokens_per_second"],
+        "pair_time_hours": 0.1,
+        "pairs_completed": 0,
+        "latest_published_seed": None,
+        "pairs": [],
+    }
+
+
+def _run_cli_capturing_config(tmp_path: Path, monkeypatch, extra: list[str]) -> dict:
+    """Drive pair-session mode with a stubbed runner and return the config it got."""
+    import sys
+
+    captured: dict = {}
+
+    from act.training import cli
+
+    def fake_run_pair_session(**kwargs):
+        captured.update(kwargs)
+        return _fake_pair_session_result(kwargs)
+
+    monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",
+                "--seeds", "15000",
+                *extra,
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+                "--output", str(tmp_path / "log.json"),
+            ],
+            profile=False,
+        ),
+    )
+    cli.main()
+    return captured["config"]
+
+
+def test_cli_keeps_the_historical_rebuild_unless_the_treatment_is_asked_for(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """The unflagged launch is the historical rebuild, and that is pinned.
+
+    Every committed number from sections 5.16-5.23 was measured with
+    `preserve_router_on_rebuild=False` / `new_expert_initialization="random"`
+    (section 5.16 records that the default was deliberately kept for exactly
+    that reason), so flipping it here would silently change what the declared
+    launch command means. The flags below are how a run opts in instead.
+    """
+    config = _run_cli_capturing_config(tmp_path, monkeypatch, [])
+
+    assert config.preserve_router_on_rebuild is False
+    assert config.new_expert_initialization == "random"
+
+
+def test_cli_can_specify_the_rebuild_treatment_on_the_declared_path(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Section 5.38.3 says a real-scale protocol should carry the treatment.
+
+    Before these flags the declared launch command could not express that at
+    all: `_run_pair_session` built its config from `declared_session_config` and
+    passed no rebuild field, so the treatment was unreachable from the runbook.
+    """
+    config = _run_cli_capturing_config(
+        tmp_path,
+        monkeypatch,
+        ["--preserve-router-on-rebuild", "--new-expert", "clone"],
+    )
+
+    assert config.preserve_router_on_rebuild is True
+    assert config.new_expert_initialization == "clone"
+    # The treatment must not move the geometry the declared prediction reads.
+    assert config.total_steps == 6000
+    assert config.probe_batch_count == 1
+
+
+def test_cli_refuses_clone_without_router_preservation(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """A half-specified treatment is an operator error, not a silent downgrade."""
+    import pytest
+
+    with pytest.raises(SystemExit) as excinfo:
+        _run_cli_capturing_config(tmp_path, monkeypatch, ["--new-expert", "clone"])
+
+    assert "--preserve-router-on-rebuild" in str(excinfo.value)
+
+
 # --- Remote dataset publish-on-exit (--kaggle-dataset) -----------------------
 
 

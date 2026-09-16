@@ -417,6 +417,19 @@ is part of the trail; the launch command refuses a stale or hand-edited one.
 
 ## 2. The launch command (one line, registered as revised)
 
+> **DECISION PENDING (report section 5.46) - read before session 1.**
+> The command below runs the **historical** rebuild
+> (`preserve_router_on_rebuild=False`, `new_expert_initialization="random"`), and until
+> 2026-09-16 there was no flag to do otherwise. Section 5.16 says new work should set
+> `preserve_router_on_rebuild=True`, and section 5.38.3 says a real-scale protocol should
+> be specified with the treatment on; section 5.39 measured the difference on the real
+> path at 0.0517 nats - larger than the clean-arm treatment effect (0.04042) - which is
+> the same order as the quality bar the section 5.44 clause reads. Adopting the treatment
+> is a sign-off decision, not an operator choice. **If it is adopted**, add
+> `--preserve-router-on-rebuild --new-expert clone` to the command below (the flags exist
+> and are tested; nothing else about the command changes). **If it is not**, this run is
+> the untreated configuration on purpose and that must be said in the write-up.
+
 ```bash
 PYTHONPATH=src python -m act.training.cli --mode pair-session \
   --device cuda \
@@ -436,6 +449,10 @@ PYTHONPATH=src python -m act.training.cli --mode pair-session \
 - Everything else defaults correctly: benchmark artifact
   `artifacts/v0-benchmark.json`, `--probe-batch-count 1` (the primary config),
   dataset root `artifacts/datasets`, session dir `artifacts/v0-sessions`.
+- **The rebuild treatment is not in this command** - see the DECISION PENDING callout
+  above. Adding `--preserve-router-on-rebuild --new-expert clone` is the only line that
+  changes if section 5.46 is adopted, and a seed summary records which policy it ran
+  (`config.preserve_router_on_rebuild`), so the two can never be confused after the fact.
 - Do **not** pass `--dtype` (it must equal the measured decision and is only
   there to catch operator error), `--tokens-per-second` (overrides the
   artifact), or `--probe-selection` (that is the control session in §2b).

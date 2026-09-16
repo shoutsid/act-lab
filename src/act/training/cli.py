@@ -220,6 +220,15 @@ def _run_pair_session(args: argparse.Namespace) -> None:
     )
     if not arms:
         raise SystemExit("--session-arms resolved to an empty tuple")
+    if args.new_expert == "clone" and not args.preserve_router_on_rebuild:
+        # V0SessionConfig rejects this combination too; catching it here turns an
+        # operator typo into a clean one-line refusal before any training starts,
+        # the way the --dtype contradiction is handled.
+        raise SystemExit(
+            "--new-expert clone copies rows from the surviving routers and "
+            "requires --preserve-router-on-rebuild (the section 5.24 treatment); "
+            "pass both or neither"
+        )
     # The launch command is the DECLARED protocol run unless --profile asks for
     # the tiny smoke shape, so it must name the declared target explicitly:
     # V0SessionConfig's defaults are the fast dev shape (dev cycle time, not
@@ -230,6 +239,8 @@ def _run_pair_session(args: argparse.Namespace) -> None:
         probe_batch_count=args.probe_batch_count,
         probe_candidate_policy=args.probe_candidate_policy,
         probe_selection=args.probe_selection,
+        preserve_router_on_rebuild=args.preserve_router_on_rebuild,
+        new_expert_initialization=args.new_expert,
         device=args.device,
         dtype=dtype,
         max_checkpoints=MAX_CHECKPOINTS,  # the registered section 5.2 pin (2)
@@ -255,6 +266,8 @@ def _run_pair_session(args: argparse.Namespace) -> None:
             probe_batch_count=args.probe_batch_count,
             probe_candidate_policy=args.probe_candidate_policy,
             probe_selection=args.probe_selection,
+            preserve_router_on_rebuild=args.preserve_router_on_rebuild,
+            new_expert_initialization=args.new_expert,
             validation_batches=2,
             checkpoint_interval=4,
             max_checkpoints=2,
@@ -403,6 +416,24 @@ def main() -> None:
         "default), 'argmax' (inverted control), 'random' (the adopted "
         "pool-matched loss-blind control arm) or 'quietest' (prune the "
         "least-loaded expert in the probed pool, otherwise the probe's pick)",
+    )
+    # The section 5.28 rebuild treatment. Section 5.16 says new work should set
+    # preserve_router_on_rebuild=True and section 5.38.3 says a real-scale
+    # protocol should be specified with it on; before this flag existed the
+    # declared launch command had no way to express that, so it always ran the
+    # historical rebuild. Defaults here are the historical behaviour, so an
+    # unflagged launch is still exactly what every committed run used.
+    parser.add_argument(
+        "--preserve-router-on-rebuild", action="store_true", default=False,
+        help="keep the router's surviving rows across a mutation rebuild "
+        "instead of re-drawing them (section 5.28's treatment; default off = "
+        "the historical rebuild, which is what the committed runs used)",
+    )
+    parser.add_argument(
+        "--new-expert", choices=("random", "clone"), default="random",
+        help="how a grown expert's rows are initialised: 'random' (historical "
+        "default) or 'clone' (copy the nearest existing expert; requires "
+        "--preserve-router-on-rebuild, the section 5.24 treatment)",
     )
     parser.add_argument("--checkpoint-dir", default="artifacts/v0-sessions")
     parser.add_argument("--output", type=Path, default=None)

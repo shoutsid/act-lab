@@ -5981,6 +5981,69 @@ count, so only the pinned row is comparable with the earlier ~140 s.
 Nothing about any criterion changes: the fast path returns the same integer for every
 (input, alpha) tested, and the tests that pin the pre-registered thresholds still pass.
 
+### 5.46 The declared launch path cannot specify the rebuild treatment the report says it should carry (found by auditing the launch command against the adopted sections)
+
+**What was seen.** Three places say what a real-scale V0 run should do about the
+section 5.28 rebuild treatment, and the declared launch path can do none of them:
+
+- Section 5.16: "**New work should set `preserve_router_on_rebuild=True`**, and this
+  paragraph is the reason a reader will find the default looking wrong."
+- Section 5.38.3: "A real-scale protocol **should be specified with the treatment on**, and
+  it should not be sold an effect size on the strength of this."
+- Section 5.39: on the real path, doing nothing beats churning by **0.16449** nats under
+  the historical rebuild and by **0.11279** nats under the repair - the treatment is worth
+  **1.46x** on the exact quantity the gate's quality clause reads.
+
+But `cli._run_pair_session` builds its config as
+`declared_session_config(arms=..., probe_batch_count=..., probe_candidate_policy=...,
+probe_selection=..., device=..., dtype=..., max_checkpoints=...)` - no rebuild field - and
+`declared_session_config` does not set one either, so the declared run inherits the field
+defaults. There was **no CLI flag** for either `preserve_router_on_rebuild` or
+`new_expert_initialization`, and no test or paragraph pinned the declared run's rebuild
+policy. So the declared protocol was registered (section 5.5, 2026-09-14) before the
+treatment existed (sections 5.16-5.28), and the plumbing to specify it was never added:
+an unflagged launch always runs the historical rebuild.
+
+**Why this is the highest-consequence member of this family so far.** The others made a
+check unable to fail; this one makes the run unable to be what the report says it should
+be. The verdict's clauses are read against the published run, so a declared run under the
+historical rebuild would be judged on a configuration the project already decided not to
+use - and the clause added in section 5.44 reads precisely that difference. Section 5.39's
+stored rows say the gap is **0.0517 nats**, which is the same order as the treatment effect
+itself (0.05170 pooled, section 5.38.1) and larger than the clean-arm effect measured from
+scratch (0.04042, n=12). Under the historical rebuild the predicted real-path state is
+"the adaptive arm does not clear the bar", which withholds Gate 4; under the repair it may
+clear it. **The missing flag can decide the gate.**
+
+**What was done now (additive, no default moved).** `act.training.cli` gained
+`--preserve-router-on-rebuild` and `--new-expert {random,clone}`, threaded into
+`declared_session_config` for both the declared and `--profile` shapes. Both default to the
+historical behaviour, so an unflagged launch is byte-for-byte what every committed run
+used; `--new-expert clone` without router preservation is refused with a one-line
+`SystemExit` rather than a traceback. Three tests pin the default (so it cannot drift
+silently), the threaded treatment, and the refusal - and pin that the treatment does not
+move `total_steps` or `probe_batch_count`, the fields the declared cost prediction reads.
+A second, useful fact fell out: the published seed summary already records the whole
+config (`asdict`, 35 fields), so **which rebuild policy a run used is checkable from its
+own artifacts** - the declared blocks' summaries predate the field, which is why this was
+invisible.
+
+**What was deliberately not done.** The runbook's launch command was **not** changed to
+pass the treatment. Registering the declared protocol on it is a sign-off decision, and
+every adopted change to this protocol has a numbered section and a date (section 5.5's
+own precedent); section 5.38.3's clause is an interpretation branch, and the block that
+was meant to license it landed on branch (c) - reported as unresolved, not as a transfer.
+Both options are therefore left open with their consequences stated, and `T4_RUNBOOK.md`
+now carries a **DECISION PENDING** callout at the launch command so the run cannot start
+without noticing.
+
+**Still open, and the next thing to build.** The verdict never compares the published
+run's recorded config against the registered protocol at all, so a run whose configuration
+differs from the registration would be judged as though it were the registration. An
+additive `config_conformance` block (per registered field: matches / differs / not
+recorded, descriptive rather than gating, as section 5.41's band reading is) belongs in the
+verdict; it is deferred only because one of its fields is the decision above.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
