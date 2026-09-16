@@ -68,9 +68,11 @@ class V0SessionConfig:
     target is a 285M-parameter, 24.6M-token-per-arm protocol run whose cycle time
     on a single development GPU is an hour or more, and using it as the default
     made every iteration cost a run. The default here is the measured-fastest
-    small shape (``DEV_V0_CONFIG``, ~14.9M total / 7.6M active) with a 400-step
-    budget: 1.64M tokens per arm, about 1.4 minutes per arm on a GTX 1070
-    (measured end to end on the real TinyStories stream by ``scripts/dev_cycle.py``).
+    small shape (``DEV_V0_CONFIG``, ~14.9M total / 7.6M    active) with a 400-step
+    budget: 1.64M tokens per arm, about 1.1 minutes per arm on a GTX 1070
+    (measured end to end on the real TinyStories stream by ``scripts/dev_cycle.py``,
+    with the dev default's activation checkpointing off - about 1.4 minutes with it
+    on, which is the recompute the dev shape has no memory reason to pay).
     The
     declared target is built explicitly by ``declared_session_config()`` and
     validated by ``validate_declared_v0_config`` whenever ``declared`` is True.
@@ -138,11 +140,16 @@ class V0SessionConfig:
     # no FLOPs counter, and no RNG consumption.
     probe_landscape: bool = False
     validation_batches: int = 4
-    # Session mechanics. The declared config trains with checkpointed
-    # activations (section 5.1); the T4 fit arithmetic in section 5.2 assumes
-    # it. Blocks carry no dropout, so the recompute is deterministic and the
-    # bit-identical resume contract is unaffected.
-    activation_checkpointing: bool = True
+    # Session mechanics. Activation checkpointing trades recompute for memory, so
+    # it belongs where memory is the constraint: the *declared* target (285M) sets
+    # it explicitly for that reason, and section 5.2's T4 fit arithmetic assumes it.
+    # The dev default is OFF, because at the dev shape memory is not a constraint
+    # and the recompute is pure cost - measured on the GTX 1070 at the dev shape,
+    # 60 steps on the real stream, one arm: 13.3 s with it on against 10.1 s off
+    # (1.32x), with **bit-identical losses**. The flag is trajectory-inert by
+    # construction, which report section 5.37 pins as a measured contract entry, and
+    # blocks carry no dropout, so the bit-identical resume contract is unaffected.
+    activation_checkpointing: bool = False
     # Execution dtype (section 5.2's throughput-gated rule): "fp32", or
     # "fp16" = autocast forward/backward with a GradScaler over fp32 master
     # weights. Dtype touches no pre-registered criterion: FLOPs counters
@@ -325,6 +332,9 @@ def declared_session_config(**overrides: object) -> V0SessionConfig:
         "mutation_budget": 3,
         "checkpoint_interval": 500,
         "dtype": "fp16",
+        # Explicit rather than inherited: section 5.2's T4 fit arithmetic assumes
+        # checkpointed activations, and the field default is the (fast) dev value.
+        "activation_checkpointing": True,
     }
     fields.update(overrides)
     config = V0SessionConfig(**fields)  # type: ignore[arg-type]

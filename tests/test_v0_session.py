@@ -88,6 +88,11 @@ def test_session_default_is_the_fast_dev_config_not_the_declared_target() -> Non
     # read as one: at dev scale the probe is 1.5% of training FLOPs, not the
     # declared 0.0942%.
     assert 100.0 * predicted_cost_ratio(default) == pytest.approx(1.5184, abs=5e-3)
+    # Activation checkpointing is a memory device, so the dev default leaves it
+    # off: at the dev shape the recompute is pure cost. Measured on the dev GPU
+    # (60 steps, real stream, one arm): 13.3 s on against 10.1 s off, 1.32x, with
+    # bit-identical losses - the flag is trajectory-inert (report section 5.37).
+    assert default.activation_checkpointing is False
 
 
 def test_declared_session_config_builds_the_protocol_target() -> None:
@@ -99,6 +104,10 @@ def test_declared_session_config_builds_the_protocol_target() -> None:
     assert total == 285_336_576 and active == 134_341_632
     # The declared config doubles as the protocol's cost-ratio input.
     assert 100.0 * predicted_cost_ratio(declared) == pytest.approx(0.0942, abs=5e-4)
+    # ...and section 5.2's T4 fit arithmetic assumes checkpointed activations, so
+    # the declared target sets this explicitly rather than inheriting the (fast)
+    # dev default. Pinned so neither end can drift silently.
+    assert declared.activation_checkpointing is True
 
 
 def test_v0_moe_materialized_counts_match_estimator() -> None:

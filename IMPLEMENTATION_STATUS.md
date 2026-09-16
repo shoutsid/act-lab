@@ -1,5 +1,27 @@
 # ACT Implementation Status
 
+## A free 1.32x on every dev cycle, straight out of the liveness contract (2026-09-16)
+
+Section 5.37's contract established that `activation_checkpointing` is trajectory-inert, and the dev
+config defaulted it to **on** - correct for the declared 285M target (section 5.2's T4 fit arithmetic
+assumes checkpointed activations) and pure recompute cost at the dev shape, where memory is not a
+constraint. Measured on the dev GPU at the dev shape, 60 steps on the real stream, one arm:
+
+| setting | wall | throughput | loss |
+|---|---|---|---|
+| on (the dev default until now) | 13.3 s | 20,145 tok/s | 5.721975 |
+| **off** | **10.1 s** | **25,760 tok/s** | **5.721975 (bit-identical)** |
+
+The off number matches the **documented** dev throughput (25,525 tok/s), so the handbook and the
+configuration had been describing different runs, and every dev cycle - including all 12 sessions of
+section 5.38 - paid about 30% more than it should have.
+
+Fixed: the field default is now `False`, and `declared_session_config()` sets `True` **explicitly** so
+editing a dev default can no longer move the declared target. Both ends pinned in
+`tests/test_v0_session.py`. Section 5.38's results are unaffected (the flag is inert - which is why it
+was safe to act on); only its wall time was, and 5.38.1's 24 sessions now cost ~27 min instead of ~36.
+The suite also got faster (155.6 s -> 138.5 s). Recorded as report section 5.37.1.
+
 ## Section 5.38: the real-path block landed on branch (c), the red-flag branch (2026-09-16)
 
 Six fresh seeds (15210-15215), 12 sessions, ~33 min on the development GPU, base vs clone on the dev

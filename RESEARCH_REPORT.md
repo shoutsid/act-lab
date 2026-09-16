@@ -5049,6 +5049,33 @@ teeth were checked by tampering: making `argmax` behave as `argmin` in the toy p
 to `V0SessionConfig` fails the completeness guard. Invalid values are also asserted to be rejected
 rather than silently ignored, for six fields on the declared path and five on the toy path.
 
+### 5.37.1 What the liveness contract paid for immediately: a free 1.32x on every dev cycle
+
+Section 5.37's contract established that `activation_checkpointing` is **trajectory-inert** - it
+changes no decision, no loss, and no booked FLOP; it trades recompute for memory. The dev config
+defaulted it to **on**, which is the right setting for the declared 285M target (section 5.2's T4 fit
+arithmetic assumes it) and pure cost at the dev shape, where memory is not a constraint.
+
+Measured on the development GPU at the dev shape, 60 steps on the real stream, one arm:
+
+| `activation_checkpointing` | wall | throughput | loss |
+|---|---|---|---|
+| on (the dev default until now) | 13.3 s | 20,145 tok/s | 5.721975 |
+| **off** | **10.1 s** | **25,760 tok/s** | **5.721975 (bit-identical)** |
+
+The off number is the interesting one: it matches the **documented** dev throughput of 25,525 tok/s,
+so the documentation and the configuration had been describing different runs, and every dev cycle -
+including all 12 sessions of section 5.38 - paid about 30% more than the handbook said it should.
+
+**Fixed, with the declared target made explicit rather than inherited.** The field default is now
+`False`; `declared_session_config()` sets `True` explicitly, so section 5.2's T4 arithmetic keeps the
+memory it assumes and can no longer be changed by editing a dev default. Both ends are pinned in
+`tests/test_v0_session.py`, and the comment on the field carries the measurement.
+
+**Section 5.38's results are unaffected** - the flag is inert, which was the point of measuring it
+before acting on it. Only its wall time was affected, and section 5.38.1's 24 sessions now cost about
+27 minutes instead of 36. The test suite got faster for the same reason (155.6 s to 138.5 s).
+
 ### 5.38 Pre-registration: does the rebuild treatment transfer to the declared path?
 
 **Motivation.** Sections 5.24-5.28 measured the mechanism - a mid-training rebuild that re-draws the
