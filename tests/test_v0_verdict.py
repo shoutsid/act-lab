@@ -102,6 +102,111 @@ def _write_seed(
     return destination
 
 
+def test_run_scale_reading_reduces_to_the_registered_band_at_declared_scale() -> None:
+    """At declared scale the run-scale reading IS the registered comparison.
+
+    The point of the reading is that it generalises the band rather than adding a
+    second criterion, so at declared scale its ratio has to equal the registered
+    measured/predicted ratio and its verdict has to equal ``in_tolerance_band``.
+    """
+    from act.training.session_plan import (
+        DECLARED_ACTIVE_PARAMETERS,
+        DECLARED_TOTAL_PARAMETERS,
+        SEED_TOKENS_PER_ARM,
+    )
+
+    pairs = [
+        {"seed": seed, "adaptive_active_parameters": DECLARED_ACTIVE_PARAMETERS}
+        for seed in DECLARED
+    ]
+    declared_total = 2 * DECLARED_TOTAL_PARAMETERS * SEED_TOKENS_PER_ARM * len(pairs)
+    predicted = expected_probe_cost_percent(1)
+    for factor in (0.5, 1.0, 2.0, 3.0):
+        measured = factor * predicted
+        reading = v0_verdict._run_scale_reading(measured, predicted, pairs, declared_total)
+        assert reading["scale_factor_measured_to_declared"] == pytest.approx(1.0, rel=1e-12)
+        assert reading["run_is_at_declared_scale"] is True
+        assert reading["predicted_cost_percent_at_run_scale"] == pytest.approx(
+            predicted, rel=1e-12
+        )
+        assert reading["measured_over_predicted_at_run_scale"] == pytest.approx(
+            factor, rel=1e-12
+        )
+        # The registered band, expressed through the reading's own inputs.
+        assert reading["in_tolerance_band_at_run_scale"] == (
+            0.5 <= factor <= 2.0
+        ) == (tolerance_band(1)[0] <= measured <= tolerance_band(1)[1])
+        assert "declared scale" in reading["reading"]
+
+
+def test_run_scale_reading_is_descriptive_and_moves_no_registered_field(
+    tmp_path: Path,
+) -> None:
+    """A reduced-scale block reports the identity at its own scale, not a false miss.
+
+    The registered reading is pinned to the value the block produced before this
+    reading existed, so the addition cannot have moved a criterion.
+    """
+    dataset_root = tmp_path / "datasets"
+    # A block at 1/1000 of the declared training budget, measuring the declared
+    # prediction's worth of search FLOPs - by construction a band miss.
+    training = TRAINING_FLOPS_PER_SEED
+    for seed in DECLARED:
+        _write_seed(
+            dataset_root,
+            seed,
+            adaptive_loss=1.0,
+            random_loss=1.1,
+            search_flops=_in_band_search_flops(1),
+            training_flops=training,
+        )
+    verdict = v0_verdict.compute_verdict(dataset_root, probe_batch_count=1)
+    # Registered fields, unchanged by the new reading.
+    assert verdict["in_tolerance_band"] is True
+    assert verdict["predicted_cost_percent"] == expected_probe_cost_percent(1)
+    assert verdict["tolerance_band_percent"] == list(tolerance_band(1))
+    reading = verdict["run_scale"]
+    assert reading["descriptive_only"] is True
+    assert reading["run_is_at_declared_scale"] is False
+    assert reading["measured_over_predicted_at_run_scale"] != pytest.approx(1.0, rel=0.5)
+    assert reading["in_tolerance_band_at_run_scale"] is False
+    assert not reading["reading"].startswith("declared scale")
+    # Internally consistent: the ratio is the two percentages it names, and the
+    # in-band flag is that ratio against the registered [0.5, 2] band.
+    assert reading["measured_over_predicted_at_run_scale"] == pytest.approx(
+        reading["measured_cost_percent"]
+        / reading["predicted_cost_percent_at_run_scale"]
+    )
+    assert verdict["band_reading"] == reading["reading"]
+
+
+def test_the_committed_real_path_block_confirms_the_identity_at_its_own_scale() -> None:
+    """The only real-path execution of the protocol, read at the scale it ran at.
+
+    Section 5.3 ran the section 5.1 machinery over seeds 9000-9011 at reduced
+    fidelity. Its committed verdict reports ``in_tolerance_band`` false because the
+    registered band is derived at the declared model size and token budget, which that
+    run is ~10.7x away from - a mismatch that no accounting error could ever fix. Read
+    at the scale it executed at, the same numbers are a confirmation of the identity.
+    """
+    dataset_root = ROOT / "artifacts" / "real-proof" / "datasets"
+    if not dataset_root.exists():  # pragma: no cover - artifacts are committed
+        pytest.skip("committed section 5.3 dataset is absent")
+    verdict = v0_verdict.compute_verdict(
+        dataset_root, probe_batch_count=1, declared_seeds=tuple(range(9000, 9012))
+    )
+    # The registered reading stands exactly as the committed artifact records it.
+    assert verdict["in_tolerance_band"] is False
+    assert verdict["verdict"] == "PASS_COST_ONLY_HARM_GUARD_REJECTS"
+    reading = verdict["run_scale"]
+    assert reading["run_is_at_declared_scale"] is False
+    assert reading["scale_factor_measured_to_declared"] == pytest.approx(10.6983, rel=2e-4)
+    assert reading["measured_over_predicted_at_run_scale"] == pytest.approx(
+        1.000286, rel=2e-4
+    )
+    assert reading["in_tolerance_band_at_run_scale"] is True
+
+
 def _in_band_search_flops(probe_batch_count: int = 1, factor: float = 1.0) -> int:
     """Search FLOPs per seed measuring exactly ``factor`` x the prediction."""
     ratio = factor * expected_probe_cost_percent(probe_batch_count) / 100.0

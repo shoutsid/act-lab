@@ -1,5 +1,65 @@
 # ACT Implementation Status
 
+## Section 5.41: the Gate-4 verdict's tolerance band could only be passed at declared scale (2026-09-16)
+
+Found by reading the two committed real-path verdicts. Both record `in_tolerance_band:
+false`, and the registered rules make a band miss a qualification that "forces
+derivation before Gate 4" - so for two sections they have read as a miss.
+
+**They could not have done anything else.** `compute_verdict` takes the measured cost
+from the run's booked FLOPs but derives the band from `expected_probe_cost_percent`,
+which is pinned to the **declared** V0 shape (285,336,576 / 134,341,632, 24,576,000
+tokens/arm). The section 5.3 block ran 600 steps on a ~12.2M-parameter model -
+**10.6983x** from the declared scale - so the check was measuring the distance between
+the run and the declaration, not between the measurement and the identity.
+
+**The fix is the registration's own rationale applied.** Section 5.1 already justifies
+the band's slack by saying every architectural deviation "enters the identity as a
+bounded multiplicative factor on `N_active` or `D`", so the factor is applied
+explicitly from the run's own numbers:
+`C(run) = C_declared x (T_declared / T_measured) x (N_run / N_declared)`, which reduces
+to the registered comparison exactly at declared scale.
+
+| block | scale, measured/declared | measured/predicted **at the run's own scale** | registered `in_tolerance_band` |
+|---|---|---|---|
+| `real-proof` (real TinyStories, 9000-9011) | 10.6983x | **1.000286** | false |
+| `local-proof` (synthetic tokens, 9000-9011) | 10.6631x | **1.000278** | false |
+
+**The only real-path execution of the compute-efficiency protocol confirms its own cost
+identity to 3 parts in 10,000** (with a +0.03% systematic overshoot on both blocks),
+while both artifacts report a miss.
+
+**Additive only.** `in_tolerance_band`, `predicted_cost_percent`, `tolerance_band_percent`
+and the verdict string are unchanged - verified by re-running the verdict over both
+committed blocks (`PASS_COST_ONLY_HARM_GUARD_REJECTS` in each, as committed). The new
+`run_scale` block is labelled `descriptive_only`, no threshold or rule moves, and the
+report does not spend the reading as a criterion. What it buys is legibility on the run
+that decides the gate: a declared queue that deadline-stops, resumes, or is pre-flighted
+at reduced fidelity now says which reading applies. The declared numbers were also
+inlined inside `expected_probe_cost_percent`; they are now named constants
+(`DECLARED_TOTAL_PARAMETERS`, `DECLARED_ACTIVE_PARAMETERS`, `PROBE_TOKENS_PER_BATCH`,
+`DECLARED_EVENTS`, `DECLARED_CANDIDATES`) so the re-derivation cannot drift from the
+prediction - unchanged to the last digit, `0.0941636252059042`.
+
+**Third instance of a pattern.** Same family as section 5.33's `forced_operation` no-op
+and section 5.37's unclassified field: **a check that cannot be passed on the input it is
+applied to.** This one sat in the artifact that decides Gate 4. Pinned by three tests in
+`tests/test_v0_verdict.py` (exact reduction at declared scale, the additive contract on a
+reduced-scale fixture, and the committed section 5.3 block's own numbers).
+
+## Section 5.40: registered, deliberately not run (2026-09-16)
+
+The deployed-configuration adaptive-vs-null block was registered and committed
+(`e7e0b0f`) and then stopped after 5 of 24 sessions (seeds 15240-15242). Two measured
+reasons, not a change of mind: the registered shape costs ~200 s/seed (135 s pair + 67 s
+null), i.e. ~40 min of GPU for the block; and a long run **cannot** outlive its launching
+shell here - a backgrounded attempt died with the shell that started it - so it can only
+be bought in foreground chunks, which is time this project has twice been told is not
+worth spending. No statistics are reported from the partial rows (scratch only, no
+summary, no verdict). The registration stands, its prediction is sourced from the
+disclosed post-hoc diagnostic (reproducible from committed rows by `--summarize`), and
+the runner is resumable for whenever the GPU time is worth it.
+
 ## Section 5.39: churn harm is a property of churn, not of the rebuild (2026-09-16)
 
 18 paired seeds (the section 5.38/5.38.1 queues), dev fidelity, real TinyStories stream: 18 new

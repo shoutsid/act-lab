@@ -14,6 +14,15 @@ from dataclasses import dataclass
 
 # Declared protocol budget (section 5.1): batch 2 x context 2048 x 6000 steps.
 SEED_TOKENS_PER_ARM = 24_576_000
+# The declared V0 model's sizes, named rather than inlined so that anything
+# re-deriving the identity's scale factor reads the same numbers the
+# prediction does (`expected_probe_cost_percent` below).
+DECLARED_TOTAL_PARAMETERS = 285_336_576
+DECLARED_ACTIVE_PARAMETERS = 134_341_632
+# Per-batch probe token shape and the declared search shape (section 5.1).
+PROBE_TOKENS_PER_BATCH = 4_096
+DECLARED_EVENTS = 3
+DECLARED_CANDIDATES = 4
 
 # Session model (section 5.2). A Kaggle GPU session offers 12 hours; after
 # boot, restore, and the publish reserve, ~9.0 h of usable work remain.
@@ -207,14 +216,15 @@ def expected_probe_cost_percent(probe_batch_count: int) -> float:
     tokens/arm; E = 3 events; k = 4 candidates; probe tokens = 4,096 per
     batch), not from a re-fit.
     """
-    total = 285_336_576
-    active = 134_341_632
-    events = 3
-    candidates = 4
-    probe_tokens_per_batch = 4_096
-    training_tokens = SEED_TOKENS_PER_ARM
-    search = events * candidates * probe_batch_count * probe_tokens_per_batch * 2 * active
-    training = 2 * total * training_tokens
+    search = (
+        DECLARED_EVENTS
+        * DECLARED_CANDIDATES
+        * probe_batch_count
+        * PROBE_TOKENS_PER_BATCH
+        * 2
+        * DECLARED_ACTIVE_PARAMETERS
+    )
+    training = 2 * DECLARED_TOTAL_PARAMETERS * SEED_TOKENS_PER_ARM
     return 100.0 * search / training
 
 

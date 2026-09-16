@@ -5654,6 +5654,85 @@ resumable and budget-aware.
 **Execution.** `scripts/deployed_vs_null_study.py` (`--run`, `--summarize`), summary
 `artifacts/study-summaries/real-path-deployed-vs-null.json`.
 
+**Status: REGISTERED, not yet run.** Five of the twenty-four sessions were executed
+(seeds 15240-15242) and then the block was stopped deliberately. Two reasons, both
+recorded rather than left implicit: the registered shape costs ~200 s per seed
+(135 s pair + 67 s null), so the block is ~40 min of GPU; and a long run **cannot** be
+made to outlive its launching shell in this environment, so it cannot be bought in the
+background while other work proceeds - it can only be bought in foreground chunks, which
+is the cost this project's own operator has now twice said is not worth paying. No
+statistics are reported from the partial rows: they are scratch
+(`artifacts/real-path-null-study/runs.jsonl`), no summary was written, and nothing here
+is a verdict. The registration stands as written, and its prediction is sourced from the
+disclosed diagnostic above, which is reproducible from committed rows (`--summarize`
+recomputes the registration's table as a built-in check). The runner is resumable, so
+the block can be finished in one sitting whenever the GPU time is worth spending.
+
+### 5.41 The tolerance band could only be passed at the declared scale (found by reading the committed verdicts)
+
+**What was seen.** Both committed real-path verdicts - `artifacts/real-proof/verdict.json`
+(real TinyStories, seeds 9000-9011, section 5.3) and `artifacts/local-proof/verdict.json`
+(synthetic tokens, same seeds) - record `in_tolerance_band: false`. The registered
+decision rules make a band miss a `PASS_WITH_QUALIFICATION` that "forces re-derivation
+before Gate 4", so the two artifacts have read as a band miss since section 5.3.
+
+**Why they cannot have done anything else.** `compute_verdict` takes the measured
+`cost_percent` from the run's own booked FLOPs, but derives the band from
+`expected_probe_cost_percent`, which is pinned to the **declared** V0 shape
+(285,336,576 total / 134,341,632 active, 24,576,000 tokens per arm). The section 5.3
+block executed 600 steps on a ~12.2M-parameter model - **10.6983x** away from the
+declared scale. No accounting behaviour, correct or incorrect, could have landed inside
+that band: the check was measuring the distance between the run and the declaration
+rather than between the measurement and the identity.
+
+**The fix is the registration's own rationale, applied.** Section 5.1 justifies the
+band's slack by saying "every architectural deviation between toy and V0 (per-layer
+expert share, parameter growth, batch shape) enters the identity as a bounded
+multiplicative factor on `N_active` or `D`". So the factor is applied explicitly, from
+the run's own numbers:
+
+```text
+C(run) = C_declared x (T_declared / T_measured) x (N_run / N_declared)
+```
+
+which reduces to the registered comparison exactly at declared scale, where both factors
+are 1. It is a generalisation of the registered check, not a second criterion.
+
+| block | scale, measured/declared | measured / predicted **at the run's own scale** | registered `in_tolerance_band` |
+|---|---|---|---|
+| `real-proof` (real TinyStories) | 10.6983x | **1.000286** | false |
+| `local-proof` (synthetic tokens) | 10.6631x | **1.000278** | false |
+
+**So the only real-path execution of the compute-efficiency protocol confirms its own
+cost identity to 3 parts in 10,000** - with a small systematic +0.03% overshoot on both
+blocks - while both artifacts report a miss. The identity was never in doubt here; the
+check was applied at the wrong scale.
+
+**What moved, and what did not.** Additive only: a `run_scale` block and a
+`band_reading` string. `in_tolerance_band`, `predicted_cost_percent`,
+`tolerance_band_percent` and the verdict string are unchanged, verified by re-running the
+verdict over both committed blocks (`PASS_COST_ONLY_HARM_GUARD_REJECTS` in each, exactly
+as committed). No threshold, criterion or rule moves, the new reading is labelled
+`descriptive_only`, and the report does not spend it as a criterion - the band's own
+qualification still fires. What it buys is legibility on the run that decides the gate:
+a declared queue that deadline-stops, resumes, or is pre-flighted at reduced fidelity now
+says *which* reading applies instead of reporting a miss that no accounting error could
+have avoided. The declared numbers were also inlined inside
+`expected_probe_cost_percent`; they are now named constants
+(`DECLARED_TOTAL_PARAMETERS`, `DECLARED_ACTIVE_PARAMETERS`, `PROBE_TOKENS_PER_BATCH`,
+`DECLARED_EVENTS`, `DECLARED_CANDIDATES`) so the re-derivation reads the same numbers the
+prediction does - prediction unchanged to the last digit, `0.0941636252059042`.
+
+Pinned by three tests in `tests/test_v0_verdict.py`: the exact reduction to the
+registered band at declared scale, the additive contract on a reduced-scale fixture, and
+the committed section 5.3 block's own numbers.
+
+**Recorded as a pattern.** This is the third instance of the same family as section
+5.33's `forced_operation` no-op and section 5.37's unclassified field: **a check that
+cannot be passed on the input it is applied to.** This one is worth the write-up because
+it sat inside the artifact that decides Gate 4, and because its output was a
+qualification that reads as a finding about the hypothesis.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
