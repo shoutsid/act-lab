@@ -1,5 +1,38 @@
 # ACT Implementation Status
 
+## Section 5.43: the declared Gate-4 verdict path is rehearsed before the spend (2026-09-16)
+
+`scripts/verdict_rehearsal.py` builds synthetic **declared-scale** fixtures
+(285,336,576 / 134,341,632, 24,576,000 tokens per arm, all three queues) and applies the
+real `compute_verdict` to 14 variants - every withholding clause in isolation, both
+absent-queue and both short-queue cases, and the three precedence combinations. Record
+`artifacts/study-summaries/gate4-verdict-rehearsal.json`, pinned by
+`tests/test_gate4_rehearsal.py` (9 tests; 5 tampers each fail, restored passes).
+
+**Why it was worth doing before the spend:** sections 5.41 and 5.42 both found defects in
+this machinery by reading it, and the verdict is otherwise applied exactly once, at the end
+of a multi-hour Kaggle run - so a wiring error would have surfaced as a confidently wrong
+answer with nothing to compare it against.
+
+| | settled |
+|---|---|
+| **Label precedence** | Verified, not just documented: cost FAIL > harm guard > pool-matched control > null > missing control > missing null > band miss. The outranked clauses' flags are recorded, so the labels are precedence and not absence. |
+| **`primary_queue_short`** | An incomplete primary queue gives an ordinary `PASS`, exit 0, and `gate_4_authorized: False` - the completeness requirement lives in the flag, not the label, so a label-only reader misreads it. Now pinned. |
+| **5.41 + 5.42 hold at declared scale** | Every fixture reports `run_is_at_declared_scale` with both band readings agreeing, and both short-queue variants return `..._MISSING`. |
+| **Exactly one authorizing variant** | `all_clear`, exit 0. Cost failures exit 1 and nothing else does. |
+
+**It caught my own unit error.** A first pass expressed both cost variants as "6x the
+prediction"; the prediction is itself a percentage (0.0942%), so 6x is 0.565% - inside the
+5% criterion. The machinery returned `PASS_WITH_QUALIFICATION` and `HARM_GUARD_REJECTS`
+where the rehearsal had written `FAIL`, and its own check reported the drift; crossing 5%
+takes a multiple above 53.1. A check now ties each variant's cost to its knob - the same
+family as section 5.41, committed one section after writing it up.
+
+**Not evidence.** No session ran and every loss is fabricated; the record carries
+`synthetic: true` and says it validates the decision path rather than the hypothesis, both
+pinned. `--check` exits non-zero on drift, and `T4_RUNBOOK.md` step 0 runs it before
+session 1.
+
 ## Section 5.42: a short pool-matched control made its own clause unfireable (2026-09-16)
 
 Found by comparing two sibling clause evaluators that should behave alike. `_null_block`

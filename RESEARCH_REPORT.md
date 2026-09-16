@@ -5777,6 +5777,77 @@ measure** - a knob that never binds, a field nothing reads, a band applied at th
 scale, a threshold its own input is too short to reach. All four were found by reading,
 none by running a study, and all four sat in machinery the project was about to rely on.
 
+### 5.43 Rehearsing the declared Gate-4 verdict path before spending the GPU time
+
+**Why this exists.** The verdict is applied exactly once, at the end of a multi-hour
+Kaggle spend. Every clause in it had a unit test at *some* scale, but the whole path had
+never run together, at declared scale, in the configuration the real run will be in - and
+sections 5.41 and 5.42 both found defects in exactly that machinery, while reading it.
+Leaving the first end-to-end run to be the real one means either defect would have
+produced a confidently wrong answer at the end of the spend, with nothing to compare it
+to.
+
+**What it does.** `scripts/verdict_rehearsal.py` builds synthetic declared-scale fixtures
+(285,336,576 total / 134,341,632 active, 24,576,000 tokens per arm, all three queues) and
+applies the real `compute_verdict` to **fourteen** variants: every withholding clause in
+isolation, both absent-queue cases, both short-queue cases, and the three combinations
+whose label precedence is documented in `compute_verdict`'s own comment and, before this,
+only one pair of which had ever been tested. The truth table is written to
+`artifacts/study-summaries/gate4-verdict-rehearsal.json` and pinned by
+`tests/test_gate4_rehearsal.py`.
+
+```text
+ok  all_clear                              PASS                                         exit 0 AUTHORIZES
+ok  cost_over_criterion                    FAIL                                         exit 1
+ok  harm_guard_rejects                     PASS_COST_ONLY_HARM_GUARD_REJECTS            exit 2
+ok  pool_control_passes                    PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES   exit 2
+ok  null_clause_rejects                    PASS_COST_ONLY_NULL_REJECTS                  exit 2
+ok  band_miss_at_declared_scale            PASS_WITH_QUALIFICATION                      exit 2
+ok  control_absent                         PASS_COST_ONLY_CONTROL_MISSING               exit 2
+ok  control_short                          PASS_COST_ONLY_CONTROL_MISSING               exit 2
+ok  null_queue_absent                      PASS_COST_ONLY_NULL_MISSING                  exit 2
+ok  null_queue_short                       PASS_COST_ONLY_NULL_MISSING                  exit 2
+ok  primary_queue_short                    PASS                                         exit 0
+ok  cost_fail_beats_every_other_clause     FAIL                                         exit 1
+ok  harm_guard_beats_pool_control_and_null PASS_COST_ONLY_HARM_GUARD_REJECTS            exit 2
+ok  pool_control_beats_null_clause         PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES   exit 2
+```
+
+**Three things the rehearsal settled that no earlier test did.**
+
+1. **The label precedence is real, not just a comment.** With the harm guard, the
+   pool-matched clause and the null clause *all live at once*, the label is the harm
+   guard's; with the pool-matched and null clauses live, it is the pool-matched one. The
+   outranked clauses' own flags are recorded alongside, so the labels are precedence
+   rather than the absence of the other clauses. Cost failure outranks all of them and is
+   the only exit 1.
+2. **`primary_queue_short` is the subtle row.** One seed missing from the primary queue
+   yields an ordinary `PASS` at exit 0 **and** `gate_4_authorized: False`: the completeness
+   requirement lives in the authorization flag, not in the label, so a reader keying on
+   the label alone misreads it. Now pinned explicitly.
+3. **The section 5.41 and 5.42 fixes hold at declared scale, through the real path.**
+   Every fixture reports `run_is_at_declared_scale` and the two band readings agree, and
+   both short-queue variants come back `..._MISSING` - the 5.42 guard firing end to end
+   rather than only in its own unit test.
+
+**It also caught my own unit error, which is the best evidence that it does something.**
+The first pass expressed both cost variants as "6x the prediction", but the prediction is
+itself a percentage (0.0942%), so 6x is 0.565% - comfortably *inside* the 5% criterion.
+The machinery returned `PASS_WITH_QUALIFICATION` and `HARM_GUARD_REJECTS` where the
+rehearsal had written `FAIL`, and its own check reported the drift. Crossing the 5%
+criterion takes a multiple above 53.1. A built-in check now ties each variant's measured
+cost to its knob, so the unit slip cannot recur silently. That is the same family as
+section 5.41 - a quantity compared against a threshold in the wrong units - committed by
+the author of section 5.41, one section later.
+
+**What it is not.** No session ran; every loss is fabricated. The record carries
+``synthetic: true`` and states that it validates the decision path rather than the
+hypothesis, and a test pins both, because a record that could be read as evidence would be
+worse than no record. Its use is as a pre-flight:
+`PYTHONPATH=src python scripts/verdict_rehearsal.py --check` exits non-zero if any
+variant's label, exit code or authorization stops matching the registered rule, and
+`T4_RUNBOOK.md` step 0 now calls it before session 1.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

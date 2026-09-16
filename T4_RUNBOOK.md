@@ -33,6 +33,22 @@ no-re-tuning rule are all untouched.
 
    The Kaggle image ships `torch` and the `kaggle` package; nothing to install.
 
+1b. **Rehearse the verdict path (no GPU, ~1 s).** The verdict in §4 is applied
+   once, at the end of the whole spend. Two defects have already been found in
+   that machinery by reading it (report sections 5.41, 5.42), so run its
+   rehearsal before the spend rather than discovering a wiring error after it:
+
+   ```bash
+   PYTHONPATH=src python scripts/verdict_rehearsal.py --check
+   ```
+
+   It applies the real `compute_verdict` to synthetic declared-scale fixtures -
+   every withholding clause, both absent-queue and both short-queue cases, and
+   the label-precedence combinations - and exits non-zero if any variant's
+   label, exit code or Gate-4 authorization stops matching the registered rule.
+   It trains nothing and is not evidence about the hypothesis; it shows the
+   decision path intact. Section 5.43 records the truth table.
+
 2. **Working layout.** All commands run from the repository root with
    `PYTHONPATH=src`. The two persistent roots are:
    - `artifacts/datasets/` — the versioned checkpoint dataset (the Kaggle
