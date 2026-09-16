@@ -4983,6 +4983,72 @@ them sequentially, or two at a time at most. (2) A resumed arm reports a meaning
 (687 billion in one run) because it books the arm's full token budget against a near-zero wall; read
 the loss columns on a resumed run, not the throughput column.
 
+### 5.37 A measured liveness contract over both configuration surfaces
+
+**Why this exists.** Section 5.33 found `prune_expert_policy` inert on the probe-guided path and
+section 5.34 found `forced_operation` inert on it too: both are *declared* config fields that no
+code path reads under the policy the block was running, so registered compute was spent on a
+mechanism that was never applied. That happened twice, in the same way, and each time the only
+thing that caught it was someone reading the code afterwards. A config field is a promise; nothing
+was checking it.
+
+`tests/test_config_liveness.py` now checks it. Every field of `V0SessionConfig` and
+`ExperimentConfig` (35 each) is classified, and **each classification is measured** at a tiny shape
+rather than argued from reading: flipping a field must move the recorded trajectory where the
+contract says it moves, and must not where the contract says it must not. Channels are separated -
+selected mutations, losses, validation, booked FLOPs, probe losses, and the stored record - so
+"bookkeeping only" is a claim the file can test. A field that is not classified anywhere **fails the
+completeness guard**, which is the check whose absence let 5.34's forced-operation block be declared,
+registered and run as a duplicate of the forced-grow block.
+
+**What it confirms.** Both known no-ops are now pinned in their cleanest form - the probe-guided arm
+running **alone** is bit-identical under either flip, while the same flip on the random arm moves the
+trajectory:
+
+| field | probe-guided arm, alone | random arm |
+|---|---|---|
+| `prune_expert_policy` | **bit-identical** (section 5.33) | moves |
+| `forced_operation` | **bit-identical** (section 5.34) | moves |
+
+So both are scoped facts about the probe path rather than dead fields, and wiring either into the
+probe path now fails the table instead of silently contradicting 5.33/5.34. The same run also
+verified two claims that had only been documented, not measured: `probe_landscape` changes the stored
+record while changing **no** decision and **no** booked FLOPs, exactly as its comment says; and
+`activation_checkpointing`, the checkpoint-interval/count/byte fields are trajectory-inert.
+
+**One notable correction to a reporting knob.** `validation_batches` is not reporting-only: it
+consumes the arm's RNG, so it moves the final loss on every seed measured while leaving every
+selected mutation identical. It is classified as a trajectory field for that reason, not as a
+reporting field.
+
+**Hazards the contract now records, each measured rather than assumed.** (1) `probe_scoring` does
+nothing when the applied rebuild already *is* the historical default - the arm has to carry a
+treatment for the scoring mismatch to exist at all, which is precisely why 5.34's block needed
+`preserve_router_on_rebuild`/`clone` arms. (2) `optimizer_reset_steps` does nothing when a reset step
+coincides with a mutation step on a **mutating** arm, because the rebuild has already discarded Adam.
+Section 5.23's control is unaffected - its reset twin is the `fixed` arm, which never mutates - but
+that design re-used on a mutating arm would measure zero. (3) `probe_force_events` is a modifier and
+is inert without `probe_force_candidate`. (4) Under the default shared arm RNG, a change to the
+random arm perturbs the probe arm's *numbers* without changing its *decisions* (section 9.8's
+coupling), which is how a first pass over the same fields produced a spurious "the probe arm moved"
+reading; arm-scoped claims are therefore measured with a single arm.
+
+**A liveness flip is only as good as its value, and this was measured too.**
+`adaptive_load_threshold` moves nothing at `0.5 -> 0.9` and everything at `0.05 -> 0.95` (6/6 seeds):
+a mid-range flip does not cross the controller's decision boundary and would have been misread as a
+dead knob. Thresholds are flipped to their extremes, indices to a value that is *not* the argmin
+default, and a budget that needs a longer horizon to bind is flipped with that horizon set.
+
+**The declared path came out clean.** No field on `V0SessionConfig` reaches no decision. That is the
+expected reading after section 5.35's repair, and it is now a standing assertion rather than an
+assumption.
+
+**Cost and teeth.** 20 tests, 9.6 s, tiny shapes, run as part of the normal suite. The contract's
+teeth were checked by tampering: making `argmax` behave as `argmin` in the toy path fails the
+`probe_selection` row ("a declared knob that reaches no decision"), and adding an unclassified field
+to `V0SessionConfig` fails the completeness guard. Invalid values are also asserted to be rejected
+rather than silently ignored, for six fields on the declared path and five on the toy path.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

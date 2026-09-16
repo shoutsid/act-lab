@@ -1,5 +1,42 @@
 # ACT Implementation Status
 
+## The config surface is now checked instead of promised (2026-09-16)
+
+Sections 5.33 and 5.34 both found the same thing the hard way: a *declared* config field that
+no code path reads under the policy the block was running, so registered compute went into a
+mechanism that was never applied. Nothing was checking the config surface, so the only thing that
+caught either case was reading the code afterwards.
+
+`tests/test_config_liveness.py` now checks it. Every field of `V0SessionConfig` and
+`ExperimentConfig` (35 each) is classified, and each classification is **measured** at a tiny shape:
+flipping a field must move the recorded trajectory where the contract says it moves and must not
+where it says it must not, with decisions, losses, validation, booked FLOPs, probe losses and the
+stored record separated so that "bookkeeping only" is testable. An **unclassified field fails the
+completeness guard** - the check whose absence let 5.34's forced-operation block run as a duplicate
+of the forced-grow block.
+
+Measured facts now pinned rather than assumed:
+
+- `prune_expert_policy` and `forced_operation` are **bit-identical on the probe-guided arm running
+alone**, and move the random arm's trajectory. Both are scoped facts about the probe path, not dead
+fields, and wiring either into the probe path now fails the table.
+- `probe_scoring` is inert when the applied rebuild already *is* the historical default - the
+dependency 5.34 relied on - and live otherwise.
+- `probe_landscape` changes the stored record with no change to any decision and no change to booked
+FLOPs, exactly as documented.
+- `validation_batches` is **not** reporting-only: it consumes the arm's RNG and moves the final loss
+while leaving every selected mutation identical.
+- Hazards: `optimizer_reset_steps` is masked when it collides with a mutation step on a *mutating*
+arm (the rebuild already discards Adam; 5.23's `fixed`-arm control is unaffected);
+`probe_force_events` is a modifier, inert without `probe_force_candidate`.
+- A flip is only as good as its value: `adaptive_load_threshold` moves nothing at `0.5 -> 0.9` and
+everything at `0.05 -> 0.95` (6/6 seeds), so a mid-range flip would have been misread as a dead knob.
+
+The declared path came out clean - no field on `V0SessionConfig` reaches no decision - which is now a
+standing assertion rather than an assumption. 20 tests, 9.6 s. Teeth checked by tampering: making
+`argmax` behave as `argmin` fails the `probe_selection` row, and adding an unclassified field fails
+the completeness guard. Recorded as report section 5.37.
+
 ## The declared path had the section 5.24 defect too (2026-09-16)
 
 While porting section 5.34's fix, reading `rebuild_v0_moe_from_genome` showed it had the
