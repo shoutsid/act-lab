@@ -23,6 +23,7 @@
     0.06758838891983032
    ],
    "permutation_p": 0.01559922003899805,
+   "sample_sd": 0.06556787990657989,
    "sign_test_min_wins": 6,
    "sign_test_p": 0.015625,
    "sign_test_passes": true,
@@ -45,6 +46,7 @@
     0.11965405941009521
    ],
    "permutation_p": 0.06369681515924204,
+   "sample_sd": 0.06297564077049908,
    "sign_test_min_wins": 6,
    "sign_test_p": 0.34375,
    "sign_test_passes": false,
@@ -67,6 +69,7 @@
     -0.05206567049026489
    ],
    "permutation_p": 0.0623968801559922,
+   "sample_sd": 0.08838755155303298,
    "sign_test_min_wins": 6,
    "sign_test_p": 0.34375,
    "sign_test_passes": false,
@@ -131,7 +134,7 @@
    "clone": 9
   }
  },
- "kind": "real-path-clone-dev",
+ "kind": "real-path-clone-dev-5.38",
  "n_permutations": 20000,
  "outcome": {
   "branch_a_all_primaries_pass": false,
@@ -144,6 +147,8 @@
   {
    "adaptive_base": 3.6582160592079163,
    "adaptive_clone": 3.5439770817756653,
+   "adaptive_events_base": 3,
+   "adaptive_events_clone": 3,
    "random_base": 3.7181748747825623,
    "random_clone": 3.5997588634490967,
    "random_events_base": 3,
@@ -153,6 +158,8 @@
   {
    "adaptive_base": 3.7709800601005554,
    "adaptive_clone": 3.6611366271972656,
+   "adaptive_events_base": 3,
+   "adaptive_events_clone": 3,
    "random_base": 3.7988998889923096,
    "random_clone": 3.651194751262665,
    "random_events_base": 3,
@@ -162,6 +169,8 @@
   {
    "adaptive_base": 3.897443115711212,
    "adaptive_clone": 3.6477063298225403,
+   "adaptive_events_base": 3,
+   "adaptive_events_clone": 3,
    "random_base": 3.8029146790504456,
    "random_clone": 3.6334489583969116,
    "random_events_base": 3,
@@ -171,6 +180,8 @@
   {
    "adaptive_base": 3.724275231361389,
    "adaptive_clone": 3.5644810795783997,
+   "adaptive_events_base": 3,
+   "adaptive_events_clone": 3,
    "random_base": 3.675034463405609,
    "random_clone": 3.6057158708572388,
    "random_events_base": 3,
@@ -180,6 +191,8 @@
   {
    "adaptive_base": 3.8766876459121704,
    "adaptive_clone": 3.7883575558662415,
+   "adaptive_events_base": 3,
+   "adaptive_events_clone": 3,
    "random_base": 3.6050525307655334,
    "random_clone": 3.6124695539474487,
    "random_events_base": 3,
@@ -189,6 +202,8 @@
   {
    "adaptive_base": 3.763868510723114,
    "adaptive_clone": 3.6962801218032837,
+   "adaptive_events_base": 3,
+   "adaptive_events_clone": 3,
    "random_base": 3.7432122230529785,
    "random_clone": 3.7952778935432434,
    "random_events_base": 3,

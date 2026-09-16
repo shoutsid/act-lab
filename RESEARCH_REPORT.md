@@ -5222,9 +5222,16 @@ reported beside it.
 
 **Size, from the observed dispersion.** sd 0.0884, planning effect 0.0742: n = 8 clears a one-sided
 paired t at `alpha = 0.05` with essentially no margin, n = 12 clears it comfortably. **n = 12 fresh
-seeds is declared**, because sizing to the point estimate with no margin is how this block got its
-optimistic power argument in the first place. Twelve seeds x two settings at ~90 s is about 36
-minutes.
+seeds is declared** - `15220-15231`, disjoint from every seed block above and from the spent pilot -
+because sizing to the point estimate with no margin is how this block got its optimistic power
+argument in the first place.
+
+**Artifacts and cost.** Runner `scripts/real_path_block.py --profile 5.38.1` (the same resumable,
+budget-capped runner, with the two blocks' runs keyed by profile so a seed can never be silently
+reused across them), summary `artifacts/study-summaries/real-path-clone-dev-n12.json`. Per-primary
+alpha is `0.05` here rather than `0.025`, because this block declares **one** primary; the exact sign
+test is still reported beside the permutation test. Cost: 24 sessions at ~68 s each - the dev shape
+with the fast default of section 5.37.1 - so about **27 minutes**, against 36 before that fix.
 
 **Pre-registered interpretation.** A pass establishes the transfer on the clean arm at dev fidelity
 and lets the adaptive arm's package be reported as package plus rebuild. A failure is then a real
