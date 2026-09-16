@@ -72,6 +72,27 @@ TRUTH_TABLE = {
     # Complete queues, clean clauses, one seed missing from the primary: the label is an
     # ordinary PASS but authorization is withheld by the completeness requirement.
     "primary_queue_short": ("PASS", False),
+    # The state the dev-fidelity evidence predicts: adaptive 6/12 against its own churn
+    # arm (a tie, no edge), the loss-blind control 6/12 likewise, and the do-nothing
+    # clause satisfied so nothing else can catch it. Before section 5.44 this AUTHORIZED
+    # Gate 4; the completed clause 3 withholds it.
+    "control_ties_adaptive_nobody_demonstrates_an_edge": (
+        "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE",
+        False,
+    ),
+    # A distinguishable state: adaptive clears the bar, the loss-blind arm does not. This
+    # still authorizes, so the amendment gates the quality premise rather than requiring
+    # the bar to be cleared unconditionally.
+    "adaptive_clears_bar_loss_blind_does_not": ("PASS", True),
+    # The boundary of the proxy, and the amendment's most consequential reading: adaptive
+    # is clearly better than the loss-blind arm (9 vs 3) but neither clears the bar, so
+    # under "same side of the bar = indistinguishable" this withholds. Flagged as the
+    # reading a reader may want to contest - section 5.44 records it as a boundary rather
+    # than deriving it from the wording alone.
+    "adaptive_just_short_of_bar_loss_blind_far_below": (
+        "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE",
+        False,
+    ),
     # Label precedence, documented in compute_verdict's comment and previously untested.
     "cost_fail_beats_every_other_clause": ("FAIL", False),
     "harm_guard_beats_pool_control_and_null": (
@@ -106,6 +127,20 @@ VARIANTS: dict[str, dict] = {
     "null_queue_absent": {"with_null": False},
     "null_queue_short": {"with_null": True, "null_seeds": 8},
     "primary_queue_short": {"primary_seeds": 11},
+    # adaptive 6/12 vs churn (a tie, no demonstrated edge), the loss-blind control also
+    # 6/12, and the do-nothing clause satisfied so nothing else can catch it.
+    "control_ties_adaptive_nobody_demonstrates_an_edge": {
+        "adaptive_wins": 6,
+        "control_wins": 6,
+        "null_wins": 12,
+    },
+    # Distinguishable: adaptive clears the 10-of-12 bar, the loss-blind arm does not.
+    "adaptive_clears_bar_loss_blind_does_not": {"adaptive_wins": 12, "control_wins": 3},
+    # Adaptive 9 of 12, loss-blind 3: distinguishable by arm counts, same side of the bar.
+    "adaptive_just_short_of_bar_loss_blind_far_below": {
+        "adaptive_wins": 9,
+        "control_wins": 3,
+    },
     "cost_fail_beats_every_other_clause": {
         "cost_multiple_of_prediction": 60.0,
         "adaptive_wins": 0,
@@ -258,6 +293,88 @@ def build(root: Path, variant: dict) -> tuple[Path, Path | None, Path | None]:
     return primary, control, null_root
 
 
+# Clause amendments: where a clause's registered text and the shipped rule disagreed, the
+# disagreement is recorded, measured, and then resolved as an explicit amendment (report
+# section 5.44) rather than left as a code/report drift.
+REGISTERED_TEXT_AMENDMENTS = [
+    {
+        "section": "5.5 change 3",
+        "registered_text": (
+            "if the pool-matched arm's quality is indistinguishable from the adaptive "
+            "arm's, record the cost PASS but withhold the Gate 4 recommendation, since "
+            "the quality premise would then be unsupported"
+        ),
+        "shipped_rule_before": (
+            "only one direction of the clause was implemented: it fired when the "
+            "loss-blind arm beat its own churn arm on >= 10 of 12 pairs "
+            "(POOL_CONTROL_WIN_LIMIT). No adaptive-vs-control comparison existed "
+            "anywhere in v0_verdict.py."
+        ),
+        "demonstrated_before": {
+            "variant": "control_ties_adaptive_nobody_demonstrates_an_edge",
+            "observed_then": "adaptive 6/12, control 6/12 -> PASS, exit 0, Gate 4 AUTHORIZED",
+            "consequence": (
+                "the state the registered wording says must withhold was the state the "
+                "shipped rule authorized, and it is the state the dev-fidelity evidence "
+                "predicts for the real path. The harm guard cannot catch it (it only "
+                "rejects adaptive losing >= 10 of 12) and neither can the section 5.14 "
+                "clause (churn against do-nothing, not adaptive against the loss-blind "
+                "arm)."
+            ),
+        },
+        "amendment": (
+            "the clause is completed in the missing direction, using the same "
+            "pre-committed bar rather than a new threshold: it fires when NEITHER arm "
+            "clears POOL_CONTROL_WIN_LIMIT against its own churn arm, since the two are "
+            "then indistinguishable and no edge was shown to recommend Gate 4 on "
+            "(label PASS_COST_ONLY_NO_DEMONSTRATED_EDGE, exit 2)."
+        ),
+        "direction": (
+            "strictly tightening: it can only convert an authorization into a "
+            "withholding, never the reverse, so no spent block is reinterpreted. "
+            "Verified on the two committed real-path verdicts after the change (see "
+            "section 5.44)."
+        ),
+        "demonstrated_after": [
+            {
+                "variant": "pool_control_passes",
+                "label": "PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES",
+                "reads": "both arms clear the bar: a pool/location effect alone would have passed the gate",
+            },
+            {
+                "variant": "control_ties_adaptive_nobody_demonstrates_an_edge",
+                "label": "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE",
+                "reads": "neither arm clears the bar: indistinguishable, no quality premise",
+            },
+        ],
+        "still_not_a_test": (
+            "'indistinguishable' is operationalised as both arms sitting on the same "
+            "side of the bar, not as a statistical test of equality; recorded as a proxy."
+        ),
+        "boundary_reading": (
+            "Because 'has an edge' is binary at POOL_CONTROL_WIN_LIMIT, the clause also "
+            "withholds when the adaptive arm is clearly better than the loss-blind arm "
+            "(9 of 12 against 3 of 12) but neither clears the bar - variant "
+            "adaptive_just_short_of_bar_loss_blind_far_below. Consequence of the "
+            "amendment: authorizing Gate 4 now requires the adaptive arm to clear the "
+            "bar AND the loss-blind arm not to, so the primary run's quality has to be "
+            "demonstrated at the pre-committed bar rather than merely not-failed (the "
+            "harm guard only rejects adaptive losing 10 of 12). This is the reading to "
+            "contest if a sub-bar but real edge should authorize; recorded here rather "
+            "than resolved silently."
+        ),
+    }
+]
+
+
+def _row_by_name(rows: list[dict], name: str) -> dict:
+    """Look a variant's row up by name, loudly - a typo must not pass as a check."""
+    for row in rows:
+        if row["variant"] == name:
+            return row
+    raise KeyError(f"no rehearsed variant named {name!r}")
+
+
 def rehearse() -> dict:
     rows = []
     for name, variant in VARIANTS.items():
@@ -309,14 +426,25 @@ def rehearse() -> dict:
         "every_variant_matches_the_registered_rule": all(
             row["matches_registered_rule"] for row in rows
         ),
-        "exactly_one_variant_authorizes_gate_4": sum(
-            1 for row in rows if row["observed_gate_4_authorized"]
-        )
-        == 1,
-        "the_authorizing_variant_is_the_all_clear_case": next(
+        # Exactly the variants that should authorize under the amended rule: the all-clear
+        # case and the two distinguishable states. The tie case that used to authorize is
+        # now withheld (section 5.44, pinned separately below).
+        "the_authorizing_variants_are_the_clear_and_distinguishable_cases": [
             row["variant"] for row in rows if row["observed_gate_4_authorized"]
-        )
-        == "all_clear",
+        ]
+        == [
+            "all_clear",
+            "adaptive_clears_bar_loss_blind_does_not",
+        ],
+        # The amendment is only closed if both directions of clause 3 are observed: the
+        # pool-driven one and the neither-arm-has-an-edge one. The expectations live in
+        # REGISTERED_TEXT_AMENDMENTS, so the record and the check cannot drift apart.
+        "the_clause_3_amendment_withholds_in_both_directions": all(
+            _row_by_name(rows, item["variant"])["observed_label"] == item["label"]
+            and not _row_by_name(rows, item["variant"])["observed_gate_4_authorized"]
+            for amendment in REGISTERED_TEXT_AMENDMENTS
+            for item in amendment["demonstrated_after"]
+        ),
         # Exit 1 is the cost FAIL and nothing else: exactly the variants whose measured
         # cost crosses the 5% criterion, and no others.
         "cost_failures_exit_1_and_nothing_else_does": all(
@@ -378,6 +506,7 @@ def rehearse() -> dict:
         "declared_seeds": DECLARED,
         "variants": rows,
         "built_in_checks": checks,
+        "registered_text_amendments": REGISTERED_TEXT_AMENDMENTS,
     }
 
 

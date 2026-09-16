@@ -1,10 +1,68 @@
 # ACT Implementation Status
 
+## Section 5.44: the quality-premise clause was shipped in one direction only (2026-09-16)
+
+Section 5.5 change 3 was **ADOPTED** (2026-09-14) and reads "if the pool-matched arm's
+quality is indistinguishable from the adaptive arm's ... withhold the Gate 4
+recommendation". Only the direction where **both** arms clear the bar shipped; the
+direction where **neither** does was implemented nowhere, so it authorized Gate 4.
+
+Nothing else in the gate looks at the adaptive arm's *quality*: the harm guard is a floor
+(rejects only at >= 10 losses of 12, so 3 wins clears it), and the §5.14 clause compares
+churn against do-nothing rather than adaptive against the loss-blind arm.
+
+| adaptive vs churn | loss-blind | before | after |
+|---|---|---|---|
+| 6/12 (tie) | 6/12 | `PASS`, exit 0, **authorized** | `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE`, exit 2 |
+| 9/12 | 3/12 | `PASS`, **authorized** | withheld |
+| **3/12** | 0/12 | `PASS`, **authorized** | withheld |
+| 2/12 | 0/12 | harm guard rejects | unchanged |
+| 10/12 | 3/12 | `PASS`, authorized | unchanged |
+
+The tie row is exactly the state the dev-fidelity evidence predicts for the real path
+(§5.13, §5.39), and the 3/12 row is the harm guard's own boundary - one win above
+rejection. **The amendment** completes the clause with the same `POOL_CONTROL_WIN_LIMIT`
+(no new threshold) and is strictly tightening, so no spent block is reinterpreted -
+verified by re-computing both committed real-path verdicts under the pre- and
+post-amendment code (identical labels both sides). Gate 4 now requires the adaptive arm to
+clear the bar **and** the loss-blind arm not to; the record carries a `quality_premise`
+block so the reason is stored, not inferred from the label. The proxy's boundary (it also
+withholds at 9-vs-3, where adaptive is clearly better) is recorded as the reading to
+contest, in `registered_text_amendments[0].boundary_reading`.
+
+Rehearsal is now **16 variants / 9 checks**, all matching; `tests/test_v0_verdict.py`
+rows at the harm-guard boundary were rewritten to pin the interaction rather than
+relaxed. Teeth: removing the withholding branch fails two unit rows and makes `--check`
+exit 1 with three checks false; restored, 52/52 pass. Record: `RESEARCH_REPORT.md` §5.44.
+Also corrected: §5.41's verification sentence misstated `local-proof`'s re-run label.
+
+## Section 5.45: the suite's 140 s had two measurable causes, one in production code (2026-09-16)
+
+Measured, not guessed: `--durations=35` put ~90 s of 140 s in 25 tests and 41 s of that in
+four.
+
+| | before | after |
+|---|---|---|
+| one CLI error-path test paying production publish backoff (`time.sleep`, injectable and already injected by the remote tests) | 15.0 s | ~0 |
+| `act/evolution/study.py::_gate_min_wins` re-summing `math.comb` per step (O(n^2), ~1.06M calls for a 1536-seed block) | 16.15 s | 0.4 ms |
+| full suite, `OMP_NUM_THREADS=1` (comparable with the ~140 s baseline; unpinned it is 88.3 s) | ~140 s | **98.5 s** |
+
+The two fixes are 31.2 s of the ~42 s reduction; the rest of the suite is real work (slowest entries are fp16 session round-trips at 9.1 s and 4.4 s).
+
+The binomial tail is now accumulated once with the exact recurrence. Because the returned
+integer is a *pre-registered* analysis threshold, equality was verified rather than
+assumed: **bit-identical on 199 checks** across 12 block sizes (incl. 1536), 8 alphas and
+the tail-sum identity. Record: `RESEARCH_REPORT.md` §5.45.
+
 ## Section 5.43: the declared Gate-4 verdict path is rehearsed before the spend (2026-09-16)
+
+*(Superseded in two details by §5.44: the record now holds 16 variants, and two variants
+authorize - `all_clear` and the distinguishable case.)*
 
 `scripts/verdict_rehearsal.py` builds synthetic **declared-scale** fixtures
 (285,336,576 / 134,341,632, 24,576,000 tokens per arm, all three queues) and applies the
 real `compute_verdict` to 14 variants - every withholding clause in isolation, both
+(16 as of §5.44)
 absent-queue and both short-queue cases, and the three precedence combinations. Record
 `artifacts/study-summaries/gate4-verdict-rehearsal.json`, pinned by
 `tests/test_gate4_rehearsal.py` (9 tests; 5 tampers each fail, restored passes).
@@ -19,7 +77,7 @@ answer with nothing to compare it against.
 | **Label precedence** | Verified, not just documented: cost FAIL > harm guard > pool-matched control > null > missing control > missing null > band miss. The outranked clauses' flags are recorded, so the labels are precedence and not absence. |
 | **`primary_queue_short`** | An incomplete primary queue gives an ordinary `PASS`, exit 0, and `gate_4_authorized: False` - the completeness requirement lives in the flag, not the label, so a label-only reader misreads it. Now pinned. |
 | **5.41 + 5.42 hold at declared scale** | Every fixture reports `run_is_at_declared_scale` with both band readings agreeing, and both short-queue variants return `..._MISSING`. |
-| **Exactly one authorizing variant** | `all_clear`, exit 0. Cost failures exit 1 and nothing else does. |
+| **Authorizing variants are named** | `all_clear`, exit 0 (two as of §5.44, the second being the distinguishable-quality case). Cost failures exit 1 and nothing else does. |
 
 **It caught my own unit error.** A first pass expressed both cost variants as "6x the
 prediction"; the prediction is itself a percentage (0.0942%), so 6x is 0.565% - inside the

@@ -4,10 +4,10 @@
   "each_variant_costs_the_multiple_its_knob_says": true,
   "every_fixture_is_at_declared_scale": true,
   "every_variant_matches_the_registered_rule": true,
-  "exactly_one_variant_authorizes_gate_4": true,
-  "the_authorizing_variant_is_the_all_clear_case": true,
+  "the_authorizing_variants_are_the_clear_and_distinguishable_cases": true,
   "the_band_miss_variant_stays_inside_the_5_percent_bar": true,
   "the_band_readings_agree_at_declared_scale": true,
+  "the_clause_3_amendment_withholds_in_both_directions": true,
   "the_cost_over_criterion_variant_clears_the_5_percent_bar": true
  },
  "declared_parameters": {
@@ -33,6 +33,34 @@
  ],
  "kind": "gate4-verdict-rehearsal",
  "record_type": "verdict-rehearsal",
+ "registered_text_amendments": [
+  {
+   "amendment": "the clause is completed in the missing direction, using the same pre-committed bar rather than a new threshold: it fires when NEITHER arm clears POOL_CONTROL_WIN_LIMIT against its own churn arm, since the two are then indistinguishable and no edge was shown to recommend Gate 4 on (label PASS_COST_ONLY_NO_DEMONSTRATED_EDGE, exit 2).",
+   "boundary_reading": "Because 'has an edge' is binary at POOL_CONTROL_WIN_LIMIT, the clause also withholds when the adaptive arm is clearly better than the loss-blind arm (9 of 12 against 3 of 12) but neither clears the bar - variant adaptive_just_short_of_bar_loss_blind_far_below. Consequence of the amendment: authorizing Gate 4 now requires the adaptive arm to clear the bar AND the loss-blind arm not to, so the primary run's quality has to be demonstrated at the pre-committed bar rather than merely not-failed (the harm guard only rejects adaptive losing 10 of 12). This is the reading to contest if a sub-bar but real edge should authorize; recorded here rather than resolved silently.",
+   "demonstrated_after": [
+    {
+     "label": "PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES",
+     "reads": "both arms clear the bar: a pool/location effect alone would have passed the gate",
+     "variant": "pool_control_passes"
+    },
+    {
+     "label": "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE",
+     "reads": "neither arm clears the bar: indistinguishable, no quality premise",
+     "variant": "control_ties_adaptive_nobody_demonstrates_an_edge"
+    }
+   ],
+   "demonstrated_before": {
+    "consequence": "the state the registered wording says must withhold was the state the shipped rule authorized, and it is the state the dev-fidelity evidence predicts for the real path. The harm guard cannot catch it (it only rejects adaptive losing >= 10 of 12) and neither can the section 5.14 clause (churn against do-nothing, not adaptive against the loss-blind arm).",
+    "observed_then": "adaptive 6/12, control 6/12 -> PASS, exit 0, Gate 4 AUTHORIZED",
+    "variant": "control_ties_adaptive_nobody_demonstrates_an_edge"
+   },
+   "direction": "strictly tightening: it can only convert an authorization into a withholding, never the reverse, so no spent block is reinterpreted. Verified on the two committed real-path verdicts after the change (see section 5.44).",
+   "registered_text": "if the pool-matched arm's quality is indistinguishable from the adaptive arm's, record the cost PASS but withhold the Gate 4 recommendation, since the quality premise would then be unsupported",
+   "section": "5.5 change 3",
+   "shipped_rule_before": "only one direction of the clause was implemented: it fired when the loss-blind arm beat its own churn arm on >= 10 of 12 pairs (POOL_CONTROL_WIN_LIMIT). No adaptive-vs-control comparison existed anywhere in v0_verdict.py.",
+   "still_not_a_test": "'indistinguishable' is operationalised as both arms sitting on the same side of the bar, not as a statistical test of equality; recorded as a proxy."
+  }
+ ],
  "report_section": "5.43",
  "synthetic": true,
  "variants": [
@@ -266,6 +294,73 @@
    "variant": "primary_queue_short",
    "variant_knobs": {
     "primary_seeds": 11
+   }
+  },
+  {
+   "cost_percent": 0.0941636252059042,
+   "expected_gate_4_authorized": false,
+   "expected_label": "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE",
+   "harm_guard_clear": true,
+   "in_tolerance_band": true,
+   "in_tolerance_band_at_run_scale": true,
+   "matches_registered_rule": true,
+   "null_clause_rejects": false,
+   "null_evaluated": true,
+   "observed_exit_code": 2,
+   "observed_gate_4_authorized": false,
+   "observed_label": "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE",
+   "pool_control_evaluated": true,
+   "pool_control_passes_gate": false,
+   "run_is_at_declared_scale": true,
+   "variant": "control_ties_adaptive_nobody_demonstrates_an_edge",
+   "variant_knobs": {
+    "adaptive_wins": 6,
+    "control_wins": 6,
+    "null_wins": 12
+   }
+  },
+  {
+   "cost_percent": 0.0941636252059042,
+   "expected_gate_4_authorized": true,
+   "expected_label": "PASS",
+   "harm_guard_clear": true,
+   "in_tolerance_band": true,
+   "in_tolerance_band_at_run_scale": true,
+   "matches_registered_rule": true,
+   "null_clause_rejects": false,
+   "null_evaluated": true,
+   "observed_exit_code": 0,
+   "observed_gate_4_authorized": true,
+   "observed_label": "PASS",
+   "pool_control_evaluated": true,
+   "pool_control_passes_gate": false,
+   "run_is_at_declared_scale": true,
+   "variant": "adaptive_clears_bar_loss_blind_does_not",
+   "variant_knobs": {
+    "adaptive_wins": 12,
+    "control_wins": 3
+   }
+  },
+  {
+   "cost_percent": 0.0941636252059042,
+   "expected_gate_4_authorized": false,
+   "expected_label": "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE",
+   "harm_guard_clear": true,
+   "in_tolerance_band": true,
+   "in_tolerance_band_at_run_scale": true,
+   "matches_registered_rule": true,
+   "null_clause_rejects": false,
+   "null_evaluated": true,
+   "observed_exit_code": 2,
+   "observed_gate_4_authorized": false,
+   "observed_label": "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE",
+   "pool_control_evaluated": true,
+   "pool_control_passes_gate": false,
+   "run_is_at_declared_scale": true,
+   "variant": "adaptive_just_short_of_bar_loss_blind_far_below",
+   "variant_knobs": {
+    "adaptive_wins": 9,
+    "control_wins": 3
    }
   },
   {

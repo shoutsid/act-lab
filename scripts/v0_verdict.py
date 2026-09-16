@@ -461,11 +461,42 @@ def compute_verdict(
     else:
         control = _control_block(control_root, declared_seeds)
     null = _null_block(null_root, declared_seeds, summaries)
+
+    # Section 5.5 change 3 asks about one thing: is the pool-matched arm's quality
+    # *indistinguishable* from the adaptive arm's? As shipped, the clause implemented the
+    # direction where both arms clear the bar (the control clears POOL_CONTROL_WIN_LIMIT,
+    # so a pool/location effect alone would have passed the gate). The other direction was
+    # missing: **neither** arm clears the bar - the pool-matched arm is then exactly as
+    # good as the adaptive one, both having shown no edge over their own churn arm, and
+    # there is no quality premise to recommend Gate 4 on. The harm guard cannot catch it
+    # (it only rejects adaptive losing >= HARM_GUARD_LOSS_LIMIT pairs) and neither can the
+    # section 5.14 clause (which compares churn against do-nothing, not adaptive against
+    # the loss-blind arm). Measured before this amendment: adaptive 6/12, control 6/12, a
+    # clean cost PASS authorized Gate 4 at exit 0. See section 5.44.
+    adaptive_has_edge = wins >= POOL_CONTROL_WIN_LIMIT
+    control_has_edge = bool(control["evaluated"]) and bool(control["control_passes_gate"])
+    quality_premise = {
+        "adaptive_wins": wins,
+        "adaptive_clears_bar": adaptive_has_edge,
+        "control_clears_bar": control_has_edge,
+        "win_limit": POOL_CONTROL_WIN_LIMIT,
+        "indistinguishable": bool(control["evaluated"])
+        and not adaptive_has_edge
+        and not control_has_edge,
+        "reading": (
+            "both arms clear the bar (pool/location effect alone would pass the gate)"
+            if adaptive_has_edge and control_has_edge
+            else "neither arm clears the bar (no edge to recommend Gate 4 on)"
+            if not adaptive_has_edge
+            else "adaptive clears the bar and the loss-blind arm does not"
+        ),
+    }
+
     # Label precedence among the withholding clauses: anti-adaptivity (harm
-    # guard), then the pool-matched clause, then the section 5.14 do-nothing
-    # clause, then a missing control, then a missing null queue, then the
-    # band miss. All of them exit 2 and all withhold Gate 4; the verdict
-    # string must surface which one fired.
+    # guard), then the two pool-matched readings (control clears the bar, then
+    # neither arm does), then the section 5.14 do-nothing clause, then a missing
+    # control, then a missing null queue, then the band miss. All of them exit 2
+    # and all withhold Gate 4; the verdict string must surface which one fired.
     if not cost_pass:
         verdict = "FAIL"
         exit_code = 1
@@ -474,6 +505,9 @@ def compute_verdict(
         exit_code = 2
     elif control["evaluated"] and control["control_passes_gate"]:
         verdict = "PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES"
+        exit_code = 2
+    elif quality_premise["indistinguishable"]:
+        verdict = "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE"
         exit_code = 2
     elif null["evaluated"] and null["clause_rejects"]:
         verdict = "PASS_COST_ONLY_NULL_REJECTS"
@@ -515,6 +549,7 @@ def compute_verdict(
             "clear": harm_guard_clear,
         },
         "pool_matched_control": control,
+        "quality_premise": quality_premise,
         "null_control": null,
         "per_seed": pairs,
         "verdict": verdict,
@@ -529,7 +564,9 @@ def compute_verdict(
             "seeds complete, cost <= 5%, measured C inside the [0.5, 2]x band, "
             "the harm guard clear, the adopted section 5.5 pool-matched "
             "control clause satisfied (the loss-blind arm must NOT clear the "
-            "gate, and the control must have been run), and the section 5.14 "
+            "gate, the control must have been run, and the two arms must not "
+            "be indistinguishable with neither clearing the bar - section "
+            "5.44), the quality premise recorded, and the section 5.14 "
             "do-nothing clause satisfied (adaptive must beat the null arm on "
             "the declared queue, and the null queue must have been run). A "
             "band miss forces re-derivation before Gate 4 (no knob re-tuning "

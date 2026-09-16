@@ -35,6 +35,20 @@ REGISTERED = {
     "null_queue_absent": ("PASS_COST_ONLY_NULL_MISSING", False),
     "null_queue_short": ("PASS_COST_ONLY_NULL_MISSING", False),
     "primary_queue_short": ("PASS", False),
+    # Section 5.44: this state used to authorize Gate 4; the completed clause 3 withholds
+    # it. The tie case is the state the dev-fidelity evidence predicts for the real path.
+    "control_ties_adaptive_nobody_demonstrates_an_edge": (
+        "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE",
+        False,
+    ),
+    # Distinguishable: adaptive clears the bar, the loss-blind arm does not.
+    "adaptive_clears_bar_loss_blind_does_not": ("PASS", True),
+    # The proxy's boundary: adaptive 9 vs loss-blind 3 - clearly better, same side of the
+    # bar - so it withholds. Recorded as a boundary rather than derived from the wording.
+    "adaptive_just_short_of_bar_loss_blind_far_below": (
+        "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE",
+        False,
+    ),
     "cost_fail_beats_every_other_clause": ("FAIL", False),
     "harm_guard_beats_pool_control_and_null": (
         "PASS_COST_ONLY_HARM_GUARD_REJECTS",
@@ -77,12 +91,54 @@ def test_every_variant_matches_the_registered_rule():
         assert row["matches_registered_rule"] is True
 
 
-def test_exactly_one_variant_authorizes_gate_4():
+def test_only_the_clear_and_distinguishable_cases_authorize_gate_4():
+    """Authorization is now exactly: every clause clear *and* the quality premise held.
+
+    The tie case and the sub-bar case both withhold (section 5.44). Naming the authorizing
+    set explicitly is what stops a future change from widening it silently.
+    """
     rows = _record()["variants"]
     authorizing = [row["variant"] for row in rows if row["observed_gate_4_authorized"]]
-    assert authorizing == ["all_clear"]
-    # And that one is an ordinary PASS at exit 0.
+    assert authorizing == [
+        "all_clear",
+        "adaptive_clears_bar_loss_blind_does_not",
+    ]
     assert _by_name()["all_clear"]["observed_exit_code"] == 0
+
+
+def test_the_clause_3_amendment_withholds_in_both_directions():
+    """Pin the amendment so neither the code nor the report can drift back.
+
+    Section 5.5 change 3 asks whether the pool-matched arm's quality is indistinguishable
+    from the adaptive arm's. Only the 'both arms clear the bar' direction was shipped; the
+    'neither clears it' direction authorized Gate 4, which is the state the dev-fidelity
+    evidence predicts (section 5.13, 5.39). Section 5.44 completed the clause. Both
+    directions are measured here: if either stops withholding, this test fails.
+    """
+    payload = _record()
+    amendments = payload["registered_text_amendments"]
+    assert len(amendments) == 1
+    item = amendments[0]
+    assert item["section"] == "5.5 change 3"
+    assert "indistinguishable from the adaptive arm's" in item["registered_text"]
+    assert "No adaptive-vs-control comparison existed" in item["shipped_rule_before"]
+    assert "PASS, exit 0, Gate 4 AUTHORIZED" in item["demonstrated_before"]["observed_then"]
+    assert "NEITHER arm" in item["amendment"]
+    assert "strictly tightening" in item["direction"]
+    # Each direction the amendment claims to close is measured, and each withholds.
+    checked = 0
+    for demo in item["demonstrated_after"]:
+        row = _by_name()[demo["variant"]]
+        assert row["observed_label"] == demo["label"]
+        assert row["observed_gate_4_authorized"] is False
+        assert row["observed_exit_code"] == 2
+        checked += 1
+    assert checked == 2
+    # And the previous winner is no longer authorizing: the gap is closed, not covered.
+    assert _by_name()[
+        "control_ties_adaptive_nobody_demonstrates_an_edge"
+    ]["observed_gate_4_authorized"] is False
+    assert payload["built_in_checks"]["the_clause_3_amendment_withholds_in_both_directions"]
 
 
 def test_label_precedence_is_verified_not_just_documented():
@@ -144,6 +200,30 @@ def test_the_band_and_the_cost_criterion_are_independent_at_declared_scale():
     fail = rows["cost_over_criterion"]
     assert fail["cost_percent"] > 5.0
     assert fail["observed_exit_code"] == 1
+
+
+def test_the_clause_compares_the_two_arms_through_the_bar_not_through_raw_losses():
+    """The shape of the completed clause, checked against the source.
+
+    The two arms are compared by whether each clears the same pre-committed bar against
+    its own churn arm - not by comparing per-seed losses across the two queues, which
+    would be a different (and undeclared) statistic.
+    """
+    source = (ROOT / "scripts" / "v0_verdict.py").read_text()
+    control = source[source.index("def _control_block") : source.index("def _null_block")]
+    # The control block itself still only ever compares its own arm with its own churn arm.
+    assert 'row["adaptive_wins"]' not in control
+    assert '"adaptive_loss"' not in control
+    # The comparison lives in compute_verdict, and it is a comparison of bar outcomes.
+    verdict_body = source[source.index("def compute_verdict") :]
+    assert "adaptive_has_edge = wins >= POOL_CONTROL_WIN_LIMIT" in verdict_body
+    assert 'control_has_edge = bool(control["evaluated"])' in verdict_body
+    assert (
+        '"indistinguishable": bool(control["evaluated"])'
+        in verdict_body
+    )
+    # No cross-queue per-seed loss comparison was introduced by the amendment.
+    assert "control[" + chr(34) + "per_seed" + chr(34) + "]" not in verdict_body
 
 
 def test_the_rehearsal_fixtures_really_are_at_the_declared_scale():

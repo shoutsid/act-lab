@@ -650,13 +650,29 @@ def test_harm_guard_takes_label_precedence_over_band_miss(tmp_path: Path) -> Non
 
 @pytest.mark.parametrize(
     "adaptive_wins,expected_verdict",
-    [(3, "PASS"), (2, "PASS_COST_ONLY_HARM_GUARD_REJECTS")],
+    [
+        # Clears the pre-committed bar, so the quality premise is supported and the
+        # loss-blind arm (0 wins here) does not clear it either: authorized.
+        (12, "PASS"),
+        # Exactly at the bar: authorized, because the clause is about the two arms being
+        # on the same side of it, not about clearing it by a margin.
+        (10, "PASS"),
+        # Below the bar and the loss-blind arm below it too: same side, indistinguishable.
+        (9, "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE"),
+        # The registered guard is still clear at 3 wins (9 losses < 10) - but the section
+        # 5.44 quality clause withholds, where before the amendment this authored Gate 4.
+        (3, "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE"),
+        (2, "PASS_COST_ONLY_HARM_GUARD_REJECTS"),
+    ],
 )
 def test_harm_guard_rejects_at_ten_losses(
     adaptive_wins: int, expected_verdict: str, tmp_path: Path
 ) -> None:
     # The registered guard: adaptive must not lose in >= 10 of 12 pairs
-    # (exact one-tailed sign test p = 0.0193), i.e. fewer than 3 wins rejects.
+    # (exact one-tailed sign test p = 0.0193), i.e. fewer than 3 wins rejects. The
+    # guard's own boundary is unchanged by section 5.44; what changed is that clearing
+    # the guard is no longer sufficient on its own, because clause 3 now also withholds
+    # when neither arm clears the pre-committed bar.
     control = tmp_path / "control"
     null = tmp_path / "null"
     _populate(
@@ -674,8 +690,17 @@ def test_harm_guard_rejects_at_ten_losses(
     assert verdict["verdict"] == expected_verdict
     assert verdict["harm_guard"]["adaptive_wins"] == adaptive_wins
     assert verdict["harm_guard"]["adaptive_losses"] == 12 - adaptive_wins
-    assert verdict["harm_guard"]["clear"] is (adaptive_wins == 3)
-    assert verdict["gate_4_authorized"] is (adaptive_wins == 3)
+    assert verdict["harm_guard"]["clear"] is (adaptive_wins >= 3)
+    # And the clause that did the withholding in the same-side-of-the-bar rows is the
+    # quality one, recorded rather than inferred from the label.
+    premise = verdict["quality_premise"]
+    assert premise["adaptive_wins"] == adaptive_wins
+    assert premise["adaptive_clears_bar"] is (
+        adaptive_wins >= v0_verdict.POOL_CONTROL_WIN_LIMIT
+    )
+    assert premise["control_clears_bar"] is False
+    assert premise["indistinguishable"] is (not premise["adaptive_clears_bar"])
+    assert verdict["gate_4_authorized"] is (expected_verdict == "PASS")
     assert sum(1 for pair in verdict["per_seed"] if pair["adaptive_wins"]) == adaptive_wins
 
 
@@ -852,15 +877,26 @@ def test_declared_block_can_be_re_reserved_without_loosening_a_rule(
     control = tmp_path / "control"
     null = tmp_path / "null"
     for index, seed in enumerate(fresh):
-        won = index < 6
-        for root in (tmp_path, control):
-            _write_seed(
-                root,
-                seed,
-                adaptive_loss=1.0 if won else 1.5,
-                random_loss=1.5 if won else 1.0,
-                search_flops=_in_band_search_flops(),
-            )
+        # The primary arm clears the pre-committed quality bar (10 of 12) while the
+        # loss-blind arm wins 3, so this block is authorized on the amended rule too:
+        # what is being tested is that the override judges the fresh block by the same
+        # rules, not a weakened version of them.
+        won = index < 10
+        lost = index < 3
+        _write_seed(
+            tmp_path,
+            seed,
+            adaptive_loss=1.0 if won else 1.5,
+            random_loss=1.5 if won else 1.0,
+            search_flops=_in_band_search_flops(),
+        )
+        _write_seed(
+            control,
+            seed,
+            adaptive_loss=1.0 if lost else 1.5,
+            random_loss=1.5 if lost else 1.0,
+            search_flops=_in_band_search_flops(),
+        )
         _write_null_seed(null, seed, null_loss=2.0 if won else 2.5)
 
     # Default: the registered queue is still the analysis block, so the fresh
@@ -887,7 +923,15 @@ def test_declared_block_can_be_re_reserved_without_loosening_a_rule(
         expected_probe_cost_percent(1), rel=1e-4
     )
     assert re_declared["in_tolerance_band"] is True
-    assert re_declared["harm_guard"]["adaptive_losses"] == 6
+    assert re_declared["harm_guard"]["adaptive_losses"] == 2
+    assert re_declared["quality_premise"] == {
+        "adaptive_wins": 10,
+        "adaptive_clears_bar": True,
+        "control_clears_bar": False,
+        "win_limit": v0_verdict.POOL_CONTROL_WIN_LIMIT,
+        "indistinguishable": False,
+        "reading": "adaptive clears the bar and the loss-blind arm does not",
+    }
     assert re_declared["verdict"] == "PASS"
     assert re_declared["gate_4_authorized"] is True
 

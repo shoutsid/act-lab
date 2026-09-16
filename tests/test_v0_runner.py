@@ -940,6 +940,13 @@ def test_cli_exit_publish_failure_does_not_crash_the_session(
 
     calls: dict = {}
     _fake_remote(monkeypatch, calls, fail=True)
+    # This test exercises the exit path of a failed push, not the retry schedule: the
+    # three attempts still happen, but their backoff is zeroed so the suite does not
+    # spend 15 s (5.0 x 1 + 5.0 x 2) in wall-clock sleep. The schedule itself is pinned
+    # where it belongs, in tests/test_kaggle_remote.py, which injects a recording sleep.
+    import act.ops.kaggle_remote as remote_module
+
+    monkeypatch.setattr(remote_module, "PUBLISH_RETRY_SECONDS", 0.0)
 
     def fake_run_pair_session(**kwargs):
         # Simulate a completed pair's local handoff publish so the exit

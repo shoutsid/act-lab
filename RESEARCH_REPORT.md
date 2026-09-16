@@ -988,6 +988,14 @@ CONTROL_PASSES` vs `PASS_COST_ONLY_CONTROL_MISSING`, both withholding Gate 4 at
 exit 2 while the cost PASS stands). A missing control is disqualifying rather
 than silently skipped.
 
+**Amendment (section 5.44, 2026-09-16).** The adoption shipped only one direction of
+change 3 - the one where *both* arms clear the bar. The direction where **neither** does
+(left implemented nowhere, so the state the clause exists to catch authorized Gate 4) is
+now implemented as `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE`, using the same
+`POOL_CONTROL_WIN_LIMIT` rather than a new threshold, and strictly tightening. Gate 4 now
+requires the adaptive arm to clear that bar and the loss-blind arm not to. The registered
+change-3 text above is unchanged; what changed is that the code implements all of it.
+
 Its two evidentiary premises are now registered results: the section 5.6
 depth-4 confirmation passed out-of-sample including the pool-matched control
 (section 9.9), and point 3's spent block is a fact about the repository rather
@@ -5711,8 +5719,16 @@ check was applied at the wrong scale.
 **What moved, and what did not.** Additive only: a `run_scale` block and a
 `band_reading` string. `in_tolerance_band`, `predicted_cost_percent`,
 `tolerance_band_percent` and the verdict string are unchanged, verified by re-running the
-verdict over both committed blocks (`PASS_COST_ONLY_HARM_GUARD_REJECTS` in each, exactly
-as committed). No threshold, criterion or rule moves, the new reading is labelled
+verdict over both committed blocks under the code immediately before and after this
+change: every field this change touched is identical, and the labels do not move
+(`real-proof` `PASS_COST_ONLY_HARM_GUARD_REJECTS` on both sides; `local-proof`
+`PASS_COST_ONLY_CONTROL_MISSING` on both sides). **Correction (section 5.44):** the first
+version of this paragraph said the re-run returned `PASS_COST_ONLY_HARM_GUARD_REJECTS`
+"in each, exactly as committed", which is wrong for `local-proof` on two counts - that
+artifact's committed label is `PASS_WITH_QUALIFICATION`, and the current code returns
+`PASS_COST_ONLY_CONTROL_MISSING` for it because the artifact predates the section 5.5
+control clause (it has no `pool_matched_control` key at all). The additive conclusion
+stands and is now stated from the before/after comparison rather than asserted. No threshold, criterion or rule moves, the new reading is labelled
 `descriptive_only`, and the report does not spend it as a criterion - the band's own
 qualification still fires. What it buys is legibility on the run that decides the gate:
 a declared queue that deadline-stops, resumes, or is pre-flighted at reduced fidelity now
@@ -5847,6 +5863,123 @@ worse than no record. Its use is as a pre-flight:
 `PYTHONPATH=src python scripts/verdict_rehearsal.py --check` exits non-zero if any
 variant's label, exit code or authorization stops matching the registered rule, and
 `T4_RUNBOOK.md` step 0 now calls it before session 1.
+
+### 5.44 The clause that protects the quality premise was shipped in one direction only (found by reading the adopted registration)
+
+**What was seen.** Section 5.5 change 3 was **ADOPTED** on 2026-09-14 and reads:
+
+> if the pool-matched arm's quality is indistinguishable from the adaptive arm's, record
+> the cost PASS but withhold the Gate 4 recommendation, since the quality premise would
+> then be unsupported
+
+It says *indistinguishable*, which has two directions. The shipped rule in
+`v0_verdict.py` implemented one of them: the clause fires when the loss-blind arm clears
+the 10-of-12 bar against its own churn arm
+(`PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES`), i.e. when **both** arms clear it and a
+pool/location effect alone would have passed the gate. The other direction - **neither**
+arm clears it, so the two are exactly as indistinguishable as in the first case - was not
+implemented anywhere. There is no adaptive-vs-control comparison in the verdict at all.
+
+**Why that is not academic.** Nothing else in the gate looks at the adaptive arm's
+quality. The harm guard is a floor, not a quality claim: it rejects only when adaptive
+loses to its own churn arm in **10 or more of 12** pairs, so 3 wins already clears it. And
+the section 5.14 clause compares churn against do-nothing, not adaptive against the
+loss-blind arm. Measured on the verdict's own fixtures, before this amendment:
+
+| adaptive vs churn | loss-blind arm | before | after |
+|---|---|---|---|
+| 6/12 (a tie) | 6/12 | `PASS`, exit 0, **Gate 4 AUTHORIZED** | `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE`, exit 2, withheld |
+| 9/12 | 3/12 | `PASS`, exit 0, **AUTHORIZED** | `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE`, exit 2, withheld |
+| **3/12** (one win above rejection) | 0/12 | `PASS`, exit 0, **AUTHORIZED** | `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE`, exit 2, withheld |
+| 2/12 | 0/12 | `PASS_COST_ONLY_HARM_GUARD_REJECTS` | unchanged |
+| 10/12 | 3/12 | `PASS`, authorized | unchanged, authorized |
+| 12/12 | 0/12 | `PASS`, authorized | unchanged, authorized |
+
+So the gate could authorize on a run in which the controller was beaten by uniform churn
+in **9 of 12 seed pairs**, and it did so at the harm guard's own boundary - one win away
+from rejection. The tie row is the state the dev-fidelity evidence predicts for the real
+path (section 5.13 closed the real-text topology program with every vehicle carrying the
+router defect; section 5.39 showed the real path's remaining churn cost). That is the
+worst case for the missing direction: the exact state the clause exists to catch was the
+state the shipped rule authorized.
+
+**The amendment.** The clause is completed in the missing direction, using the same
+pre-committed constant rather than a new threshold: it fires when neither arm clears
+`POOL_CONTROL_WIN_LIMIT` against its own churn arm, and reads **strictly tightening** - it
+can only turn an authorization into a withholding. The record carries a `quality_premise`
+block (`adaptive_wins`, `adaptive_clears_bar`, `control_clears_bar`, `win_limit`,
+`indistinguishable`, `reading`) so the reason is stored rather than inferred from the
+label. Consequence, stated plainly: **authorizing Gate 4 now requires the adaptive arm to
+clear the pre-committed bar and the loss-blind arm not to.**
+
+**The boundary, flagged rather than derived.** `indistinguishable` is operationalised as
+*both arms on the same side of the bar*, not as a statistical test of equality. That makes
+the clause withhold in the 9-vs-3 row above, where the adaptive arm is clearly better than
+the loss-blind arm but neither clears the bar. That is the reading a reader may want to
+contest, and it is recorded as a boundary of the proxy in
+`registered_text_amendments[0].boundary_reading` rather than presented as the wording's
+only possible meaning.
+
+**No spent block is reinterpreted - verified, not argued.** The two committed real-path
+verdicts were re-computed under the pre-amendment and post-amendment code: identical
+labels (`real-proof` `PASS_COST_ONLY_HARM_GUARD_REJECTS` both sides; `local-proof`
+`PASS_COST_ONLY_CONTROL_MISSING` both sides). `real-proof`'s committed label is the same
+string, so nothing about it moves; `local-proof`'s committed label is
+`PASS_WITH_QUALIFICATION` and differs from *both* re-runs because that artifact predates
+the section 5.5 control clause - a pre-existing drift, now stated in the 5.41 correction
+above.
+
+**How it was found, and what caught my own error.** By reading the adopted registration
+against the code, then by adding a rehearsal variant for the predicted real-path state.
+The variant's first expectation was **wrong** - I wrote `PASS` for the 9-vs-3 row,
+believing the clause should only fire on a near-tie - and the rehearsal's own
+`every_variant_matches_the_registered_rule` check reported the drift against the real
+`compute_verdict` output rather than letting my expectation become the record. Two of the
+verdict's own unit tests also failed on the amendment, at the harm-guard boundary and on a
+re-declared block; both were rewritten to pin the *interaction* (guard clear, quality
+clause withholding) instead of being relaxed.
+
+Teeth-checked by removing the withholding branch: the two faulted unit rows fail, the
+rehearsal's own `--check` exits 1 with three checks false, and restoring it returns 52/52.
+The rehearsal now runs 16 variants with 9 checks.
+
+### 5.45 The test suite was slow for two measurable reasons, one of them in production code
+
+**Why this was worth doing.** The suite is the feedback loop for every change here, and it
+had crept to ~140 s. It was measured rather than guessed: `pytest --durations=35` attributed
+~90 s of 140 s to 25 tests, and 41 s of that to four.
+
+**The first 15.0 s was production retry backoff paid by one error-path test.**
+`test_v0_runner.py` drove a publish failure through `cli.main()` and paid the real
+`time.sleep` backoff inside `publish_on_exit` - exactly 15.0 s, 11% of the whole suite in
+wall-clock padding. `publish_on_exit` already accepts an injectable `sleep` and the
+dedicated remote tests already inject a no-op; only the CLI-level test paid the production
+delay. It now injects one too.
+
+**The second was an O(n²) big-integer search in the shared statistics library.**
+`act/evolution/study.py::_gate_min_wins` walks wins downward and re-sums `math.comb` from
+scratch at each step through `_binomial_survival`, so a 1536-seed block does ~1.06M
+`math.comb` calls: **16.15 s**, from the one test that exercises that block size. It is now
+done with the exact recurrence - accumulate the binomial tail once, top-down, dividing by
+the exact factor - in 0.4 ms, a **~400x** improvement. Because the number the function
+returns is a *pre-registered* analysis threshold, equality with the old implementation was
+verified rather than assumed: **bit-identical on 199 checks** across 12 block sizes
+(including 1536), 8 alphas, and the tail-sum identity.
+
+| | before | after |
+|---|---|---|
+| `_gate_min_wins(1536, 1/60)` | ~16 s | 0.4 ms |
+| `_gate_min_wins(384, 1/60)` | 20.6 ms | 0.05 ms |
+| full suite, `OMP_NUM_THREADS=1` (the convention every committed number uses) | ~140 s | **98.5 s** |
+| full suite, threads unpinned | - | 88.3 s |
+
+The two fixes are 31.2 s of the ~42 s reduction; the remaining time is real work -729
+tests whose slowest entries are now genuine fp16 session round-trips (9.1 s and 4.4 s),
+not padding. Both figures are given because the suite's wall time depends on the thread
+count, so only the pinned row is comparable with the earlier ~140 s.
+
+Nothing about any criterion changes: the fast path returns the same integer for every
+(input, alpha) tested, and the tests that pin the pre-registered thresholds still pass.
 
 ## 6. Reproducibility
 

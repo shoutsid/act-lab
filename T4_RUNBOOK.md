@@ -575,12 +575,13 @@ the two null rows are the pre-registered §5.14 clause):
 
 | Exit | Verdict | Pre-registered consequence |
 |---|---|---|
-| 0 | `PASS` | cost ≤ 5%, inside the [0.5, 2]× band, harm guard clear, **and the loss-blind control did not clear its own gate** → **Gate 4 authorized** (`gate_4_authorized: true` requires 12/12 seeds) |
+| 0 | `PASS` | cost ≤ 5%, inside the [0.5, 2]× band, harm guard clear, **the loss-blind control did not clear its own gate, and the adaptive arm did clear it** (§5.44: the two arms must not be indistinguishable) → **Gate 4 authorized** (`gate_4_authorized: true` requires 12/12 seeds) |
 | 1 | `FAIL` | primary cost > 5% → stop; §5.1 fails as registered |
 | 2 | `PASS_WITH_QUALIFICATION` | cost ≤ 5% but outside the band → re-derive the predicted C **before** Gate 4; no knob re-tuning against the measured C |
 | 2 | `PASS_COST_ONLY_HARM_GUARD_REJECTS` | harm guard hit (adaptive worse in ≥ 10 of 12 pairs) → do not proceed to Gate 4 |
 | 2 | `PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES` | the loss-blind arm won ≥ 10 of its 12 pairs, i.e. the pool alone clears the gate → the cost PASS stands but the quality inference does not; **never** treat this as "the controller wins" |
 | 2 | `PASS_COST_ONLY_CONTROL_MISSING` | no `--control-root` given → the clause could not be evaluated; running the control is part of the protocol, so Gate 4 is withheld |
+| 2 | `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE` | **neither** arm cleared the pre-committed bar (adaptive < 10 of 12 wins against its own churn arm, and the loss-blind arm likewise) → the two are indistinguishable, so there is no quality premise to recommend Gate 4 on. The cost PASS stands. Added by §5.44; before it, this state authorized Gate 4 |
 | 2 | `PASS_COST_ONLY_NULL_REJECTS` | adaptive failed to beat the null arm on ≥ 10 of 12 seeds → doing nothing is at least as good as the adaptive arm at declared fidelity; the cost PASS stands but the selection claim does not; **never** treat this as a tunable miss (no new block, no knob changes) |
 | 2 | `PASS_COST_ONLY_NULL_MISSING` | no `--null-root` given (or the null queue is incomplete on the declared block) → running the do-nothing queue is part of the protocol, so Gate 4 is withheld |
 | 3 | *no verdict* | the invocation was malformed (missing handoff, incomplete seed, unmatched budgets, a `--null-root` that is not a null queue). Nothing is written. This code is deliberately **not** 1: over an unattended multi-session run, an operator error must never be recordable as the pre-registered `FAIL` |
@@ -615,6 +616,7 @@ Secondary config (if pre-registered): same command with
 | Benchmark artifact missing/stale | Re-run step 1. The launch command refuses a hand-edited or stale artifact by design. |
 | Verdict says `PASS_COST_ONLY_CONTROL_MISSING` | The §2b control session has not run (or `--control-root` was omitted). Run §2b, then re-judge. Do not authorize Gate 4 on the strength of the primary run alone. |
 | Verdict says `PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES` | Record the cost PASS **and** the withheld Gate 4 as the result. This is a finding about the search design, not a failed run: do not tune the probe, the cap or the pool and re-run, and do not add a new seed block to try for a different answer. |
+| Verdict says `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE` | Record the cost PASS and the withheld Gate 4 as the result: the controller did not show an edge over its own churn arm at the pre-committed bar, so the quality premise this gate rests on is unsupported. Same no-retuning rule as the row above. Report it — with §5.13 and §5.39, this is a finding about the real path, not about this run. |
 
 ---
 

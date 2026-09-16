@@ -145,13 +145,33 @@ def run_gate_study(
     )
 
 
+def _binomial_tail(wins: int, trials: int) -> int:
+    """``sum(C(trials, k) for k in range(wins, trials + 1))``, by recurrence.
+
+    Each ``math.comb`` call is O(k) big-integer work, so summing a long tail term by
+    term costs O(n^2) in trials - which is invisible at the 384-seed blocks and painful
+    at the 1536-seed ones, where `_gate_min_wins` below paid it once per candidate win
+    count (measured: 1,061,163 `math.comb` calls and ~16 s in the test suite, from a
+    single 1536-seed record being verified). The recurrence
+    ``C(n, k + 1) = C(n, k) * (n - k) // (k + 1)`` is exact for integers, so the whole
+    tail is one O(n) pass and the returned integer is bit-identical to the old sum.
+    """
+    total = 0
+    term = math.comb(trials, wins)
+    for k in range(wins, trials + 1):
+        total += term
+        if k == trials:
+            break
+        term = term * (trials - k) // (k + 1)
+    return total
+
+
 def _binomial_survival(wins: int, trials: int) -> float:
     """Exact P(X >= wins) for X ~ Binomial(trials, 0.5)."""
     if trials < 0:
         raise ValueError("trials must be non-negative")
     wins = max(0, min(int(wins), trials))
-    favorable = sum(math.comb(trials, k) for k in range(wins, trials + 1))
-    return favorable / (2**trials)
+    return _binomial_tail(wins, trials) / (2**trials)
 
 
 def _gate_min_wins(trials: int, alpha: float) -> int:
@@ -159,15 +179,27 @@ def _gate_min_wins(trials: int, alpha: float) -> int:
 
     Returns ``trials + 1`` when no achievable win count can pass, which keeps
     ``gate_passed`` honestly false for underpowered study sizes.
+
+    One downward pass with an accumulated tail rather than a fresh tail sum per
+    candidate: the predicate is monotone in the win count (dividing two integers by the
+    same denominator preserves their order, rounding included), so this visits exactly
+    the same candidates in the same order and returns the same index.
     """
     if not 0.0 < alpha < 1.0:
         raise ValueError("alpha must be between 0 and 1")
+    denominator = 2**trials
     required = trials + 1
+    favorable = 0
+    term = 1  # C(trials, trials)
     for wins in range(trials, -1, -1):
-        if _binomial_survival(wins, trials) <= alpha:
+        favorable += term  # now the tail from `wins`
+        if favorable / denominator <= alpha:
             required = wins
         else:
             break
+        if wins == 0:
+            break
+        term = term * wins // (trials - wins + 1)  # C(trials, wins - 1)
     return required
 
 
