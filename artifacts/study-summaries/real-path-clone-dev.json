@@ -1,0 +1,216 @@
+{
+ "alpha": 0.05,
+ "bit_reproducible": false,
+ "built_in_checks": {
+  "block_matches_declared_n": true,
+  "both_settings_ran_three_events": true,
+  "every_seed_is_paired": true,
+  "the_random_arms_events_are_setting_independent": true,
+  "the_treatment_reached_both_arms": true,
+  "the_two_settings_are_not_redundant": true
+ },
+ "comparisons": {
+  "adaptive_clone_vs_base": {
+   "mean_delta": 0.1315886378288269,
+   "n": 6,
+   "passes": true,
+   "per_seed_deltas": [
+    0.11423897743225098,
+    0.1098434329032898,
+    0.24973678588867188,
+    0.1597941517829895,
+    0.08833009004592896,
+    0.06758838891983032
+   ],
+   "permutation_p": 0.01559922003899805,
+   "sign_test_min_wins": 6,
+   "sign_test_p": 0.015625,
+   "sign_test_passes": true,
+   "standard_error": 0.026767974881201115,
+   "t": 4.915898136218003,
+   "t_p_one_tailed": NaN,
+   "the_two_statistics_disagree": false,
+   "wins": 6
+  },
+  "adaptive_minus_random_gap": {
+   "mean_delta": 0.05735150973002116,
+   "n": 6,
+   "passes": false,
+   "per_seed_deltas": [
+    -0.0041770339012146,
+    -0.03786170482635498,
+    0.08027106523513794,
+    0.09047555923461914,
+    0.09574711322784424,
+    0.11965405941009521
+   ],
+   "permutation_p": 0.06369681515924204,
+   "sign_test_min_wins": 6,
+   "sign_test_p": 0.34375,
+   "sign_test_passes": false,
+   "standard_error": 0.025709697685422604,
+   "t": 2.230734504612221,
+   "t_p_one_tailed": NaN,
+   "the_two_statistics_disagree": false,
+   "wins": 4
+  },
+  "random_clone_vs_base": {
+   "mean_delta": 0.07423712809880574,
+   "n": 6,
+   "passes": false,
+   "per_seed_deltas": [
+    0.11841601133346558,
+    0.14770513772964478,
+    0.16946572065353394,
+    0.06931859254837036,
+    -0.007417023181915283,
+    -0.05206567049026489
+   ],
+   "permutation_p": 0.0623968801559922,
+   "sign_test_min_wins": 6,
+   "sign_test_p": 0.34375,
+   "sign_test_passes": false,
+   "standard_error": 0.03608406681981228,
+   "t": 2.057338172814966,
+   "t_p_one_tailed": NaN,
+   "the_two_statistics_disagree": false,
+   "wins": 4
+  }
+ },
+ "config": {
+  "activation_checkpointing": true,
+  "active_experts": 2,
+  "arms": [
+   "random",
+   "adaptive"
+  ],
+  "attention_heads": 5,
+  "batch_size": 8,
+  "context_size": 512,
+  "depth": 6,
+  "depth_label": "dev (14.9M total / 7.6M active)",
+  "dtype": "fp32",
+  "expert_count": 8,
+  "expert_width": 320,
+  "hidden_size": 320,
+  "learning_rate": 0.0003,
+  "mutation_budget": 3,
+  "mutation_interval": 100,
+  "probe_batch_count": 1,
+  "probe_candidate_cap": 4,
+  "probe_candidate_policy": "prefix",
+  "probe_selection": "argmin",
+  "report_section": "5.38",
+  "total_steps": 400,
+  "treatments": {
+   "base": {},
+   "clone": {
+    "new_expert_initialization": "clone",
+    "preserve_router_on_rebuild": true
+   }
+  },
+  "vocab_size": 8192
+ },
+ "config_hash": "8a56466db5709794",
+ "declared_n": 6,
+ "event_sequences_identical_on": {
+  "adaptive": 0,
+  "random": 6
+ },
+ "events_changed_by_arm": {
+  "adaptive": 6,
+  "random": 0
+ },
+ "grows_by_arm_and_setting": {
+  "adaptive": {
+   "base": 5,
+   "clone": 6
+  },
+  "random": {
+   "base": 9,
+   "clone": 9
+  }
+ },
+ "kind": "real-path-clone-dev",
+ "n_permutations": 20000,
+ "outcome": {
+  "branch_a_all_primaries_pass": false,
+  "branch_b_random_only": false,
+  "branch_c_adaptive_only": true,
+  "branch_d_neither": false
+ },
+ "per_primary_alpha": 0.025,
+ "per_seed": [
+  {
+   "adaptive_base": 3.6582160592079163,
+   "adaptive_clone": 3.5439770817756653,
+   "random_base": 3.7181748747825623,
+   "random_clone": 3.5997588634490967,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15210
+  },
+  {
+   "adaptive_base": 3.7709800601005554,
+   "adaptive_clone": 3.6611366271972656,
+   "random_base": 3.7988998889923096,
+   "random_clone": 3.651194751262665,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15211
+  },
+  {
+   "adaptive_base": 3.897443115711212,
+   "adaptive_clone": 3.6477063298225403,
+   "random_base": 3.8029146790504456,
+   "random_clone": 3.6334489583969116,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15212
+  },
+  {
+   "adaptive_base": 3.724275231361389,
+   "adaptive_clone": 3.5644810795783997,
+   "random_base": 3.675034463405609,
+   "random_clone": 3.6057158708572388,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15213
+  },
+  {
+   "adaptive_base": 3.8766876459121704,
+   "adaptive_clone": 3.7883575558662415,
+   "random_base": 3.6050525307655334,
+   "random_clone": 3.6124695539474487,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15214
+  },
+  {
+   "adaptive_base": 3.763868510723114,
+   "adaptive_clone": 3.6962801218032837,
+   "random_base": 3.7432122230529785,
+   "random_clone": 3.7952778935432434,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15215
+  }
+ ],
+ "protocol": "paired per seed: base vs clone on the dev shape and the real TinyStories stream, 400 steps, three events, both arms in one session",
+ "record_type": "study-summary",
+ "report_section": "5.38",
+ "reproduction_note": "GPU block: section 6's fixed-thread-count contract does not apply. Reproduction means re-running and checking verdict stability.",
+ "seeds": [
+  15210,
+  15211,
+  15212,
+  15213,
+  15214,
+  15215
+ ],
+ "spent_seeds_disclosed": [
+  15201,
+  15202,
+  15203
+ ]
+}

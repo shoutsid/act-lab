@@ -1,5 +1,46 @@
 # ACT Implementation Status
 
+## Section 5.38: the real-path block landed on branch (c), the red-flag branch (2026-09-16)
+
+Six fresh seeds (15210-15215), 12 sessions, ~33 min on the development GPU, base vs clone on the dev
+shape and the real TinyStories stream. Runner `scripts/real_path_block.py` (resumable and
+budget-capped), summary `artifacts/study-summaries/real-path-clone-dev.json`, pinned by
+`tests/test_real_path_block_summary.py`.
+
+| primary | mean `base - clone` | t | wins | perm p | verdict |
+|---|---|---|---|---|---|
+| `random` arm (clean) | +0.07424 | +2.06 | 4/6 | 0.0624 | **FAIL** at `alpha/2` |
+| `adaptive` arm | +0.13159 | +4.92 | 6/6 | 0.0156 | **PASS** |
+
+**Branch (c) was pre-registered as a red flag rather than a result** - a probe-driven arm improving
+decisively while the clean seeded arm does not - so this is recorded as **unresolved**, not as a
+transfer. The diagnostic is why: the two settings selected the **same** mutations on the random arm on
+**6/6** seeds, and **different** ones on the adaptive arm on **6/6**. The adaptive arm's gain is a
+package (rebuild + reselection), and only the random arm isolates the rebuild. The reselection goes in
+the predicted direction - preservation makes a grow look better to the probe, so the probe arm grows
+more (5 -> 6 of 18 events) while the random arm does not move (9 -> 9).
+
+**Section 5.36 is corrected.** It reported that every one of its six arm losses improved; on six fresh
+seeds **two of the six random-arm comparisons reverse** (15214, 15215), so that uniformity was a
+three-seed artifact. Its numbers should not be quoted as an effect estimate.
+
+**The failure is a sizing failure, not a null.** The pilot's sd (0.023) understated the true
+dispersion (0.088, ~3.8x), so n=6 could only resolve effects above ~0.09 nats on the clean arm. The
+clean mean is in the helpful direction with 4/6 agreeing. Section 5.38.1 registers the follow-up at
+**n=12 fresh seeds, `random` arm only** (~36 min) and states that no result from it may resize or
+reinterpret 5.38's spent seeds.
+
+**Two disclosures.** (1) The runner's pass predicate had an inverted sign (`mean < 0` inherited from
+the 5.34 studies, where the delta was treatment minus reference); it was found after the block ran and
+corrected, and changes only the `passes` boolean - the deltas, wins and both p-values are computed
+before it, and the verdict was hand-checked against them. (2) The event-sequence check, the per-arm
+event-change counts and the grow totals were added to the summary *after* the block as structural
+diagnostics, and are reported in full rather than summarised.
+
+**What this does not do:** it is dev fidelity, GPU (so not bit-reproducible in the section-6 sense,
+which is declared in the summary), one substrate, and final held-out loss rather than capability per
+FLOP - so Gate 4 is untouched by it either way.
+
 ## The config surface is now checked instead of promised (2026-09-16)
 
 Sections 5.33 and 5.34 both found the same thing the hard way: a *declared* config field that

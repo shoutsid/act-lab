@@ -5121,6 +5121,90 @@ is final held-out loss, not capability per FLOP, so nothing here unblocks Gate 4
 **Cost.** 12 sessions of ~165 s on the development GPU, about 33 minutes, run resumably in
 budget-capped invocations so an interruption loses at most one session.
 
+### 5.38 Outcome: branch (c) as registered - the clean arm does not clear its bar, and the probe arm's gain is a package
+
+Run on the six fresh seeds, 12 sessions, about 33 minutes on the development GPU,
+`study-summaries/real-path-clone-dev.json`. Every built-in check held, including the one that
+matters most for reading the result: **on the `random` arm the two settings ran the identical
+mutation sequence on every seed**, so that contrast isolates the rebuild and nothing else.
+
+| primary | mean `base - clone` (nats, helpful > 0) | t | wins | sign p | perm p | verdict |
+|---|---|---|---|---|---|---|
+| **P1** `random` arm | +0.07424 | +2.06 | 4/6 (bar 6) | 0.344 | 0.0624 | **FAIL** at `alpha/2` |
+| **P2** `adaptive` arm | +0.13159 | +4.92 | 6/6 | 0.0156 | 0.0156 | **PASS** |
+| secondary: `adaptive - random` gap | +0.05735 | +2.23 | 4/6 | 0.344 | 0.0637 | FAIL |
+
+**This is branch (c), the branch the pre-registration fixed in advance as a red flag rather than a
+result: a probe-driven arm improving decisively while the clean seeded arm does not.** It is recorded
+as unresolved and not as a transfer.
+
+**Why the probe arm's number cannot be read as the treatment's effect.** The two settings changed
+*which mutations the probe selected* on **6 of 6 seeds**, against **0 of 6** on the random arm:
+
+| | base | clone |
+|---|---|---|
+| `random` grows, 18 events | 9 | **9** (identical sequences 6/6) |
+| `adaptive` grows, 18 events | 5 | **6** (identical sequences **0/6**) |
+| `adaptive` event sequence identical across settings | - | **0/6 seeds** |
+
+So the adaptive arm's contrast is a *package*: the rebuild effect plus a reselection effect, and only
+the random arm isolates the first. The direction of the reselection is the one sections 5.29-5.34
+predict - preserving the router and cloning the new expert makes a grow look better to the probe, so
+the controller grows more - which is consistent with those studies and is also why this design cannot
+separate the two halves.
+
+**The clean arm points the right way and does not establish it.** Its mean is helpful (+0.074 nats)
+and four of six seeds agree, but seeds 15214 and 15215 reverse the sign, and at the declared `alpha/2`
+a 4-of-6 sign test and a permutation p of 0.0624 both miss.
+
+**This corrects section 5.36.** That dev-scale smoke reported that every one of the six arm losses
+improved under the treatment. On six fresh seeds, **two of the six random-arm comparisons reverse**,
+so the uniformity it reported was a three-seed artifact and is superseded here. The smoke's job was to
+license this block, and it did; its numbers should not be quoted as an effect estimate.
+
+**Power post-mortem, because the pre-registered arithmetic was too optimistic.** The pilot's
+per-seed deltas (+0.031, +0.068, +0.075) gave sd 0.023, and the block was sized from that. The
+observed dispersion is **sd 0.088, about 3.8x larger**, so at n = 6 the standard error is 0.036 and
+the block can only resolve effects above roughly 0.09 nats on the clean arm. The declared power
+argument was therefore optimistic in exactly the way section 5.31.1 warned about: the binding
+constraint was assumed to be the statistic, and it turned out to be the dispersion estimate.
+
+**Two disclosures about this block.** (1) The pass predicate in the runner tested `mean < 0` - a sign
+inherited from the section 5.34 studies, where the delta was treatment minus reference - while the
+deltas here are `base - clone` and help is *positive*. The error was found after the block ran and is
+corrected in the runner; it changes only the `passes` boolean. The deltas, wins, sign p-values and
+permutation p-values are computed before it and are unaffected, which is why the verdict was checked
+against them by hand as well. (2) The event-sequence check, the per-arm event-change counts and the
+grow totals were added to the summary **after** the block, and are structural diagnostics rather than
+verdict-bearing; they are what make branch (c) interpretable, and they are reported in full above
+rather than summarised.
+
+### 5.38.1 Pre-registration: the clean-arm block, sized from the dispersion this one measured
+
+**Motivation.** Section 5.38's failure is a sizing failure, not a null result: the clean arm's mean is
+in the helpful direction with 4 of 6 seeds agreeing, and the block could not resolve an effect of that
+size. The dispersion is now measured rather than guessed, so the correct block size is arithmetic.
+
+**Design.** Identical to section 5.38 - same dev shape, same real stream, same `base` / `clone`
+settings, same 400 steps and three events at 100/200/300 - except that it runs the `random` arm only,
+which is both the clean contrast and roughly half the cost per session (~90 s rather than ~165 s).
+
+**Primary, single, at `alpha = 0.05`:** `random` arm final loss, `clone` < `base`, paired over fresh
+seeds, judged by the declared paired sign-flip permutation test on the mean with the exact sign test
+reported beside it.
+
+**Size, from the observed dispersion.** sd 0.0884, planning effect 0.0742: n = 8 clears a one-sided
+paired t at `alpha = 0.05` with essentially no margin, n = 12 clears it comfortably. **n = 12 fresh
+seeds is declared**, because sizing to the point estimate with no margin is how this block got its
+optimistic power argument in the first place. Twelve seeds x two settings at ~90 s is about 36
+minutes.
+
+**Pre-registered interpretation.** A pass establishes the transfer on the clean arm at dev fidelity
+and lets the adaptive arm's package be reported as package plus rebuild. A failure is then a real
+result rather than an underpowered one, and it withdraws section 5.28's real-path extension while
+leaving the toy mechanism studies standing. **No result from this block is to be used to resize or
+reinterpret section 5.38's seeds** - they are spent, and 5.38's branch (c) stands as recorded.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

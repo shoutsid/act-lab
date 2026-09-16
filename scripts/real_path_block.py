@@ -228,7 +228,10 @@ def _min_wins(trials: int, alpha: float) -> int:
 
 
 def _permutation_p(deltas: list[float], rng: random.Random) -> float:
-    """One-sided paired sign-flip permutation p on the mean (helpful if positive)."""
+    """One-sided paired sign-flip permutation p on the mean (helpful if positive).
+
+    Deltas are ``base - clone``, so the tail counted is the upper one.
+    """
     observed = statistics.fmean(deltas)
     extreme = 0
     for _ in range(N_PERMUTATIONS):
@@ -252,7 +255,15 @@ def _t_p_one_tailed(t: float, degrees: float) -> float:
 def compare(
     label: str, base: list[float], clone: list[float], alpha: float
 ) -> dict:
-    """Paired comparison, helpful direction = clone lower."""
+    """Paired comparison, helpful direction = clone lower.
+
+    The deltas are ``base - clone``, so a *positive* mean is the helpful direction and
+    ``passes`` requires it. (An earlier revision of this function tested ``mean < 0`` -
+    a sign inherited from the section 5.34 studies, where the delta was treatment minus
+    reference. The direction error was found after the block ran, is corrected here,
+    and changes only the pass predicate: the deltas, wins, sign p and permutation p are
+    computed before it and are unaffected.)
+    """
     if len(base) != len(clone) or not base:
         raise SystemExit(f"{label}: unpaired or empty")
     deltas = [b - c for b, c in zip(base, clone)]
@@ -265,7 +276,12 @@ def compare(
     sign_p = _binomial_survival(wins, n)
     perm_p = _permutation_p(deltas, random.Random(PERMUTATION_SEED))
     bar = _min_wins(n, alpha)
+    sign_passes = wins >= bar
+    # Section 5.31.1: the sign test and the mean test are different statistics over the
+    # same runs, and where they disagree the effect is small relative to the block, so
+    # the disagreement is recorded rather than resolved quietly.
     return {
+        "the_two_statistics_disagree": sign_passes != (perm_p <= alpha),
         "n": n,
         "mean_delta": mean,
         "standard_error": se,
@@ -274,9 +290,9 @@ def compare(
         "wins": wins,
         "sign_test_min_wins": bar,
         "sign_test_p": sign_p,
-        "sign_test_passes": wins >= bar,
+        "sign_test_passes": sign_passes,
         "permutation_p": perm_p,
-        "passes": bool(mean < 0 and perm_p <= alpha),
+        "passes": bool(mean > 0 and perm_p <= alpha),
         "per_seed_deltas": deltas,
     }
 
@@ -335,6 +351,43 @@ def summarize() -> int:
         row["random_events_base"] == row["random_events_clone"] == 3
         for row in per_seed
     )
+
+    def sequences(arm: str, setting: str) -> list[tuple]:
+        return [
+            tuple(
+                (event["operation"], event["layer_id"], event["expert_id"])
+                for event in rows[(seed, setting)]["arms"][arm]["events"]
+            )
+            for seed in SEEDS
+        ]
+
+    # Added after the block ran: structural diagnostics, not verdict-bearing. They are
+    # what makes the two primaries readable, because they say whether the treatment
+    # changed the *rebuild* alone or also *which mutations were selected*.
+    sequence_identical = {
+        arm: sum(
+            1
+            for seed in SEEDS
+            if sequences(arm, "base")[SEEDS.index(seed)]
+            == sequences(arm, "clone")[SEEDS.index(seed)]
+        )
+        for arm in ARMS
+    }
+    events_changed_by_arm = {
+        arm: len(SEEDS) - sequence_identical[arm] for arm in ARMS
+    }
+
+    def grows(arm: str, setting: str) -> int:
+        return sum(
+            1
+            for sequence in sequences(arm, setting)
+            for event in sequence
+            if event[0] == "grow"
+        )
+
+    grows_by_arm_and_setting = {
+        arm: {setting: grows(arm, setting) for setting in SETTINGS} for arm in ARMS
+    }
     settings_differ = all(
         rows[(seed, "base")]["arms"]["random"]["architecture_hash"]
         != rows[(seed, "clone")]["arms"]["random"]["architecture_hash"]
@@ -354,6 +407,11 @@ def summarize() -> int:
         "the_treatment_reached_both_arms": treatment_applied,
         "every_seed_is_paired": all(
             (seed, setting) in rows for seed in SEEDS for setting in SETTINGS
+        ),
+        # The clean-comparison guarantee: on the arm that never probes, only the
+        # rebuild differs, so its contrast cannot be a selection effect.
+        "the_random_arms_events_are_setting_independent": (
+            events_changed_by_arm["random"] == 0
         ),
     }
 
@@ -401,6 +459,9 @@ def summarize() -> int:
         "per_seed": per_seed,
         "comparisons": comparisons,
         "built_in_checks": built_in_checks,
+        "event_sequences_identical_on": sequence_identical,
+        "events_changed_by_arm": events_changed_by_arm,
+        "grows_by_arm_and_setting": grows_by_arm_and_setting,
         "outcome": outcome,
     }
     SUMMARY.parent.mkdir(parents=True, exist_ok=True)
