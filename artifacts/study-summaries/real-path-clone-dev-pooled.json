@@ -1,0 +1,43 @@
+{
+ "blocks": {
+  "5.38": 6,
+  "5.38.1": 12
+ },
+ "caveat": "Declared secondary, not a verdict: 5.38's seeds sized 5.38.1, so this is a post-hoc meta-analysis of two registered blocks over disjoint fresh seeds. Both blocks' own pre-registered verdicts stand as recorded.",
+ "kind": "real-path-clone-dev-pooled",
+ "mean_delta": 0.051695555448532104,
+ "mean_test_passes": true,
+ "n": 18,
+ "per_seed_deltas": [
+  0.11841601133346558,
+  0.14770513772964478,
+  0.16946572065353394,
+  0.06931859254837036,
+  -0.007417023181915283,
+  -0.05206567049026489,
+  0.09796029329299927,
+  0.05468893051147461,
+  -0.00040799379348754883,
+  -0.017864346504211426,
+  0.18832182884216309,
+  -0.05216944217681885,
+  0.007091939449310303,
+  -0.003862440586090088,
+  0.01815098524093628,
+  0.019792675971984863,
+  0.05982398986816406,
+  0.11357080936431885
+ ],
+ "permutation_p": 0.003749812509374531,
+ "post_hoc": true,
+ "record_type": "study-summary",
+ "report_section": "5.38.2",
+ "sample_sd": 0.07371717718162497,
+ "sign_test_min_wins": 13,
+ "sign_test_p": 0.1189422607421875,
+ "sign_test_passes": false,
+ "standard_error": 0.01737530529168575,
+ "t": 2.9752314897896457,
+ "the_two_statistics_disagree": true,
+ "wins": 12
+}

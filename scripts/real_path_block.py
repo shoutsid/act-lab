@@ -293,15 +293,6 @@ def _permutation_p(deltas: list[float], rng: random.Random) -> float:
     return (extreme + 1) / (N_PERMUTATIONS + 1)
 
 
-def _t_p_one_tailed(t: float, degrees: float) -> float:
-    try:
-        from scipy import stats  # noqa: PLC0415
-
-        return float(stats.t.sf(t, degrees))
-    except Exception:  # pragma: no cover - scipy is a study-script dependency
-        return float("nan")
-
-
 def compare(label: str, base: list[float], clone: list[float], alpha: float) -> dict:
     """Paired comparison, helpful direction = clone lower.
 
@@ -334,8 +325,10 @@ def compare(label: str, base: list[float], clone: list[float], alpha: float) -> 
         "mean_delta": mean,
         "sample_sd": sd,
         "standard_error": se,
+        # Descriptive only. The project's declared statistics are the exact sign test and
+        # the sign-flip permutation test; no t p-value is recorded, so none is invented
+        # here (and nothing depends on scipy being installed).
         "t": t,
-        "t_p_one_tailed": _t_p_one_tailed(t, n - 1),
         "wins": wins,
         "sign_test_min_wins": bar,
         "sign_test_p": sign_p,
@@ -522,9 +515,77 @@ def summarize(profile_name: str) -> int:
     return 0
 
 
+def pool(profile_names: tuple[str, ...] = ("5.38", "5.38.1")) -> int:
+    """Report the two blocks together, post hoc, as a secondary rather than a verdict.
+
+    Both blocks ran the same prescription on disjoint fresh seeds, so their per-seed
+    deltas can be read together and that makes the effect estimate much tighter than
+    either block alone. It is **not** a pre-registered test: section 5.38's seeds sized
+    section 5.38.1, so the second block was designed with knowledge of the first. It is
+    recorded as a declared secondary, with both blocks' own verdicts left standing.
+    """
+    deltas: list[float] = []
+    per_block = {}
+    for name in profile_names:
+        for seed in profile(name)["seeds"]:
+            row = load_runs(name)[(seed, "base")]["arms"]["random"]["final_loss"]
+            clone = load_runs(name)[(seed, "clone")]["arms"]["random"]["final_loss"]
+            deltas.append(row - clone)
+        per_block[name] = len(profile(name)["seeds"])
+    # ``compare`` takes paired vectors; the pooled statistic is the same arithmetic on a
+    # single sample, so it is computed here rather than faked as a paired comparison.
+    mean = statistics.fmean(deltas)
+    sd = statistics.stdev(deltas)
+    se = sd / math.sqrt(len(deltas))
+    wins = sum(1 for delta in deltas if delta > 0)
+    sign_p = _binomial_survival(wins, len(deltas))
+    perm_p = _permutation_p(deltas, random.Random(PERMUTATION_SEED))
+    t = mean / se
+    payload = {
+        "record_type": "study-summary",
+        "kind": "real-path-clone-dev-pooled",
+        "report_section": "5.38.2",
+        "post_hoc": True,
+        "caveat": (
+            "Declared secondary, not a verdict: 5.38's seeds sized 5.38.1, so this is a "
+            "post-hoc meta-analysis of two registered blocks over disjoint fresh seeds. "
+            "Both blocks' own pre-registered verdicts stand as recorded."
+        ),
+        "blocks": per_block,
+        "n": len(deltas),
+        "per_seed_deltas": deltas,
+        "mean_delta": mean,
+        "sample_sd": sd,
+        "standard_error": se,
+        "t": t,
+        "wins": wins,
+        "sign_test_min_wins": _min_wins(len(deltas), ALPHA),
+        "sign_test_p": sign_p,
+        "permutation_p": perm_p,
+        "sign_test_passes": wins >= _min_wins(len(deltas), ALPHA),
+        "mean_test_passes": bool(mean > 0 and perm_p <= ALPHA),
+        "the_two_statistics_disagree": (wins >= _min_wins(len(deltas), ALPHA))
+        != (perm_p <= ALPHA),
+    }
+    target = SUMMARIES / "real-path-clone-dev-pooled.json"
+    target.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n")
+    print(f"wrote {target}")
+    print(
+        f"  pooled n={len(deltas)}  mean {mean:+.5f}  sd {sd:.4f}  se {se:.4f}  t {t:+.2f}  "
+        f"mean-test p {perm_p:.5f}  wins {wins}/{len(deltas)}  sign p {sign_p:.4f}"
+    )
+    print(f"  disagreeing statistics: {payload['the_two_statistics_disagree']}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", action="store_true", help="run the block (resumable)")
+    parser.add_argument(
+        "--pool",
+        action="store_true",
+        help="write the post-hoc pooled secondary across both profiles",
+    )
     parser.add_argument(
         "--budget-seconds",
         type=float,
@@ -538,7 +599,9 @@ def main() -> int:
         return run_block(args.budget_seconds, args.profile)
     if args.summarize:
         return summarize(args.profile)
-    parser.error("pass --run or --summarize")
+    if args.pool:
+        return pool()
+    parser.error("pass --run, --summarize or --pool")
 
 
 if __name__ == "__main__":

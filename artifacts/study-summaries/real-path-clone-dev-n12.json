@@ -1,0 +1,204 @@
+{
+ "alpha": 0.05,
+ "bit_reproducible": false,
+ "built_in_checks": {
+  "block_matches_declared_n": true,
+  "both_settings_ran_three_events": true,
+  "every_seed_is_paired": true,
+  "the_random_arms_events_are_setting_independent": true,
+  "the_treatment_reached_both_arms": true,
+  "the_two_settings_are_not_redundant": true
+ },
+ "comparisons": {
+  "random_clone_vs_base": {
+   "mean_delta": 0.040424769123395286,
+   "n": 12,
+   "passes": true,
+   "per_seed_deltas": [
+    0.09796029329299927,
+    0.05468893051147461,
+    -0.00040799379348754883,
+    -0.017864346504211426,
+    0.18832182884216309,
+    -0.05216944217681885,
+    0.007091939449310303,
+    -0.003862440586090088,
+    0.01815098524093628,
+    0.019792675971984863,
+    0.05982398986816406,
+    0.11357080936431885
+   ],
+   "permutation_p": 0.02389880505974701,
+   "sample_sd": 0.06656977117146418,
+   "sign_test_min_wins": 10,
+   "sign_test_p": 0.19384765625,
+   "sign_test_passes": false,
+   "standard_error": 0.019217037652868318,
+   "t": 2.1035900461672625,
+   "the_two_statistics_disagree": true,
+   "wins": 8
+  }
+ },
+ "config": {
+  "activation_checkpointing": false,
+  "active_experts": 2,
+  "arms": [
+   "random"
+  ],
+  "attention_heads": 5,
+  "batch_size": 8,
+  "context_size": 512,
+  "depth": 6,
+  "depth_label": "dev (14.9M total / 7.6M active)",
+  "dtype": "fp32",
+  "expert_count": 8,
+  "expert_width": 320,
+  "hidden_size": 320,
+  "learning_rate": 0.0003,
+  "mutation_budget": 3,
+  "mutation_interval": 100,
+  "probe_batch_count": 1,
+  "probe_candidate_cap": 4,
+  "probe_candidate_policy": "prefix",
+  "probe_selection": "argmin",
+  "report_section": "5.38.1",
+  "total_steps": 400,
+  "treatments": {
+   "base": {},
+   "clone": {
+    "new_expert_initialization": "clone",
+    "preserve_router_on_rebuild": true
+   }
+  },
+  "vocab_size": 8192
+ },
+ "config_hash": "e127dea5c23b0761",
+ "declared_n": 12,
+ "event_sequences_identical_on": {
+  "random": 12
+ },
+ "events_changed_by_arm": {
+  "random": 0
+ },
+ "grows_by_arm_and_setting": {
+  "random": {
+   "base": 21,
+   "clone": 21
+  }
+ },
+ "kind": "real-path-clone-dev-5.38.1",
+ "n_permutations": 20000,
+ "outcome": {
+  "primary_passes": true
+ },
+ "per_primary_alpha": 0.05,
+ "per_seed": [
+  {
+   "random_base": 3.706622004508972,
+   "random_clone": 3.608661711215973,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15220
+  },
+  {
+   "random_base": 3.8348714113235474,
+   "random_clone": 3.7801824808120728,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15221
+  },
+  {
+   "random_base": 3.5945993065834045,
+   "random_clone": 3.595007300376892,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15222
+  },
+  {
+   "random_base": 3.6168119311332703,
+   "random_clone": 3.6346762776374817,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15223
+  },
+  {
+   "random_base": 3.8385837078094482,
+   "random_clone": 3.650261878967285,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15224
+  },
+  {
+   "random_base": 3.6912127137184143,
+   "random_clone": 3.743382155895233,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15225
+  },
+  {
+   "random_base": 3.6707460284233093,
+   "random_clone": 3.663654088973999,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15226
+  },
+  {
+   "random_base": 3.472795248031616,
+   "random_clone": 3.4766576886177063,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15227
+  },
+  {
+   "random_base": 3.676229178905487,
+   "random_clone": 3.658078193664551,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15228
+  },
+  {
+   "random_base": 3.6424869894981384,
+   "random_clone": 3.6226943135261536,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15229
+  },
+  {
+   "random_base": 3.8258886337280273,
+   "random_clone": 3.7660646438598633,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15230
+  },
+  {
+   "random_base": 3.6583551168441772,
+   "random_clone": 3.5447843074798584,
+   "random_events_base": 3,
+   "random_events_clone": 3,
+   "seed": 15231
+  }
+ ],
+ "protocol": "paired per seed: base vs clone on the dev shape and the real TinyStories stream, 400 steps, three events, random arm only in one session",
+ "record_type": "study-summary",
+ "report_section": "5.38.1",
+ "reproduction_note": "GPU block: section 6's fixed-thread-count contract does not apply. Reproduction means re-running and checking verdict stability.",
+ "seeds": [
+  15220,
+  15221,
+  15222,
+  15223,
+  15224,
+  15225,
+  15226,
+  15227,
+  15228,
+  15229,
+  15230,
+  15231
+ ],
+ "spent_seeds_disclosed": [
+  15201,
+  15202,
+  15203
+ ]
+}

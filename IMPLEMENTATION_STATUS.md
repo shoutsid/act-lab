@@ -1,5 +1,46 @@
 # ACT Implementation Status
 
+## Section 5.38.1: the treatment's clean effect is real, small and right-skewed (2026-09-16)
+
+Seeds 15220-15231, 24 sessions, ~27 min on the dev GPU (the section 5.37.1 checkpointing fix paid
+off here: ~66 s/session against ~90 s). Summary `real-path-clone-dev-n12.json`, pooled secondary
+`real-path-clone-dev-pooled.json`, both pinned in `tests/test_real_path_block_summary.py`.
+
+| | value |
+|---|---|
+| `random` arm, n=12, mean `base - clone` | **+0.04042** nats (se 0.0192, t +2.10) |
+| sign-flip permutation p (declared statistic) | **0.02390 -> PRIMARY PASSES** |
+| exact sign test | 8/12 against a bar of 10, p 0.194 -> fails |
+| the two statistics disagree | yes |
+| clean-comparison guarantee | identical event sequences **12/12**, grows 21 -> 21 |
+| pooled with 5.38 (post-hoc secondary, n=18) | mean +0.05170, mean-test p **0.00375**, wins 12/18 (bar 13) |
+
+**Honest reading: the mean improves and the per-seed win rate does not.** The effect is ~0.05 nats,
+about 1.4% of the ~3.6 nat dev loss, and right-skewed - seed 15224 alone contributes +0.1883, and
+without it the n=12 mean falls to +0.0270. That is section 5.31.1's signature: a positive expected
+effect carried by a tail, not a reliable per-seed win. Both statements answer different questions,
+and the write-up keeps them apart.
+
+**This resolves section 5.38's branch (c) instead of repeating it.** The clean arm was failing its
+test because n=6, sized from the pilot's optimistic sd, could not resolve an effect this size - not
+because the mechanism fails to transfer. Branch (c) is superseded for interpretation; its numbers
+stand as run. The probe arm's larger effect (+0.1316, 6/6) is still a package of rebuild plus
+reselection, which this design does not apportion.
+
+**Settled:** preserve-router plus clone improves expected final loss on the declared path at dev
+fidelity, on the arm that cannot be affected by probe ranking, under a pre-registered test with the
+clean-comparison guarantee holding 12/12 - so section 5.28's pipeline change now has registered
+real-path support rather than only toy evidence. **Carried forward as calibration:** the effect is
+small, so the real-scale protocol should be specified with the treatment on without being sold an
+effect size on the strength of this run. **Still open:** the rebuild/reselection split, and Gate 4
+behind the compute-efficiency measurement.
+
+**Runner note.** `scripts/real_path_block.py` now serves both blocks by profile
+(`--profile 5.38 | 5.38.1`, plus `--pool`), with runs keyed by profile so a seed cannot be reused
+across blocks by accident. Its t-column is descriptive only: the project's declared statistics are
+the exact sign test and the permutation test, no t p-value is recorded, and the script no longer
+needs scipy (which is not installed here) to say so.
+
 ## A free 1.32x on every dev cycle, straight out of the liveness contract (2026-09-16)
 
 Section 5.37's contract established that `activation_checkpointing` is trajectory-inert, and the dev

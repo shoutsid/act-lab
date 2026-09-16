@@ -29,7 +29,6 @@
    "sign_test_passes": true,
    "standard_error": 0.026767974881201115,
    "t": 4.915898136218003,
-   "t_p_one_tailed": NaN,
    "the_two_statistics_disagree": false,
    "wins": 6
   },
@@ -52,7 +51,6 @@
    "sign_test_passes": false,
    "standard_error": 0.025709697685422604,
    "t": 2.230734504612221,
-   "t_p_one_tailed": NaN,
    "the_two_statistics_disagree": false,
    "wins": 4
   },
@@ -75,7 +73,6 @@
    "sign_test_passes": false,
    "standard_error": 0.03608406681981228,
    "t": 2.057338172814966,
-   "t_p_one_tailed": NaN,
    "the_two_statistics_disagree": false,
    "wins": 4
   }

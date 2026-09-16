@@ -5239,6 +5239,81 @@ result rather than an underpowered one, and it withdraws section 5.28's real-pat
 leaving the toy mechanism studies standing. **No result from this block is to be used to resize or
 reinterpret section 5.38's seeds** - they are spent, and 5.38's branch (c) stands as recorded.
 
+### 5.38.1 Outcome: the primary passes, and the effect is small and right-skewed
+
+Run on seeds 15220-15231, 24 sessions, ~27 minutes, `study-summaries/real-path-clone-dev-n12.json`.
+Every built-in check held, including the clean-comparison guarantee again: **the two settings ran the
+identical mutation sequence on all 12 seeds** (grows 21 to 21).
+
+| primary (`random` arm, n = 12, `alpha` = 0.05) | value |
+|---|---|
+| mean `base - clone` | **+0.04042** nats |
+| sd / standard error | 0.0666 / 0.0192 |
+| t | +2.10 |
+| **sign-flip permutation p** (the declared statistic) | **0.02390 -> PASS** |
+| exact sign test | 8/12 wins against a bar of 10, p 0.1938 -> **fails** |
+| the two statistics disagree | **yes** |
+
+Per-seed deltas, which is where the shape of the result lives:
+
+```
++0.0980  +0.0547  -0.0004  -0.0179  +0.1883  -0.0522
++0.0071  -0.0039  +0.0182  +0.0198  +0.0598  +0.1136
+```
+
+**So the treatment is supported on the clean arm at dev fidelity, and the honest reading is narrower
+than a pass usually sounds.** The declared mean test passes at 0.024. The exact sign test - the
+statistic that does not care about magnitude, and the one section 5.31.1 records as usually binding -
+does not, and 8 of 12 is barely above a coin flip. The distribution is right-skewed: seed 15224 alone
+contributes +0.1883, and without it the mean falls to +0.0270. The effect is real in the sense the
+pipeline cares about (expected loss improves), and it is **not** a reliable per-seed win.
+
+**This resolves section 5.38's branch (c) rather than repeating it.** The clean arm was not failing
+its test because the mechanism does not transfer; it was failing because n=6, sized from the pilot's
+optimistic sd, could not resolve an effect of about 0.04-0.05 nats. The probe arm's larger effect
+(6/6, +0.1316) is still a package of rebuild plus reselection, which this block does not separate -
+but it is no longer sitting on top of an unexplained clean-arm failure. Section 5.38's registered
+branch (c) is superseded *for interpretation*; its numbers stand as run.
+
+### 5.38.2 The two blocks together: a declared secondary, not a verdict
+
+The two blocks ran the same prescription on disjoint fresh seeds, so their deltas can be read together
+(`study-summaries/real-path-clone-dev-pooled.json`, report section 5.38.2). It is recorded as a
+**post-hoc secondary** with the caveat stored in the record itself, because section 5.38's seeds sized
+section 5.38.1 - the second block was designed with knowledge of the first - and both blocks' own
+pre-registered verdicts stand as recorded.
+
+| pooled, n = 18 | value |
+|---|---|
+| mean `base - clone` | **+0.05170** nats |
+| sd / standard error | 0.0737 / 0.0174 |
+| t | +2.98 |
+| sign-flip permutation p | **0.00375** |
+| exact sign test | 12/18 wins against a bar of 13, p 0.1189 |
+| the two statistics disagree | yes |
+
+The mean test is decisive and the win rate is not distinguishable from chance. That combination is
+precisely the signature section 5.31.1 named: **a positive expected effect carried by a right tail,
+not a reliable per-seed improvement.** Both statements are true and they answer different questions -
+the pipeline consumes an expected loss, while a claim like "the treatment usually helps" is not
+supported.
+
+### 5.38.3 What this settles, and what the real-scale run should expect
+
+- **Settled.** Preserving the router and cloning a grown expert improves the expected final loss on the
+declared path at dev fidelity, on the arm that cannot be affected by probe ranking, under a
+pre-registered test with the clean-comparison guarantee holding 12/12. The pipeline change that
+section 5.28 adopted on toy evidence is now supported by a registered real-path measurement.
+- **Calibrated, and this is the number worth carrying forward: the effect is small - about 0.05 nats,
+roughly 1.4% of the ~3.6 nat dev loss - right-skewed, and not a per-seed certainty.** A real-scale
+protocol should be specified with the treatment on, and it should not be sold an effect size on the
+strength of this. If the declared run's benefit is what decides Gate 4, a modest effect at dev scale is
+the honest prior for it.
+- **Still open.** The probe arm's package (rebuild plus reselection) is not separated; the reselection
+goes in the predicted direction (preservation makes a grow look better to the probe) but this design
+cannot apportion it. And nothing here measures capability per FLOP, so Gate 4 remains behind the
+compute-efficiency measurement.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
