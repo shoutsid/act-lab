@@ -5310,9 +5310,118 @@ protocol should be specified with the treatment on, and it should not be sold an
 strength of this. If the declared run's benefit is what decides Gate 4, a modest effect at dev scale is
 the honest prior for it.
 - **Still open.** The probe arm's package (rebuild plus reselection) is not separated; the reselection
-goes in the predicted direction (preservation makes a grow look better to the probe) but this design
-cannot apportion it. And nothing here measures capability per FLOP, so Gate 4 remains behind the
-compute-efficiency measurement.
+goes in the predicted direction (preservation makes a grow look better to the probe) but this design  cannot apportion it. And nothing here measures capability per FLOP, so Gate 4 remains behind the
+  compute-efficiency measurement.
+
+### 5.39 Pre-registration: is real-text churn harm a property of churn, or of the rebuild it was measured under?
+
+**Motivation, and why this is the cheapest decisive question left on the real path.**
+Section 5.7 measured the single most load-bearing real-text fact in this report: at
+that fidelity, an arm that performed **zero** mutations beat the random arms by a
+mean `-0.1217` nats (8/8 seeds). Section 5.3's five-variant verdict then reads
+naturally as a corollary - every probe-selection variant spent its full mutation
+budget and therefore inherited the churn harm, which is why none of them beat its
+random arm. If that reading is right, no selection rule can win on real text
+at all - Gate 4's quality premise would be unreachable by construction, because the
+controller's job is to choose mutations and mutation is the harm.
+
+But every one of those runs was executed on a path that was **re-drawing the
+mutated layer's learned router on every event** - the section 5.35 defect, which
+sections 5.24-5.28 (toy) and section 5.38.1 (this path) show is a real,
+partially-repairable cost, and which section 5.35 found the declared path had
+never been given the fix for. So the churn harm §5.7 measured is a **level**
+measured on an unrepaired rebuild. Sections 5.38/5.38.1 supply the corresponding
+**difference** (the treatment improves the clean seeded arm: pooled mean `+0.0517`,
+mean-test p `0.00375`), and the difference is exactly what is missing from the
+level: `null - clone` differs from `null - base` by `clone - base` alone. What is
+not yet measured - and cannot be inferred from either - is the level itself: **is
+doing nothing still better than churning once the rebuild is repaired?**
+
+**Design.** Three points, the same 18 seeds, the same dev fidelity and the same
+real TinyStories stream as sections 5.38/5.38.1 (dev shape ~14.9M total / 7.6M
+active, 400 steps, three structural events at 100/200/300):
+
+| point | arm | status |
+|---|---|---|
+| `null` | zero mutations, budget-matched no-op events, zero probe FLOPs | **new** (`scripts/churn_harm_study.py`) |
+| `random_base` | seeded churn, historical rebuild | stored by section 5.38/5.38.1 |
+| `random_clone` | seeded churn, `preserve_router_on_rebuild=True`, `new_expert_initialization="clone"` | stored by section 5.38/5.38.1 |
+
+Seeds: 15210-15215 and 15220-15231 (both registered blocks' own queues). The null
+arm is a single-arm session that shares the random arm's init identity
+(`arm_seed = seed * 10 + 1` for both, section 5.8), training stream and
+chooser-seed discipline, consumes every event slot, and performs no draw, no
+probe, no rebuild and no fallback - so `null - random` is paired and attributable
+to the mutation budget alone, with no probe term on either side.
+
+**Primaries** (paired per seed, `null` minus the churn arm, so **positive = churn
+is harmful**; declared statistic is the one-sided paired sign-flip permutation
+test, with the exact sign test reported beside it per section 5.31.1):
+
+1. **P1 - untreated churn harm**: `null - random_base`. Registered prediction:
+   **positive** (section 5.7's direction, at lower fidelity).
+2. **P2 - treated churn harm**: `null - random_clone`. Registered prediction:
+   **smaller than P1**, and the registered question is whether it is still
+   positive.
+
+Two primaries, so `alpha/2 = 0.025` each. The contrast between them is *not* a
+third primary and does not need to be: per seed,
+`(null - base) - (null - clone) = clone - base`, which is exactly section 5.38's
+already-registered contrast and is reported here only as a **replication check**
+that the stored rows reproduce their own summary's arithmetic.
+
+**Decision branches (fixed now, before the null arm is observed).**
+
+- **(a) Harm is a defect artifact**: P1 positive at `alpha/2` and P2 **not**
+  positive at `alpha/2` -> the churn harm section 5.7 measured is (at this
+  fidelity) carried by the unrepaired rebuild, §5.3's five-variant verdict is
+  scoped to the defect rather than to churn, and the declared protocol specified
+  with the treatment on (§5.38.3) does not inherit the harm. This is the branch
+  that reopens Gate 4's quality premise, and it is the one worth being most
+  suspicious of, so it additionally requires the replication check to hold.
+- **(b) Harm survives the repair**: both P1 and P2 positive at `alpha/2` ->
+  doing nothing still beats churning with the repair in place, the do-nothing bar
+  is a property of churn and not of the defect, and Gate 4's quality premise needs
+  a mechanism other than the rebuild. Section 5.7's reading stands as written.
+- **(c) Not harmful at this fidelity**: neither P1 nor P2 positive -> §5.7's
+  harm does not reproduce at dev fidelity, and the fidelity gap (declared-scale
+  real-data config, 600 steps, `expert_count=8` there versus the dev shape here)
+  is the finding. Recorded as a scope statement on §5.7, not as its refutation.
+- **(d) Red flag**: P2 positive and **larger** than P1 -> the repair increases the
+  cost of churn. Recorded as a red flag and not explained away, exactly as
+  section 5.38's branch (c) was.
+
+**What is already known, disclosed rather than pretended.** The two churn arms'
+losses are already observed - they are the stored rows of sections 5.38/5.38.1, and
+their own verdicts and the `+0.0517` pooled difference are committed facts. This
+block is therefore registered in advance **of the null arm's observations only**,
+and no part of its primary is a function of an unobserved quantity on the churn
+side. The seeds are also no longer fresh in absolute terms (both blocks spent
+15210-15215 and 15220-15231). What makes the block admissible anyway is that no
+arm in either block has ever been run with zero mutations: the queue is fresh *for
+this question*, and the question - the **level** of churn harm - has not been asked
+of these seeds or any other on this path. It is registered as a diagnostic-scale
+study (`alpha/2` on 18 paired seeds), not as a Gate 4 gate: it decides which branch
+of the above the real path is on, and therefore what the declared run's `random`
+and `null` arms should be expected to do, not whether Gate 4 is authorized.
+
+**Other declarations.**
+
+- *`activation_checkpointing`.* The stored `base` rows ran while the dev default
+  was `True`; it is `False` now (section 5.37.1). The flag is trajectory-inert and
+  bit-identical under the liveness contract (section 5.37), so it cannot move any
+  churn loss. Disclosed, and the null arm runs under the current default.
+- *Not bit-reproducible.* GPU block, so section 6's fixed-thread-count contract
+  does not apply; reproduction means re-running and checking verdict stability.
+- *Budget matching.* The null arm books zero probe FLOPs and zero mutations while
+training the same token count; its training FLOPs differ from a churn arm's only
+through the parameter growth the churn arms accumulate, which is reported per arm
+rather than forced equal.
+- *No re-runs on a measured branch.* Whatever the branch, it is written up as it
+  lands and no arm is added afterwards to change it.
+
+**Execution.** `scripts/churn_harm_study.py` (resumable, budget-aware), summary
+`artifacts/study-summaries/real-path-churn-harm.json`.
 
 ## 6. Reproducibility
 
