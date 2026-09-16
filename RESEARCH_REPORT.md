@@ -4698,6 +4698,105 @@ half. P2 was the real question and I declared it uncertain in advance; the direc
 was right, and the *magnitude* is what I did not anticipate - I expected the load rule to be
 roughly comparable, and it recovered only a quarter to a third of the probe's advantage.
 
+### 5.34 Pre-registration: does the probe score candidates under the rebuild it will apply?
+
+**The defect candidate, and why it is the same one section 5.24 fixed.** Section 5.24 found that
+the historical rebuild discards a mutated layer's **entire learned router** whenever that layer's
+expert count changes - a `hidden x experts` head whose shape moves with the expert count, so the
+same-shape copy cannot carry it. That defect was fixed in the **applied** rebuild
+(`preserve_router_on_rebuild`, and `new_expert_initialization="clone"` for a grown expert), and
+sections 5.26-5.33 measured everything under those settings.
+
+The probe's **scoring** rebuild was not part of that fix, and it does not receive the arm's
+settings: `_mutate_by_probe` calls `rebuild_model_from_genome` with the historical defaults, so
+every candidate is scored by a model built the old way - a fresh random router, a random new
+expert - while the winner is then applied with the settings the arm actually uses. Two
+consequences are directly measurable in the code path:
+
+1. a **prune** candidate is scored after its layer's routing head has been re-drawn at random,
+   which is precisely the perturbation section 5.24 showed costs ~55% of the mid-training
+   penalty, and
+2. a **grow** candidate is scored with a random new expert rather than the cloned one section
+   5.26/5.27 showed beats it by ~0.10 nats.
+
+Section 5.29 found the consequence empirically without looking for it: on the adaptive path the
+two rebuilds put 12.5% of seeds on different final genomes, which is why that study had to record
+its pairing rather than assert it.
+
+So the registered question is whether the probe's ranking is measuring the model it will build.
+A new opt-in config field `probe_scoring` selects between `"default"` (the historical scoring
+rebuild, and the value every committed number was measured under) and `"applied"` (the scoring
+rebuild uses the arm's own `preserve_router_on_rebuild` / `new_expert_initialization`).
+
+**Blocks.** Depth 2, seeds `123000-124535`, and depth 3, seeds `125000-126535`, 1536 seeds each,
+on the section 5.30/5.33 registered configuration with the section 5.28 delivery settings
+(`adaptive_policy="probe_loss"`, cap-4/2-batch, `spread`, 48 steps, interval 12, budget 3,
+`independent_arm_rng`, `preserve_router_on_rebuild=True`, `new_expert_initialization="clone"`,
+`device="cpu"`). Per seed: the `fixed` arm, the `adaptive` arm under `probe_scoring="default"`
+(`D`) and under `"applied"` (`S`), and a frozen retrain of each run's final genome from its own
+initialization (`D_own`, `S_own`). The only thing that differs between `D` and `S` is which
+rebuild the candidates are scored in.
+
+Separately: the two forced-operation mechanism blocks at depth 2 (seeds `127000-127535`, 536
+seeds each, the same config plus `forced_operation`), and the identity check blocks at depth 2
+(seeds `128000-128063`) and depth 3 (seeds `128064-128127`), 64 seeds each, which are the same
+config with `probe_candidate_cap=1` for the reason given below.
+
+**Primaries** (one-sided paired sign-flip permutation test on the mean, 20,000 permutations,
+`alpha/4 = 0.0125`, signed so that a win is the prediction; the paired sign test is reported
+beside every one):
+
+| | prediction | why this column |
+|---|---|---|
+| **P1** `fused(S)` < `fused(D)` | predicted **to pass** | the deployed number under section 5.28's keep-the-fused-run recommendation |
+| **P2** `own(S)` < `own(D)` | declared **uncertain** | the number the freeze-and-retrain pipeline delivers; section 5.32's lever moved the fused column while slightly worsening this one, so a fused-only gain is a live possibility |
+
+Decision rule. P1 and P2 both pass -> the probe must score under the rebuild it applies, and every
+section 5.26-5.33 result inherits a scoring defect that has been silently present; P1 passes and
+P2 fails -> the fix improves the run but not the delivered artifact, and the pipeline question
+stays with section 5.28; P1 fails -> mis-scored candidates are not distorting the selection
+materially, and the mismatch is a documentation defect rather than a behavioural one.
+
+**Mechanism block, declared as a prediction rather than a hash.** Depth 2, seeds
+`127000-127535`, 536 seeds each, run twice: once with `forced_operation="grow"` and once with
+`forced_operation="prune"` (section 5.25's control), each under both scoring rules. The claim to
+beat is that the gain is concentrated on the **prune** block, because that is where the default
+scoring's distortion is the section 5.24 defect itself (a prune trial discards the learned router)
+while the grow block's distortion is the milder fresh-vs-cloned expert difference. If the gain is
+symmetric across the two, the mechanism is not the router discard and the interpretation must be
+withdrawn, not softened.
+
+**Integrity checks, all required, all recorded per seed.**
+
+- **The identity check, and the first version of it was wrong.** The check has to make the score
+  unable to decide *which* candidate is applied. `probe_selection="random"` does **not** do that -
+  the seeded index indexes the pool *after it is sorted by probe loss*, so the chosen candidate is
+  score-dependent even under the loss-blind rule (measured: the two settings did not reproduce
+  each other under it). The registered check therefore sets `probe_candidate_cap=1`, which leaves
+  exactly one candidate in the pool, so the score cannot influence anything but the recorded
+  number: the two settings must then be **bit-identical** on the fused loss, the fixed arm and the
+  selected candidate sequence. Any difference would falsify the claim that the knob changes only
+  the ranking, and would mean this study is measuring something else. Run over a 64-seed block at
+  both depths, and pinned as a unit test.
+- The `fixed` arm is bit-identical under both settings (same seed, same data schedule).
+- Both settings use the full mutation budget.
+- **The treatment binds**: the recorded selection differs between the two rules in a substantial
+  fraction of events (rate recorded; a rate below 10% would make the block uninformative).
+- The grow/prune mix under both settings is recorded, because section 5.30's lesson is that a
+  changed mix can be the whole story.
+- **Search cost, and a correction to how it was described in sections 5.32/5.33.** Those studies
+  could say "the cost identity holds exactly" because their selection rules reorder a pool built by
+  *one* scoring rebuild. Here the scored models themselves differ, and the probe books the scored
+  model's ``active_parameter_count``, which depends on that model's own routing - so the two rules
+  book slightly different search cost. It is measured and recorded per seed (mean and maximum
+  relative difference), with a mean-within-2% guard: a large divergence would mean the knob changed
+  something other than how candidates rank.
+
+**Scope.** Toy-fidelity, synthetic-token and fixed-probe-budget caveats of sections 5.26-5.33
+apply unchanged. The `applied` scoring rule is only reachable at the settings the arm uses, so the
+contrast is a no-op by construction on the historical defaults - which is why all committed
+numbers before this block are unaffected, and why a pinning test asserts that too.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

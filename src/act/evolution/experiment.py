@@ -105,6 +105,17 @@ class ExperimentConfig:
     # under; "busiest" and "quietest" rank the layer's experts by their recorded
     # routing load. Report section 5.31.
     prune_expert_policy: str = "random"
+    # Which rebuild the probe SCORES its candidates under, when the arm's own
+    # rebuild settings differ from the historical default. "default" scores every
+    # candidate through `rebuild_model_from_genome`'s historical defaults (fresh
+    # router, random new expert) - which is what every published number was
+    # measured under, and which is only the same rebuild the winner is applied
+    # with when `preserve_router_on_rebuild`/`new_expert_initialization` are at
+    # their defaults. "applied" scores each candidate under the settings the
+    # event will actually use, so the probe ranks candidates by the loss of the
+    # model it would build, not by the loss of a model built a different way.
+    # Report section 5.34.
+    probe_scoring: str = "default"
     arms: str = "fixed,random,adaptive"
     device: str = "cpu"
 
@@ -229,6 +240,8 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
         raise ValueError("unsupported probe_candidate_policy")
     if config.probe_selection not in {"argmin", "argmax", "random", "quietest"}:
         raise ValueError("unsupported probe_selection")
+    if config.probe_scoring not in {"default", "applied"}:
+        raise ValueError("unsupported probe_scoring")
     if config.forced_operation not in {None, "grow", "prune"}:
         raise ValueError("forced_operation must be None, 'grow' or 'prune'")
     if config.new_expert_initialization not in {"random", "clone", "clone_body"}:
@@ -361,6 +374,7 @@ def run_experiment(config: ExperimentConfig = ExperimentConfig()) -> ExperimentR
                     config.probe_force_candidate,
                     config.probe_force_events,
                     config.forced_operation,
+                    config.probe_scoring,
                 )
     validation_tokens = _validation_batches(config, device)
     results = tuple(
@@ -459,6 +473,7 @@ def _mutate_by_probe(
     record_landscape: bool = False,
     force_candidate: int | None = None,
     force_events: int | None = None,
+    probe_scoring: str = "default",
 ) -> None:
     """Probe feasible mutations and apply the one with the lowest probe loss.
 
@@ -469,6 +484,10 @@ def _mutate_by_probe(
     ``record_landscape`` stores every candidate's probe loss in the mutation
     history and ``force_candidate`` deterministically applies the candidate at
     that evaluation index instead of the probe-best one (counterfactual runs).
+    ``probe_scoring`` chooses the rebuild the candidates are SCORED under: the
+    historical defaults (``"default"``) or the arm's own settings
+    (``"applied"``), which is the rebuild the winner is applied with - see the
+    config field for why those can differ (report section 5.34).
     """
     if not arm.probe_batches:
         raise RuntimeError("probe-guided mutation requires probe batches")
@@ -496,11 +515,22 @@ def _mutate_by_probe(
                 continue
         elif not prune_expert(trial_genome, layer_id, expert_id):
             continue
+        # Section 5.34: score the candidate under the rebuild the event will
+        # actually apply, not under the historical defaults. With an arm on the
+        # defaults the two are identical by construction, so this is a no-op
+        # there; with a preserving/cloning arm the default scoring would rank
+        # candidates by the damage of destroying the router that this arm keeps.
+        scoring_preserve = arm.preserve_router if probe_scoring == "applied" else False
+        scoring_init = (
+            arm.new_expert_initialization if probe_scoring == "applied" else "random"
+        )
         probe_model = rebuild_model_from_genome(
             deepcopy(arm.model),
             trial_genome,
             context_size=arm.model.config.context_size,
             num_heads=arm.model.config.num_heads,
+            preserve_router=scoring_preserve,
+            new_expert_initialization=scoring_init,
         )
         if not isinstance(probe_model, StaticMoECausalLM):
             raise TypeError("probe mutation changed the baseline model family")
@@ -593,6 +623,7 @@ def _mutate_by_probe(
         "probe_batch_count": len(probe_batches),
         "probe_candidate_policy": candidate_policy,
         "probe_selection": probe_selection,
+        "probe_scoring": probe_scoring,
     }
     if record_landscape:
         entry["probe_selected_index"] = selected_index
@@ -629,6 +660,7 @@ def _mutate_arm(
     force_candidate: int | None = None,
     force_events: int | None = None,
     forced_operation: str | None = None,
+    probe_scoring: str = "default",
 ) -> None:
     if arm.mode == "guided":
         _mutate_by_probe(
@@ -641,6 +673,7 @@ def _mutate_arm(
             record_landscape=record_landscape,
             force_candidate=force_candidate,
             force_events=force_events,
+            probe_scoring=probe_scoring,
         )
         return
     if arm.mode == "adaptive" and adaptive_policy == "probe_loss":
@@ -657,6 +690,7 @@ def _mutate_arm(
             record_landscape=record_landscape,
             force_candidate=force_candidate,
             force_events=force_events,
+            probe_scoring=probe_scoring,
         )
         return
     chooser = random.Random(seed)
