@@ -972,6 +972,73 @@ def test_missing_control_withholds_gate_4_rather_than_skipping_the_clause(
     assert verdict["gate_4_authorized"] is False
 
 
+def test_a_short_control_withholds_gate_4_rather_than_leaving_the_clause_unfireable(
+    tmp_path: Path,
+) -> None:
+    """The clause needs 10 pairs, so an incomplete control cannot fire it at all.
+
+    A control run on 4 seeds - a deadline-stopped session's queue, say - leaves
+    ``wins >= 10`` unreachable while the loss-blind arm is winning every seed it did
+    run. Before this guard existed that state authorized Gate 4 outright: verdict
+    ``PASS``, ``gate_4_authorized`` True, exit 0. The do-nothing clause always refused
+    to evaluate an incomplete queue; this makes the pool-matched clause agree with it.
+    """
+    primary = tmp_path / "datasets"
+    control = tmp_path / "control"
+    null_root = tmp_path / "null"
+    in_band = _in_band_search_flops(1)
+    _populate(primary, search_flops=in_band, null_root=null_root)
+    for seed in DECLARED[:4]:
+        # Every pair the control did run shows the pool effect winning.
+        _write_seed(
+            control, seed, adaptive_loss=1.0, random_loss=1.5, search_flops=in_band
+        )
+
+    verdict = v0_verdict.compute_verdict(
+        primary, probe_batch_count=1, control_root=control, null_root=null_root
+    )
+    block = verdict["pool_matched_control"]
+    assert block["evaluated"] is False
+    assert block["pairs"] == 4
+    assert block["seeds_missing"] == list(DECLARED[4:])
+    assert "cannot be evaluated" in block["reason"]
+    assert str(v0_verdict.POOL_CONTROL_WIN_LIMIT) in block["reason"]
+    assert verdict["verdict"] == "PASS_COST_ONLY_CONTROL_MISSING"
+    assert verdict["gate_4_authorized"] is False
+    assert verdict["exit_code"] == 2
+
+
+def test_a_control_one_seed_short_is_withheld_even_when_it_would_not_have_fired(
+    tmp_path: Path,
+) -> None:
+    """Eleven innocent pairs still cannot evaluate a clause that needs the twelfth.
+
+    11 of 12 is the case an honest operator is most likely to hit, and the clause
+    reads the same either way when it *could* fire. Withholding is what the missing
+    control, the incomplete null queue and the incomplete primary queue all do.
+    """
+    primary = tmp_path / "datasets"
+    control = tmp_path / "control"
+    null_root = tmp_path / "null"
+    in_band = _in_band_search_flops(1)
+    _populate(primary, search_flops=in_band, null_root=null_root)
+    for seed in DECLARED[:-1]:
+        # The loss-blind arm loses every pair it ran, so nothing would have fired.
+        _write_seed(
+            control, seed, adaptive_loss=1.5, random_loss=1.0, search_flops=in_band
+        )
+
+    verdict = v0_verdict.compute_verdict(
+        primary, probe_batch_count=1, control_root=control, null_root=null_root
+    )
+    block = verdict["pool_matched_control"]
+    assert block["evaluated"] is False
+    assert block["pairs"] == len(DECLARED) - 1
+    assert block["seeds_missing"] == [DECLARED[-1]]
+    assert verdict["verdict"] == "PASS_COST_ONLY_CONTROL_MISSING"
+    assert verdict["gate_4_authorized"] is False
+
+
 def test_control_missing_an_arm_aborts(tmp_path: Path) -> None:
     control = tmp_path / "control"
     _populate(tmp_path, search_flops=_in_band_search_flops(), control_root=control)

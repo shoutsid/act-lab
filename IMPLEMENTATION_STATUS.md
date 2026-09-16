@@ -1,5 +1,42 @@
 # ACT Implementation Status
 
+## Section 5.42: a short pool-matched control made its own clause unfireable (2026-09-16)
+
+Found by comparing two sibling clause evaluators that should behave alike. `_null_block`
+states in its docstring that `evaluated` "requires the queue to exist AND be complete on
+the declared block; anything less withholds Gate 4 rather than reading as a null result".
+`_control_block` returned `evaluated: True` with a `seeds_missing` list and no guard.
+
+**Why that is exploitable.** The clause is `wins >= POOL_CONTROL_WIN_LIMIT` (10), so on
+fewer than ten pairs it cannot fire however the loss-blind arm performs, and
+`compute_verdict` reads that as "clause evaluated, did not fire"
+(`control["evaluated"] and control["control_passes_gate"]`). `gate_4_authorized`
+consults only the **primary** queue's missingness.
+
+| control pairs | loss-blind arm | clause | verdict | `gate_4_authorized` | exit |
+|---|---|---|---|---|---|
+| 4 of 12 | wins 4/4 | **unfireable** (4 < 10) | `PASS` | **True** | 0 |
+
+So the clause whose purpose is to stop a pool/location effect from authorizing Gate 4 was
+defeated by **not finishing the control queue** - the state a deadline-stopped session
+produces - with nothing warning.
+
+**Fix, mirroring `_null_block`.** `evaluated` now requires the control complete on the
+declared block, recording the missing seeds and the reason; the existing
+`PASS_COST_ONLY_CONTROL_MISSING` label (exit 2, Gate 4 withheld) picks it up, so no new
+label and no other registered behaviour moves. A complete control behaves exactly as
+registered, including 9-of-12 staying authorized. The same fixture now reads
+`PASS_COST_ONLY_CONTROL_MISSING`, `gate_4_authorized: False`, exit 2.
+
+**Boundary pinned:** a control at 11 of 12 whose loss-blind arm loses every pair is
+withheld too. Two tests, teeth verified by reverting the guard (both fail; restore passes
+38/38). Recorded as report section 5.42.
+
+**Fourth instance of one shape.** Section 5.33's `forced_operation` no-op, section 5.37's
+unclassified field, section 5.41's band scale, and this: **a check whose result can be
+decided by something other than the quantity it claims to measure.** All four found by
+reading; none by running a study.
+
 ## Section 5.41: the Gate-4 verdict's tolerance band could only be passed at declared scale (2026-09-16)
 
 Found by reading the two committed real-path verdicts. Both record `in_tolerance_band:

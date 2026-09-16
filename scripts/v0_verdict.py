@@ -162,10 +162,35 @@ def _arm_pairs(dataset_root: Path, seeds: list[int]) -> list[dict[str, object]]:
 
 
 def _control_block(dataset_root: Path, declared_seeds: tuple[int, ...]) -> dict:
-    """Pool-matched loss-blind control block over the same seed pairs."""
+    """Pool-matched loss-blind control block over the same seed pairs.
+
+    The control's clause is ``wins >= POOL_CONTROL_WIN_LIMIT``, so a control that
+    completed fewer than the limit's worth of pairs **cannot fire it**: the arm would
+    have to win 10 of the 4 seeds it ran. ``evaluated`` therefore requires the control
+    to be complete on the declared block, exactly as ``_null_block`` requires of the
+    do-nothing queue - anything less withholds Gate 4 with the reason recorded rather
+    than leaving the clause unfireable and reporting a clean PASS. Measured before the
+    fix: a control run on 4 seeds winning all 4 authorized Gate 4 (``verdict: PASS``,
+    ``gate_4_authorized: True``, exit 0) because 4 < 10.
+    """
     complete = _seed_numbers(dataset_root)
     seeds = [seed for seed in complete if seed in declared_seeds]
     missing = sorted(set(declared_seeds) - set(seeds))
+    if missing:
+        return {
+            "evaluated": False,
+            "dataset_root": str(dataset_root),
+            "pairs": len(seeds),
+            "seeds_missing": missing,
+            "win_limit": POOL_CONTROL_WIN_LIMIT,
+            "reason": (
+                f"pool-matched control incomplete on the declared block: missing "
+                f"seed(s) {missing} ({len(seeds)} of {len(declared_seeds)} pairs); the "
+                f"section 5.5 change-3 clause needs {POOL_CONTROL_WIN_LIMIT} pairs "
+                "before it can fire at all, so an incomplete control cannot be "
+                "evaluated and Gate 4 is withheld"
+            ),
+        }
     pairs = _arm_pairs(dataset_root, seeds)
     wins = sum(1 for pair in pairs if pair["adaptive_wins"])
     # The clause bites when the loss-blind arm clears the same bar the harm

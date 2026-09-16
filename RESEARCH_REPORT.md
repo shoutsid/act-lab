@@ -5733,6 +5733,50 @@ cannot be passed on the input it is applied to.** This one is worth the write-up
 it sat inside the artifact that decides Gate 4, and because its output was a
 qualification that reads as a finding about the hypothesis.
 
+### 5.42 A partially-run pool-matched control made its own clause unfireable (found by comparing two sibling clauses)
+
+**What was seen.** `v0_verdict.py` has two clause evaluators that should behave alike,
+and they disagreed about incompleteness. `_null_block` states it in its docstring:
+"``evaluated`` requires the queue to exist AND be complete on the declared block; anything
+less withholds Gate 4 rather than reading as a null result." `_control_block` returned
+``evaluated: True`` with a `seeds_missing` list and no such guard.
+
+**Why that is exploitable.** The pool-matched clause is
+`wins >= POOL_CONTROL_WIN_LIMIT` (10). On fewer than ten pairs it cannot fire, however
+the loss-blind arm performs - the arm would have to win ten of the four seeds it ran.
+`compute_verdict` gates the clause as `control["evaluated"] and
+control["control_passes_gate"]`, so an incomplete control reads as *"clause evaluated,
+did not fire"*, and `gate_4_authorized` consults only the **primary** queue's
+missingness. Built from the verdict's own fixtures, before the fix:
+
+| control pairs | loss-blind arm | clause | verdict | `gate_4_authorized` | exit |
+|---|---|---|---|---|---|
+| 4 of 12 | wins 4/4 | **unfireable** (4 < 10) | `PASS` | **True** | 0 |
+
+So the clause whose entire purpose is to stop a pool/location effect from authorizing
+Gate 4 could be defeated by **not finishing the control queue** - which is exactly the
+state a deadline-stopped Kaggle session produces, and nothing warned.
+
+**Fix.** Mirror `_null_block`: `evaluated` now requires the control to be complete on the
+declared block, with the missing seeds and the reason recorded. The caller's existing
+`PASS_COST_ONLY_CONTROL_MISSING` label (exit 2, Gate 4 withheld) picks it up, so no new
+label appears and no other registered behaviour moves. A complete control behaves exactly
+as registered, including a 9-of-12 win count staying authorized. After the fix, the same
+fixture reads `PASS_COST_ONLY_CONTROL_MISSING`, `gate_4_authorized: False`, exit 2.
+
+**The boundary is pinned too.** A control at 11 of 12 where the loss-blind arm *loses*
+every pair is withheld as well: eleven pairs cannot evaluate a clause that needs twelve,
+and withholding is what the missing control, the incomplete null queue and the incomplete
+primary queue all already do. Two tests, teeth verified by reverting the guard (both
+fail; restore passes 38/38).
+
+**Fourth instance, and the shape is now nameable.** Section 5.33's `forced_operation`
+no-op, section 5.37's unclassified field, section 5.41's band scale, and this one:
+**a check whose result can be decided by something other than the quantity it claims to
+measure** - a knob that never binds, a field nothing reads, a band applied at the wrong
+scale, a threshold its own input is too short to reach. All four were found by reading,
+none by running a study, and all four sat in machinery the project was about to rely on.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
