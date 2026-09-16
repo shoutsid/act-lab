@@ -4918,6 +4918,71 @@ discovery path** and remains **off by default in the config**, because every com
 measured under `"default"` and flipping it would silently change the record - the same
 reasoning section 5.24 used for `preserve_router_on_rebuild`.
 
+### 5.35 The same defect on the real path, found by reading rather than by a study
+
+Section 5.24 fixed the discarded router in the toy rebuild (`rebuild_model_from_genome`).
+Reading the declared path while porting section 5.34's fix showed that
+**`rebuild_v0_moe_from_genome` had the identical defect and had never been treated**: it copies
+expert bodies by id, but the router is `hidden_size x experts_in_layer` (`_MoEFeedForward.router`),
+so its shape moves with the expert count and the same-shape copy cannot carry it. Every declared
+mutation therefore re-drew that layer's whole learned routing function at random - the property
+sections 5.24-5.28 measured as costing ~55% of the mid-training penalty on the toy substrate - and
+there was no cloned-new-expert option either.
+
+**This is not a finding from a study; it was visible in the code**, and it had been visible since
+section 5.24 named the defect. What the toy path got, the real path did not, because the two have
+separate factories and only one of them was fixed. That is worth recording as a process failure, not
+just a bug: seven pre-registered studies were designed around a treatment the declared path never
+had.
+
+**The fix, ported, with the defaults left alone.** `rebuild_v0_moe_from_genome` now takes
+`preserve_router` and `new_expert_initialization` (`random`/`clone`/`clone_body`) with the historical
+behaviour as the defaults, matching the toy signature; `V0SessionConfig` carries the same two fields,
+rejecting `clone` without preservation rather than silently downgrading it; and every applied
+rebuild in `v0_session` now goes through one helper so the treatment cannot be wired into some paths
+and forgotten in others - the failure mode that made section 5.33's `prune_expert_policy` and
+section 5.34's `forced_operation` inert. The toy path's section 5.34 scoring mismatch does not exist
+here: the probe and the application share this rebuild, so they cannot disagree about which model
+they are ranking.
+
+Pinned by `tests/test_v0_router_rebuild.py`: the default still discards the mutated layer's router
+(experts survive, the head does not, and the unmutated layer's head is carried); preservation carries
+exactly the surviving rows; `clone` takes body *and* row from the busiest survivor by `routing_load`;
+`clone_body` leaves the new row fresh; and the dev defaults are unchanged.
+
+### 5.36 Dev-scale evidence on the real token stream (not a registered measurement)
+
+`scripts/dev_cycle.py` is the iteration loop - the dev shape (~14.9M total / 7.6M active) on the real
+TinyStories stream, three mutation events at steps 100/200/300, 400 steps per arm, ~162 s per
+cycle on the GTX 1070. It gained `--preserve-router`, `--new-expert`, and `--tag` so two settings can
+be run on one seed without resuming each other's checkpoints.
+
+Three seeds, both settings, same seed and data schedule, adaptive and random arms as the session
+already builds them:
+
+| seed | `random` arm base -> clone | `adaptive` arm base -> clone | adaptive - random, base -> clone |
+|---|---|---|---|
+| 15201 | 3.6402 -> **3.6093** | 3.7295 -> **3.5915** | **+0.0893 -> -0.0178** |
+| 15202 | 3.6873 -> **3.6197** | 3.6613 -> **3.5874** | -0.0260 -> -0.0323 |
+| 15203 | 3.6470 -> **3.5718** | 3.6989 -> **3.6216** | +0.0519 -> +0.0498 |
+
+Every one of the six arm losses improves, and the adaptive-minus-random gap improves on all three
+seeds (mean -0.038, dominated by seed 15201's -0.107). The `random` arm is the cleaner of the two
+signals: it mutates three times on a seeded schedule and never probes, so its improvement
+(-0.031 / -0.068 / -0.075 on the same seed, same data, differing only in the rebuild) cannot be an
+artifact of how the probe ranks anything.
+
+**These are dev cycles, not evidence.** Three seeds at the dev shape on synthetic-token fidelity
+caveats unchanged, no pre-registration, and the effect is carried by one seed's `adaptive` gap - the
+shape of a smoke, not a result. What it licenses is a *registered* real-path block, not a claim.
+
+**Two dev-loop facts learned by running it.** (1) Dev cycles do **not** parallelise: four launched
+with `xargs -P 4` failed to finish in 590 s where the same four run sequentially in 162 s each - the
+path is launch-bound, so the GPU serialises them and the host cores are wasted on contention. Run
+them sequentially, or two at a time at most. (2) A resumed arm reports a meaningless tokens/s
+(687 billion in one run) because it books the arm's full token budget against a near-zero wall; read
+the loss columns on a resumed run, not the throughput column.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

@@ -63,6 +63,24 @@ REGISTERED = dict(
 )
 
 
+@pytest.fixture(autouse=True)
+def _fixed_thread_count():
+    """Pin torch's thread count for every test in this file.
+
+    Report section 6: bit-exact reproduction is only defined at a fixed thread count
+    (reductions are thread-count sensitive), and the committed numbers this file
+    compares against were produced with one thread. Without this the file passes or
+    fails depending on the shell's ``OMP_NUM_THREADS``, which is exactly the kind of
+    silent substitution the pin exists to prevent.
+    """
+    previous = torch.get_num_threads()
+    torch.set_num_threads(1)
+    try:
+        yield
+    finally:
+        torch.set_num_threads(previous)
+
+
 def _adaptive(seed: int, **overrides):
     config = ExperimentConfig(
         **{**REGISTERED, **overrides, "seed": seed, "arms": "fixed,adaptive"}

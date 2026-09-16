@@ -119,6 +119,18 @@ class V0SessionConfig:
     # the inverted-signal control. Both probe the same candidates with the
     # same batches and book the same search FLOPs - only the decision differs.
     probe_selection: str = "argmin"
+    # Report section 5.34/5.24: what the mid-training rebuild does with the
+    # mutated layer's learned router (a ``hidden x experts_in_layer`` head whose
+    # shape moves with the expert count, so the generic same-shape copy cannot
+    # carry it and the historical rebuild re-draws it at random on every event).
+    # Off by default because it is the behaviour every committed number was
+    # measured under; on, surviving experts keep their learned rows by id and a
+    # grown expert is initialised per `new_expert_initialization` below.
+    preserve_router_on_rebuild: bool = False
+    # "random" (the historical draw), "clone" (a copy of the busiest surviving
+    # expert in the layer, router row included) or "clone_body" (the same body
+    # with a fresh row). Requires `preserve_router_on_rebuild`.
+    new_expert_initialization: str = "random"
     # Landscape instrumentation (report section 5.3): when enabled, each
     # adaptive mutation-history event records every probed candidate with its
     # probe loss, sorted best-first so list index = probe rank, plus the
@@ -222,6 +234,21 @@ class V0SessionConfig:
             raise ValueError("probe budgets must be positive")
         if self.probe_selection not in {"argmin", "argmax", "random", "quietest"}:
             raise ValueError(f"unsupported probe_selection: {self.probe_selection}")
+        if self.new_expert_initialization not in {"random", "clone", "clone_body"}:
+            raise ValueError(
+                "unsupported new_expert_initialization: "
+                f"{self.new_expert_initialization}"
+            )
+        if (
+            self.new_expert_initialization in {"clone", "clone_body"}
+            and not self.preserve_router_on_rebuild
+        ):
+            # Cloning needs the surviving routers in place to clone from, so this
+            # combination is rejected rather than silently downgraded.
+            raise ValueError(
+                f"new_expert_initialization={self.new_expert_initialization!r} "
+                "requires preserve_router_on_rebuild=True"
+            )
         if self.probe_candidate_policy not in {"prefix", "spread"}:
             raise ValueError(
                 f"unsupported probe_candidate_policy: {self.probe_candidate_policy}"
@@ -577,6 +604,28 @@ def _probe_loss_lookahead(
     return _probe_loss(model, probe_batches)
 
 
+def _rebuild_mutated(
+    model: V0MoECausalLM,
+    genome: ArchitectureGenome,
+    config: V0SessionConfig,
+) -> V0MoECausalLM:
+    """One place where the applied rebuild's settings are read (section 5.34).
+
+    Every applied rebuild in this module goes through here so the treatment cannot
+    be wired into some paths and forgotten in others - the failure mode that made
+    section 5.33's ``prune_expert_policy`` and ``forced_operation`` inert on the
+    probe path. Note that the rebuild's model construction still draws the same
+    amount of global torch RNG whatever the settings, so the gated arm's lockstep
+    with the random arm is unaffected.
+    """
+    return rebuild_v0_moe_from_genome(
+        model,
+        genome,
+        preserve_router=config.preserve_router_on_rebuild,
+        new_expert_initialization=config.new_expert_initialization,
+    )
+
+
 def _apply_candidate(
     genome: ArchitectureGenome,
     operation: str,
@@ -634,7 +683,7 @@ def _adaptive_event(
         trial_genome = deepcopy(arm_state.genome)
         if not _apply_candidate(trial_genome, operation, layer_id, expert_id, step):
             continue
-        probe_model = rebuild_v0_moe_from_genome(model, trial_genome).to(device)
+        probe_model = _rebuild_mutated(model, trial_genome, config).to(device)
         if config.probe_finetune_steps > 0:
             if next_finetune_batch is None:
                 raise RuntimeError(
@@ -700,7 +749,7 @@ def _adaptive_event(
     before_hash = genome_hash(arm_state.genome)
     arm_state.genome = winner_genome
     arm_state.mutations += 1
-    winner = rebuild_v0_moe_from_genome(model, arm_state.genome).to(device)
+    winner = _rebuild_mutated(model, arm_state.genome, config).to(device)
     arm_state.search_flops += winner.parameter_count * 4
     _prepare_model(winner, config)
     new_optimizer = torch.optim.AdamW(winner.parameters(), lr=config.learning_rate)
@@ -862,7 +911,7 @@ def _gated_event(
     # gated arm would drift off the random arm's RNG stream and break the
     # built-in control. One rebuild per accepted event keeps the streams in
     # lockstep.
-    draw_model = rebuild_v0_moe_from_genome(model, arm_state.genome).to(device)
+    draw_model = _rebuild_mutated(model, arm_state.genome, config).to(device)
     arm_state.search_flops += draw_model.active_parameter_count * sum(
         batch.numel() for batch in probe_batches
     ) * 2
@@ -922,7 +971,7 @@ def _gated_event(
             )
     if fallback_applied:
         arm_state.mutations += 1
-        winner = rebuild_v0_moe_from_genome(model, arm_state.genome).to(device)
+        winner = _rebuild_mutated(model, arm_state.genome, config).to(device)
         arm_state.search_flops += winner.parameter_count * 4
         _prepare_model(winner, config)
         new_optimizer = torch.optim.AdamW(winner.parameters(), lr=config.learning_rate)
@@ -1043,7 +1092,7 @@ def _heuristic_event(
         )
         return model, optimizer
     arm_state.mutations += 1
-    rebuilt = rebuild_v0_moe_from_genome(model, arm_state.genome).to(device)
+    rebuilt = _rebuild_mutated(model, arm_state.genome, config).to(device)
     arm_state.search_flops += rebuilt.parameter_count * 4
     _prepare_model(rebuilt, config)
     new_optimizer = torch.optim.AdamW(rebuilt.parameters(), lr=config.learning_rate)
@@ -1136,7 +1185,7 @@ def _random_event(
     if not changed:
         return model, optimizer
     arm_state.mutations += 1
-    rebuilt = rebuild_v0_moe_from_genome(model, arm_state.genome).to(device)
+    rebuilt = _rebuild_mutated(model, arm_state.genome, config).to(device)
     arm_state.search_flops += rebuilt.parameter_count * 4
     _prepare_model(rebuilt, config)
     new_optimizer = torch.optim.AdamW(rebuilt.parameters(), lr=config.learning_rate)

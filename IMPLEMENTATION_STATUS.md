@@ -1,5 +1,35 @@
 # ACT Implementation Status
 
+## The declared path had the section 5.24 defect too (2026-09-16)
+
+While porting section 5.34's fix, reading `rebuild_v0_moe_from_genome` showed it had the
+**identical** router defect that section 5.24 fixed on the toy path: expert bodies copy by
+id, but the router is `hidden_size x experts_in_layer`, whose shape moves with the expert
+count, so every declared mutation re-drew that layer's learned routing function. Seven
+pre-registered studies were designed around a treatment the real path never had - a process
+failure worth more attention than the bug, since the two paths have separate factories and
+only one got fixed.
+
+Ported: `preserve_router` / `new_expert_initialization` on the declared factory (defaults
+unchanged), the same two fields on `V0SessionConfig` (rejecting `clone` without
+preservation), and **one helper** that every applied rebuild in `v0_session` goes through, so
+the treatment cannot be wired into some paths and forgotten in others - the failure mode that
+turned section 5.33's `prune_expert_policy` and section 5.34's `forced_operation` into no-ops.
+Pinned by `tests/test_v0_router_rebuild.py`.
+
+**Dev-scale signal on the real TinyStories stream** (3 seeds, `scripts/dev_cycle.py`, ~162 s
+per cycle; NOT a registered measurement): all six arm losses improved under the treatment, and
+the adaptive-minus-random gap improved on all three seeds (+0.0893 -> -0.0178, -0.0260 ->
+-0.0323, +0.0519 -> +0.0498). The `random` arm is the cleaner signal - it mutates on a seeded
+schedule and never probes, and it improved on all three seeds. It licenses a registered
+real-path block, not a claim.
+
+**Dev-loop facts measured, not assumed:** dev cycles do **not** parallelise (four with
+`xargs -P 4` failed to finish in 590 s; sequentially they are 162 s each - the path is
+launch-bound, so the GPU serialises and the cores are wasted on contention). And a *resumed*
+arm prints a nonsense tokens/s (687 billion in one run, because it books the full token budget
+against a near-zero wall) - read the loss columns on a resume, not the throughput column.
+
 ## Section 5.34: the probe was scoring candidates in the wrong rebuild (2026-09-16)
 
 The probe ranks candidates by the loss of a model it builds, and it was building that
@@ -78,6 +108,10 @@ End to end through the real session path on the **real TinyStories stream**
 ```
 PYTHONPATH=src python scripts/dev_cycle.py            # 400 steps, real text
 PYTHONPATH=src python scripts/dev_cycle.py --steps 40 # quick smoke
+# the two settings side by side (same seed, so neither resumes the other):
+PYTHONPATH=src python scripts/dev_cycle.py --seed 15201 --tag base
+PYTHONPATH=src python scripts/dev_cycle.py --seed 15201 --tag clone \
+    --preserve-router --new-expert clone
 ```
 
 Precision stays fp32 on the development card. Measured at the dev shape,

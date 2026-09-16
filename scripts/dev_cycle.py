@@ -83,6 +83,22 @@ def main() -> int:
         action="store_true",
         help="train on uniform tokens instead of the real token stream",
     )
+    parser.add_argument(
+        "--preserve-router",
+        action="store_true",
+        help="carry the mutated layer's learned router across an event (report 5.24/5.34)",
+    )
+    parser.add_argument(
+        "--new-expert",
+        default="random",
+        choices=("random", "clone", "clone_body"),
+        help="what a grown expert starts as (requires --preserve-router)",
+    )
+    parser.add_argument(
+        "--tag",
+        default=None,
+        help="namespace the checkpoint directory, so two settings on one seed do not resume each other",
+    )
     args = parser.parse_args()
 
     streams = None if args.synthetic else _real_streams()
@@ -91,6 +107,8 @@ def main() -> int:
         "device": args.device,
         "dtype": args.dtype,
         "total_steps": args.steps,
+        "preserve_router_on_rebuild": args.preserve_router,
+        "new_expert_initialization": args.new_expert,
     }
     if streams is not None:
         train, val = streams
@@ -105,7 +123,9 @@ def main() -> int:
         f"dev cycle: {total:,} total / {active:,} active parameters, "
         f"{config.training_tokens():,} tokens per arm\n"
         f"  device: {device}   dtype: {config.dtype}   steps: {config.total_steps}\n"
-        f"  data:   {source}"
+        f"  data:   {source}\n"
+        f"  rebuild: preserve_router={config.preserve_router_on_rebuild} "
+        f"new_expert={config.new_expert_initialization}"
     )
     if config.data_path is None and not args.synthetic:
         print(
@@ -115,10 +135,15 @@ def main() -> int:
 
     # Model construction is part of what a dev cycle should time, but a warm-up
     # pass is not: the first step pays kernel autotuning that no later step does.
+    checkpoint_dir = (
+        CHECKPOINT_DIR
+        if args.tag is None
+        else CHECKPOINT_DIR.parent / f"sessions-{args.tag}"
+    )
     started = time.perf_counter()
     result = run_v0_session(
         config,
-        checkpoint_dir=CHECKPOINT_DIR,
+        checkpoint_dir=checkpoint_dir,
         log=lambda line: print(f"  [session] {line}"),
     )
     wall = time.perf_counter() - started

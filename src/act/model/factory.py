@@ -232,17 +232,39 @@ def v0_moe_model_from_genome(
 def rebuild_v0_moe_from_genome(
     previous: V0MoECausalLM,
     genome: ArchitectureGenome,
+    *,
+    preserve_router: bool = False,
+    new_expert_initialization: str = "random",
 ) -> V0MoECausalLM:
     """Rebuild a mutated V0 MoE model, copying every retained expert by id.
 
     Expert parameters are transferred by expert identity (genome ids), not
     slot order, so prune and grow events never shuffle trained weights between
     different experts. Every other parameter copies when shape-compatible.
+
+    ``preserve_router`` and ``new_expert_initialization`` are the declared-path
+    counterparts of the same two arguments on ``rebuild_model_from_genome``, and they
+    default to the historical behaviour so every committed number keeps its meaning:
+
+    - the router is ``hidden_size x experts_in_layer`` (``_MoEFeedForward.router``),
+      so its shape moves with the expert count and the same-shape copy below CANNOT
+      carry it. By default the whole routing head is therefore re-drawn at random
+      whenever that layer's expert count changes - the section 5.24 defect, which
+      the toy path fixed there and which this path still had. With ``preserve_router``
+      the surviving experts' rows are copied by id and only genuinely new experts
+      (a grow) keep the fresh draw.
+    - ``new_expert_initialization`` decides what a genuinely new expert starts as:
+      ``"random"`` (the historical draw), ``"clone"`` (a copy of the busiest
+      surviving expert in the same layer by ``routing_load``, router row included,
+      so the new expert starts as a working twin) or ``"clone_body"`` (the same body
+      with a freshly drawn row - the control that separates a trained body from the
+      routing affinity the copied row confers). Report sections 5.26/5.27.
     """
     rebuilt = v0_moe_model_from_genome(genome)
     source_state = previous.state_dict()
     target_state = rebuilt.state_dict()
     expert_prefixes: set[str] = set()
+    handled: set[str] = set()
     for layer_index, target_block in enumerate(rebuilt.blocks):
         source_block = previous.blocks[layer_index]
         source_ids = {
@@ -259,7 +281,61 @@ def rebuild_v0_moe_from_genome(
                 target_state[target_prefix + suffix].copy_(
                     source_state[source_prefix + suffix]
                 )
+        if not preserve_router:
+            continue
+        router_key = f"blocks.{layer_index}.moe.router.weight"
+        if router_key not in source_state or router_key not in target_state:
+            continue
+        handled.add(router_key)
+        # Row i of the router is expert i's routing vector, so a surviving expert
+        # keeps its learned row; a grown expert's row stays as drawn until the
+        # cloning branch below decides it.
+        for target_index, expert_id in enumerate(target_block.moe.expert_ids):
+            source_index = source_ids.get(expert_id)
+            if source_index is None:
+                continue
+            target_state[router_key][target_index].copy_(
+                source_state[router_key][source_index]
+            )
+        if new_expert_initialization not in {"clone", "clone_body"}:
+            continue
+        new_indices = [
+            target_index
+            for target_index, expert_id in enumerate(target_block.moe.expert_ids)
+            if expert_id not in source_ids
+        ]
+        survivors = sorted(
+            source_index
+            for expert_id, source_index in source_ids.items()
+            if expert_id in set(target_block.moe.expert_ids)
+        )
+        if not new_indices or not survivors:
+            continue
+        loads = getattr(previous, "routing_load", None)
+        layer_loads = (
+            loads[layer_index] if loads is not None and layer_index < len(loads) else None
+        )
+        # The busiest survivor is the one whose function is most in demand, so
+        # duplicating it is the cheapest place to add capacity. Falls back to the
+        # lowest-index survivor when no load has been recorded.
+        source_index = (
+            max(survivors, key=lambda index: float(layer_loads[index]))
+            if layer_loads is not None
+            else survivors[0]
+        )
+        for target_index in new_indices:
+            for suffix in ("0.weight", "2.weight"):
+                target_key = f"blocks.{layer_index}.moe.experts.{target_index}.{suffix}"
+                source_key = f"blocks.{layer_index}.moe.experts.{source_index}.{suffix}"
+                if target_key in target_state and source_key in source_state:
+                    target_state[target_key].copy_(source_state[source_key])
+            if new_expert_initialization == "clone":
+                target_state[router_key][target_index].copy_(
+                    source_state[router_key][source_index]
+                )
     for key, value in target_state.items():
+        if key in handled:
+            continue
         if any(key.startswith(prefix) for prefix in expert_prefixes):
             continue
         if key in source_state and source_state[key].shape == value.shape:
