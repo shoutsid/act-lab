@@ -16,12 +16,22 @@ Three points, the same 18 seeds, the same dev fidelity and real stream as sectio
     random_base    seeded churn, historical rebuild                              (stored by 5.38/5.38.1)
     random_clone   seeded churn, preserve_router_on_rebuild + clone              (stored by 5.38/5.38.1)
 
-Primaries are ``null - churn``, so **positive means churn is harmful**:
+Primaries are ``null - churn``, and the harm direction is **negative**: churning is
+harmful when the null arm's loss is *below* the churn arm's, so a negative mean is
+the registered prediction.
 
-    P1  null - random_base    untreated churn harm   (registered: positive)
-    P2  null - random_clone   treated churn harm     (registered: smaller than P1)
+    P1  null - random_base    untreated churn harm
+    P2  null - random_clone   treated churn harm
 
-The contrast between them is not a third primary: per seed
+**Sign correction, disclosed.** The registration wrote "positive means churn is
+harmful" beside the arithmetic ``null - churn``. That label is the reverse of what
+its own wording asked ("is doing nothing still better than churning"), because
+null *better* than churn is ``null - churn < 0``. The registration's words and its
+branch letters were right and only the arithmetic label was inverted; it is
+corrected here and in section 5.39.1, with the registered direction left visible
+rather than overwritten.
+
+The contrast between the two primaries is not a third primary: per seed
 ``(null - base) - (null - clone) == clone - base``, which is section 5.38's own
 registered contrast, so it is reported only as a replication check that the stored
 rows reproduce their committed summary's arithmetic.
@@ -268,40 +278,48 @@ def _min_wins(trials: int, alpha: float) -> int:
     return trials + 1
 
 
-def _permutation_p(deltas: list[float], rng: random.Random) -> float:
-    """One-sided paired sign-flip permutation p on the mean (upper tail counted)."""
+def _permutation_p(deltas: list[float], rng: random.Random, tail: str) -> float:
+    """One-sided paired sign-flip permutation p on the mean, counting ``tail``."""
     observed = statistics.fmean(deltas)
     extreme = 0
     for _ in range(N_PERMUTATIONS):
         flipped = statistics.fmean(
             delta if rng.random() < 0.5 else -delta for delta in deltas
         )
-        if flipped >= observed:
+        if (flipped <= observed) if tail == "lower" else (flipped >= observed):
             extreme += 1
     return (extreme + 1) / (N_PERMUTATIONS + 1)
 
 
-def compare(label: str, left: list[float], right: list[float], alpha: float) -> dict:
-    """Paired comparison on ``left - right``.
+def compare(
+    label: str, left: list[float], right: list[float], alpha: float, tail: str
+) -> dict:
+    """Paired comparison on ``left - right``, tested on the registered ``tail``.
 
-    Here the registered direction is "the harm is real", i.e. a *positive* mean, so
-    ``positive_established`` is the analogue of section 5.38's ``passes``.
+    ``tail="lower"`` is the churn-harm direction (null below the churn arm);
+    ``tail="upper"`` matches section 5.38's convention, where the delta is
+    ``base - clone`` and the helpful direction is positive.
     """
     if len(left) != len(right) or not left:
         raise SystemExit(f"{label}: unpaired or empty")
+    if tail not in ("lower", "upper"):
+        raise SystemExit(f"{label}: tail must be 'lower' or 'upper'")
     deltas = [a - b for a, b in zip(left, right)]
     n = len(deltas)
     mean = statistics.fmean(deltas)
     sd = statistics.stdev(deltas) if n > 1 else 0.0
     se = sd / math.sqrt(n) if n > 1 else float("nan")
     t = mean / se if se and se == se and se != 0 else float("nan")
-    wins = sum(1 for delta in deltas if delta > 0)
+    # Wins in the tested direction, so the sign test and the permutation test can be
+    # compared rather than silently measuring different things (section 5.31.1).
+    wins = sum(1 for delta in deltas if (delta < 0 if tail == "lower" else delta > 0))
     sign_p = _binomial_survival(wins, n)
-    perm_p = _permutation_p(deltas, random.Random(PERMUTATION_SEED))
+    perm_p = _permutation_p(deltas, random.Random(PERMUTATION_SEED), tail)
     bar = _min_wins(n, alpha)
     sign_passes = wins >= bar
     return {
         "label": label,
+        "tail": tail,
         "n": n,
         "mean_delta": mean,
         "sample_sd": sd,
@@ -310,12 +328,13 @@ def compare(label: str, left: list[float], right: list[float], alpha: float) -> 
         # sign-flip permutation test, and no t p-value is recorded anywhere else in
         # this report, so none is invented here.
         "t": t,
-        "wins": wins,
+        "wins_in_tested_direction": wins,
         "sign_test_min_wins": bar,
         "sign_test_p": sign_p,
-        "sign_test_establishes_positive": sign_passes,
         "permutation_p": perm_p,
-        "positive_established": bool(mean > 0 and perm_p <= alpha),
+        # The declared statistic is the permutation test; the exact sign test is
+        # reported beside it and any disagreement is recorded, not resolved quietly.
+        "established": bool(perm_p <= alpha),
         "the_two_statistics_disagree": sign_passes != (perm_p <= alpha),
         "per_seed_deltas": deltas,
     }
@@ -342,35 +361,35 @@ def summarize() -> int:
 
     comparisons = {
         "null_minus_random_base": compare(
-            "null_minus_random_base", null, base, PER_PRIMARY_ALPHA
+            "null_minus_random_base", null, base, PER_PRIMARY_ALPHA, "lower"
         ),
         "null_minus_random_clone": compare(
-            "null_minus_random_clone", null, clone, PER_PRIMARY_ALPHA
+            "null_minus_random_clone", null, clone, PER_PRIMARY_ALPHA, "lower"
         ),
     }
-    # Not a third primary: per seed this is exactly ``clone - base``, section 5.38's
-    # own registered contrast, recomputed from the stored rows as a replication check.
+    # Not a third primary: per seed this is exactly section 5.38's registered
+    # contrast ``base - clone``, recomputed from the stored rows as a replication
+    # check that they reproduce their committed summary's arithmetic.
     replication = compare(
-        "clone_minus_base_replication", clone, base, ALPHA
+        "random_clone_vs_base_replication", base, clone, ALPHA, "upper"
     )
 
-    p1 = comparisons["null_minus_random_base"]["positive_established"]
-    p2 = comparisons["null_minus_random_clone"]["positive_established"]
+    p1 = comparisons["null_minus_random_base"]["established"]
+    p2 = comparisons["null_minus_random_clone"]["established"]
     treated_harm = comparisons["null_minus_random_clone"]["mean_delta"]
     untreated_harm = comparisons["null_minus_random_base"]["mean_delta"]
-    if p1 and not p2:
-        branch = "a_harm_is_a_defect_artifact"
-    elif p1 and p2:
+    if p1 and p2:
         branch = "b_harm_survives_the_repair"
+    elif p1 and not p2:
+        branch = "a_harm_is_a_defect_artifact"
     elif not p1 and not p2:
         branch = "c_not_harmful_at_this_fidelity"
     else:
-        # P1 fails and P2 passes, or the treatment made churn more costly.
-        branch = (
-            "d_red_flag_treated_harm_larger"
-            if p2 and treated_harm > untreated_harm
-            else "unregistered_combination"
-        )
+        branch = "unregistered_combination_p2_only"
+    # The registered (d) content - "the repair makes churn more costly" - is a
+    # direction, not a competing branch, so it is recorded as a flag whatever branch
+    # fires. Larger harm is a *more negative* mean here.
+    red_flag_treated_harm_larger = treated_harm < untreated_harm
 
     per_seed = [
         {
@@ -390,10 +409,12 @@ def summarize() -> int:
     committed = json.loads(
         (SUMMARIES / "real-path-clone-dev-n12.json").read_text()
     )["comparisons"]["random_clone_vs_base"]
-    # The 5.38.1 rows recomputed from this block's join, against that block's own
-    # committed mean.
+    # The 5.38.1 rows recomputed from this block's join, in that block's own
+    # convention (``base - clone``), against its committed mean.
     n12 = [row for row in per_seed if row["seed"] in SEED_BLOCKS["5.38.1"]]
-    pooled_mean = statistics.fmean(row["clone_minus_base"] for row in n12)
+    pooled_mean = statistics.fmean(
+        -row["clone_minus_base"] for row in n12
+    )
     built_in_checks = {
         "every_seed_has_a_null_run": all(seed in nulls for seed in SEEDS),
         "every_seed_has_both_churn_rows": all(
@@ -408,8 +429,20 @@ def summarize() -> int:
         "no_null_arm_booked_probe_flops": all(
             nulls[seed]["arms"]["null"]["search_flops"] == 0 for seed in SEEDS
         ),
-        "every_null_arm_consumed_the_budget": all(
-            len(nulls[seed]["arms"]["null"]["events"]) == 3 for seed in SEEDS
+        # Measured, not asserted equal to the churn arms' three: the cadence fires on
+        # every ``mutation_interval`` multiple including the final step, so at 400
+        # steps there are four slots while ``mutation_budget=3`` caps the churn arms
+        # at three *applied* mutations. A no-op slot costs and mutates nothing, so it
+        # cannot move the comparison - but the count is a fact, so it is recorded.
+        "every_null_arm_recorded_all_four_cadence_slots": all(
+            [event["step"] for event in nulls[seed]["arms"]["null"]["events"]]
+            == [100, 200, 300, 400]
+            for seed in SEEDS
+        ),
+        "every_churn_arm_applied_exactly_its_three_mutations": all(
+            _arm(churn[(seed, setting)])["mutation_count"] == 3
+            for seed in SEEDS
+            for setting in ("base", "clone")
         ),
         "no_null_event_changed_the_architecture": all(
             event["architecture_hash_before"] == event["architecture_hash_after"]
@@ -425,6 +458,14 @@ def summarize() -> int:
         # otherwise this block is joining to numbers nobody can account for.
         "stored_rows_reproduce_the_committed_5_38_1_mean": (
             abs(pooled_mean - committed["mean_delta"]) < 1e-12
+        ),
+        "per_seed_deltas_are_internally_consistent": all(
+            abs(
+                row["null_minus_random_base"]
+                - row["null_minus_random_clone"]
+                - row["clone_minus_base"]
+            ) < 1e-12
+            for row in per_seed
         ),
     }
 
@@ -459,7 +500,12 @@ def summarize() -> int:
             "and the level of churn harm had not been asked of these seeds or any "
             "other on this path."
         ),
-        "direction": "deltas are null minus the churn arm; positive means churn is harmful",
+        "direction": (
+            "deltas are null minus the churn arm; **negative means churn is harmful** "
+            "(the null arm's loss below the churn arm's). The registration wrote the "
+            "opposite label beside this arithmetic; see section 5.39.1."
+        ),
+        "red_flag_treated_harm_larger": red_flag_treated_harm_larger,
         "per_seed": per_seed,
         "comparisons": comparisons,
         "replication_check": replication,
@@ -474,11 +520,17 @@ def summarize() -> int:
     for name, row in comparisons.items():
         print(
             f"  {name:26s} mean {row['mean_delta']:+.5f}  sd {row['sample_sd']:.4f}  "
-            f"t {row['t']:+.2f}  wins {row['wins']}/{row['n']} "
+            f"t {row['t']:+.2f}  wins {row['wins_in_tested_direction']}/{row['n']} "
             f"(bar {row['sign_test_min_wins']})  sign p {row['sign_test_p']:.4f}  "
             f"perm p {row['permutation_p']:.5f}  "
-            f"{'HARM ESTABLISHED' if row['positive_established'] else 'not established'}"
+            f"{'HARM ESTABLISHED' if row['established'] else 'not established'}"
         )
+    print(
+        f"  {'replication (base-clone)':26s} mean "
+        f"{replication['mean_delta']:+.5f}  wins "
+        f"{replication['wins_in_tested_direction']}/{replication['n']}  perm p "
+        f"{replication['permutation_p']:.5f}"
+    )
     for name, value in built_in_checks.items():
         print(f"  check {name:44s} {value}")
     print(f"  branch {branch}")

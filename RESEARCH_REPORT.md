@@ -5423,6 +5423,117 @@ rather than forced equal.
 **Execution.** `scripts/churn_harm_study.py` (resumable, budget-aware), summary
 `artifacts/study-summaries/real-path-churn-harm.json`.
 
+### 5.39.1 Post-run correction: the registration's direction label was inverted (found after the block ran)
+
+The registration above says "deltas are `null` minus the churn arm; positive means
+churn is harmful". Its own wording asked *is doing nothing still better than
+churning*, and a null arm better than a churn arm is `null - churn < 0`, so the
+label was the reverse of the question. The registered words and branch letters were
+right and only the arithmetic label was inverted, and it is left visible above
+rather than overwritten. The correction made after the block ran:
+
+- The predicate now tests the **lower** tail: `null - churn < 0` is the harmful
+direction, and `established` is the declared permutation test on that tail. The
+registered branch letters keep their content; only the sign they were keyed to
+changes.
+- **The block's own checks caught it, which is the point of having them.** On the
+  inverted predicate the branch came back `c` ("not harmful at this fidelity")
+  while 18 of 18 seeds agreed in the *opposite* direction and the sign test
+  returned `p = 1.0`. A branch that contradicts every seed is not a result, it is a
+  wiring error, and the runner refused to report it as one - the same service
+  section 5.37's liveness contract performs.
+- A second error of the same kind, also mine: the replication check compared
+  `clone - base` against section 5.38.1's stored `random_clone_vs_base`, whose own
+  delta is `base - clone`, so it reported `False` on nothing but a sign. Both are
+  fixed; no measured loss changed, and every number below is recomputed from the
+  stored rows by `--summarize`.
+
+Disclosed at this length because the corrected predicate selects the **opposite**
+branch from the inverted one, and a reader has to be able to see both.
+
+### 5.39 Outcome: branch (b) as registered - churn harm is a property of churn, not of the rebuild
+
+Eighteen paired seeds, dev fidelity, the real TinyStories stream, 18 new null-arm
+sessions (~20 min of GPU, 67 s each) joined to the stored section 5.38/5.38.1 churn
+rows. All eleven built-in checks held. Deltas are `null` minus the churn arm, so
+**negative is the harmful direction**.
+
+| point | mean final loss |
+|---|---|
+| `null` (zero mutations) | **3.53398** |
+| `random_base` (historical rebuild) | 3.69847 |
+| `random_clone` (repaired rebuild) | 3.64678 |
+
+| primary | mean delta | wins | exact sign p | permutation p | verdict |
+|---|---|---|---|---|---|
+| **P1** `null - random_base` | **-0.16449** | **18/18** | 3.81e-06 | 5.00e-05 | harm established |
+| **P2** `null - random_clone` | **-0.11279** | **18/18** | 3.81e-06 | 5.00e-05 | harm established |
+| replication `base - clone` (not a primary) | +0.05170 | 12/18 | - | 0.00475 | matches 5.38.2 |
+
+Branch: **(b) harm survives the repair**. The registered red-flag content - "the
+repair makes churn more costly" - did not occur (the treated harm is smaller, not
+larger).
+
+What this establishes:
+
+1. **Doing nothing beat churning on every single seed, under both rebuilds.** 18/18
+   and 18/18, with no seed in which mutation helped. At this fidelity, on real text,
+   spending the mutation budget is a net cost of 0.11-0.16 nats.
+2. **The repair recovers 31.4% of that cost and does not remove it.**
+   0.16449 -> 0.11279, and the difference is exactly section 5.38.2's pooled
+   `+0.051695`, recomputed here from the stored rows (permutation p 0.00475 against
+   that section's 0.00375 - the same delta vector under a different permutation
+   seed). So section 5.38.1's result now reads as what it is: the repair of a third
+   of a **net loss**, not the creation of a net gain. Section 5.38.3's hope - that a
+   declared run specified with the treatment on does not inherit section 5.7's harm -
+   is falsified: it inherits **69%** of it.
+3. **Section 5.7 replicates across fidelity and shape.** That block measured
+   "doing nothing beats churn by 0.1217" at the real-data config over 600 steps with
+   `expert_count=8`; this block measures 0.16449 at the dev shape over 400 steps on
+   the historical rebuild. Same sign, same order of magnitude, different shape,
+   different fidelity - so section 5.7's headline is a property of the training
+   regime rather than of that block.
+4. **Section 5.14's do-nothing clause stops being a precaution and becomes the
+   binding bar.** The measured cost of churn with the repair in place is 0.11279
+   nats, which is **2.2x** section 5.38.2's treatment effect of +0.0517. An
+   adaptive arm that merely matches random churn is 0.11279 nats *worse than doing
+   nothing*, and the only thing in the registered protocol that detects this is the
+   null queue section 5.14 adds. This block is the first real-path measurement of
+   the quantity that clause asserts, and it says the clause is load-bearing rather
+   than cheap insurance.
+5. **The residual is not the rebuild, and it moves the named next direction off
+   the probe.** Section 5.3's five-variant verdict scoped the failure to the probe's
+   candidate ordering. This block says a large part of what any ranking is fighting
+   is that *changing the architecture at all* costs ~0.11 nats at this fidelity.
+   Two follow-ups follow from that, and neither is another probe-horizon variant:
+   (i) make mutation net-positive - the sections 5.26-5.28 clone work moved this
+   term by a third, and section 5.27 located 3/4 of its gain in the cloned body, so
+   the remaining term is plausibly the pruned expert and the re-drawn layers a prune
+   leaves behind; (ii) **mutate less** - section 5.7's degenerate gate and section
+   5.11's theta sweep both already showed that a controller which rejects most draws
+   beats one that spends the budget.
+
+**Accounting detail, measured rather than asserted.** The null arm records a no-op
+at all **four** cadence slots (steps 100/200/300/400) while `mutation_budget=3` caps
+the churn arms at three *applied* mutations. A no-op costs nothing and mutates
+nothing - `search_flops` is 0 and the architecture hash is unchanged before and
+after every event - so it cannot move the contrast. It is recorded because
+"budget-matched" is a claim, and this is what the accounting actually is.
+
+**What this does not license.** It does not support a Gate 4 statement: it is dev
+fidelity (depth 6, 14.9M total / 7.6M active) where the declared config is depth
+12 at 285M, it runs on two seed blocks that sections 5.38/5.38.1 already spent, and
+its churn arms were observed before the null quota was registered. It does not
+separate the repair's two components (router preservation against cloning) -
+section 5.27 did that at toy fidelity - and it says nothing directly about declared
+fidelity, where depth and parameter count both differ. It decides a branch and
+sets the bar; the declared run is what measures the bar.
+
+**Reproduce.** `PYTHONPATH=src python scripts/churn_harm_study.py --run` then
+`--summarize`; raw runs in `artifacts/churn-harm-study/null-runs.jsonl`, summary
+`artifacts/study-summaries/real-path-churn-harm.json` (`config_hash
+4e653cd958c99dfc`).
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

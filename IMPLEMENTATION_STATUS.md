@@ -1,5 +1,63 @@
 # ACT Implementation Status
 
+## Section 5.39: churn harm is a property of churn, not of the rebuild (2026-09-16)
+
+18 paired seeds (the section 5.38/5.38.1 queues), dev fidelity, real TinyStories stream: 18 new
+**null-arm** sessions (~20 min GPU, 67 s each) joined to the stored churn rows. Summary
+`real-path-churn-harm.json`, pinned in `tests/test_churn_harm_summary.py`. Deltas are `null - churn`,
+so **negative is the harmful direction** (see the sign correction below).
+
+| point | mean final loss |
+|---|---|
+| `null` (zero mutations) | **3.53398** |
+| `random_base` (historical rebuild) | 3.69847 |
+| `random_clone` (repaired rebuild) | 3.64678 |
+
+| primary | mean delta | wins | permutation p | verdict |
+|---|---|---|---|---|
+| `null - random_base` | **-0.16449** | **18/18** | 5.00e-05 | harm established |
+| `null - random_clone` | **-0.11279** | **18/18** | 5.00e-05 | harm established |
+| replication `base - clone` (not a primary) | +0.05170 | 12/18 | 0.00475 | matches 5.38.2 |
+
+**Branch (b): harm survives the repair.** Doing nothing beat churning on **every one of 18 seeds
+under both rebuilds**, and the repair recovers 31.4% of the cost without removing it (0.16449 ->
+0.11279). The registered red-flag direction did not occur.
+
+**This falsifies section 5.38.3's hope** that a treatment-specified declared run would not inherit
+section 5.7's harm: it inherits 69% of it. And it re-reads section 5.38.1 - the repair is 31% of a
+**net loss**, not the creation of a net gain.
+
+**Section 5.14's do-nothing clause is now the binding bar, with a measured number.** Churn costs
+0.11279 nats with the repair in place, **2.2x** the +0.0517 treatment effect, so an adaptive arm that
+merely matches random churn is 0.11279 nats worse than doing nothing. The declared run's null queue
+is the only thing in the protocol that detects that; it is load-bearing, not insurance.
+
+**It also moves the named next direction off the probe.** Section 5.3 scoped the real-text failure to
+the probe's candidate ordering; this block shows a large part of what any ranking is fighting is that
+changing the architecture at all costs ~0.11 nats at this fidelity. Two licensed follow-ups, neither
+of them another probe-horizon variant: make mutation net-positive (5.26-5.28 moved this term by a
+third; 5.27 put 3/4 of the gain in the cloned body, so the residual is plausibly the pruned expert and
+the layers a prune re-draws), or **mutate less** (5.7's degenerate gate and 5.11's theta sweep both
+showed a controller that rejects most draws beats one that spends the budget).
+
+**Sign correction, and both errors were mine (report section 5.39.1).** The registration wrote
+"positive means churn is harmful" beside the arithmetic `null - churn`, which is the reverse of its own
+wording. On the inverted predicate the branch came back `c` ("not harmful") while 18/18 seeds agreed
+the other way and the sign test returned p = 1.0 - the block's own checks refused to let a branch that
+contradicts every seed through. The second error was in the replication check, which compared
+`clone - base` against a summary whose stored delta is `base - clone` and so reported `False` on
+nothing but a sign. Both fixed, neither changed a measured loss, and the registered direction is left
+visible in the report rather than overwritten.
+
+**Accounting detail, measured not asserted:** the null arm records a no-op at all **four** cadence
+slots (100/200/300/400) while `mutation_budget=3` caps the churn arms at three applied mutations. A
+no-op has `search_flops` 0 and leaves the architecture hash unchanged, so it cannot move the contrast;
+it is recorded because "budget-matched" is a claim.
+
+**Length caveat:** dev fidelity (depth 6, 14.9M total / 7.6M active) where the declared config is
+depth 12 at 285M, on two queues 5.38/5.38.1 already spent. It decides a branch and sets the bar; the
+declared run is what measures the bar.
+
 ## Section 5.38.1: the treatment's clean effect is real, small and right-skewed (2026-09-16)
 
 Seeds 15220-15231, 24 sessions, ~27 min on the dev GPU (the section 5.37.1 checkpointing fix paid
@@ -756,8 +814,16 @@ These remain TODO or DEFERRED until the first gate passes:
    (285,336,576 total / 134,341,632 active parameters), predicted probe cost
    0.094% of training FLOPs under the measured per-event identity, decision
    rules fixed (5% criterion + factor-2 tolerance band + anti-adaptivity harm
-   guard). Running it as specified - without retuning knobs against the result
-   - is the entry condition for Gate 4. **The protocol is now REGISTERED AS
+   guard) (+ the section 5.5 pool-matched control and, per section 5.14, the
+   null queue). Running it as specified - without retuning knobs against the
+   result - is the entry condition for Gate 4. **Section 5.39 gives the null
+   queue a measured bar (2026-09-16)**: at dev fidelity on the real stream,
+   doing nothing beat churning on 18/18 seeds under both the historical rebuild
+   and the section 5.35 repair (-0.16449 and -0.11279 nats, permutation p
+   5e-05), so the repair removes 31% of the churn cost rather than all of it and
+   an adaptive arm that merely matches random is 0.11279 nats worse than doing
+   nothing. The do-nothing clause is load-bearing, not insurance, and the
+   declared run must carry the null queue. **The protocol is now REGISTERED AS
    REVISED**: `RESEARCH_REPORT.md` section 5.5 was adopted in full
    (2026-09-14) and implemented, so the launch is unblocked and the only
    remaining prerequisite is the T4 hardware. The revision was needed for
