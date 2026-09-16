@@ -93,6 +93,12 @@ TRUTH_TABLE = {
         "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE",
         False,
     ),
+    # Section 5.46's three conformance shapes. All three authorize: the block records, it
+    # does not gate. Making it gate would be a new criterion and would need its own
+    # amendment, so the rehearsal pins that it does not.
+    "untreated_rebuild_still_authorizes_but_is_flagged": ("PASS", True),
+    "prefix_policy_is_flagged_not_authorized_away": ("PASS", True),
+    "config_predates_the_fields": ("PASS", True),
     # Label precedence, documented in compute_verdict's comment and previously untested.
     "cost_fail_beats_every_other_clause": ("FAIL", False),
     "harm_guard_beats_pool_control_and_null": (
@@ -153,6 +159,26 @@ VARIANTS: dict[str, dict] = {
         "null_wins": 0,
     },
     "pool_control_beats_null_clause": {"control_wins": 12, "null_wins": 0},
+    # Section 5.46's scenario, and the reason the conformance block exists: every clause
+    # passes, but the published run is the *untreated* rebuild rather than the registered
+    # section 5.47 configuration. It must still authorize (the block is descriptive), and
+    # the record must say the run is not the registered one.
+    "untreated_rebuild_still_authorizes_but_is_flagged": {
+        "config_overrides": {
+            "preserve_router_on_rebuild": False,
+            "new_expert_initialization": "random",
+        }
+    },
+    # The other shape of the same hazard: a run that recorded the *probe* regime it did
+    # not use (the pre-5.5 ``prefix`` policy) - the exact state the runbook's command had
+    # to restate with a flag, because the code default would have produced it silently.
+    "prefix_policy_is_flagged_not_authorized_away": {
+        "config_overrides": {"probe_candidate_policy": "prefix"}
+    },
+    # An artifact from before these fields existed reads as unrecorded, not as a mismatch.
+    # `omit_config` writes an empty config block, which is what the committed real-path
+    # artifacts look like - a config dict that predates every field added since.
+    "config_predates_the_fields": {"omit_config": True},
 }
 
 
@@ -163,13 +189,23 @@ def _write_seed(
     adaptive_loss: float,
     random_loss: float,
     search_flops: int,
+    config_overrides: dict | None = None,
+    omit_config: bool = False,
 ) -> None:
     """One synthetic published seed summary in the handoff layout.
 
     Declared scale on both sides of the identity: the parameter counts are the declared
     model's and the training FLOPs are the declared per-arm budget, so the band check is
-    evaluated exactly as the real run will evaluate it.
+    evaluated exactly as the real run will evaluate it. The config block defaults to the
+    registered declared configuration, because a fixture whose config cannot be read is
+    not what the real run publishes: ``config_overrides`` is how the section 5.46
+    scenario (a run whose recorded configuration is not the registered one) is built.
     """
+    config: dict = dict(v0_verdict.REGISTERED_RUN_CONFIG, probe_batch_count=1)
+    if config_overrides is not None:
+        config.update(config_overrides)
+    if omit_config:
+        config = {}
 
     def arm(mode: str, loss: float) -> dict[str, object]:
         return {
@@ -202,7 +238,7 @@ def _write_seed(
                     "random": arm("random", random_loss),
                     "adaptive": arm("adaptive", adaptive_loss),
                 },
-                "config": {},
+                "config": config,
             },
             indent=2,
             sort_keys=True,
@@ -266,6 +302,8 @@ def build(root: Path, variant: dict) -> tuple[Path, Path | None, Path | None]:
             adaptive_loss=1.0 if adaptive_won else 1.5,
             random_loss=1.5 if adaptive_won else 1.0,
             search_flops=search_flops,
+            config_overrides=variant.get("config_overrides"),
+            omit_config=variant.get("omit_config", False),
         )
 
     control: Path | None = None
@@ -397,6 +435,15 @@ def rehearse() -> dict:
                 "variant_knobs": variant,
                 "expected_label": expected_label,
                 "expected_gate_4_authorized": expected_authorized,
+                # Section 5.46's legibility block: descriptive, and it travels in the
+                # record so a reader can see whether the run was the registered one.
+                "config_conforms": verdict["config_conformance"]["conforms"],
+                "config_fields_differing": verdict["config_conformance"][
+                    "fields_differing"
+                ],
+                "config_fields_not_recorded": verdict["config_conformance"][
+                    "fields_not_recorded"
+                ],
                 "observed_label": verdict["verdict"],
                 "observed_exit_code": verdict["exit_code"],
                 "observed_gate_4_authorized": verdict["gate_4_authorized"],
@@ -429,12 +476,18 @@ def rehearse() -> dict:
         # Exactly the variants that should authorize under the amended rule: the all-clear
         # case and the two distinguishable states. The tie case that used to authorize is
         # now withheld (section 5.44, pinned separately below).
-        "the_authorizing_variants_are_the_clear_and_distinguishable_cases": [
+        "the_authorizing_variants_are_the_clear_distinguishable_and_conformance_cases": [
             row["variant"] for row in rows if row["observed_gate_4_authorized"]
         ]
+        # The conformance variants authorize on purpose - their whole job is to show the
+        # section 5.46 block records without gating - so they are named rather than
+        # filtered out, and named with that reason.
         == [
             "all_clear",
             "adaptive_clears_bar_loss_blind_does_not",
+            "untreated_rebuild_still_authorizes_but_is_flagged",
+            "prefix_policy_is_flagged_not_authorized_away",
+            "config_predates_the_fields",
         ],
         # The amendment is only closed if both directions of clause 3 are observed: the
         # pool-driven one and the neither-arm-has-an-edge one. The expectations live in
@@ -451,6 +504,48 @@ def rehearse() -> dict:
             (row["observed_exit_code"] == 1)
             == (row["cost_percent"] > v0_verdict.PRIMARY_COST_PERCENT)
             for row in rows
+        ),
+        # Section 5.46: the conformance block has to distinguish the registered
+        # configuration from a run that recorded something else, and it has to do that
+        # without changing a single authorization - otherwise it would be a criterion
+        # smuggled in under a descriptive name.
+        "a_run_that_is_not_the_registered_configuration_is_flagged": all(
+            _row_by_name(rows, name)["config_conforms"] is False
+            and _row_by_name(rows, name)["config_fields_differing"]
+            == fields
+            for name, fields in (
+                (
+                    "untreated_rebuild_still_authorizes_but_is_flagged",
+                    ["new_expert_initialization", "preserve_router_on_rebuild"],
+                ),
+                ("prefix_policy_is_flagged_not_authorized_away", ["probe_candidate_policy"]),
+            )
+        ),
+        "a_run_whose_artifact_predates_the_fields_is_unrecorded_not_differing": (
+            _row_by_name(rows, "config_predates_the_fields")["config_conforms"] is False
+            and _row_by_name(rows, "config_predates_the_fields")[
+                "config_fields_differing"
+            ]
+            == []
+            and len(
+                _row_by_name(rows, "config_predates_the_fields")[
+                    "config_fields_not_recorded"
+                ]
+            )
+            == len(v0_verdict.REGISTERED_RUN_CONFIG) + 1
+        ),
+        "the_registered_fixtures_conform_and_are_not_flagged": all(
+            row["config_conforms"] is True and not row["config_fields_differing"]
+            for row in rows
+            if not row["variant_knobs"].get("config_overrides")
+            and not row["variant_knobs"].get("omit_config")
+        ),
+        # And the block is descriptive: the flagged variants keep the labels and
+        # authorizations their clause makes them, including the one that still authorizes.
+        "the_conformance_block_changes_no_authorization": all(
+            row["observed_gate_4_authorized"] is row["expected_gate_4_authorized"]
+            for row in rows
+            if row["config_fields_differing"] or row["config_fields_not_recorded"]
         ),
         # The knob is a multiple of the prediction, so the measured cost has to be that
         # multiple of it - the unit slip this rehearsal was written to survive.

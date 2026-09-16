@@ -80,6 +80,31 @@ POOL_CONTROL_WIN_LIMIT = 10
 # value over doing nothing; Gate 4 is withheld and the cost PASS stands.
 NULL_WIN_LIMIT = 10
 
+# The registered declared-run configuration (sections 5.1, 5.5 and the section 5.47
+# amendment). These are the fields the verdict's own claims depend on: the probe regime
+# that produced the measured cost, the shape and budget the prediction is derived from,
+# and - since section 5.47 - the rebuild policy every arm's mutations ran under. Recorded
+# for legibility, never gated: see _config_conformance.
+REGISTERED_RUN_CONFIG: dict[str, object] = {
+    "arms": ["random", "adaptive"],
+    "probe_candidate_policy": "spread",
+    "probe_selection": "argmin",
+    "total_steps": 6000,
+    "mutation_budget": 3,
+    "mutation_interval": 1500,
+    "depth": 12,
+    "hidden_size": 1024,
+    "attention_heads": 16,
+    "expert_count": 8,
+    "active_experts": 2,
+    "expert_width": 1024,
+    "vocab_size": 32768,
+    "context_size": 2048,
+    "batch_size": 2,
+    "preserve_router_on_rebuild": True,
+    "new_expert_initialization": "clone",
+}
+
 # No verdict was produced (malformed invocation). Distinct from 1 = FAIL so
 # the two are never confused by an unattended operator or a wrapper script.
 INPUT_ERROR_EXIT_CODE = 3
@@ -140,6 +165,94 @@ def _load_seed(dataset_root: Path, seed: int) -> dict:
     if summary.get("status") != "complete":
         raise InputError(f"seed {seed} is not a complete version")
     return summary
+
+
+def _config_conformance(
+    dataset_root: Path, seeds: list[int], probe_batch_count: int
+) -> dict:
+    """What the published run recorded, against the registered declared configuration.
+
+    Descriptive only, exactly like the section 5.41 band reading: it changes no criterion
+    and authorizes nothing. It exists because sections 5.41, 5.44 and 5.46 all found the
+    same failure - the deciding artifact trusting an input it never checks - and the
+    published seed summary already carries the whole config (``asdict``, 35 fields), so
+    the check costs a read of what is on disk.
+
+    Per field: ``matches`` when every complete seed recorded the registered value,
+    ``differs`` with the recorded values when any disagreed, and ``not_recorded`` when no
+    seed carried the field. Artifacts from before the field existed read as
+    ``not_recorded`` rather than as a mismatch, so no spent block is re-read as
+    non-conforming. ``--probe-batch-count`` is compared against the invocation's value
+    rather than a constant, because the invocation states which of the two registered
+    configs (primary cap4/1-batch, secondary cap4/2-batch) is being judged.
+    """
+    expected = dict(REGISTERED_RUN_CONFIG, probe_batch_count=probe_batch_count)
+    recorded: dict[str, dict[str, int]] = {field: {} for field in expected}
+    seeds_with_config = 0
+    for seed in seeds:
+        config = _load_seed(dataset_root, seed).get("config")
+        if not isinstance(config, dict):
+            continue
+        present = [field for field in expected if field in config]
+        # A config dict that carries none of the fields the verdict depends on is an
+        # artifact from before those fields existed, not a conforming one.
+        if not present:
+            continue
+        seeds_with_config += 1
+        for field in present:
+            seen = repr(config[field])
+            recorded[field][seen] = recorded[field].get(seen, 0) + 1
+    fields: dict[str, dict[str, object]] = {}
+    for field, registered_value in expected.items():
+        observed = recorded[field]
+        if not observed:
+            fields[field] = {
+                "status": "not_recorded",
+                "registered": registered_value,
+            }
+        elif list(observed) == [repr(registered_value)]:
+            fields[field] = {
+                "status": "matches",
+                "registered": registered_value,
+                "recorded": registered_value,
+            }
+        else:
+            fields[field] = {
+                "status": "differs",
+                "registered": registered_value,
+                "recorded_values": sorted(observed),
+                "seeds_by_value": observed,
+            }
+    differing = sorted(
+        field for field, row in fields.items() if row["status"] == "differs"
+    )
+    unrecorded = sorted(
+        field for field, row in fields.items() if row["status"] == "not_recorded"
+    )
+    return {
+        "descriptive_only": True,
+        "seeds_with_a_recorded_config": seeds_with_config,
+        "seeds_judged": len(seeds),
+        "fields": fields,
+        "fields_differing": differing,
+        "fields_not_recorded": unrecorded,
+        "conforms": not differing and seeds_with_config > 0,
+        "reading": (
+            f"the run's recorded configuration differs from the registered one on "
+            f"{differing}: the published run is not the registered configuration, so "
+            "the verdict describes a different protocol than the one it names"
+            if differing
+            else "no seed recorded any of the configuration fields this verdict "
+            "depends on (the artifact predates them)"
+            if not seeds_with_config
+            else "the run's recorded configuration matches the registered declared "
+            "protocol on every field it records"
+            if not unrecorded
+            else f"the run's recorded configuration matches the registered protocol "
+            f"where recorded, but {len(unrecorded)} field(s) were not recorded by any "
+            f"seed: {unrecorded}"
+        ),
+    }
 
 
 def _arm_pairs(dataset_root: Path, seeds: list[int]) -> list[dict[str, object]]:
@@ -550,6 +663,9 @@ def compute_verdict(
         },
         "pool_matched_control": control,
         "quality_premise": quality_premise,
+        "config_conformance": _config_conformance(
+            dataset_root, seeds, probe_batch_count
+        ),
         "null_control": null,
         "per_seed": pairs,
         "verdict": verdict,

@@ -20,6 +20,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 RECORD = ROOT / "artifacts" / "study-summaries" / "gate4-verdict-rehearsal.json"
+sys.path.insert(0, str(ROOT / "scripts"))
+
+import v0_verdict  # noqa: E402
 
 # The registered rule, restated independently of the record so the record's own
 # expectations cannot drift with it.
@@ -49,6 +52,12 @@ REGISTERED = {
         "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE",
         False,
     ),
+    # Section 5.46's conformance shapes: all three authorize, because the conformance
+    # block records a mismatch rather than gating on it. Making it gate would be a new
+    # criterion and would need its own amendment.
+    "untreated_rebuild_still_authorizes_but_is_flagged": ("PASS", True),
+    "prefix_policy_is_flagged_not_authorized_away": ("PASS", True),
+    "config_predates_the_fields": ("PASS", True),
     "cost_fail_beats_every_other_clause": ("FAIL", False),
     "harm_guard_beats_pool_control_and_null": (
         "PASS_COST_ONLY_HARM_GUARD_REJECTS",
@@ -91,19 +100,69 @@ def test_every_variant_matches_the_registered_rule():
         assert row["matches_registered_rule"] is True
 
 
-def test_only_the_clear_and_distinguishable_cases_authorize_gate_4():
-    """Authorization is now exactly: every clause clear *and* the quality premise held.
+def test_only_the_clear_distinguishable_and_conformance_cases_authorize_gate_4():
+    """Authorization is exactly: every clause clear *and* the quality premise held.
 
-    The tie case and the sub-bar case both withhold (section 5.44). Naming the authorizing
-    set explicitly is what stops a future change from widening it silently.
+    The tie case and the sub-bar case both withhold (section 5.44). The three section 5.46
+    conformance variants authorize on purpose - they exist to show that a recorded
+    configuration mismatch is flagged rather than gated - so they are listed here rather
+    than filtered out, which is what keeps a future change from widening the set silently.
     """
     rows = _record()["variants"]
     authorizing = [row["variant"] for row in rows if row["observed_gate_4_authorized"]]
     assert authorizing == [
         "all_clear",
         "adaptive_clears_bar_loss_blind_does_not",
+        "untreated_rebuild_still_authorizes_but_is_flagged",
+        "prefix_policy_is_flagged_not_authorized_away",
+        "config_predates_the_fields",
     ]
     assert _by_name()["all_clear"]["observed_exit_code"] == 0
+
+
+def test_the_conformance_block_records_the_registered_configuration():
+    """Section 5.46: what the run said it ran, against what was registered.
+
+    Pinned in both directions - the registered fixtures conform, and the two shapes of a
+    non-conforming run (the untreated rebuild, and the pre-5.5 prefix policy) are flagged
+    with the fields that differ. The pre-field artifact reads as unrecorded instead, so no
+    spent block is re-read as a mismatch.
+    """
+    payload = _record()
+    rows = _by_name()
+
+    untreated = rows["untreated_rebuild_still_authorizes_but_is_flagged"]
+    assert untreated["config_conforms"] is False
+    assert untreated["config_fields_differing"] == [
+        "new_expert_initialization",
+        "preserve_router_on_rebuild",
+    ]
+    assert untreated["observed_gate_4_authorized"] is True
+
+    assert rows["prefix_policy_is_flagged_not_authorized_away"][
+        "config_fields_differing"
+    ] == ["probe_candidate_policy"]
+
+    predates = rows["config_predates_the_fields"]
+    assert predates["config_conforms"] is False
+    assert predates["config_fields_differing"] == []
+    # Every registered field plus the invocation's probe-batch-count is unrecorded.
+    assert len(predates["config_fields_not_recorded"]) == (
+        len(v0_verdict.REGISTERED_RUN_CONFIG) + 1
+    )
+
+    conforming = [
+        row
+        for row in payload["variants"]
+        if not row["variant_knobs"].get("config_overrides")
+        and not row["variant_knobs"].get("omit_config")
+    ]
+    assert conforming  # the check is not vacuous
+    assert all(row["config_conforms"] is True for row in conforming)
+    assert payload["built_in_checks"][
+        "a_run_that_is_not_the_registered_configuration_is_flagged"
+    ]
+    assert payload["built_in_checks"]["the_conformance_block_changes_no_authorization"]
 
 
 def test_the_clause_3_amendment_withholds_in_both_directions():

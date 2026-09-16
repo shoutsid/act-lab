@@ -6028,21 +6028,81 @@ config (`asdict`, 35 fields), so **which rebuild policy a run used is checkable 
 own artifacts** - the declared blocks' summaries predate the field, which is why this was
 invisible.
 
-**What was deliberately not done.** The runbook's launch command was **not** changed to
-pass the treatment. Registering the declared protocol on it is a sign-off decision, and
-every adopted change to this protocol has a numbered section and a date (section 5.5's
-own precedent); section 5.38.3's clause is an interpretation branch, and the block that
-was meant to license it landed on branch (c) - reported as unresolved, not as a transfer.
-Both options are therefore left open with their consequences stated, and `T4_RUNBOOK.md`
-now carries a **DECISION PENDING** callout at the launch command so the run cannot start
-without noticing.
+**What was done about the command, and by whose decision.** The runbook's launch command
+was not changed in this section, because registering the declared protocol on the treatment
+is a sign-off decision. It is taken in **section 5.47** below, with the reasoning, and the
+runbook now carries the two flags rather than a pending note.
 
-**Still open, and the next thing to build.** The verdict never compares the published
-run's recorded config against the registered protocol at all, so a run whose configuration
-differs from the registration would be judged as though it were the registration. An
-additive `config_conformance` block (per registered field: matches / differs / not
-recorded, descriptive rather than gating, as section 5.41's band reading is) belongs in the
-verdict; it is deferred only because one of its fields is the decision above.
+**The second half, built in the same section.** The verdict never compared a published
+run's recorded configuration against the registered protocol, so a run whose configuration
+differed from the registration would have been judged as though it were the registration -
+the same family as sections 5.41 and 5.44. The verdict now carries an additive
+`config_conformance` block (`REGISTERED_RUN_CONFIG`, the machine-readable registration,
+against every seed's recorded `config`): per field `matches` / `differs` with the recorded
+values / `not_recorded`, plus `conforms` and a reading string. It is **descriptive only**,
+on section 5.41's precedent - it changes no label, no exit code and no authorization, and
+the rehearsal now pins that by building the untreated-rebuild and pre-5.5 `prefix` runs and
+checking they keep the authorizations their clauses give them while being flagged. A
+pre-field artifact reads as `not_recorded`, never as a mismatch, so no spent block is
+re-read as non-conforming. A test drives the real launch path and asserts the registered
+mapping cannot drift from what the command builds: a conformance block compared against a
+stale constant would certify a run nothing produces.
+
+**What the block says about the two committed real-path blocks, read and recorded.** Both
+`artifacts/real-proof` and `artifacts/local-proof` now report `conforms: false` - differing
+on nine shape/budget fields (they are 600-step depth-8 diagnostics at ~12M parameters, not
+declared-scale runs) and unrecorded on the four fields their artifacts predate
+(`probe_candidate_selection`, `probe_candidate_policy`, `preserve_router_on_rebuild`,
+`new_expert_initialization`). That is the correct reading, not a defect: neither block was
+ever a declared-configuration run, neither authorized Gate 4 (`PASS_COST_ONLY_HARM_GUARD_
+REJECTS` and `PASS_COST_ONLY_CONTROL_MISSING`, unchanged by this addition). It is worth
+recording because it is the first time the verdict has been able to say so.
+
+### 5.47 Amendment: the declared run is registered with the rebuild treatment on
+
+**Decision.** The declared V0 launch command passes `--preserve-router-on-rebuild
+--new-expert clone`. Delegated to me rather than signed off by the project owner, so it is
+recorded here with its reasoning and its reversibility.
+
+**Grounds, in order of weight.**
+
+1. **The untreated rebuild is a defect kept for backwards compatibility, not a choice.**
+   Section 5.16: the router discard is "evidently unintended", and the default was retained
+   only because flipping it would invalidate the committed record of sections 5.16-5.23.
+   That reasoning binds *defaults*; it does not argue for running a declared protocol on the
+   accidental behaviour.
+2. **The registered rule that would have forbidden this has been superseded by its own
+   correctly-sized block.** Section 5.38.1 passed the clean-arm primary (the arm probe
+   ranking cannot affect) on 12 fresh seeds with the declared statistic (permutation
+   p 0.0239) and the clean-comparison guarantee holding 12/12. Section 5.38's branch (c) -
+   which says to treat a probe-arm-only improvement as a red flag - was diagnosed as a
+   power failure there (n=6 sized from an sd 3.8x too small) and explicitly superseded for
+   interpretation, with its numbers left standing.
+3. **The gap it closes is larger than the effect being claimed.** Section 5.39: 1.46x on
+   the churn cost (0.16449 untreated, 0.11279 repaired), against the 0.0517 pooled
+   treatment effect - and it is the quantity section 5.44's quality clause reads.
+
+**What this is not.** It is not a claim that the treatment decides Gate 4, and it must not
+be reported as one. The effect is small (0.04042 on the clean arm, perm p 0.0239, but 8/12
+against a 10-of-12 win bar, right-skewed), and section 5.39 showed the repair still leaves
+**69%** of the churn harm - so section 5.7's "doing nothing beats churning" still holds in
+the treated configuration and the section 5.14 do-nothing clause remains the binding
+protection, not this amendment.
+
+**What changes, exactly.** Two configuration fields, applied to **every** arm, so none of
+the gate's arm-vs-arm comparisons is affected; no parameter count moves and the probe FLOPs
+are identical, so the declared cost prediction and its band are untouched. **No criterion
+changes**: the 5% criterion, the tolerance band, the harm guard, the pool-matched and
+quality clauses of section 5.5, the do-nothing clause of section 5.14 and the queue
+completeness requirement all stand as registered. Seeds (15000-15011), shape, tokens per
+arm, event count and cadence, dtype and the adopted probe regime (`spread`, `argmin`,
+cap 4, 1-batch) are all unchanged.
+
+**Reversible, and honest about the alternative.** Before session 1, dropping the two flags
+returns the protocol to its pre-amendment configuration; the conformance block would then
+record the run as flagged - that is, an untreated declared run is now *visible in its own
+artifact* rather than indistinguishable from a treated one. That legibility is the part of
+this amendment that holds whichever way the configuration decision goes.
 
 ## 6. Reproducibility
 

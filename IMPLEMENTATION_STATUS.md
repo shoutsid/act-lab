@@ -18,10 +18,33 @@ policy. The protocol was registered (§5.5, 2026-09-14) before the treatment exi
 | Fell out of the audit | the published seed summary already records all 35 config fields, so **which rebuild policy a run used is checkable from its own artifacts** |
 | Deliberately not done | the runbook's command is unchanged - registering the declared protocol on the treatment is a sign-off decision. `T4_RUNBOOK.md` carries a **DECISION PENDING** callout at the command so T4 cannot start without noticing |
 
-**Still open:** the verdict never compares a published run's recorded config against the
-registered protocol. An additive `config_conformance` block (descriptive, per §5.41's
-precedent) is the next thing to build, deferred only because one of its fields is this
-decision. Record: `RESEARCH_REPORT.md` §5.46.
+**Closed in the same section:** the verdict never compared a published run's recorded
+config against the registered protocol, so a run whose configuration differed from the
+registration would have been judged as though it were the registration. `v0_verdict.py`
+now has `REGISTERED_RUN_CONFIG` plus a `config_conformance` block (per field: `matches` /
+`differs` / `not_recorded`, with `conforms` and a reading string). It is **descriptive
+only** - no label, exit code or authorization moves - and the rehearsal pins that by
+building the untreated-rebuild and pre-5.5 `prefix` runs and checking they keep their
+authorizations while being flagged. A pre-field artifact reads as `not_recorded`, never as
+a mismatch. The two committed real-path diagnostics correctly read as non-conforming on
+nine shape/budget fields (they are depth-8, 600-step runs), with their labels unchanged.
+
+## Section 5.47: the declared run is registered with the rebuild treatment on (2026-09-16)
+
+Delegated decision, recorded with reasoning. The declared launch command now passes
+`--preserve-router-on-rebuild --new-expert clone`, and so do the §2b control and §2c null
+commands - a different rebuild policy in a paired queue would make the comparison a package
+of two changes instead of the decision rule alone.
+
+| | |
+|---|---|
+| Grounds | (1) the untreated rebuild is an unintended router discard kept as the default only to preserve the committed record of §5.16-5.23; (2) §5.38's branch (c), which would have forbidden this, was superseded by its own correctly-sized block (§5.38.1 passed the clean arm at n=12, perm p 0.0239, clean-comparison 12/12); (3) the gap, 1.46x on churn cost, is larger than the effect claimed |
+| Not claimed | the treatment does not decide Gate 4: effect is small and right-skewed (8/12 against a 10-of-12 win bar), and §5.39 shows 69% of the churn harm remains, so the §5.14 do-nothing clause stays the binding protection |
+| What changes | two config fields, applied to **every** arm; no parameter count, no probe FLOPs, so the cost prediction and band are untouched |
+| What does not | no criterion moves (5%, band, harm guard, §5.5 pool/quality clauses, §5.14 null clause, completeness); seeds, shape, tokens, events, dtype and probe regime all unchanged |
+| Reversible | drop the two flags before session 1 and the conformance block will record the run as untreated rather than letting it pass as treated |
+
+Record: `RESEARCH_REPORT.md` §5.47.
 
 ## Section 5.44: the quality-premise clause was shipped in one direction only (2026-09-16)
 

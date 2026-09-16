@@ -417,18 +417,13 @@ is part of the trail; the launch command refuses a stale or hand-edited one.
 
 ## 2. The launch command (one line, registered as revised)
 
-> **DECISION PENDING (report section 5.46) - read before session 1.**
-> The command below runs the **historical** rebuild
-> (`preserve_router_on_rebuild=False`, `new_expert_initialization="random"`), and until
-> 2026-09-16 there was no flag to do otherwise. Section 5.16 says new work should set
-> `preserve_router_on_rebuild=True`, and section 5.38.3 says a real-scale protocol should
-> be specified with the treatment on; section 5.39 measured the difference on the real
-> path at 0.0517 nats - larger than the clean-arm treatment effect (0.04042) - which is
-> the same order as the quality bar the section 5.44 clause reads. Adopting the treatment
-> is a sign-off decision, not an operator choice. **If it is adopted**, add
-> `--preserve-router-on-rebuild --new-expert clone` to the command below (the flags exist
-> and are tested; nothing else about the command changes). **If it is not**, this run is
-> the untreated configuration on purpose and that must be said in the write-up.
+> The two rebuild flags below are the **section 5.47 amendment** (adopted 2026-09-16): the
+> declared run carries the section 5.28 treatment, because the untreated rebuild is an
+> unintended router discard kept as the default only to preserve the committed record of
+> sections 5.16-5.23, and section 5.39 measured the difference it makes at **1.46x** on
+> the churn cost the gate's quality clause reads. It is **not** a claim that the treatment
+> decides Gate 4: the effect is small and right-skewed, and 69% of the churn harm remains,
+> so the section 5.14 do-nothing clause is still the binding protection.
 
 ```bash
 PYTHONPATH=src python -m act.training.cli --mode pair-session \
@@ -436,23 +431,30 @@ PYTHONPATH=src python -m act.training.cli --mode pair-session \
   --hours <remaining-clock-hours> \
   --seeds 15000-15011 \
   --probe-candidate-policy spread \
+  --preserve-router-on-rebuild \
+  --new-expert clone \
   --kaggle-dataset <owner>/<slug>
 ```
 
 - `--hours`: the remaining session clock at entry — Kaggle's 12-hour GPU limit
   minus boot and restore time. The deadline rules only start pairs that fit
   `pair_time + 45-min publish reserve`.
-- `--seeds 15000-15011` and `--probe-candidate-policy spread` are **not
-  optional**: they are the adopted §5.5 protocol. The code defaults remain the
-  registered `15000-15011`/`prefix` pair, so the `--seeds` flag is a
-  restatement rather than a change, and the policy flag is the adopted one.
+- `--seeds 15000-15011`, `--probe-candidate-policy spread` and the two build
+  flags (`--preserve-router-on-rebuild`, `--new-expert clone`) are **not
+  optional**: they are the adopted protocol (§5.5 and, for the rebuild, the
+  §5.47 amendment). The code defaults are still the historical
+  `prefix`/untreated pair, so every flag here is a deliberate restatement of
+  the registered configuration rather than a change.
 - Everything else defaults correctly: benchmark artifact
   `artifacts/v0-benchmark.json`, `--probe-batch-count 1` (the primary config),
   dataset root `artifacts/datasets`, session dir `artifacts/v0-sessions`.
-- **The rebuild treatment is not in this command** - see the DECISION PENDING callout
-  above. Adding `--preserve-router-on-rebuild --new-expert clone` is the only line that
-  changes if section 5.46 is adopted, and a seed summary records which policy it ran
-  (`config.preserve_router_on_rebuild`), so the two can never be confused after the fact.
+- **Verify the run was the registered one.** Every seed summary records its whole
+  config, and the verdict's `config_conformance` block compares it field by field against
+  the registered protocol (`REGISTERED_RUN_CONFIG` in `scripts/v0_verdict.py`). It is
+  descriptive - it changes no label and withholds nothing - so read it deliberately: if it
+  reports `differs` on `preserve_router_on_rebuild`, the session ran without the §5.47
+  treatment and its result is the untreated configuration, which must be said in the
+  write-up rather than discovered later.
 - Do **not** pass `--dtype` (it must equal the measured decision and is only
   there to catch operator error), `--tokens-per-second` (overrides the
   artifact), or `--probe-selection` (that is the control session in §2b).
@@ -498,6 +500,8 @@ PYTHONPATH=src python -m act.training.cli --mode pair-session \
   --seeds 15000-15011 \
   --probe-candidate-policy spread \
   --probe-selection random \
+  --preserve-router-on-rebuild \
+  --new-expert clone \
   --dataset-root artifacts/datasets-control \
   --session-dir artifacts/v0-sessions-control \
   --kaggle-dataset <owner>/<slug>-control
@@ -505,7 +509,10 @@ PYTHONPATH=src python -m act.training.cli --mode pair-session \
 
 - `spread` is required here too. The clause isolates the *decision rule*; if
 the control ran a different candidate pool, a null result would be
-uninterpretable.
+uninterpretable. **The two rebuild flags are required for the same reason**:
+the control shares the primary's candidates, seeds and cost, so a different
+rebuild policy would make the comparison a package of two changes instead of
+the decision rule alone (§5.5 change 2).
 - The control is descriptive evidence for the clause, not a second gate: its
 own random arm is its paired baseline, exactly as in the primary run.
 - Never point the control at `artifacts/datasets` (or the primary at the control
@@ -529,6 +536,8 @@ PYTHONPATH=src python -m act.training.cli --mode pair-session \
   --hours <remaining-clock-hours> \
   --seeds 15000-15011 \
   --session-arms null \
+  --preserve-router-on-rebuild \
+  --new-expert clone \
   --dataset-root artifacts/datasets-null \
   --session-dir artifacts/v0-sessions-null \
   --kaggle-dataset <owner>/<slug>-null
@@ -537,6 +546,10 @@ PYTHONPATH=src python -m act.training.cli --mode pair-session \
 - No probe/policy flags are needed (the null arm is policy-free by
 construction); `--seeds` and the roots must still be explicit, and the
 null queue must never point at the primary or control roots.
+- The two rebuild flags are inert on a null arm (it never rebuilds - zero
+  mutations by construction, which the §5.14 checks enforce), and they are passed
+  anyway so that all three queues are the same declaration. A config that
+  differs between queues is a difference nobody would notice until it mattered.
 - The published seed summaries carry `null_final_loss` and the zero-probe /
 zero-mutation counters the §5.14 built-in checks read.
 

@@ -57,8 +57,14 @@ def _write_seed(
     mutation_count: int = 3,
     adaptive_mutation_count: int | None = None,
     status: str = "complete",
+    config: dict | None = None,
 ) -> Path:
-    """Materialize one published seed summary in the handoff layout."""
+    """Materialize one published seed summary in the handoff layout.
+
+    ``config`` is written verbatim; the default empty dict is the shape the committed
+    real-path artifacts have (they predate the fields the section 5.46 conformance
+    reading looks for), which is why it must stay the default here.
+    """
 
     def arm(mode: str, loss: float, mutations: int) -> dict[str, object]:
         return {
@@ -94,7 +100,7 @@ def _write_seed(
                 mutation_count if adaptive_mutation_count is None else adaptive_mutation_count,
             ),
         },
-        "config": {},
+        "config": {} if config is None else config,
     }
     (reports / "seed-summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n"
@@ -934,6 +940,171 @@ def test_declared_block_can_be_re_reserved_without_loosening_a_rule(
     }
     assert re_declared["verdict"] == "PASS"
     assert re_declared["gate_4_authorized"] is True
+
+
+# --- section 5.46: the recorded configuration against the registered one ------ #
+
+
+def _declared_fixture_with_config(tmp_path: Path, config: dict):
+    """An authorizing declared block whose primary seeds all record ``config``.
+
+    The primary arm wins all 12 pairs (clearing the section 5.44 quality bar), the
+    loss-blind control wins none, and adaptive beats the null arm everywhere - so every
+    withholding clause is clear and the block authorizes unless something else moves it.
+    """
+    control = tmp_path / "control"
+    null = tmp_path / "null"
+    for seed in DECLARED:
+        _write_seed(
+            tmp_path,
+            seed,
+            adaptive_loss=1.0,
+            random_loss=1.5,
+            search_flops=_in_band_search_flops(),
+            config=config,
+        )
+        _write_seed(
+            control,
+            seed,
+            adaptive_loss=1.5,
+            random_loss=1.0,
+            search_flops=_in_band_search_flops(),
+            config=config,
+        )
+        _write_null_seed(null, seed, null_loss=2.0)
+    return control, null
+
+
+def test_config_conformance_reads_a_registered_run_as_conforming(tmp_path: Path) -> None:
+    """The conforming case, field by field, at declared scale."""
+    registered = dict(v0_verdict.REGISTERED_RUN_CONFIG, probe_batch_count=1)
+    control, null = _declared_fixture_with_config(tmp_path, registered)
+
+    verdict = v0_verdict.compute_verdict(
+        tmp_path, probe_batch_count=1, control_root=control, null_root=null
+    )
+
+    conformance = verdict["config_conformance"]
+    assert conformance["conforms"] is True
+    assert conformance["fields_differing"] == []
+    assert conformance["fields_not_recorded"] == []
+    assert conformance["seeds_with_a_recorded_config"] == len(DECLARED)
+    assert conformance["descriptive_only"] is True
+    assert all(row["status"] == "matches" for row in conformance["fields"].values())
+    assert verdict["verdict"] == "PASS"
+    assert verdict["gate_4_authorized"] is True
+
+
+def test_config_conformance_flags_the_untreated_rebuild_without_changing_a_rule(
+    tmp_path: Path,
+) -> None:
+    """Section 5.46's scenario: a run whose recorded config is not the registered one.
+
+    The two must differ in the conformance block and *nowhere else* - same label, same
+    exit code, same authorization - because a block that changed a decision would be a
+    new criterion rather than a reading, and this one is registered as descriptive.
+    """
+    registered = dict(v0_verdict.REGISTERED_RUN_CONFIG, probe_batch_count=1)
+    untreated = dict(
+        registered,
+        preserve_router_on_rebuild=False,
+        new_expert_initialization="random",
+    )
+    conforming_root = tmp_path / "conforming"
+    untreated_root = tmp_path / "untreated"
+    conforming_root.mkdir()
+    untreated_root.mkdir()
+    c1, n1 = _declared_fixture_with_config(conforming_root, registered)
+    c2, n2 = _declared_fixture_with_config(untreated_root, untreated)
+
+    good = v0_verdict.compute_verdict(
+        conforming_root, probe_batch_count=1, control_root=c1, null_root=n1
+    )
+    bad = v0_verdict.compute_verdict(
+        untreated_root, probe_batch_count=1, control_root=c2, null_root=n2
+    )
+
+    assert good["config_conformance"]["conforms"] is True
+    assert bad["config_conformance"]["conforms"] is False
+    assert bad["config_conformance"]["fields_differing"] == [
+        "new_expert_initialization",
+        "preserve_router_on_rebuild",
+    ]
+    assert "is not the registered configuration" in bad["config_conformance"]["reading"]
+
+    for key in ("verdict", "exit_code", "gate_4_authorized", "primary_pass", "quality_premise"):
+        assert bad[key] == good[key], f"the conformance block moved {key}"
+
+
+def test_config_conformance_reads_a_pre_field_artifact_as_unrecorded(
+    tmp_path: Path,
+) -> None:
+    """No spent block may be re-read as non-conforming for not having the field."""
+    registered = dict(v0_verdict.REGISTERED_RUN_CONFIG, probe_batch_count=1)
+    old_root = tmp_path / "legacy"
+    old_root.mkdir()
+    control, null = _declared_fixture_with_config(old_root, {})
+
+    verdict = v0_verdict.compute_verdict(
+        old_root, probe_batch_count=1, control_root=control, null_root=null
+    )
+
+    conformance = verdict["config_conformance"]
+    assert conformance["fields_differing"] == []
+    assert conformance["seeds_with_a_recorded_config"] == 0
+    assert len(conformance["fields_not_recorded"]) == len(registered)
+    assert conformance["conforms"] is False
+    assert "predates" in conformance["reading"]
+    # Descriptive, so the legacy fixture still authorizes exactly as it always did.
+    assert verdict["verdict"] == "PASS"
+    assert verdict["gate_4_authorized"] is True
+
+
+def test_the_registered_run_config_carries_the_adopted_protocol() -> None:
+    """The registered mapping is the protocol, so it is pinned to it (section 5.47)."""
+    registered = v0_verdict.REGISTERED_RUN_CONFIG
+
+    # Section 5.5 changes 1 and 2: spread candidates, argmin selection.
+    assert registered["probe_candidate_policy"] == "spread"
+    assert registered["probe_selection"] == "argmin"
+    assert registered["arms"] == ["random", "adaptive"]
+    # Section 5.47: the rebuild treatment the declared run is registered on.
+    assert registered["preserve_router_on_rebuild"] is True
+    assert registered["new_expert_initialization"] == "clone"
+    # The declared shape and budget the cost prediction is derived from.
+    assert registered["total_steps"] == 6000
+    assert registered["mutation_budget"] == 3
+    assert registered["mutation_interval"] == 1500
+    assert registered["depth"] == 12
+    assert registered["hidden_size"] == 1024
+    assert registered["batch_size"] == 2
+    assert registered["context_size"] == 2048
+    assert "dtype" not in registered  # the section 5.2 rule decides it, not a constant
+
+
+def test_the_registered_run_config_matches_what_the_launch_command_builds() -> None:
+    """The mapping and the declared session config must not drift apart.
+
+    A conformance block compared against a stale constant would be worse than none: it
+    would certify a run nothing builds. The registered launch command passes
+    ``--probe-candidate-policy spread --preserve-router-on-rebuild --new-expert clone``
+    (section 5.47), so the declared session config must be able to produce exactly that.
+    """
+    from act.training.v0_session import declared_session_config
+
+    config = declared_session_config(
+        probe_candidate_policy="spread",
+        preserve_router_on_rebuild=True,
+        new_expert_initialization="clone",
+    )
+
+    for field, expected in v0_verdict.REGISTERED_RUN_CONFIG.items():
+        recorded = getattr(config, field, "<absent>")
+        assert recorded == expected or list(recorded) == expected, (
+            f"the launch command cannot produce registered {field}={expected!r} "
+            f"(it builds {recorded!r})"
+        )
+    assert config.probe_batch_count == 1  # the invocation's registered value
 
 
 # --- the adopted pool-matched control clause (section 5.5 changes 2 and 3) --

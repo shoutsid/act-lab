@@ -1,14 +1,18 @@
 {
  "built_in_checks": {
+  "a_run_that_is_not_the_registered_configuration_is_flagged": true,
+  "a_run_whose_artifact_predates_the_fields_is_unrecorded_not_differing": true,
   "cost_failures_exit_1_and_nothing_else_does": true,
   "each_variant_costs_the_multiple_its_knob_says": true,
   "every_fixture_is_at_declared_scale": true,
   "every_variant_matches_the_registered_rule": true,
-  "the_authorizing_variants_are_the_clear_and_distinguishable_cases": true,
+  "the_authorizing_variants_are_the_clear_distinguishable_and_conformance_cases": true,
   "the_band_miss_variant_stays_inside_the_5_percent_bar": true,
   "the_band_readings_agree_at_declared_scale": true,
   "the_clause_3_amendment_withholds_in_both_directions": true,
-  "the_cost_over_criterion_variant_clears_the_5_percent_bar": true
+  "the_conformance_block_changes_no_authorization": true,
+  "the_cost_over_criterion_variant_clears_the_5_percent_bar": true,
+  "the_registered_fixtures_conform_and_are_not_flagged": true
  },
  "declared_parameters": {
   "active": 134341632,
@@ -65,6 +69,9 @@
  "synthetic": true,
  "variants": [
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 0.0941636252059042,
    "expected_gate_4_authorized": true,
    "expected_label": "PASS",
@@ -84,6 +91,9 @@
    "variant_knobs": {}
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 5.649817512354252,
    "expected_gate_4_authorized": false,
    "expected_label": "FAIL",
@@ -105,6 +115,9 @@
    }
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 0.0941636252059042,
    "expected_gate_4_authorized": false,
    "expected_label": "PASS_COST_ONLY_HARM_GUARD_REJECTS",
@@ -126,6 +139,9 @@
    }
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 0.0941636252059042,
    "expected_gate_4_authorized": false,
    "expected_label": "PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES",
@@ -147,6 +163,9 @@
    }
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 0.0941636252059042,
    "expected_gate_4_authorized": false,
    "expected_label": "PASS_COST_ONLY_NULL_REJECTS",
@@ -168,6 +187,9 @@
    }
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 0.28249087561771263,
    "expected_gate_4_authorized": false,
    "expected_label": "PASS_WITH_QUALIFICATION",
@@ -189,6 +211,9 @@
    }
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 0.0941636252059042,
    "expected_gate_4_authorized": false,
    "expected_label": "PASS_COST_ONLY_CONTROL_MISSING",
@@ -210,6 +235,9 @@
    }
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 0.0941636252059042,
    "expected_gate_4_authorized": false,
    "expected_label": "PASS_COST_ONLY_CONTROL_MISSING",
@@ -233,6 +261,9 @@
    }
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 0.0941636252059042,
    "expected_gate_4_authorized": false,
    "expected_label": "PASS_COST_ONLY_NULL_MISSING",
@@ -254,6 +285,9 @@
    }
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 0.0941636252059042,
    "expected_gate_4_authorized": false,
    "expected_label": "PASS_COST_ONLY_NULL_MISSING",
@@ -276,6 +310,9 @@
    }
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 0.0941636252059042,
    "expected_gate_4_authorized": false,
    "expected_label": "PASS",
@@ -297,6 +334,9 @@
    }
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 0.0941636252059042,
    "expected_gate_4_authorized": false,
    "expected_label": "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE",
@@ -320,6 +360,9 @@
    }
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 0.0941636252059042,
    "expected_gate_4_authorized": true,
    "expected_label": "PASS",
@@ -342,6 +385,9 @@
    }
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 0.0941636252059042,
    "expected_gate_4_authorized": false,
    "expected_label": "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE",
@@ -364,6 +410,9 @@
    }
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 5.649817512354252,
    "expected_gate_4_authorized": false,
    "expected_label": "FAIL",
@@ -388,6 +437,9 @@
    }
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 0.0941636252059042,
    "expected_gate_4_authorized": false,
    "expected_label": "PASS_COST_ONLY_HARM_GUARD_REJECTS",
@@ -411,6 +463,9 @@
    }
   },
   {
+   "config_conforms": true,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [],
    "cost_percent": 0.0941636252059042,
    "expected_gate_4_authorized": false,
    "expected_label": "PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES",
@@ -430,6 +485,107 @@
    "variant_knobs": {
     "control_wins": 12,
     "null_wins": 0
+   }
+  },
+  {
+   "config_conforms": false,
+   "config_fields_differing": [
+    "new_expert_initialization",
+    "preserve_router_on_rebuild"
+   ],
+   "config_fields_not_recorded": [],
+   "cost_percent": 0.0941636252059042,
+   "expected_gate_4_authorized": true,
+   "expected_label": "PASS",
+   "harm_guard_clear": true,
+   "in_tolerance_band": true,
+   "in_tolerance_band_at_run_scale": true,
+   "matches_registered_rule": true,
+   "null_clause_rejects": false,
+   "null_evaluated": true,
+   "observed_exit_code": 0,
+   "observed_gate_4_authorized": true,
+   "observed_label": "PASS",
+   "pool_control_evaluated": true,
+   "pool_control_passes_gate": false,
+   "run_is_at_declared_scale": true,
+   "variant": "untreated_rebuild_still_authorizes_but_is_flagged",
+   "variant_knobs": {
+    "config_overrides": {
+     "new_expert_initialization": "random",
+     "preserve_router_on_rebuild": false
+    }
+   }
+  },
+  {
+   "config_conforms": false,
+   "config_fields_differing": [
+    "probe_candidate_policy"
+   ],
+   "config_fields_not_recorded": [],
+   "cost_percent": 0.0941636252059042,
+   "expected_gate_4_authorized": true,
+   "expected_label": "PASS",
+   "harm_guard_clear": true,
+   "in_tolerance_band": true,
+   "in_tolerance_band_at_run_scale": true,
+   "matches_registered_rule": true,
+   "null_clause_rejects": false,
+   "null_evaluated": true,
+   "observed_exit_code": 0,
+   "observed_gate_4_authorized": true,
+   "observed_label": "PASS",
+   "pool_control_evaluated": true,
+   "pool_control_passes_gate": false,
+   "run_is_at_declared_scale": true,
+   "variant": "prefix_policy_is_flagged_not_authorized_away",
+   "variant_knobs": {
+    "config_overrides": {
+     "probe_candidate_policy": "prefix"
+    }
+   }
+  },
+  {
+   "config_conforms": false,
+   "config_fields_differing": [],
+   "config_fields_not_recorded": [
+    "active_experts",
+    "arms",
+    "attention_heads",
+    "batch_size",
+    "context_size",
+    "depth",
+    "expert_count",
+    "expert_width",
+    "hidden_size",
+    "mutation_budget",
+    "mutation_interval",
+    "new_expert_initialization",
+    "preserve_router_on_rebuild",
+    "probe_batch_count",
+    "probe_candidate_policy",
+    "probe_selection",
+    "total_steps",
+    "vocab_size"
+   ],
+   "cost_percent": 0.0941636252059042,
+   "expected_gate_4_authorized": true,
+   "expected_label": "PASS",
+   "harm_guard_clear": true,
+   "in_tolerance_band": true,
+   "in_tolerance_band_at_run_scale": true,
+   "matches_registered_rule": true,
+   "null_clause_rejects": false,
+   "null_evaluated": true,
+   "observed_exit_code": 0,
+   "observed_gate_4_authorized": true,
+   "observed_label": "PASS",
+   "pool_control_evaluated": true,
+   "pool_control_passes_gate": false,
+   "run_is_at_declared_scale": true,
+   "variant": "config_predates_the_fields",
+   "variant_knobs": {
+    "omit_config": true
    }
   }
  ],
