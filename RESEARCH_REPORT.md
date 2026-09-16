@@ -5049,6 +5049,78 @@ teeth were checked by tampering: making `argmax` behave as `argmin` in the toy p
 to `V0SessionConfig` fails the completeness guard. Invalid values are also asserted to be rejected
 rather than silently ignored, for six fields on the declared path and five on the toy path.
 
+### 5.38 Pre-registration: does the rebuild treatment transfer to the declared path?
+
+**Motivation.** Sections 5.24-5.28 measured the mechanism - a mid-training rebuild that re-draws the
+mutated layer's router, and a grown expert drawn from scratch - on the *toy* substrate, and section
+5.35 found the same defect on the declared path by reading the code. What does not yet exist is a
+**registered real-path measurement** of the treatment. Section 5.36 produced dev-scale signal on the
+real token stream, but on three spent seeds and with no pre-registration, so it licenses exactly this
+block and nothing more.
+
+**Design.** Per seed, two sessions that differ in exactly one thing - the mid-training rebuild:
+
+| setting | rebuild |
+|---|---|
+| `base` | `V0SessionConfig` defaults: the historical rebuild |
+| `clone` | `preserve_router_on_rebuild=True`, `new_expert_initialization="clone"` |
+
+Both run the dev shape (~14.9M total / 7.6M active) on the real TinyStories stream: 400 steps, three
+mutation events at 100/200/300, learning rate 3e-4, batch 8 x context 512, `random` and `adaptive`
+arms in the same session, identical seed and data schedule. **Fresh seeds 15210-15215** (n = 6). The
+section 5.36 smoke spent 15201-15203 and is disclosed as spent rather than reused or hidden.
+
+**Primaries (n = 6, two primaries, so `alpha/2 = 0.025`; the sign test's bar at n = 6 is therefore 6
+of 6, `p = 0.0156`).** Each is a paired comparison over the same six seeds, helpful direction =
+the treated run lower:
+
+1. **P1, the clean signal** - `random` arm final loss, `clone` < `base`. The random arm mutates on a
+   seeded schedule and never probes, so its effect cannot be an artifact of how the probe ranks
+   anything. This is the regime section 5.28 adopted the pipeline change from.
+2. **P2, the product question** - `adaptive` arm final loss, `clone` < `base`.
+
+Each primary is judged by **both** a one-sided paired sign test at its own `alpha/2` and a declared
+**paired sign-flip permutation test on the mean** (20,000 permutations, fixed seed, helpful if the
+mean delta is negative). Section 5.31.1 established that these disagree exactly where the effect is
+small relative to the block size, so both are reported and a primary passes on the permutation test,
+with the sign test reported beside it rather than silently substituting for it.
+
+**Secondaries (reported, not verdict-bearing).** The `adaptive`-minus-`random` gap under each setting;
+validation losses; parameter and active-parameter counts (the treatment must not change them); and the
+per-arm event mix, since a treatment that silently changed *which* mutations happen would confound
+its own comparison.
+
+**Pre-registered interpretation (fixed before running).**
+- (a) P1 and P2 both pass: the treatment transfers to the declared path at dev fidelity. The T4
+  compute-efficiency protocol is specified with it on, and section 5.28's "keep the fused run"
+  becomes a real-path statement rather than a toy one.
+- (b) P1 passes, P2 fails: the mechanism transfers but the adaptive arm's reading is unresolved -
+  the probe's own behaviour (sections 5.29/5.30) already showed its residual prune term is untouched
+  by cloning, so this branch is predicted to be readable as that same deficit at real fidelity rather
+  than as a failure of the fix.
+- (c) P2 passes, P1 fails: treated as a red flag, not a result. A probe-driven arm improving while
+  the clean seeded arm does not would need an explanation before it is believed, and it would be
+  reported as unresolved.
+- (d) neither passes: the mechanism does not transfer at dev scale. The declared-run protocol must
+  not then be specified on this treatment, and the toy result stands as a toy result.
+
+**Power, declared from the spent pilot.** The section 5.36 random-arm per-seed deltas were -0.0309,
+-0.0676, -0.0752 (mean -0.058, sd 0.023). At n = 6 the standard error is 0.0094, so an effect **a
+third** of the pilot's still clears `alpha/2` on the mean test with `|t| > 2.8`. The binding statistic
+at this size is the sign test - 6 of 6 - which is precisely the constraint section 5.31.1 recorded as
+this protocol's usual one.
+
+**Scope limits (pre-declared).** Dev shape, not the declared 285M target, so this speaks to
+transfer at dev fidelity only. **GPU, therefore not bit-reproducible in the section-6 sense**: that
+contract is a fixed-thread-count CPU statement and is simply not available here, so reproduction
+means re-running the block and checking that the verdict is stable. One substrate and one data
+schedule. The treatment is the *pair* `preserve_router` + `clone`, not the two halves separately
+(section 5.27 measured that split on the toy substrate, and it is not re-measured here). The measure
+is final held-out loss, not capability per FLOP, so nothing here unblocks Gate 4 by itself.
+
+**Cost.** 12 sessions of ~165 s on the development GPU, about 33 minutes, run resumably in
+budget-capped invocations so an interruption loses at most one session.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
