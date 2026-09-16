@@ -5534,6 +5534,126 @@ sets the bar; the declared run is what measures the bar.
 `artifacts/study-summaries/real-path-churn-harm.json` (`config_hash
 4e653cd958c99dfc`).
 
+### 5.40 Pre-registration: the deployed configuration against the do-nothing arm, on fresh seeds
+
+**Motivation, and what is actually open.** Section 5.13 closed the real-text topology
+program: probe-ORDERED churn (§5.3, five variants), probe-GATED churn (§5.4/5.11, no
+theta clears), and load-DIRECTED churn (§5.13) all lose to doing nothing, so "the null
+arm is the only policy that wins, and it wins against everything". **Every one of those
+vehicles ran on a path that re-drew the mutated layer's learned router on every event.**
+The repair exists now (§5.35) and the deployed configuration for any future run is the
+treatment on (§5.38.3), so 5.13's closure is a statement about a configuration the
+project no longer ships. Section 5.39 then supplied the *level*: with the repair in
+place, churn still costs 0.11279 nats on 18/18 seeds.
+
+What has never been measured is the comparison the project's own null-arm contract
+defines as the bar - **adaptive against doing nothing** (§5.9/5.12 primary 2) - on the
+real path, with the deployed treatment, on seeds nobody has observed. Section 5.14
+then makes that number load-bearing rather than academic, because it is the quantity
+its do-nothing clause acts on. This block measures it.
+
+**Post-hoc diagnostic that motivates this block, disclosed in full.** The stored rows
+of §5.38 (both arms, `base` and `clone`) and §5.39 (the null arm) overlap on seeds
+15210-15215, so a three-way read costs no compute. It is **post-hoc, n=6, on spent
+seeds, and it is not evidence** - it is what the registered prediction below is
+sourced from, and it is reproducible from the committed rows:
+
+| comparison (negative = the first arm is better) | mean | sd | seeds agreeing |
+|---|---|---|---|
+| `null - adaptive_base` | **-0.24844** | 0.0958 | 6/6 |
+| `null - random_base` | **-0.19041** | 0.0841 | 6/6 |
+| `null - adaptive_clone` | **-0.11686** | 0.0761 | 6/6 |
+| `null - random_clone` | **-0.11618** | 0.0330 | 6/6 |
+| `adaptive_clone - random_clone` | +0.00068 | 0.0958 | 3/6 |
+
+Three things in it are worth naming before the block runs, because they set the
+prediction. (i) **Repairing the rebuild removes the adaptive arm's *disadvantage*, not
+its deficit**: the adaptive arm's harm falls from 0.248 to 0.117 (and the random arm's
+from 0.190 to 0.116), and against *each other* the two mutating arms are now
+indistinguishable (3/6, `+0.0007`). (ii) **The do-nothing bar is unmoved at ~0.116**
+and holds on 6/6 seeds for both mutating arms. (iii) The toy value-creation cell
+requires depth >= 4 (§5.10/5.12) and the dev shape is depth **6**, i.e. the toy prior
+is *favourable* here, so a failure at this depth would point at the substrate rather
+than at the depth dose-response.
+
+**Registered prediction: P1 fails.** Stated before the fresh block runs, sourced from
+the diagnostic above, so that a passing result is read as a genuine surprise rather
+than as the expected outcome.
+
+**Design.** 12 fresh seeds, block **15240-15251** (verified unused across `src/`,
+`scripts/`, `tests/` and every documented block). Per seed, two sessions:
+
+| session | arms | rebuild |
+|---|---|---|
+| pair | `random,adaptive` in one session (exactly §5.38's shape) | deployed treatment on both: `preserve_router_on_rebuild=True`, `new_expert_initialization="clone"` |
+| null | `null` alone (`arms=("null",)`, as §5.39 ran it) | never rebuilds, so the treatment is inert by construction |
+
+Dev shape (~14.9M total / 7.6M active), real TinyStories stream, 400 steps, three
+events at 100/200/300. The null arm shares the random arm's init identity
+(`arm_seed = seed * 10 + 1`), and the adaptive arm keeps the offset-2 identity the
+paired-session protocol has always used, so `null - random` is a same-initialization
+pair and `null - adaptive` has the same initialization structure as the registered
+`random - adaptive` contrast.
+
+**Primaries** (two, so Bonferroni `alpha/2 = 0.025`; declared statistic is the
+one-sided paired sign-flip permutation test, exact sign test reported beside it per
+§5.31.1; deltas are `null - arm`, so **negative = the arm beats doing nothing**,
+the corrected §5.39 convention applied uniformly):
+
+1. **P1 - adaptive beats doing nothing**: `null - adaptive`, registered prediction
+   **not** negative at the bar (see above).
+2. **P2 - churn harm under the deployed treatment**: `null - random`, registered
+   prediction **negative at the bar** (this is §5.39's result re-derived on fresh
+   seeds rather than inherited from a block whose seeds §5.38/5.38.1 already spent).
+
+**Decision branches (fixed now).**
+
+- **(a) The real-text leg reopens**: P1 passes -> with the deployed treatment and a
+depth-6 shape, selection beats doing nothing on real text. §5.13's closure is scoped
+to the pre-repair configuration, the value-creation claim gains its first real-text
+support, and the declared run's quality premise has a dev-fidelity anchor. This is the
+branch that matters and the diagnostic says it is the less likely one.
+- **(b) The closure holds under the deployed configuration**: P1 fails and P2 passes ->
+  churn harm is fresh-seed real and selection still cannot beat doing nothing, so
+  §5.13's closure is **re-established on the configuration the project actually
+  ships**. Gate 4's quality premise then rests on the toy factor map plus the
+  compute-efficiency protocol alone, with no transfer claim at all, and that is what
+  the declared run's write-up must say.
+- **(c) Churn harm does not reproduce on fresh seeds**: P2 fails -> §5.39's 18-seed
+  level is read as partly seed-block-specific and the churn-harm reading is scoped.
+  Recorded as a genuine question about that block, not explained away.
+- **(d) Red flag**: P1 fails *and* `adaptive - random` is established positive ->
+  selection is actively harmful under the repair, which would be a new fact (the
+  diagnostic has the two arms tied). Recorded as a red flag.
+
+**Built-in checks** (each recorded as a measurement, not asserted as a claim): the null
+arm mutated 0 times and booked 0 probe FLOPs with an unchanged architecture hash and
+four consumed cadence slots; both mutating arms applied exactly three mutations; the
+adaptive arm booked positive search FLOPs and the random arm booked only its rebuild
+bookings; the pair session really contains both arms; the diagnostic table above
+recomputes from the stored §5.38/§5.39 rows to within 1e-12.
+
+**Other declarations.**
+
+- *Blindness.* The fresh block has never been run by anything. The diagnostic was taken
+  on spent seeds, is disclosed above with its numbers, and is the stated source of the
+  registered prediction - so this block is registered in advance of *its own* queue
+  only, and a reader can see exactly how much prior knowledge went into it.
+- *Not bit-reproducible.* GPU block; §6's fixed-thread-count contract is a CPU
+  statement. Reproduction means re-running and checking verdict stability.
+- *Budget matching.* All three arms train the same token count; the null arm's training
+  FLOPs differ only through the parameter growth the mutating arms accumulate, which is
+  reported per arm rather than forced equal. Probe FLOPs are booked, not removed, so
+  P1 prices the controller's search cost.
+- *No re-runs on a measured branch.* Whatever the branch, it is written up as it lands
+  and no arm is added afterwards to change it.
+
+**Cost.** 12 seeds x (pair session + null session) ~= 40 min of local GPU; the runner is
+resumable and budget-aware.
+
+**Execution.** `scripts/deployed_vs_null_study.py` (`--run`, `--summarize`), summary
+`artifacts/study-summaries/real-path-deployed-vs-null.json`.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
