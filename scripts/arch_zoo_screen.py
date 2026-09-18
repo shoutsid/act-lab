@@ -385,6 +385,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--context-size", type=int, default=1024)
     parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
+    parser.add_argument(
+        "--mixed-precision",
+        default="off",
+        choices=["off", "fp16", "bf16"],
+        help=(
+            "autocast precision for every run in the sweep, recorded in each ledger "
+            "row's run_config. The phase's record is fp32 (`off`); a loss measured in "
+            "one precision is not comparable to one measured in another, so an arm "
+            "that trains fp16 has to carry its own same-precision anchor at any "
+            "length it is compared against. fp16 is native on Turing (T4) tensor "
+            "cores and measured 2.56x fp32 there; on Pascal it is slower than fp32."
+        ),
+    )
     parser.add_argument("--stage1-steps", type=int, default=400)
     parser.add_argument("--stage2-steps", type=int, default=800)
     parser.add_argument("--stage3-steps", type=int, default=1200)
@@ -532,6 +545,7 @@ def make_run(args: argparse.Namespace, steps: int, seed: int) -> RunConfig:
         train_data_path=args.data_path,
         val_data_path=args.val_data_path,
         val_batches=args.val_batches,
+        mixed_precision=args.mixed_precision,
     )
 
 
@@ -814,7 +828,8 @@ def main() -> None:
     print(f"Experiment: {args.experiment_id}")
     print(
         f"Design {args.design}, target {target:,.0f} params (+/-{band:.0%}), "
-        f"context {args.context_size}, batch {args.batch_size}, budget {args.budget_hours}h"
+        f"context {args.context_size}, batch {args.batch_size}, budget {args.budget_hours}h, "
+        f"precision {args.mixed_precision}"
     )
 
     match_on: str | None = None

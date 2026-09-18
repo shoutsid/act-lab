@@ -37,6 +37,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -80,7 +81,9 @@ PUBLISH_LOG_NAME = "remote-publish-log.json"
 # ``selfcheck`` is the session battery: it trains tiny non-declared pairs, so
 # unlike the verdict it wants a GPU - but only for a few minutes, and it is
 # what confirms the target host really does place one arm per device.
-ONE_SHOT_MODES = ("preflight", "verdict", "dtypeprobe", "selfcheck")
+# ``archzoo`` is the architecture-search horizon arm: one push, and its ledgers
+# come back in the kernel output and are imported into ``artifacts/``.
+ONE_SHOT_MODES = ("preflight", "verdict", "dtypeprobe", "selfcheck", "archzoo")
 
 
 def parse_status(text: str) -> str:
@@ -143,9 +146,7 @@ MAIN_GUARD = 'if __name__ == "__main__":\n    raise SystemExit(main())\n'
 # tests, the notebooks the report cites, and the docs the runbook references.
 # Deliberately **not** ``artifacts/`` - a session must start with no
 # ``artifacts/`` directory, so the launch command cannot read a benchmark
-# artifact this session did not measure - and not the web side
-# (``public/``, ``server/``, the vite/ts configs), which the kernel never
-# imports.
+# artifact this session did not measure.
 CODE_PATHS = (
     "pyproject.toml",
     "README.md",
@@ -498,8 +499,26 @@ def load_publish_log(output_dir: str | Path) -> dict[str, object] | None:
     return json.loads(candidates[0].read_text(encoding="utf-8"))
 
 
+# Kaggle CLI 2.2.4 with OAuth credentials: an expired access token makes a write
+# call fail with this text rather than refreshing, while ``kaggle auth
+# print-access-token`` does refresh (measured 2026-09-19: ``datasets create`` failed
+# five minutes after expiry, worked after one print-access-token). A driver that
+# waits hours for a kernel would otherwise die on the output download it waited for.
+AUTH_REQUIRED = "Authentication required to call the Kaggle API"
+
+
 def _run(argv: list[str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(argv, capture_output=True, text=True)
+    result = subprocess.run(argv, capture_output=True, text=True)
+    if (
+        argv[:1] == ["kaggle"]
+        and result.returncode != 0
+        and AUTH_REQUIRED in (result.stdout + result.stderr)
+    ):
+        subprocess.run(
+            ["kaggle", "auth", "print-access-token"], capture_output=True, text=True
+        )
+        result = subprocess.run(argv, capture_output=True, text=True)
+    return result
 
 
 def active_status(kernel: str) -> str:
@@ -739,6 +758,44 @@ def drive(
     return EXIT_BUDGET_EXHAUSTED
 
 
+def import_archzoo_output(
+    output_dir: str | Path, repo: str | Path, *, log=print
+) -> dict[str, object] | None:
+    """Copy the horizon arm's ledgers out of the kernel output into ``artifacts/``.
+
+    The kernel keeps ``<experiment>/`` whole - design files, per-seed ledgers, the
+    per-seed run logs and ``archzoo-status.json`` - so importing is a directory
+    merge into the repo's own artifacts root, where ``arch_zoo_analyze.py`` and
+    ``verify_record.py`` read every other arm from. Returns the kernel's status
+    record, or ``None`` when the output holds no experiment directory (a kernel
+    that died before bootstrapping writes nothing).
+    """
+    source = Path(output_dir) / kaggle_t4.ARCHZOO_EXPERIMENT
+    if not source.is_dir():
+        log(f"  no {kaggle_t4.ARCHZOO_EXPERIMENT}/ in the kernel output", flush=True)
+        return None
+    target = Path(repo) / "artifacts" / kaggle_t4.ARCHZOO_EXPERIMENT
+    target.mkdir(parents=True, exist_ok=True)
+    copied = []
+    for path in sorted(source.iterdir()):
+        if path.is_file():
+            shutil.copy2(path, target / path.name)
+            copied.append(path.name)
+    log(f"  imported {len(copied)} file(s) into {target}: {', '.join(copied)}", flush=True)
+    status_path = target / kaggle_t4.ARCHZOO_STATUS_NAME
+    if not status_path.is_file():
+        return None
+    status = json.loads(status_path.read_text())
+    rows = status.get("ledger_rows", {})
+    log(
+        f"  archzoo complete={status.get('complete')} "
+        f"stopped_at_deadline={status.get('stopped_at_deadline')} "
+        f"hours={float(status.get('hours', 0.0)):.2f} rows={rows}",
+        flush=True,
+    )
+    return status
+
+
 def report_verdict(output_dir: str | Path) -> int:
     """Print the decision the verdict kernel computed and mirror its code.
 
@@ -808,6 +865,22 @@ def run_once(mode: str, *, poll: float, timeout: float) -> int:
     status = _wait_for_terminal(kernel, poll, timeout)
     output_dir = Path(tempfile.mkdtemp(prefix=f"act-{mode}-out-"))
     _run(["kaggle", "kernels", "output", kernel, "-p", str(output_dir)])
+    if mode == "archzoo":
+        # Imported before the status check: a kernel that ended with an error
+        # after hours of training may still have kept its ledgers, and those
+        # rows cost GPU-hours to regenerate.
+        imported = import_archzoo_output(
+            output_dir, Path(__file__).resolve().parent.parent
+        )
+        _print_log_tail(output_dir, kernel)
+        if status != SUCCESS_STATUS or imported is None:
+            print(f"{mode} ended with {status}", flush=True)
+            return EXIT_SESSION_FAILED
+        if not imported.get("complete"):
+            print(f"{mode} kernel completed but the arm did not", flush=True)
+            return EXIT_BUDGET_EXHAUSTED
+        print(f"=== {mode} complete ({kernel}) ===", flush=True)
+        return EXIT_COMPLETE
     if status != SUCCESS_STATUS:
         print(f"{mode} ended with {status}; kernel log follows", flush=True)
         _print_log_tail(output_dir, kernel)

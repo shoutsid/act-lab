@@ -21,9 +21,11 @@ from typing import Sequence
 from act.search.architecture_eval import load_results, print_results_table
 from act.search.architecture_report import (
     HEAD_PAIRING_RULE,
+    HORIZON_RULE,
     REPLICATION_RULE,
     best_available_summary,
     head_pairing_decision,
+    horizon_decision,
     replication_decision,
     search_cost,
     with_structure,
@@ -93,6 +95,16 @@ def parse_args() -> argparse.Namespace:
             "that arm's pooled seed count, and applying it to another design would "
             "label a question the design never pre-registered. Thresholds are in "
             "HEAD_PAIRING_RULE."
+        ),
+    )
+    parser.add_argument(
+        "--horizon-rule",
+        action="store_true",
+        help=(
+            "apply the horizon arm's pre-registered rule (does the depth sign survive "
+            "the training length?) to the crossed contrast at the longest completed "
+            "length and record its branch. Opt-in like the other rules; thresholds "
+            "are in HORIZON_RULE."
         ),
     )
     parser.add_argument("--write", action="store_true", help="write ranked.json and decision.md")
@@ -185,6 +197,8 @@ def main() -> None:
         outcome["replication_decision"] = replication_decision(outcome)
     if args.head_rule:
         outcome["head_pairing_decision"] = head_pairing_decision(outcome)
+    if args.horizon_rule:
+        outcome["horizon_decision"] = horizon_decision(outcome)
     candidates = 0
     definition = directory / "zoo_definition.json"
     if definition.exists():
@@ -367,6 +381,7 @@ def main() -> None:
     for key, heading, thresholds in (
         ("replication_decision", "replication", REPLICATION_RULE),
         ("head_pairing_decision", "head-pairing", HEAD_PAIRING_RULE),
+        ("horizon_decision", "horizon", HORIZON_RULE),
     ):
         rule = outcome.get(key) or {}
         if not rule:

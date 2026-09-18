@@ -230,6 +230,64 @@ started it exited, with no rows written and no candidate contaminated — the lo
 below the plan section shows the second attempt and the first candidate of it. It
 was relaunched detached (`setsid`, unbuffered) and the aborted section is kept in
 `run.log` rather than deleted, since "the arm produced nothing for six minutes" is
-information a later reader of the wall clock would otherwise have to guess at. The
-driver's own guard cannot see this either: it counts tokens, and a killed process
+information a later reader of the wall clock would otherwise have to guess at.The driver's own guard cannot see this either: it counts tokens, and a killed process
 trains none.
+
+## Status update, mid-sweep (2026-09-18, seed 52 in progress)
+
+Three things are now armed or checked rather than pending on memory:
+
+- **The analysis is automated.** `scripts/run_confirm_analysis_when_sweep_exits.sh`
+  runs detached (PID logged in `analysis_watcher.log`), polls the sweep process,
+  verifies all three ledgers hold 8 rows before writing anything, then runs the two
+  pre-registered commands above in order. It refuses to `--write` over an incomplete
+  sweep, so a killed sweep produces a log line and no decision. The write path was
+  rehearsed into an isolated *copy* of both arms' directories first - a first
+  rehearsal through symlinked directories wrote its partial output into this
+  directory, which was removed before any of its numbers could be mistaken for the
+  arm's: a rehearsal that writes must not be able to reach the real record.
+- **The design-integrity claim is a standing check.**
+  `verify_record.py` now asserts this arm's candidate list is byte-identical to the
+  parent's (`experiment_id` alone differs), every ledger row is on a fresh seed,
+  the plan is flat at 1200, and the structural join reaches both paired genes.
+  These are true at any point mid-sweep; the contrast rows land when the ledgers do.
+- **Interim read, not a verdict** (5 seeds' ledgers at writing, floor 0.0625):
+  all five seed interaction contrasts agree in sign (+0.0383 .. +0.0754), the wide
+  level's paired split is 9/9 pairs favouring more heads, and the pooled head
+  contrast is already clearing its threshold on that sign-inconsistent pair set -
+  the exact shape the added uniform branch warns reads as a uniform effect when the
+  levels disagree. The branch is decided only at six seeds, where the floor falls
+  to 0.03125.
+
+### When the sweep exits (runbook, so the handoff needs nothing but this file)
+
+The watcher fires both pre-registered commands automatically and logs to
+`analysis_watcher.log`. If it is not alive (check `pgrep -f
+run_confirm_analysis_when_sweep_exits`), run them by hand:
+
+```
+PYTHONPATH=src .venv/bin/python3 scripts/arch_zoo_analyze.py \
+  --experiment-id arch-zoo-100m-v4-head-paired-confirm --samples 200000 --write
+PYTHONPATH=src .venv/bin/python3 scripts/arch_zoo_analyze.py \
+  --experiment-id arch-zoo-100m-v4-head-paired \
+  --also arch-zoo-100m-v4-head-paired-confirm --samples 200000 --write --head-rule
+```
+
+The second writes the six-seed `decision.md` into the parent directory. Then close
+out the record:
+
+1. Read the branch from the parent's `decision.md`; it is decided by
+   `HEAD_PAIRING_RULE`, not by eye.
+2. Extend `verify_record.py`'s `check_head_paired_confirm` with the measured
+   contrast rows (pooled head, per-level splits, interaction at its floor, branch
+   label) and the §10 cost row `(24, <measured hours>)` in `check_costs`.
+3. Update `ARCH_SEARCH_FINDINGS.md`: §2c's lead paragraph, the §28 checklist row,
+   §9's item list, and §10's cost table (220 runs, ~23.6 h, the pre-declared
+   overrun) — then re-run `verify_record.py` and fix the count it prints.
+4. `OMP_NUM_THREADS=1 .venv/bin/python3 -m pytest tests/ -q` — the whole suite,
+   not just the verifier's tests.
+
+Rehearsed before the hours: both commands on a complete synthetic six-seed copy
+(relabelled parent rows, kept in /tmp and deleted — its branch firing was an
+artifact of the duplicated rows, so it validates the machinery and forecasts
+nothing).

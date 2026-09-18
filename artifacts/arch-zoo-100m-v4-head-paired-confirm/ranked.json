@@ -1,0 +1,1196 @@
+{
+  "available": true,
+  "steps": 1200,
+  "ranked": [
+    {
+      "name": "hd2_D10_H896_E16_A6_W128_Hd16",
+      "mean_val_loss": 2.761508271098137,
+      "runs": 3
+    },
+    {
+      "name": "hd4_D10_H896_E4_A3_W512_Hd16",
+      "mean_val_loss": 2.7737014293670654,
+      "runs": 3
+    },
+    {
+      "name": "hd2_D10_H896_E16_A6_W128_Hd8",
+      "mean_val_loss": 2.8243950605392456,
+      "runs": 3
+    },
+    {
+      "name": "hd4_D10_H896_E4_A3_W512_Hd8",
+      "mean_val_loss": 2.8394515365362167,
+      "runs": 3
+    },
+    {
+      "name": "hd1_D10_H512_E4_A2_W1536_Hd8",
+      "mean_val_loss": 2.925168732802073,
+      "runs": 3
+    },
+    {
+      "name": "hd1_D10_H512_E4_A2_W1536_Hd16",
+      "mean_val_loss": 2.9582883218924203,
+      "runs": 3
+    },
+    {
+      "name": "hd3_D10_H512_E12_A6_W512_Hd16",
+      "mean_val_loss": 2.9813674787680307,
+      "runs": 3
+    },
+    {
+      "name": "hd3_D10_H512_E12_A6_W512_Hd8",
+      "mean_val_loss": 3.002739980816841,
+      "runs": 3
+    }
+  ],
+  "best": "hd2_D10_H896_E16_A6_W128_Hd16",
+  "best_mean_val_loss": 2.761508271098137,
+  "best_runs": 3,
+  "architecture_spread": 0.24123170971870422,
+  "within_seed_std": 0.015066971236220559,
+  "sigmas": 16.010630533281315,
+  "multi_seed": true,
+  "paired_vs_best": [
+    {
+      "candidate": "hd4_D10_H896_E4_A3_W512_Hd16",
+      "mean_delta_vs_best": 0.012193158268928528,
+      "paired_seeds": [
+        51,
+        52,
+        53
+      ],
+      "delta_per_seed": [
+        0.010402321815490723,
+        0.007125183939933777,
+        0.019051969051361084
+      ]
+    },
+    {
+      "candidate": "hd2_D10_H896_E16_A6_W128_Hd8",
+      "mean_delta_vs_best": 0.0628867894411087,
+      "paired_seeds": [
+        51,
+        52,
+        53
+      ],
+      "delta_per_seed": [
+        0.05642114579677582,
+        0.059071123600006104,
+        0.07316809892654419
+      ]
+    },
+    {
+      "candidate": "hd4_D10_H896_E4_A3_W512_Hd8",
+      "mean_delta_vs_best": 0.07794326543807983,
+      "paired_seeds": [
+        51,
+        52,
+        53
+      ],
+      "delta_per_seed": [
+        0.07494096457958221,
+        0.05336260795593262,
+        0.10552622377872467
+      ]
+    },
+    {
+      "candidate": "hd1_D10_H512_E4_A2_W1536_Hd8",
+      "mean_delta_vs_best": 0.16366046170393625,
+      "paired_seeds": [
+        51,
+        52,
+        53
+      ],
+      "delta_per_seed": [
+        0.1651352047920227,
+        0.1714436113834381,
+        0.15440256893634796
+      ]
+    },
+    {
+      "candidate": "hd1_D10_H512_E4_A2_W1536_Hd16",
+      "mean_delta_vs_best": 0.19678005079428354,
+      "paired_seeds": [
+        51,
+        52,
+        53
+      ],
+      "delta_per_seed": [
+        0.2098267674446106,
+        0.1767163723707199,
+        0.20379701256752014
+      ]
+    },
+    {
+      "candidate": "hd3_D10_H512_E12_A6_W512_Hd16",
+      "mean_delta_vs_best": 0.2198592076698939,
+      "paired_seeds": [
+        51,
+        52,
+        53
+      ],
+      "delta_per_seed": [
+        0.194718599319458,
+        0.20371949672698975,
+        0.26113952696323395
+      ]
+    },
+    {
+      "candidate": "hd3_D10_H512_E12_A6_W512_Hd8",
+      "mean_delta_vs_best": 0.24123170971870422,
+      "paired_seeds": [
+        51,
+        52,
+        53
+      ],
+      "delta_per_seed": [
+        0.20962318778038025,
+        0.2345886379480362,
+        0.27948330342769623
+      ]
+    }
+  ],
+  "seeds": [
+    51,
+    52,
+    53
+  ],
+  "seeds_per_architecture": {
+    "hd1_D10_H512_E4_A2_W1536_Hd16": [
+      51,
+      52,
+      53
+    ],
+    "hd1_D10_H512_E4_A2_W1536_Hd8": [
+      51,
+      52,
+      53
+    ],
+    "hd2_D10_H896_E16_A6_W128_Hd16": [
+      51,
+      52,
+      53
+    ],
+    "hd2_D10_H896_E16_A6_W128_Hd8": [
+      51,
+      52,
+      53
+    ],
+    "hd3_D10_H512_E12_A6_W512_Hd16": [
+      51,
+      52,
+      53
+    ],
+    "hd3_D10_H512_E12_A6_W512_Hd8": [
+      51,
+      52,
+      53
+    ],
+    "hd4_D10_H896_E4_A3_W512_Hd16": [
+      51,
+      52,
+      53
+    ],
+    "hd4_D10_H896_E4_A3_W512_Hd8": [
+      51,
+      52,
+      53
+    ]
+  },
+  "anova": {
+    "available": true,
+    "test": "one-way ANOVA (unpaired)",
+    "architectures": 8,
+    "seeds_per_architecture": [
+      3
+    ],
+    "ss_between": 0.1904907722283084,
+    "ss_within": 0.005040050218009018,
+    "df_between": 7,
+    "df_within": 16,
+    "f": 86.38951211700241,
+    "p": 1.633149062657985e-11
+  },
+  "blocked_test": {
+    "available": true,
+    "test": "blocked permutation (monte-carlo)",
+    "method": "monte-carlo",
+    "architectures": 8,
+    "blocks": 3,
+    "names": [
+      "hd2_D10_H896_E16_A6_W128_Hd16",
+      "hd4_D10_H896_E4_A3_W512_Hd16",
+      "hd2_D10_H896_E16_A6_W128_Hd8",
+      "hd4_D10_H896_E4_A3_W512_Hd8",
+      "hd1_D10_H512_E4_A2_W1536_Hd8",
+      "hd1_D10_H512_E4_A2_W1536_Hd16",
+      "hd3_D10_H512_E12_A6_W512_Hd16",
+      "hd3_D10_H512_E12_A6_W512_Hd8"
+    ],
+    "seeds": [
+      51,
+      52,
+      53
+    ],
+    "seeds_dropped": [],
+    "architectures_dropped": [],
+    "unfinished_seeds": [],
+    "unbalanced_seeds": [],
+    "p": 4.9999750001249995e-06,
+    "p_ranks": 4.9999750001249995e-06,
+    "p_paired_t_reference": 0.0071021004105755155,
+    "statistic": 0.1904907722283086,
+    "exact": false,
+    "assignments": 65548320768000,
+    "rank_assignments": 65548320768000,
+    "min_achievable_p": 6.151187326782565e-10,
+    "p_resolution": 4.9999750001249995e-06,
+    "orderings": [
+      [
+        "hd2_D10_H896_E16_A6_W128_Hd16",
+        "hd4_D10_H896_E4_A3_W512_Hd16",
+        "hd2_D10_H896_E16_A6_W128_Hd8",
+        "hd4_D10_H896_E4_A3_W512_Hd8",
+        "hd1_D10_H512_E4_A2_W1536_Hd8",
+        "hd3_D10_H512_E12_A6_W512_Hd16",
+        "hd3_D10_H512_E12_A6_W512_Hd8",
+        "hd1_D10_H512_E4_A2_W1536_Hd16"
+      ],
+      [
+        "hd2_D10_H896_E16_A6_W128_Hd16",
+        "hd4_D10_H896_E4_A3_W512_Hd16",
+        "hd4_D10_H896_E4_A3_W512_Hd8",
+        "hd2_D10_H896_E16_A6_W128_Hd8",
+        "hd1_D10_H512_E4_A2_W1536_Hd8",
+        "hd1_D10_H512_E4_A2_W1536_Hd16",
+        "hd3_D10_H512_E12_A6_W512_Hd16",
+        "hd3_D10_H512_E12_A6_W512_Hd8"
+      ],
+      [
+        "hd2_D10_H896_E16_A6_W128_Hd16",
+        "hd4_D10_H896_E4_A3_W512_Hd16",
+        "hd2_D10_H896_E16_A6_W128_Hd8",
+        "hd4_D10_H896_E4_A3_W512_Hd8",
+        "hd1_D10_H512_E4_A2_W1536_Hd8",
+        "hd1_D10_H512_E4_A2_W1536_Hd16",
+        "hd3_D10_H512_E12_A6_W512_Hd16",
+        "hd3_D10_H512_E12_A6_W512_Hd8"
+      ]
+    ]
+  },
+  "rank_stability": [],
+  "spread_by_length": {
+    "1200": {
+      "architectures": 8,
+      "spread": 0.24123170971870422,
+      "within_seed_std": 0.015066971236220559,
+      "sigmas": 16.010630533281315,
+      "best": "hd2_D10_H896_E16_A6_W128_Hd16"
+    }
+  },
+  "structural_signal_by_length": {},
+  "axis_association": {
+    "available": true,
+    "steps": 1200,
+    "architectures": 8,
+    "axes": [
+      {
+        "axis": "total parameters",
+        "held": false,
+        "spearman": 0.8295150620062534,
+        "p": 0.01507936507936508,
+        "p_exact": true,
+        "p_t_approximation": 0.010857954728721152,
+        "min": 76207488.0,
+        "max": 77666816.0,
+        "spread_ratio": 1.0191494043210032
+      },
+      {
+        "axis": "active parameters",
+        "held": false,
+        "spearman": -0.6343350474165467,
+        "p": 0.13174603174603175,
+        "p_exact": true,
+        "p_t_approximation": 0.09116266392027378,
+        "min": 46168576.0,
+        "max": 67032448.0,
+        "spread_ratio": 1.451906335599348
+      },
+      {
+        "axis": "active / total parameters",
+        "held": false,
+        "spearman": -0.6343350474165467,
+        "p": 0.13174603174603175,
+        "p_exact": true,
+        "p_t_approximation": 0.09116266392027378,
+        "min": 0.594757705473805,
+        "max": 0.8796044819112788,
+        "spread_ratio": 1.4789291064510963
+      },
+      {
+        "axis": "contracted FLOPs/token",
+        "held": false,
+        "spearman": -0.6343350474165467,
+        "p": 0.13174603174603175,
+        "p_exact": true,
+        "p_t_approximation": 0.09116266392027378,
+        "min": 339926016.0,
+        "max": 512295168.0,
+        "spread_ratio": 1.5070784343849692
+      },
+      {
+        "axis": "dense-runtime FLOPs/token",
+        "held": false,
+        "spearman": -0.7319250547114,
+        "p": 0.06865079365079366,
+        "p_exact": true,
+        "p_t_approximation": 0.03899827398782235,
+        "min": 528669696.0,
+        "max": 567990528.0,
+        "spread_ratio": 1.0743769357266129
+      },
+      {
+        "axis": "measured throughput",
+        "held": false,
+        "spearman": 0.7380952380952381,
+        "p": 0.04583333333333333,
+        "p_exact": true,
+        "p_t_approximation": 0.03655276105286081,
+        "min": 4158.447745252147,
+        "max": 5404.781010262016,
+        "spread_ratio": 1.2997111762274405
+      },
+      {
+        "axis": "depth",
+        "held": true,
+        "unrecorded": false,
+        "values": [
+          10.0,
+          10.0,
+          10.0,
+          10.0,
+          10.0,
+          10.0,
+          10.0,
+          10.0
+        ]
+      },
+      {
+        "axis": "hidden size",
+        "held": false,
+        "spearman": -0.8728715609439696,
+        "p": 0.07142857142857142,
+        "p_exact": true,
+        "p_t_approximation": 0.004659214943993925,
+        "min": 512.0,
+        "max": 896.0,
+        "spread_ratio": 1.75
+      },
+      {
+        "axis": "attention heads",
+        "held": false,
+        "spearman": -0.2182178902359924,
+        "p": 0.9,
+        "p_exact": true,
+        "p_t_approximation": 0.6036450565101362,
+        "min": 8.0,
+        "max": 16.0,
+        "spread_ratio": 2.0
+      },
+      {
+        "axis": "expert count",
+        "held": false,
+        "spearman": -0.18002057495577392,
+        "p": 0.8238095238095238,
+        "p_exact": true,
+        "p_t_approximation": 0.6696830227938636,
+        "min": 4.0,
+        "max": 16.0,
+        "spread_ratio": 4.0
+      },
+      {
+        "axis": "active experts",
+        "held": false,
+        "spearman": -0.025717224993681988,
+        "p": 0.9261904761904762,
+        "p_exact": true,
+        "p_t_approximation": 0.9518014598517683,
+        "min": 2.0,
+        "max": 6.0,
+        "spread_ratio": 3.0
+      },
+      {
+        "axis": "expert width",
+        "held": false,
+        "spearman": 0.5400617248673217,
+        "p": 0.14285714285714285,
+        "p_exact": true,
+        "p_t_approximation": 0.1670532381440851,
+        "min": 128.0,
+        "max": 1536.0,
+        "spread_ratio": 12.0
+      }
+    ],
+    "collinearity": {
+      "available": true,
+      "leading": "hidden size",
+      "leading_spearman": -0.8728715609439696,
+      "entangled": [
+        {
+          "axis": "total parameters",
+          "spearman": -0.8944271909999159
+        },
+        {
+          "axis": "active parameters",
+          "spearman": 0.8944271909999159
+        },
+        {
+          "axis": "active / total parameters",
+          "spearman": 0.8944271909999159
+        },
+        {
+          "axis": "contracted FLOPs/token",
+          "spearman": 0.8944271909999159
+        },
+        {
+          "axis": "dense-runtime FLOPs/token",
+          "spearman": 0.8944271909999159
+        },
+        {
+          "axis": "measured throughput",
+          "spearman": -0.7637626158259734
+        },
+        {
+          "axis": "expert width",
+          "spearman": -0.7071067811865475
+        }
+      ],
+      "threshold": 0.7,
+      "spread_axes": 11,
+      "structural_axes_unrecorded": [],
+      "caveat": "Among 11 spread axes, `hidden size` tracks loss most strongly, but it moves with `total parameters` (-0.89), `active parameters` (+0.89), `active / total parameters` (+0.89), `contracted FLOPs/token` (+0.89), `dense-runtime FLOPs/token` (+0.89), `measured throughput` (-0.76), `expert width` (-0.71) at |rho| >= 0.7, so this set cannot separate them."
+    },
+    "multiple_comparisons": "12 axes tested uncorrected; treat any single marginal p-value as a hypothesis, not a result. Exact p-values are enumerated over n! arrangements and are not comparable to a chi-square test."
+  },
+  "joint_structural_fit": {
+    "available": true,
+    "steps": 1200,
+    "architectures": 8,
+    "genes": [
+      {
+        "gene": "hidden_size",
+        "beta": -1.0909159312425765,
+        "p": 0.0111994400279986,
+        "min": 512.0,
+        "max": 896.0
+      },
+      {
+        "gene": "expert_width",
+        "beta": -0.2272074446672599,
+        "p": 0.6776161191940403,
+        "min": 128.0,
+        "max": 1536.0
+      },
+      {
+        "gene": "attention_heads",
+        "beta": -0.1640043297894009,
+        "p": 0.6278686065696715,
+        "min": 8.0,
+        "max": 16.0
+      }
+    ],
+    "r_squared": 0.9348992444247068,
+    "p_model": 0.01654917254137293,
+    "entangled": [
+      {
+        "a": "hidden_size",
+        "b": "expert_width",
+        "spearman": -0.7071067811865475
+      }
+    ],
+    "dropped": [],
+    "samples": 20000,
+    "caveat": "Coefficients are standardised and each p-value is two-sided against a permutation null, but predictors are collinear by construction here, so a coefficient surviving the model does not mean the underlying lever is identified. Use a designed set to separate them.; `hidden_size` and `expert_width` move together at rho=-0.71 and cannot be told apart at this size, so their split in the fit is arbitrary."
+  },
+  "crossed_contrast": {
+    "available": true,
+    "steps": 1200,
+    "factor_a": "hidden_size",
+    "factor_b": "attention_heads",
+    "seeds": [
+      51,
+      52,
+      53
+    ],
+    "seeds_dropped": [],
+    "levels": {
+      "hidden_size": [
+        512,
+        896
+      ],
+      "attention_heads": [
+        8,
+        16
+      ]
+    },
+    "cells": {
+      "hidden_size=512|attention_heads=8": {
+        "runs": 6,
+        "mean_val_loss": 2.9639543568094573
+      },
+      "hidden_size=512|attention_heads=16": {
+        "runs": 6,
+        "mean_val_loss": 2.9698279003302255
+      },
+      "hidden_size=896|attention_heads=8": {
+        "runs": 6,
+        "mean_val_loss": 2.831923298537731
+      },
+      "hidden_size=896|attention_heads=16": {
+        "runs": 6,
+        "mean_val_loss": 2.767604850232601
+      }
+    },
+    "main": {
+      "hidden_size": {
+        "nats": -0.16712705418467522,
+        "p": 4.286694101508916e-05,
+        "min_achievable_p": 4.286694101508916e-05,
+        "method": "exact",
+        "assignments": 46656,
+        "at_floor": true,
+        "by_other_level": {
+          "8": {
+            "nats": -0.13203105827172598,
+            "blocks": 3
+          },
+          "16": {
+            "nats": -0.20222305009762445,
+            "blocks": 3
+          }
+        },
+        "interaction_nats": 0.07019199182589847,
+        "interaction_p": 0.40462105624142664,
+        "interaction_p_seed_blocked": 0.25,
+        "interaction_p_seed_blocked_floor": 0.25,
+        "interaction_p_paired_t": 0.049508070897815615,
+        "interaction_seed_contrasts": [
+          0.07537338137626648,
+          0.03985608369112015,
+          0.09534651041030884
+        ]
+      },
+      "attention_heads": {
+        "nats": -0.02922245239218076,
+        "p": 0.06648662551440329,
+        "min_achievable_p": 4.286694101508916e-05,
+        "method": "exact",
+        "assignments": 46656,
+        "at_floor": false,
+        "by_other_level": {
+          "512": {
+            "nats": 0.005873543520768483,
+            "blocks": 3
+          },
+          "896": {
+            "nats": -0.06431844830513,
+            "blocks": 3
+          }
+        },
+        "interaction_nats": 0.07019199182589848,
+        "interaction_p": 0.02546296296296296,
+        "interaction_p_seed_blocked": 0.25,
+        "interaction_p_seed_blocked_floor": 0.25,
+        "interaction_p_paired_t": 0.049508070897815615,
+        "interaction_seed_contrasts": [
+          0.07537338137626648,
+          0.03985608369112015,
+          0.09534651041030884
+        ]
+      }
+    }
+  },
+  "paired_contrasts": {
+    "attention_heads": {
+      "available": true,
+      "pairs": 12,
+      "mean_difference": -0.02922245239218076,
+      "p": 0.046875,
+      "method": "exact",
+      "assignments": 4096,
+      "min_achievable_p": 0.00048828125,
+      "sign_consistent": false,
+      "negative": 9,
+      "positive": 3,
+      "differences": [
+        -0.014904588460922241,
+        -0.030869141221046448,
+        -0.01834377646446228,
+        0.04469156265258789,
+        0.005272760987281799,
+        0.04939444363117218,
+        -0.05642114579677582,
+        -0.059071123600006104,
+        -0.07316809892654419,
+        -0.06453864276409149,
+        -0.04623742401599884,
+        -0.08647425472736359
+      ],
+      "p_paired_t": 0.04294351513616171,
+      "gene": "attention_heads",
+      "levels": [
+        8,
+        16
+      ],
+      "incomplete_groups": [],
+      "per_pair": [
+        {
+          "base": {
+            "depth": 10,
+            "hidden_size": 512,
+            "expert_count": 12,
+            "active_experts": 6,
+            "expert_width": 512,
+            "seed": 51
+          },
+          "levels": [
+            8,
+            16
+          ],
+          "baseline": 2.976202666759491,
+          "treatment": 2.9612980782985687,
+          "difference": -0.014904588460922241,
+          "runs": 2
+        },
+        {
+          "base": {
+            "depth": 10,
+            "hidden_size": 512,
+            "expert_count": 12,
+            "active_experts": 6,
+            "expert_width": 512,
+            "seed": 52
+          },
+          "levels": [
+            8,
+            16
+          ],
+          "baseline": 3.0009371638298035,
+          "treatment": 2.970068022608757,
+          "difference": -0.030869141221046448,
+          "runs": 2
+        },
+        {
+          "base": {
+            "depth": 10,
+            "hidden_size": 512,
+            "expert_count": 12,
+            "active_experts": 6,
+            "expert_width": 512,
+            "seed": 53
+          },
+          "levels": [
+            8,
+            16
+          ],
+          "baseline": 3.031080111861229,
+          "treatment": 3.0127363353967667,
+          "difference": -0.01834377646446228,
+          "runs": 2
+        },
+        {
+          "base": {
+            "depth": 10,
+            "hidden_size": 512,
+            "expert_count": 4,
+            "active_experts": 2,
+            "expert_width": 1536,
+            "seed": 51
+          },
+          "levels": [
+            8,
+            16
+          ],
+          "baseline": 2.9317146837711334,
+          "treatment": 2.9764062464237213,
+          "difference": 0.04469156265258789,
+          "runs": 2
+        },
+        {
+          "base": {
+            "depth": 10,
+            "hidden_size": 512,
+            "expert_count": 4,
+            "active_experts": 2,
+            "expert_width": 1536,
+            "seed": 52
+          },
+          "levels": [
+            8,
+            16
+          ],
+          "baseline": 2.9377921372652054,
+          "treatment": 2.943064898252487,
+          "difference": 0.005272760987281799,
+          "runs": 2
+        },
+        {
+          "base": {
+            "depth": 10,
+            "hidden_size": 512,
+            "expert_count": 4,
+            "active_experts": 2,
+            "expert_width": 1536,
+            "seed": 53
+          },
+          "levels": [
+            8,
+            16
+          ],
+          "baseline": 2.9059993773698807,
+          "treatment": 2.955393821001053,
+          "difference": 0.04939444363117218,
+          "runs": 2
+        },
+        {
+          "base": {
+            "depth": 10,
+            "hidden_size": 896,
+            "expert_count": 16,
+            "active_experts": 6,
+            "expert_width": 128,
+            "seed": 51
+          },
+          "levels": [
+            8,
+            16
+          ],
+          "baseline": 2.8230006247758865,
+          "treatment": 2.7665794789791107,
+          "difference": -0.05642114579677582,
+          "runs": 2
+        },
+        {
+          "base": {
+            "depth": 10,
+            "hidden_size": 896,
+            "expert_count": 16,
+            "active_experts": 6,
+            "expert_width": 128,
+            "seed": 52
+          },
+          "levels": [
+            8,
+            16
+          ],
+          "baseline": 2.8254196494817734,
+          "treatment": 2.7663485258817673,
+          "difference": -0.059071123600006104,
+          "runs": 2
+        },
+        {
+          "base": {
+            "depth": 10,
+            "hidden_size": 896,
+            "expert_count": 16,
+            "active_experts": 6,
+            "expert_width": 128,
+            "seed": 53
+          },
+          "levels": [
+            8,
+            16
+          ],
+          "baseline": 2.824764907360077,
+          "treatment": 2.7515968084335327,
+          "difference": -0.07316809892654419,
+          "runs": 2
+        },
+        {
+          "base": {
+            "depth": 10,
+            "hidden_size": 896,
+            "expert_count": 4,
+            "active_experts": 3,
+            "expert_width": 512,
+            "seed": 51
+          },
+          "levels": [
+            8,
+            16
+          ],
+          "baseline": 2.841520443558693,
+          "treatment": 2.7769818007946014,
+          "difference": -0.06453864276409149,
+          "runs": 2
+        },
+        {
+          "base": {
+            "depth": 10,
+            "hidden_size": 896,
+            "expert_count": 4,
+            "active_experts": 3,
+            "expert_width": 512,
+            "seed": 52
+          },
+          "levels": [
+            8,
+            16
+          ],
+          "baseline": 2.8197111338377,
+          "treatment": 2.773473709821701,
+          "difference": -0.04623742401599884,
+          "runs": 2
+        },
+        {
+          "base": {
+            "depth": 10,
+            "hidden_size": 896,
+            "expert_count": 4,
+            "active_experts": 3,
+            "expert_width": 512,
+            "seed": 53
+          },
+          "levels": [
+            8,
+            16
+          ],
+          "baseline": 2.8571230322122574,
+          "treatment": 2.770648777484894,
+          "difference": -0.08647425472736359,
+          "runs": 2
+        }
+      ],
+      "pair_keys": [
+        "depth",
+        "hidden_size",
+        "expert_count",
+        "active_experts",
+        "expert_width"
+      ],
+      "seeds": [
+        51,
+        52,
+        53
+      ]
+    }
+  },
+  "paired_level_splits": {
+    "attention_heads": {
+      "hidden_size": {
+        "available": true,
+        "gene": "attention_heads",
+        "other_gene": "hidden_size",
+        "levels": {
+          "512": {
+            "available": true,
+            "pairs": 6,
+            "mean_difference": 0.005873543520768483,
+            "p": 0.65625,
+            "method": "exact",
+            "assignments": 64,
+            "min_achievable_p": 0.03125,
+            "sign_consistent": false,
+            "negative": 3,
+            "positive": 3,
+            "differences": [
+              -0.014904588460922241,
+              -0.030869141221046448,
+              -0.01834377646446228,
+              0.04469156265258789,
+              0.005272760987281799,
+              0.04939444363117218
+            ],
+            "p_paired_t": 0.6895048908812402,
+            "gene": "attention_heads",
+            "levels": [
+              8,
+              16
+            ],
+            "incomplete_groups": [],
+            "per_pair": [
+              {
+                "base": {
+                  "depth": 10,
+                  "hidden_size": 512,
+                  "expert_count": 12,
+                  "active_experts": 6,
+                  "expert_width": 512,
+                  "seed": 51
+                },
+                "levels": [
+                  8,
+                  16
+                ],
+                "baseline": 2.976202666759491,
+                "treatment": 2.9612980782985687,
+                "difference": -0.014904588460922241,
+                "runs": 2
+              },
+              {
+                "base": {
+                  "depth": 10,
+                  "hidden_size": 512,
+                  "expert_count": 12,
+                  "active_experts": 6,
+                  "expert_width": 512,
+                  "seed": 52
+                },
+                "levels": [
+                  8,
+                  16
+                ],
+                "baseline": 3.0009371638298035,
+                "treatment": 2.970068022608757,
+                "difference": -0.030869141221046448,
+                "runs": 2
+              },
+              {
+                "base": {
+                  "depth": 10,
+                  "hidden_size": 512,
+                  "expert_count": 12,
+                  "active_experts": 6,
+                  "expert_width": 512,
+                  "seed": 53
+                },
+                "levels": [
+                  8,
+                  16
+                ],
+                "baseline": 3.031080111861229,
+                "treatment": 3.0127363353967667,
+                "difference": -0.01834377646446228,
+                "runs": 2
+              },
+              {
+                "base": {
+                  "depth": 10,
+                  "hidden_size": 512,
+                  "expert_count": 4,
+                  "active_experts": 2,
+                  "expert_width": 1536,
+                  "seed": 51
+                },
+                "levels": [
+                  8,
+                  16
+                ],
+                "baseline": 2.9317146837711334,
+                "treatment": 2.9764062464237213,
+                "difference": 0.04469156265258789,
+                "runs": 2
+              },
+              {
+                "base": {
+                  "depth": 10,
+                  "hidden_size": 512,
+                  "expert_count": 4,
+                  "active_experts": 2,
+                  "expert_width": 1536,
+                  "seed": 52
+                },
+                "levels": [
+                  8,
+                  16
+                ],
+                "baseline": 2.9377921372652054,
+                "treatment": 2.943064898252487,
+                "difference": 0.005272760987281799,
+                "runs": 2
+              },
+              {
+                "base": {
+                  "depth": 10,
+                  "hidden_size": 512,
+                  "expert_count": 4,
+                  "active_experts": 2,
+                  "expert_width": 1536,
+                  "seed": 53
+                },
+                "levels": [
+                  8,
+                  16
+                ],
+                "baseline": 2.9059993773698807,
+                "treatment": 2.955393821001053,
+                "difference": 0.04939444363117218,
+                "runs": 2
+              }
+            ],
+            "pair_keys": [
+              "depth",
+              "hidden_size",
+              "expert_count",
+              "active_experts",
+              "expert_width"
+            ],
+            "seeds": [
+              51,
+              52,
+              53
+            ]
+          },
+          "896": {
+            "available": true,
+            "pairs": 6,
+            "mean_difference": -0.06431844830513,
+            "p": 0.03125,
+            "method": "exact",
+            "assignments": 64,
+            "min_achievable_p": 0.03125,
+            "sign_consistent": true,
+            "negative": 6,
+            "positive": 0,
+            "differences": [
+              -0.05642114579677582,
+              -0.059071123600006104,
+              -0.07316809892654419,
+              -0.06453864276409149,
+              -0.04623742401599884,
+              -0.08647425472736359
+            ],
+            "p_paired_t": 9.824579105517199e-05,
+            "gene": "attention_heads",
+            "levels": [
+              8,
+              16
+            ],
+            "incomplete_groups": [],
+            "per_pair": [
+              {
+                "base": {
+                  "depth": 10,
+                  "hidden_size": 896,
+                  "expert_count": 16,
+                  "active_experts": 6,
+                  "expert_width": 128,
+                  "seed": 51
+                },
+                "levels": [
+                  8,
+                  16
+                ],
+                "baseline": 2.8230006247758865,
+                "treatment": 2.7665794789791107,
+                "difference": -0.05642114579677582,
+                "runs": 2
+              },
+              {
+                "base": {
+                  "depth": 10,
+                  "hidden_size": 896,
+                  "expert_count": 16,
+                  "active_experts": 6,
+                  "expert_width": 128,
+                  "seed": 52
+                },
+                "levels": [
+                  8,
+                  16
+                ],
+                "baseline": 2.8254196494817734,
+                "treatment": 2.7663485258817673,
+                "difference": -0.059071123600006104,
+                "runs": 2
+              },
+              {
+                "base": {
+                  "depth": 10,
+                  "hidden_size": 896,
+                  "expert_count": 16,
+                  "active_experts": 6,
+                  "expert_width": 128,
+                  "seed": 53
+                },
+                "levels": [
+                  8,
+                  16
+                ],
+                "baseline": 2.824764907360077,
+                "treatment": 2.7515968084335327,
+                "difference": -0.07316809892654419,
+                "runs": 2
+              },
+              {
+                "base": {
+                  "depth": 10,
+                  "hidden_size": 896,
+                  "expert_count": 4,
+                  "active_experts": 3,
+                  "expert_width": 512,
+                  "seed": 51
+                },
+                "levels": [
+                  8,
+                  16
+                ],
+                "baseline": 2.841520443558693,
+                "treatment": 2.7769818007946014,
+                "difference": -0.06453864276409149,
+                "runs": 2
+              },
+              {
+                "base": {
+                  "depth": 10,
+                  "hidden_size": 896,
+                  "expert_count": 4,
+                  "active_experts": 3,
+                  "expert_width": 512,
+                  "seed": 52
+                },
+                "levels": [
+                  8,
+                  16
+                ],
+                "baseline": 2.8197111338377,
+                "treatment": 2.773473709821701,
+                "difference": -0.04623742401599884,
+                "runs": 2
+              },
+              {
+                "base": {
+                  "depth": 10,
+                  "hidden_size": 896,
+                  "expert_count": 4,
+                  "active_experts": 3,
+                  "expert_width": 512,
+                  "seed": 53
+                },
+                "levels": [
+                  8,
+                  16
+                ],
+                "baseline": 2.8571230322122574,
+                "treatment": 2.770648777484894,
+                "difference": -0.08647425472736359,
+                "runs": 2
+              }
+            ],
+            "pair_keys": [
+              "depth",
+              "hidden_size",
+              "expert_count",
+              "active_experts",
+              "expert_width"
+            ],
+            "seeds": [
+              51,
+              52,
+              53
+            ]
+          }
+        },
+        "sign_agreement": false,
+        "reading": "the levels disagree in sign, so the pooled contrast is an average of opposite effects and neither level's number can be read off it"
+      }
+    }
+  },
+  "compute_units": {
+    "available": false,
+    "spread": 0.24123170971870422,
+    "reason": "no shorter length to fit a slope"
+  },
+  "selection_caveat": "",
+  "screened_at_shorter_lengths": 0
+}

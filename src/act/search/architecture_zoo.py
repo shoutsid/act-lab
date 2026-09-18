@@ -15,6 +15,7 @@ depth, width, attention geometry, expert count, active experts and expert width;
 adding GDN as a first-class gene is a separate, model-level change.
 """
 
+import functools
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -418,16 +419,49 @@ def enumerate_search_space(
     This one grid is the search space. Uniform random search samples exactly it,
     the curated zoo selects from it, and no method can differ from another by
     secretly seeing a wider space.
+
+    The grid is a pure function of its arguments, so it is memoised: a 200-seed
+    budget scan used to re-enumerate the same 19,320 cells for every seed (386,400
+    parameter counts for 20 seeds, measured), which is what made
+    ``verify_record.py``'s budget check 20 s of its 60. Callers receive a fresh
+    list each time, so a caller mutating its copy cannot poison the next.
     """
-    return _enumerate_cells(
-        context_size=context_size,
-        vocab_size=vocab_size,
-        depths=depths,
-        hidden_sizes=hidden_sizes,
-        expert_counts=expert_counts,
-        active_experts_options=active_experts_options,
-        expert_widths=expert_widths,
-        max_total_params=max_total_params,
+    return list(
+        _enumerate_cells_cached(
+            context_size,
+            vocab_size,
+            tuple(depths),
+            tuple(hidden_sizes),
+            tuple(expert_counts),
+            tuple(active_experts_options),
+            tuple(expert_widths),
+            max_total_params,
+        )
+    )
+
+
+@functools.lru_cache(maxsize=32)
+def _enumerate_cells_cached(
+    context_size: int,
+    vocab_size: int,
+    depths: tuple[int, ...],
+    hidden_sizes: tuple[int, ...],
+    expert_counts: tuple[int, ...],
+    active_experts_options: tuple[int, ...],
+    expert_widths: tuple[int, ...],
+    max_total_params: int,
+) -> tuple[SearchCell, ...]:
+    return tuple(
+        _enumerate_cells(
+            context_size=context_size,
+            vocab_size=vocab_size,
+            depths=depths,
+            hidden_sizes=hidden_sizes,
+            expert_counts=expert_counts,
+            active_experts_options=active_experts_options,
+            expert_widths=expert_widths,
+            max_total_params=max_total_params,
+        )
     )
 
 

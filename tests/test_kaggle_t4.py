@@ -386,3 +386,157 @@ def test_unknown_mode_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(kaggle_t4.MODE_ENV, "not-a-mode")
     with pytest.raises(SystemExit):
         kaggle_t4.main()
+
+
+# --- the architecture-search horizon arm -----------------------------------
+
+
+def test_archzoo_argv_restates_the_crossed_design_and_pins_the_arm() -> None:
+    """The design half must be the crossed arm's; the arm half its NOTES.md.
+
+    A drifted design flag would train a different candidate set under the
+    crossed arm's name, and a drifted arm flag would change what the arm
+    measures - both are protocol changes rather than typos, so every flag the
+    ledgers record is asserted rather than the list being compared loosely.
+    """
+    argv = kaggle_t4.archzoo_argv(
+        "python", 43, data_dir="/kaggle/input/tokens", artifacts_root="/work/artifacts"
+    )
+    flags = dict(zip(argv[2::2], argv[3::2]))
+    assert argv[:2] == ["python", "scripts/arch_zoo_screen.py"]
+    # The crossed arm's design, flag for flag.
+    assert flags["--design"] == "crossed"
+    assert flags["--cross-factors"] == "depth,hidden_size"
+    assert flags["--cross-replicates"] == "2"
+    assert flags["--match-target"] == "78000000"
+    assert flags["--match-tolerance"] == "0.05"
+    assert flags["--zoo-seed"] == "42"
+    assert flags["--context-size"] == "1024"
+    assert flags["--batch-size"] == "2"
+    # The arm as pre-registered: flat at the anchor and the 10x length, fp16,
+    # exactly one seed per process, on the attached stream.
+    assert flags["--experiment-id"] == "arch-zoo-100m-v3-crossed-horizon10x"
+    assert flags["--plan"] == "flat"
+    assert flags["--flat-steps"] == "1200,12000"
+    assert flags["--finalist-seeds"] == "43"
+    assert flags["--mixed-precision"] == "fp16"
+    assert flags["--device"] == "cuda"
+    assert flags["--data-path"] == "/kaggle/input/tokens/tokens.npy"
+    assert flags["--val-data-path"] == "/kaggle/input/tokens/val-tokens.npy"
+    assert flags["--artifacts-root"] == "/work/artifacts"
+    # The token guard must not bind - the wall clock is the guard - so the
+    # budget at the assumed rate has to exceed the plan's own tokens.
+    tokens = 8 * (1200 + 12000) * 2 * 1024
+    assert float(flags["--budget-hours"]) * 3600 * float(flags["--assumed-tokens-per-s"]) > tokens
+    assert kaggle_t4.ARCHZOO_DEADLINE_HOURS < 12.0
+
+
+def test_archzoo_seeds_are_the_crossed_arms_own_first_two() -> None:
+    """Every 12k-step row needs a same-seed 1200-step fp32 row in the record."""
+    assert kaggle_t4.ARCHZOO_SEEDS == (42, 43)
+
+
+def test_archzoo_metadata_attaches_the_token_stream_and_wants_the_t4() -> None:
+    metadata = kaggle_t4.metadata_for("archzoo")
+    assert metadata["id"] == "sid123123234/act-t4-archzoo"
+    assert metadata["enable_gpu"] is True
+    assert metadata["machine_shape"] == "NvidiaTeslaT4"
+    assert metadata["dataset_sources"] == [
+        "sid123123234/act-lab-code",
+        "sid123123234/act-lab-tinystories-tokens",
+    ]
+    assert "archzoo" in kaggle_t4.PUSH_MODES
+    # The other modes must not have grown a second dataset by accident.
+    assert kaggle_t4.metadata_for("session")["dataset_sources"] == ["sid123123234/act-lab-code"]
+
+
+@pytest.mark.parametrize(
+    "layout",
+    ["act-lab-tinystories-tokens", "datasets/sid123123234/act-lab-tinystories-tokens"],
+)
+def test_find_tokens_root_needs_both_files_at_any_depth(tmp_path: Path, layout: str) -> None:
+    mount = tmp_path / layout
+    mount.mkdir(parents=True)
+    (mount / "tokens.npy").write_bytes(b"x")
+    # A stream without its held-out file is a different measurement: refused.
+    assert kaggle_t4.find_tokens_root(tmp_path) is None
+    (mount / "val-tokens.npy").write_bytes(b"x")
+    assert kaggle_t4.find_tokens_root(tmp_path) == mount
+    assert kaggle_t4.find_tokens_root(tmp_path / "absent") is None
+
+
+def test_ledger_rows_are_counted_per_length_for_one_seed(tmp_path: Path) -> None:
+    (tmp_path / "flat1200_seed42_results.jsonl").write_text("{}\n{}\n\n{}\n")
+    (tmp_path / "flat12000_seed42_results.jsonl").write_text("{}\n")
+    (tmp_path / "flat12000_seed43_results.jsonl").write_text("{}\n{}\n")
+    assert kaggle_t4._ledger_rows(tmp_path, 42) == {"1200": 3, "12000": 1}
+    assert kaggle_t4._ledger_rows(tmp_path, 43) == {"12000": 2}
+    assert kaggle_t4._ledger_rows(tmp_path, 44) == {}
+
+
+def test_archzoo_mode_places_one_seed_per_device_and_exits_zero(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The kernel must exit 0 whatever the sweeps did, with the outcome as data."""
+    import subprocess
+    import types
+
+    code = _make_repo(tmp_path / "input", "datasets/sid123123234/act-lab-code")
+    (code / "scripts").mkdir()
+    tokens = tmp_path / "input" / "datasets" / "sid123123234" / "act-lab-tinystories-tokens"
+    tokens.mkdir(parents=True)
+    (tokens / "tokens.npy").write_bytes(b"x")
+    (tokens / "val-tokens.npy").write_bytes(b"x")
+    work = tmp_path / "work"
+    output = tmp_path / "output"
+    output.mkdir()
+
+    # Both mount searches bind INPUT_ROOT as a default at definition time, so
+    # they are pointed at the fixture directly, as the bootstrap test does.
+    monkeypatch.setattr(kaggle_t4, "find_code_root", lambda *a, **k: code)
+    monkeypatch.setattr(kaggle_t4, "find_tokens_root", lambda *a, **k: tokens)
+    monkeypatch.setattr(kaggle_t4, "WORK_ROOT", work)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setattr(kaggle_t4, "ARCHZOO_POLL_SECONDS", 0.01)
+    monkeypatch.setattr(kaggle_t4, "report_resources", lambda: None)
+    monkeypatch.setattr(
+        kaggle_t4,
+        "_keep_tree",
+        lambda path: __import__("shutil").copytree(path, output / path.name, dirs_exist_ok=True),
+    )
+    fake_torch = types.SimpleNamespace(
+        __version__="test",
+        cuda=types.SimpleNamespace(is_available=lambda: True, device_count=lambda: 2),
+    )
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    runtime = types.ModuleType("act.training.runtime")
+    runtime.gpu_inventory = lambda: ["T4", "T4"]
+    monkeypatch.setitem(sys.modules, "act.training.runtime", runtime)
+
+    launched: list[tuple[str, str]] = []
+
+    class FakeProc:
+        def __init__(self, argv, env, stdout, stderr):
+            seed = argv[argv.index("--finalist-seeds") + 1]
+            launched.append((seed, env["CUDA_VISIBLE_DEVICES"]))
+            exp = Path(argv[argv.index("--artifacts-root") + 1]) / kaggle_t4.ARCHZOO_EXPERIMENT
+            (exp / f"flat12000_seed{seed}_results.jsonl").write_text("{}\n" * 8)
+            self.returncode = 0 if seed == "42" else 3
+
+        def poll(self):
+            return self.returncode
+
+    monkeypatch.setattr(subprocess, "Popen", FakeProc)
+
+    kaggle_t4.mode_archzoo()
+
+    assert sorted(launched) == [("42", "0"), ("43", "1")]
+    status = json.loads(
+        (output / kaggle_t4.ARCHZOO_EXPERIMENT / kaggle_t4.ARCHZOO_STATUS_NAME).read_text()
+    )
+    assert status["exit_codes"] == {"42": 0, "43": 3}
+    assert status["complete"] is False  # a failed seed is not a complete arm
+    assert status["stopped_at_deadline"] is False
+    assert status["ledger_rows"]["42"] == {"12000": 8}
+    assert status["mixed_precision"] == "fp16"

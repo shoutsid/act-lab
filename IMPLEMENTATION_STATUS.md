@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## The head axis closed, the horizon arm opened on Kaggle, and the tree slimmed (2026-09-19)
+
+| | |
+|---|---|
+| **Head-paired confirmation read** | Six-seed pooled analysis lands on `HEAD_PAIRING_RULE`'s **head effect is real at wide width**: −0.0553 nats at H=896 (12/12 pairs, at the 2/2¹² floor), +0.0084 at H=512 (p 0.37), interaction +0.0636 at its 2/2⁶ floor with all six seed contrasts agreeing. `verify_record.py` recomputes the six-seed rows and the branch (125/125 claims); `ARCH_SEARCH_FINDINGS.md` §2c/§9/§10/§11 and the README are updated. Phase closed at 23.632 GPU-h against the 10–20 cap, overrun pre-declared. |
+| **Literature check, zero GPU** | Width winning is consistent with Levine et al. 2020; heads-only-at-wide with the low-rank head bottleneck (Bhojanapalli et al. 2020); MoE sparsity showing nothing at 2.4M tokens with routed-model scaling work (Clark 2022, Krajewski 2024). **Shallow beating deep is the one finding prior work predicts should reverse with training** (Tay et al. 2021, Petty et al. 2023). |
+| **Horizon arm, pre-registered** | `arch-zoo-100m-v3-crossed-horizon10x`: the crossed depth×width factorial (byte-identical candidates, verified by dry run) at **12,000 steps** plus a 1200-step same-precision anchor, fp16, seeds 42/43, on **Kaggle T4×2** (one sweep per card). Numeric rule in `HORIZON_RULE`/`--horizon-rule`, every branch exercised on planted and real ledgers before launch; opens a horizon phase with its own 15 GPU-h cap. |
+| **Kaggle plumbing** | `kaggle_t4.py` gains an `archzoo` mode (two seeds, one per device, wall-clock deadline, ledgers into the kernel output, exit 0 with `archzoo-status.json`), `kaggle_queue.py --queue archzoo` pushes and imports the ledgers into `artifacts/`, `arch_zoo_screen.py --mixed-precision` records precision per row. Token stream published as `act-lab-tinystories-tokens`. The CLI's OAuth refresh gap is worked around in `_run`. |
+| **Suite and audit made fast** | `pytest` 243 s → **35 s** (pytest-xdist, one torch thread per worker via `tests/conftest.py`, three `/tmp` races moved to `tmp_path`, test-only Monte-Carlo sample counts). `verify_record.py` 63 s → **18 s** full / 27 → 14 s quick: the search-space enumeration is memoised (a 200-seed budget scan re-enumerated 19,320 cells per seed) and the audit's checks and power runs execute in a process pool. **No statistical RNG path changed**; every recorded Monte-Carlo p reproduces. |
+| **Removed** | The TypeScript console scaffold (112 tracked files: routes, auth, pglite, PWA plugins, vite/eslint/prettier, `public/`, `server/`, `migrations/`, `startup.sh`), `node_modules`, screenshots. Untouched since the initial commit and representing none of the results. |
+
 ## Section 5.46: the declared launch path could not specify the rebuild treatment (2026-09-16)
 
 Found by auditing the launch command against the adopted sections. Section 5.16 ("new work
@@ -576,14 +587,15 @@ caught it is `test_cli_default_queue_is_the_declared_block`.
 
 ## Current Boundary
 
-The project currently has two paths:
-
-1. A feature-rich TypeScript laboratory simulator with fixed, random, and adaptive arms.
-2. A small PyTorch foundation with dense and static-MoE models, deterministic training,
-   checkpoint resume, topology genomes, safe prune/grow, and mutation-aware MoE rebuilds.
-   It now also has versioned configuration schemas, deterministic checksum-addressed
-   token shards, explicit CPU/CUDA device contracts, and reusable importance
-   signal extraction for static-MoE experts.
+The project is a single PyTorch research path (2026-09-19: the TypeScript
+"laboratory simulator" and its app-builder scaffold - auth, database, PWA plugins,
+vite/eslint/prettier configs, `public/`, `server/`, `migrations/` - were removed;
+they had not been touched since the initial commit and represented none of the
+results below). The Python foundation has dense and static-MoE models,
+deterministic training, checkpoint resume, topology genomes, safe prune/grow, and
+mutation-aware MoE rebuilds, plus versioned configuration schemas, deterministic
+checksum-addressed token shards, explicit CPU/CUDA device contracts, and reusable
+importance signal extraction for static-MoE experts.
 
 The first real scientific result is now decided on three fronts. (1) The
 pre-registered 384-seed Gate 3 study (seeds 1000-1383) FAILED for the legacy
@@ -928,7 +940,7 @@ slower at 2.21 s/seed for a hidden-24 model); a 128-seed study is ~85 s.
 | Area | Status | Remaining work |
 |---|---|---|
 | V0 256M-350M model | PARTIAL | Bounded V0 construction now runs finite forward/loss probes and reports parameter/logit shapes; target-scale memory and throughput measurements remain. |
-| Attention/GDN/hybrid model core | PARTIAL | TypeScript simulator represents these module types; Python runtime currently supports dense and static MoE only. |
+| Attention/GDN/hybrid model core | PARTIAL | Python runtime supports dense, static MoE and the gated-delta mixer (`layer.module` selects it); GDN at the ~100M zoo scale OOMs on 8 GB (`ARCH_SEARCH_FINDINGS.md` §7). |
 | Full genome contract | PARTIAL | Python genome now represents heads, modules, widths, residual paths, context, and compute ceilings and can reconstruct the V0 dense/hybrid model; MoE/shared-expert reconstruction remains. |
 | Weight/topology separation | DONE for the first gate | Model and optimizer remain separate from the Python genome, while versioned checkpoints and Experiment 0 fossils package genome and mutation metadata together. |
 | Importance levels and lifecycle | PARTIAL | Python exposes routing, gradient, parameter, Fisher-style EMA, magnitude, temporal-stability records, temporary ablation deltas, and append-only lifecycle fossils; population aggregation remains. |

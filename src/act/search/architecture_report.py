@@ -2268,8 +2268,12 @@ def best_available_summary(
             results, length, seeds, samples=samples, signal_genes=signal_genes
         )
         if summary.get("available"):
+            # Recorded so a reader (the horizon rule, a partial-arm report) can tell
+            # a summary at the longest length from one that fell back to a shorter
+            # completed one.
+            summary["lengths_present"] = lengths
             return summary
-    return {"available": False}
+    return {"available": False, "lengths_present": lengths}
 
 
 def search_cost(results: list[EvalResult], candidates: int) -> dict:
@@ -2670,6 +2674,299 @@ HEAD_PAIRING_RULE: dict[str, float] = {
     "main_p": 0.01,
     "interaction_p": 0.05,
 }
+
+#: The horizon arm's pre-registered rule (``arch-zoo-100m-v3-crossed-horizon10x``),
+#: declared before any of its ledger rows exist. It reads one quantity - the depth
+#: main effect of the crossed factorial at the arm's longest training length - and
+#: decides by its sign and by the exact re-split test at this threshold. Width is
+#: reported beside it as a secondary and does not gate the branch: the arm's
+#: question is whether *depth* survives the horizon, the finding prior work predicts
+#: should reverse.
+HORIZON_RULE: dict[str, float] = {
+    "main_p": 0.05,
+}
+
+HORIZON_READINGS: dict[str, str] = {
+    "shallow-persists": (
+        "The depth sign is horizon-stable to this length: shallow still beats deep at "
+        "matched total parameters, so the record's 'spend at low depth' stands at "
+        "this scale - quoted with its training length, as every effect size must be."
+    ),
+    "depth-reverses": (
+        "The 1200-step depth finding was early-training dynamics, as the literature "
+        "predicts: deep now beats shallow at matched total parameters. The record's "
+        "depth recommendation is withdrawn for realistic horizons and the finding is "
+        "amended rather than overwritten."
+    ),
+    "depth-washes-out": (
+        "The depth lever is horizon-limited: at this length the factorial cannot "
+        "separate the two depths, so no direction is recommended and a search should "
+        "treat depth as a cost knob rather than a quality lever."
+    ),
+    "open-floor-limited": (
+        "The exact test's floor is above the declared threshold, so this design "
+        "cannot reach a branch however the contrasts fall. More seeds decide it; "
+        "more analysis of these ledgers cannot."
+    ),
+    "unavailable": (
+        "The rule needs a crossed contrast with depth as one factor at the arm's "
+        "longest training length."
+    ),
+}
+
+
+def horizon_decision(
+    outcome: dict,
+    *,
+    main_p: float = HORIZON_RULE["main_p"],
+) -> dict:
+    """Apply the horizon arm's pre-registered rule to a crossed outcome.
+
+    | outcome | condition |
+    |---|---|
+    | shallow-wins persists | depth main effect ``> 0`` and ``p < main_p`` |
+    | depth reverses | depth main effect ``< 0`` and ``p < main_p`` |
+    | depth washes out | ``p >= main_p``, either sign |
+
+    A floor above the threshold (one seed: 2/36 = 0.056) returns
+    ``open-floor-limited`` rather than a branch, for the reason the head-paired and
+    crossed confirmation arms both learned: a rule whose threshold sits below the
+    test's floor is not decidable by analysis, only by data.
+    """
+    crossed = outcome.get("crossed_contrast") or {}
+    depth = (crossed.get("main") or {}).get("depth")
+    # The rule is declared on the arm's *longest* length. ``best_available_summary``
+    # falls back to a shorter completed length while the long one is still
+    # training, so an outcome computed at the anchor is refused rather than
+    # labelled - otherwise a partial arm would read the 1200-step anchor as the
+    # horizon result.
+    lengths = [int(value) for value in (outcome.get("lengths_present") or [])]
+    longest = max(lengths) if lengths else None
+    at_longest = longest is None or outcome.get("steps") == longest
+    if not crossed.get("available") or depth is None or not at_longest:
+        reason = (
+            f"the outcome is at {outcome.get('steps')} steps while {longest} has rows; "
+            "the rule reads the longest length only"
+            if crossed.get("available") and depth is not None
+            else crossed.get("reason") or "no crossed contrast with depth as a factor"
+        )
+        return {
+            "available": False,
+            "branch": "unavailable",
+            "label": "UNAVAILABLE - THE RULE NEEDS A CROSSED DESIGN WITH DEPTH AT THE LONGEST LENGTH",
+            "reading": HORIZON_READINGS["unavailable"],
+            "conditions": [],
+            "reason": reason,
+        }
+    nats = depth["nats"]
+    p = depth.get("p")
+    floor = depth.get("min_achievable_p")
+    significant = p is not None and p < main_p
+    floor_limited = not significant and floor is not None and floor >= main_p
+    if floor_limited:
+        branch = "open-floor-limited"
+    elif significant and nats > 0:
+        branch = "shallow-persists"
+    elif significant:
+        branch = "depth-reverses"
+    else:
+        branch = "depth-washes-out"
+
+    width = (crossed.get("main") or {}).get("hidden_size") or {}
+    conditions = [
+        {
+            "condition": f"depth main effect significant (exact re-split p < {main_p:g})",
+            "value": (
+                "p not computable"
+                if p is None
+                else f"p={p:.4g}" + ("" if floor is None else f" (floor {floor:.4g})")
+            ),
+            "met": bool(significant),
+        },
+        {
+            "condition": "depth main effect > 0 (deep - shallow; shallow wins)",
+            "value": f"{nats:+.4f} nats at {outcome.get('steps')} steps",
+            "met": bool(nats > 0),
+        },
+        {
+            "condition": "secondary: width main effect < 0 (reported, does not gate)",
+            "value": (
+                "not computable"
+                if not width
+                else f"{width['nats']:+.4f} nats, p="
+                + ("n/a" if width.get("p") is None else f"{width['p']:.4g}")
+            ),
+            "met": bool(width and width.get("nats", 0) < 0),
+        },
+    ]
+    label = {
+        "shallow-persists": "SHALLOW-WINS PERSISTS AT THIS HORIZON",
+        "depth-reverses": "DEPTH REVERSES - THE 1200-STEP DEPTH FINDING WAS EARLY-TRAINING DYNAMICS",
+        "depth-washes-out": "DEPTH WASHES OUT - NO DIRECTION AT THIS HORIZON",
+        "open-floor-limited": "OPEN - THE EXACT FLOOR IS ABOVE THE DECLARED THRESHOLD",
+    }[branch]
+    return {
+        "available": True,
+        "branch": branch,
+        "label": label,
+        "reading": HORIZON_READINGS[branch],
+        "conditions": conditions,
+        "steps": outcome.get("steps"),
+        "depth_nats": nats,
+        "depth_p": p,
+        "depth_floor": floor,
+        "seeds_dropped": crossed.get("seeds_dropped") or [],
+    }
+
+
+#: The §11 random-vs-manual comparison's pre-registered rule, declared before any
+#: ledger of that comparison exists. The arm it governs (both sets flat at 1200
+#: steps, the manual set re-run because v1's numbers came off a promotion schedule)
+#: has not been bought at the time of writing; the thresholds below are transcribed
+#: into the findings record first and the tests exercise every branch on synthetic
+#: designs, so a threshold cannot be tuned after the data arrive.
+SET_COMPARISON_RULE: dict[str, float] = {
+    "p": 0.05,
+    "budget_deviation": 0.025,
+    "min_seeds": 2,
+}
+
+#: What each §11 branch means, transcribed with the rule so the reading is fixed
+#: before the result rather than chosen after it.
+SET_COMPARISON_READINGS: dict[str, str] = {
+    "manual-better": (
+        "The curated set's average candidate beats the budget-matched random draw "
+        "at equal compute, past the declared threshold: curation carries set-mean "
+        "signal at this scale. The next question is the mechanism §9a predicted - "
+        "coverage rather than per-candidate quality - which the per-set structural "
+        "summary beside this decision speaks to descriptively, and which the "
+        "per-candidate losses this decision reports can be re-read against."
+    ),
+    "random-better": (
+        "The budget-matched random draw beats the curated set on its average "
+        "candidate: manual selection at this scale is not merely unnecessary but "
+        "measurably worse than sampling the declared space, which is a correction "
+        "to the assumption that a hand-picked zoo is a fair manual arm. Re-check "
+        "the typicality percentiles (§9a) before reading it as hindsight in "
+        "reverse - the curated sets sat below the population's mean hidden size, "
+        "the direction §2c measured to be worse."
+    ),
+    "no-detectable-difference": (
+        "The set-mean comparison does not clear the declared threshold. This is "
+        "the size's honest answer, not evidence of equality: the power study (§9a) "
+        "puts 80% power at a 0.30-nat set-mean advantage for 13 candidates per set "
+        "over 2 seeds, so any true advantage smaller than about a third of the "
+        "architecture spread this phase measured is invisible here, and the "
+        "coverage and winner forms are invisible at every size measured. The "
+        "cheapest way to shrink that floor remains more candidates per set, not "
+        "more seeds."
+    ),
+    "unavailable": (
+        "A precondition of the comparison failed, so no verdict is reported rather "
+        "than one computed over a broken design: the condition that failed is named "
+        "beside this reading. Equal compute, equal set sizes, disjoint membership "
+        "and shared seeds are preconditions of the statistic, not of the prose."
+    ),
+}
+
+
+def set_comparison_decision(
+    mean_outcome: dict,
+    *,
+    budget_ratio: float | None = None,
+    budget_deviation: float = SET_COMPARISON_RULE["budget_deviation"],
+    p_threshold: float = SET_COMPARISON_RULE["p"],
+    min_seeds: int = SET_COMPARISON_RULE["min_seeds"],
+) -> dict:
+    """Apply the §11 comparison's pre-registered rule to the set-mean outcome.
+
+    Declared before any §11 ledger exists (see ``SET_COMPARISON_RULE``). The
+    primary statistic is the set *mean* because §9a measured that the winner and
+    coverage forms are invisible at every size this phase can afford: making one
+    of them primary would pre-register a question the design cannot answer. The
+    ``best`` and ``worst`` statistics are reported beside the decision as
+    secondaries with that caveat attached.
+
+    Conditions, in the order tested - the preconditions gate everything, because a
+    significant p over an unequal-budget pair is a statement about the budget
+    difference and not about selection:
+
+    1. the mean outcome is available and carries the declared minimum of shared
+       seeds;
+    2. the two sets' total parameters are within ``budget_deviation`` of parity -
+       the condition §9a exists to enforce, since the curated mean sits at 86M
+       against the nominal 100M and an unmatched draw carries 12-15% more budget;
+    3. ``p < p_threshold`` decides the sign; otherwise the null branch reports the
+       power context rather than equality.
+    """
+    conditions: list[dict] = []
+    seeds = len(mean_outcome.get("seeds", []))
+    conditions.append(
+        {
+            "condition": f"the mean outcome is available with {min_seeds}+ shared seeds",
+            "met": bool(mean_outcome.get("available")) and seeds >= min_seeds,
+            "value": (
+                f"{seeds} shared seeds" if mean_outcome.get("available") else "unavailable"
+            ),
+        }
+    )
+    ratio_ok = budget_ratio is not None and abs(budget_ratio - 1.0) <= budget_deviation
+    conditions.append(
+        {
+            "condition": (
+                "set totals within "
+                f"{budget_deviation:.1%} of parity (manual/random)"
+            ),
+            "met": ratio_ok,
+            "value": f"ratio {budget_ratio:.4f}" if budget_ratio is not None else "not computed",
+        }
+    )
+    if not all(row["met"] for row in conditions):
+        return {
+            "available": False,
+            "branch": "unavailable",
+            "label": "PRECONDITIONS FAILED - NO VERDICT REPORTED",
+            "reading": SET_COMPARISON_READINGS["unavailable"],
+            "conditions": conditions,
+        }
+
+    difference = mean_outcome["difference_nats"]
+    p_value = mean_outcome["p"]
+    significant = p_value < p_threshold
+    conditions.append(
+        {
+            "condition": f"set-mean p < {p_threshold}",
+            "met": significant,
+            "value": (
+                f"p = {p_value:.4g} ({mean_outcome.get('method', 'unknown')}), "
+                f"difference {difference:+.4f} nats"
+            ),
+        }
+    )
+    if not significant:
+        branch = "no-detectable-difference"
+    else:
+        branch = "manual-better" if difference < 0 else "random-better"
+    labels = {
+        "manual-better": (
+            "§11: THE CURATED SET'S MEAN CANDIDATE BEATS THE RANDOM DRAW"
+        ),
+        "random-better": (
+            "§11: THE RANDOM DRAW'S MEAN CANDIDATE BEATS THE CURATED SET"
+        ),
+        "no-detectable-difference": (
+            "§11: NO DETECTABLE SET-MEAN DIFFERENCE AT THIS SIZE"
+        ),
+    }[branch]
+    return {
+        "available": True,
+        "branch": branch,
+        "label": labels,
+        "reading": SET_COMPARISON_READINGS[branch],
+        "conditions": conditions,
+        "difference_nats": difference,
+        "p": p_value,
+    }
 
 #: What each branch means for the search, quoted from the pre-registration so the
 #: consequence is fixed before the result rather than chosen after it.
@@ -3578,6 +3875,10 @@ def write_decision(path: Path, outcome: dict) -> None:
         (
             "head_pairing_decision",
             "Pre-registered rule: is the head effect level-dependent?",
+        ),
+        (
+            "horizon_decision",
+            "Pre-registered rule: does the depth sign survive the horizon?",
         ),
     ):
         rule = outcome.get(key) or {}

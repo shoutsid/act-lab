@@ -785,8 +785,7 @@ def test_code_files_ship_the_package_and_not_the_artifacts(monkeypatch) -> None:
     assert "pyproject.toml" in files
     assert "src/act/training/runtime.py" in files
     assert "scripts/kaggle_t4.py" in files
-    assert not [name for name in files if name.split("/")[0] in {"artifacts", "public", "server"}]
-    assert "vite.config.ts" not in files
+    assert not [name for name in files if name.split("/")[0] == "artifacts"]
 
 
 def test_code_revision_refuses_an_unpublishable_tree(monkeypatch) -> None:
@@ -991,3 +990,58 @@ def test_ensure_code_dataset_retries_a_read_back_that_lags_the_push(
     assert kaggle_queue.ensure_code_dataset(tmp_path) == "cafe1234"
     assert served["count"] >= 3
     assert [argv for argv in calls if argv[1:3] == ["datasets", "version"]]
+
+
+def test_an_expired_oauth_token_is_refreshed_once_and_the_call_retried(monkeypatch) -> None:
+    """The CLI refuses instead of refreshing; print-access-token refreshes."""
+    calls: list[list[str]] = []
+
+    def fake(argv, capture_output, text):
+        calls.append(list(argv))
+        if argv[:3] == ["kaggle", "auth", "print-access-token"]:
+            return subprocess.CompletedProcess(argv, 0, "tok\n", "")
+        first_time = sum(1 for c in calls if c == argv) == 1
+        if first_time:
+            return subprocess.CompletedProcess(argv, 1, "", kaggle_queue.AUTH_REQUIRED + "\n...")
+        return subprocess.CompletedProcess(argv, 0, "ok\n", "")
+
+    monkeypatch.setattr(subprocess, "run", fake)
+    result = kaggle_queue._run(["kaggle", "kernels", "output", "k", "-p", "/x"])
+    assert result.returncode == 0 and result.stdout == "ok\n"
+    assert [c[:3] for c in calls] == [
+        ["kaggle", "kernels", "output"],
+        ["kaggle", "auth", "print-access-token"],
+        ["kaggle", "kernels", "output"],
+    ]
+    # A non-kaggle command, or a different failure, is never retried.
+    calls.clear()
+    kaggle_queue._run(["git", "status"])
+    assert len(calls) == 1
+
+
+def test_archzoo_is_a_one_shot_and_its_output_is_imported_whole(tmp_path: Path) -> None:
+    """The ledgers cost GPU-hours; the import must keep every file and read the status."""
+    assert "archzoo" in kaggle_queue.ONE_SHOT_MODES
+    output = tmp_path / "output" / kaggle_t4.ARCHZOO_EXPERIMENT
+    output.mkdir(parents=True)
+    (output / "flat12000_seed42_results.jsonl").write_text("{}\n")
+    (output / "zoo_definition.json").write_text("{}")
+    (output / kaggle_t4.ARCHZOO_STATUS_NAME).write_text(
+        json.dumps({"complete": True, "stopped_at_deadline": False, "hours": 5.5,
+                    "ledger_rows": {"42": {"12000": 1}}})
+    )
+    repo = tmp_path / "repo"
+    lines: list[str] = []
+    status = kaggle_queue.import_archzoo_output(
+        tmp_path / "output", repo, log=lambda m, **_: lines.append(m)
+    )
+    target = repo / "artifacts" / kaggle_t4.ARCHZOO_EXPERIMENT
+    assert sorted(p.name for p in target.iterdir()) == [
+        kaggle_t4.ARCHZOO_STATUS_NAME,
+        "flat12000_seed42_results.jsonl",
+        "zoo_definition.json",
+    ]
+    assert status["complete"] is True
+    assert any("complete=True" in line for line in lines)
+    # An output with no experiment directory is reported, not crashed on.
+    assert kaggle_queue.import_archzoo_output(tmp_path / "empty", repo, log=lambda m, **_: None) is None

@@ -39,13 +39,6 @@ The project pins the CUDA 12.6 PyTorch wheel so Pascal GPUs such as the GTX
 1070 (compute capability 6.1) receive `sm_61` kernels. Use `--device cpu` to
 override the automatic GPU selection.
 
-The browser research console uses the existing npm toolchain:
-
-```bash
-npm install
-npm run dev
-```
-
 ## Experiment 0 gate
 
 The first executable topology gate compares fixed, random-churn, and adaptive
@@ -135,11 +128,20 @@ confound with two candidates differing in nothing but head count, matched to
 *identical* total and active parameters, and the answer keeps the attribution as
 given: **head count is worth −0.018 nats pooled (p = 0.14, signs 8/4) while width
 holds at −0.1562 nats at the factorial's floor**, so the lever is residual-stream
-width rather than a free gene wearing its name. What that arm leaves is a lead it
-cannot decide — the head effect is level-dependent (+0.011 nats at hidden 512,
-−0.046 at 896, with all six wide-level pairs favouring more heads) and the
-interaction's three-seed floor is 0.25 — so more heads stay a candidate at wide
-hidden sizes, worth about a quarter of the width effect at zero parameter cost.
+width rather than a free gene wearing its name. The lead that arm left — a
+level-dependent head effect its three seeds floored at 0.25 — was then bought a
+second seed block on fresh seeds, and at six seeds the pre-registered rule lands on
+**head effect is real at wide width**: −0.0553 nats at hidden 896 (12/12 pairs, at
+the 2/2¹² floor) against +0.0084 at 512 (p = 0.37), interaction +0.0636 nats at its
+2/2⁶ = 0.031 floor with every seed contrast agreeing. So more heads are a free
+~0.055 nats *only* on a wide residual stream, and a search must mutate the two
+jointly — the second joint constraint on the space after depth × width.
+
+What none of that yet shows is whether it survives a realistic training horizon;
+the depth finding in particular is the one prior work predicts should reverse with
+training. That is the next arm, pre-registered in
+`artifacts/arch-zoo-100m-v3-crossed-horizon10x/NOTES.md`: the crossed factorial at
+10× the training length, run on Kaggle T4×2 via `scripts/kaggle_queue.py --queue archzoo`.
 
 The effect's *size* depends on the training horizon, and that was measured rather
 than assumed: the spread decays 1.65× per doubling of training, replicating the

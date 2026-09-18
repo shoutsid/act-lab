@@ -35,22 +35,40 @@ one the arm was bought for:
 | spread | 0.3018 nats, 15.3× the seed noise |
 | branch | **replicates, interaction resolves** (§2c) |
 
+The head axis then resolved the same way, on the same arithmetic: the head-paired
+arm broke the width/head confound *in width's favour* (head count −0.0177 nats
+pooled at p = 0.14; width −0.1562 at the factorial's floor) and left a lead its
+three seeds could not decide. Its confirmation arm (`arch-zoo-100m-v4-head-paired-confirm`,
+fresh seeds 51–53, byte-identical candidates) pooled to six seeds and landed on the
+pre-registered **head effect is real at wide width** branch, all five conditions met
+mechanically by `HEAD_PAIRING_RULE`:
+
+| pooled, 6 seeds (48 runs) | value |
+|---|---|
+| `hidden_size` | **−0.1617 nats** (Monte-Carlo p = 5e-06, at resolution) |
+| head effect at H=512 | **+0.0084 nats**, p = 0.37 (12 units, 5/7 signs) — nothing |
+| head effect at H=896 | **−0.0553 nats**, p = 4.9e-04 **at the 2/2¹² floor**, 12/12 pairs favour more heads |
+| interaction | **+0.0636 nats**, seed-blocked p = **0.031** — its six-seed floor — all six seed contrasts positive |
+| pooled head contrast | −0.0234 nats, p = 0.012, signs 17/7 — an average of two disagreeing levels, not a uniform effect |
+
+So "add heads" is a rule with a precondition: at a wide residual stream it is worth
+~0.055 nats for zero parameters, at a narrow one nothing. A search over this family
+must mutate `attention_heads` **jointly with `hidden_size`**, as it must mutate
+`depth` jointly with it.
+
 What remains genuinely unresolved:
 
-- **Whether the head effect is level-dependent.** The head-paired arm ran that
-  crossing and broke the confound *in width's favour* (§2c): head count is −0.0177
-  nats pooled at p = 0.14, while width holds at −0.1562 nats under the tightest
-  matching in the phase. What it leaves is a lead rather than a result — the head
-  effect is +0.0109 nats at hidden 512 against −0.0462 at 896, and all six H=896
-  pairs favour more heads, the most extreme six-unit outcome that exists (2/2⁶ =
-  0.031). The interaction's seed-blocked test is floored at 2/2³ = 0.25 on three
-  seeds, so this arm cannot decide it and no re-analysis of its ledgers can; one more
-  seed block would, at ~3.5 GPU-hours, which the phase's budget no longer covers.
+- **Whether any of this survives a realistic training horizon.** §3 measures the
+  decay over 400→1200 steps only; the depth finding in particular (shallow beats
+  deep) is the one prior work predicts should reverse with training. The arm that
+  tests it — the crossed factorial at 12,000 steps, `arch-zoo-100m-v3-crossed-horizon10x`
+  — is pre-registered in its own NOTES.md and runs on Kaggle T4 rather than the
+  local card.
 - **Expert width as shock absorber**, so "wider residual stream" and "less expert
   capacity" are two readings of one trade, and expert count and width are one knob
   (`E x W` enters the parameter count as a product).
 
-All 191 runs and their records are reproducible from the ledgers in `artifacts/`
+All 220 runs and their records are reproducible from the ledgers in `artifacts/`
 without retraining.
 
 ---
@@ -435,16 +453,44 @@ Two things the arm adds to the width finding rather than merely repeating it:
   the level split was chosen after seeing the interaction rather than pre-registered.
   This is the same *shape* of claim the depth penalty was at three seeds, and it needs
   the same remedy — another seed block, ~3.5 GPU-hours — which the phase's budget no
-  longer has. It is recorded as the next arm's question rather than as a finding, and
-  that arm is now **running** (`arch-zoo-100m-v4-head-paired-confirm`, fresh seeds
-  51–53, byte-identical candidate set, its overrun of the cap declared in its own
-  pre-registration before its first run). Its branch is decided mechanically by
-  `HEAD_PAIRING_RULE`/`--head-rule` rather than by eye, and every branch was
-  exercised on a synthetic six-seed copy of this design before the hours were spent.
+  longer had. It was recorded as the next arm's question rather than as a finding,
+  and that arm was bought anyway with its overrun declared first.
 
-So the phase's headline is unchanged and slightly stronger for the check: the lever
-is **residual-stream width**; if heads matter at all they matter at wide hidden sizes,
-for free, at about a quarter of the width effect.
+### The lead, decided: the head effect is real at wide width and absent at narrow
+
+`arch-zoo-100m-v4-head-paired-confirm` — 24 runs, 3.511 GPU-hours, fresh seeds 51/52/53
+(never used to design, screen or score anything in the phase), candidate set verified
+byte-identical to the parent's before launch and asserted by `verify_record.py` since.
+Pooling it with the parent gives six seeds and 48 runs, and the branch is read by
+`HEAD_PAIRING_RULE` (`--head-rule`), whose five conditions were all exercised on
+planted synthetic designs before the hours were spent:
+
+| pooled, 6 seeds | quantity | value |
+|---|---|---|
+| factorial | `hidden_size` | **−0.1617 nats**, Monte-Carlo p = 5e-06 (at the 200,000-draw resolution; the 2.2e9-assignment space is past enumeration) |
+| factorial | `attention_heads` | −0.0234 nats, p = 0.015 |
+| factorial | interaction | **+0.0636 nats**, seed-blocked p = **0.03125 = 2/2⁶, at floor**, per-seed +0.0383 / +0.0730 / +0.0598 / +0.0754 / +0.0399 / +0.0953 |
+| paired, 12 units | head effect at **H=512** | **+0.0084 nats**, exact p = 0.373, signs 5 negative / 7 positive |
+| paired, 12 units | head effect at **H=896** | **−0.0553 nats**, exact p = 4.88e-04 **at the 2/2¹² floor**, signs **12 negative / 0 positive** |
+| paired, 24 units | pooled head contrast | −0.0234 nats, Monte-Carlo p = 0.0115, signs 17/7 |
+
+**Branch: HEAD EFFECT IS REAL AT WIDE WIDTH** — width significant and negative,
+interaction below 0.05 with every seed contrast agreeing, interaction positive, and
+the wide level's paired head effect negative. The reading the rule prints beside it
+is the one the rehearsal was built to force: the pooled contrast clears its
+threshold on a *sign-inconsistent* set of pairs, so it is a systematic average of
+two disagreeing levels — not a uniform head effect — and only the level split says
+which level produces it.
+
+What it changes: the recommendation gains a clause rather than reversing. Width is
+still the lever (−0.1617 here, third replication at the tightest matching in the
+phase, ×1.019 across pairs). Head count is a *free* ~0.055 nats — about a third of
+the width effect — but only at the wide level, so it is not a global "more heads"
+rule and a search must mutate `attention_heads` jointly with `hidden_size`. That is
+now the second joint constraint on the search space (with `depth × hidden_size`,
+above), and both were found the same way: a three-seed arm whose contrasts all
+agreed but whose calibrated test was floored above the declared threshold, decided
+by the seeds that lowered the floor and by nothing else.
 
 ## 3. The effect decays with training — but the decay is variance, not signal
 
@@ -781,7 +827,7 @@ the axis is one kernel away from being searchable rather than one refactor away.
 | Head-count gene made crossable | `attention_heads` added to the crossable genes and `_head_counts` to the cell enumeration, with a regression test that existing designs keep their original candidate names. `generate_head_paired_zoo` (`--design head-paired`) goes further: because head count is parameter-free, a pair can be matched on total *and* active parameters **exactly** rather than landed in a 5–10% band, and `paired_contrast_test` gives the paired contrast an exact floor of 2/2^12. **Run and analysed**: the head contrast lands at −0.0177 nats (p = 0.14, signs 8/4) against a width contrast of −0.1562 nats at the factorial's floor, which is the pre-registered "width is the lever" branch |
 | Architecture-distance matrix | `distance_matrix.json`; real module-type edit distance, min pairwise 0.060 |
 | Search-cost accounting | `search_cost.json`; includes the cost of *discovering* the architecture, not only training the winner. A pooled write is labelled: `pooled_experiments` plus a `by_experiment` split, because the file lands in the primary arm's directory while covering both |
-| The record itself, checked | `scripts/verify_record.py` recomputes **98 load-bearing numbers** from the ledgers — every §10 cost row, the §4 spread/noise table, §4a's decay and wrong winner, §2c's three-seed, six-seed and replication effects with their floors, the head-paired arm's paired and factorial contrasts and the branch its numeric conditions select, §9a's budget match and its new size condition (the power figure is recomputed from the same population and noise, not read from the table), and the README headline's structural claims — and fails when the record and the artifacts disagree. Pinned by `tests/test_verify_record.py`, because three documented numbers were wrong after the test suite was green |
+| The record itself, checked | `scripts/verify_record.py` recomputes **119 load-bearing numbers** from the ledgers — every §10 cost row, the §4 spread/noise table, §4a's decay and wrong winner, §2c's three-seed, six-seed and replication effects with their floors, the head-paired arm's paired and factorial contrasts and the branch its numeric conditions select, the confirmation arm's design-integrity claims (candidate set byte-identical to the parent's, fresh seeds, flat plan, the paired genes reachable through the structural join), §9a's budget match and its new size condition (the power figure is recomputed from the same population and noise, not read from the table), and the README headline's structural claims — and fails when the record and the artifacts disagree. Pinned by `tests/test_verify_record.py`, because three documented numbers were wrong after the test suite was green |
 | Capability probes on finalists (§19) | plumbed: `train_architecture(..., probes=...)` records per-probe loss/accuracy/token count in `EvalResult.capability`. Empty by default, and tested to stay empty, because probing every candidate would silently add a second selection objective. No probe *set* exists in this repository yet, so none is applied |
 | Seed-matched results | §20 implemented and used; exact blocked permutation test, extended with a crossed factorial (`crossed_contrast`) whose main effects are exact and whose interaction is reported against three nulls; the confirmation arm's four-outcome rule is evaluated by `replication_decision`/`--replication-rule` with the thresholds in `REPLICATION_RULE`, so a pooled branch is read mechanically rather than by eye |
 | Robustness checks on the headline claims | Held-out-loss effects re-run on training loss (v2 and the crossed factorial), so neither is a holdout-split artifact; leave-one-out over candidates where the design allows it (v2's 8 distinct configurations) and an explicit *refusal* where it does not (the crossed arm's 2-per-cell design becomes unbalanced, which used to crash rather than report); spread-not-worse and dropped-candidate guards; an **in-flight seed is dropped from the crossed and paired contrasts and named**, so a sweep analysed while its last seed is still training reports the contrast over the seeds that finished rather than reporting nothing — the drop is disclosed in the decision and the procedure floor moves with it, and only a seed short of the fullest one's row count is droppable, so an unbalanced-but-complete seed still refuses; a seed that stopped *between* pairs leaves nothing incomplete and is named by its pair count instead, because the unit count is the only place that shows and the floor printed beside the p moves with it; the seed-matched permutation test runs only over a complete rectangle, so the seeds and architectures it had to intersect away are named too — the block count beside its p is the survivors, not the design, and a dropped seed that wrote as many rows as any other is called a zoo defect rather than an unfinished sweep. All pinned by tests against the real ledgers |
@@ -823,9 +869,11 @@ recommendation does not reverse. Full record in §2c.
    expert capacity. Both levers are now unconditional: depth's effect was measured
    and unconfounded from the start, and the width recommendation no longer waits on
    the head-paired arm, which found head count worth −0.0177 nats (p = 0.14). The
-   head axis is not *excluded* so much as unpriced: if its interaction is real it is
-   a free 0.046 nats at wide hidden sizes, and the arm that would settle it is priced
-   in §2c at one more seed block (§2c).
+   head axis is now *priced* rather than excluded: its confirmation arm resolved the
+   interaction at the six-seed floor, and heads are worth **−0.0553 nats at wide
+   hidden sizes and nothing at narrow** — free parameters, so a search should spend
+   the head gene *only* where the residual stream is wide, and mutate the two
+   jointly (§2c).
 
    The shape of the loop follows from §3 and §4 rather than from taste: a
    **screen at 400 steps, promote only on margins that clear the seed noise, and
@@ -860,10 +908,16 @@ Running or done, and the reason each was worth the hours:
   branch, so the phase's recommendation stands. The arm's one new lead — a
   level-dependent head effect, +0.0571 nats of interaction with all three seed
   contrasts and all six H=896 pairs agreeing, against a seed-blocked floor of 0.25
-  that no re-analysis can beat — is priced at one more seed block (~3.5 GPU-hours)
-  and is **running** as `arch-zoo-100m-v4-head-paired-confirm` on fresh seeds 51–53,
-  with the same candidate set verified byte-identical and the budget overrun
-  declared in its own pre-registration before its first run.
+  that no re-analysis can beat — was priced at one more seed block (~3.5 GPU-hours).
+- **The head interaction** — **done**, 24 runs, 3.511 GPU-hours, as
+  `arch-zoo-100m-v4-head-paired-confirm` on fresh seeds 51–53 with the candidate set
+  verified byte-identical and the budget overrun declared in its pre-registration
+  before its first run. Pooled to six seeds it lands on **head effect is real at wide
+  width**: interaction +0.0636 nats at the 2/2⁶ = 0.031 floor with all six seed
+  contrasts agreeing, head effect −0.0553 nats at H=896 (12/12 pairs, at the 2/2¹²
+  floor) against +0.0084 at H=512 (p = 0.37). Consequence for the search:
+  `attention_heads` and `hidden_size` are **not** separable either and must be
+  mutated jointly, with the head gene spent only at wide widths (§2c).
 - **More seeds on v1's finalists** (~1.3 GPU-hours). No longer needed to decide
   whether the effect exists, and the attribution question it was meant to serve is
   answered better by the crossed factorial. Still the cheapest check that v1's
@@ -970,9 +1024,14 @@ total parameters over a set is what the arm's training budget is, and a band is
   That is now measured rather than cautioned: scanned over 200 draw seeds, the
   closest 13-candidate draw to `v1`'s total is **seed 151**, at 1,120,992,384
   params — **0.9996×** the curated set, against 1.1872× for the seed-42 draw — so
-  the launch line is `--design random --candidates 13 --zoo-seed 151
-  --target-params 100000000 --random-tolerance 0.3 --context-size 1024
-  --max-total-params 150000000`. The band is part of the line rather than a default
+the launch line is `--design random --candidates 13 --zoo-seed 151
+--target-params 100000000 --random-tolerance 0.3 --context-size 1024
+--max-total-params 150000000`. Pre-flighted through the driver itself
+(`--dry-run`, 2026-09-18): the emitted zoo reproduces the matched draw exactly —
+13 candidates, set total 1,120,992,384 (0.9996×), mean 86.23M/candidate — and the
+driver's plan projection for the flat arm is 39 runs ≈ 5.92 GPU-hours at its
+conservative 4,500 tok/s, beside the ~5.2 the measured card rate implies for the
+same 95.8M tokens. The band is part of the line rather than a default
   because it decides the draw: the *same* seed at the driver's default 0.15 band
   produces a set totalling 1,282,387,008, **1.1435×** the curated budget, so seeding
   without the band silently drops the very match it was chosen for (checked against
@@ -1020,6 +1079,22 @@ curated sets draw from, so a *band-matched* draw is one command; a
 *budget-matched* one is the condition above, and it is checkable with no GPU. What
 was missing was the typicality check, and that is now done.
 
+**The comparison's decision machinery is now declared too, before any of its data
+exist.** `SET_COMPARISON_RULE` fixes the thresholds (set-mean p < 0.05; budget
+parity within 2.5%; 2+ shared seeds) and `set_comparison_decision` reads the
+branch mechanically — manual better, random better, or no detectable difference,
+with preconditions that *refuse* a verdict over an unequal budget or an incomplete
+block rather than compute one. The set mean is the pre-registered primary because
+§9a measured the winner and coverage forms to be invisible at every size this
+phase can afford; `best` and `worst` are computed and reported as secondaries with
+that caveat attached. `scripts/set_comparison_analyze.py` applies the rule to two
+real experiment directories (budget ratio computed from the two zoo definitions,
+per-set structural summaries rendered beside the verdict), and every branch is
+exercised on synthetic planted-effect designs by `tests/test_set_comparison_decision.py`
+— the same rehearsal-before-the-hours standard the head-paired confirmation arm
+held. When the comparison's hours are bought, its verdict is a command, not an
+afternoon of ad-hoc statistics.
+
 ## 10. Session cost
 
 | arm | runs | GPU-hours |
@@ -1031,8 +1106,8 @@ was missing was the typicality check, and that is now done.
 | crossed arm v3, 1200 steps | 24 | 3.28 |
 | crossed confirmation, fresh seeds | 24 | 3.26 |
 | head-paired v4, 1200 steps | 24 | 3.499 |
-| head-paired confirmation (running) | 24 projected | ~3.5 projected |
-| **total** | **196** completed (+24 running) | **20.121 completed**, ~23.6 with the confirmation — against a 10–20 GPU-hour cap |
+| head-paired confirmation, fresh seeds | 24 | 3.511 |
+| **total** | **220** | **23.632** — against a 10–20 GPU-hour cap, the overrun declared before the last arm ran |
 
 Two things about this table are worth stating because they are easy to mis-sum. The
 mixer row is a set of 12-step throughput benchmarks rather than training runs, and it
@@ -1065,12 +1140,14 @@ hours at all (the shared-card episode above).
 The cap binds now, and the phase has closed past it deliberately rather than by
 drift. v4 was declared the last arm that fits, on a projection of 3.3 GPU-hours,
 and it cost 3.499 — so completed work lands at **20.12 against the 10–20 cap**, at
-its ceiling rather than inside it. The one arm running after it is the head
-interaction's confirmation, at ~3.5 GPU-hours, which takes the phase to **~23.6, an
+its ceiling rather than inside it. The one arm run after it was the head
+interaction's confirmation, at 3.511 GPU-hours, which took the phase to **23.632, an
 overrun of ~3.6 declared in that arm's pre-registration before its first run** —
-because the interaction is undecidable from data already paid for (a 0.25 floor
+because the interaction was undecidable from data already paid for (a 0.25 floor
 against a 0.05 threshold, §2c) and carrying it into the search program as an unknown
-owes either a free lever or a wasted axis.
+owed either a free lever or a wasted axis. It decided the lever (§2c), and the phase
+is closed at that figure: the horizon arm that follows runs under its own
+pre-registered budget on Kaggle hardware, not against this cap.
 
 The rest is a budget decision rather than an analysis one, and the phase's own
 numbers price it: the §11 comparison needs *both* arms flat and budget-matched —
@@ -1126,10 +1203,11 @@ provided its spread is never quoted as the effect size (§4).
   phase — the head-paired arm is what closed it, at identical within-pair cost, and
   it put head count at −0.0177 nats (p = 0.14) against a width effect of −0.1562 nats
   at the factorial's floor (§2c). The recommendation does not reverse. What remains
-  is a caveat on the *head* axis rather than on the headline: the head effect looks
-  level-dependent (+0.0109 nats at hidden 512, −0.0462 at 896, all six wide-level
-  pairs agreeing) and this arm cannot decide it, because the interaction's
-  seed-blocked floor is 0.25 on three seeds.
+  is a clause on the *head* axis rather than a caveat on the headline: the
+  confirmation arm decided the level dependence at six seeds (−0.0553 nats at hidden
+  896, 12/12 pairs; +0.0084 at 512; interaction at the 2/2⁶ floor), so heads are a
+  free lever *only* on a wide residual stream, and the level split it rests on was
+  pre-registered in that arm rather than chosen after the fact.
 - **The interaction was resolved by adding seeds, and that is the only thing that
   resolved it.** +0.0701 nats at p = 0.24 on three seeds became +0.0827 with the
   seed-blocked p at its six-seed floor. The lesson worth keeping is about

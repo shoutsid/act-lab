@@ -137,6 +137,7 @@ def _plan_args(**overrides):
         batch_size=2,
         context_size=1024,
         learning_rate=3e-4,
+        mixed_precision="off",
         val_batches=16,
         data_path=None,
         val_data_path=None,
@@ -276,3 +277,21 @@ def test_parse_args_resolves_a_default_target_end_to_end(monkeypatch):
     assert parsed.match_target is None
     assert effective_target(parsed) == 78_000_000.0
     assert parsed.plan == "screen"
+
+
+def test_precision_defaults_to_the_records_fp32_and_reaches_every_run(monkeypatch):
+    """The record is fp32; a sweep that trains fp16 must say so in every row."""
+    from arch_zoo_screen import make_run
+
+    monkeypatch.setattr(sys, "argv", ["arch_zoo_screen.py"])
+    assert parse_args().mixed_precision == "off"
+    assert make_run(parse_args(), 1200, 42).mixed_precision == "off"
+
+    monkeypatch.setattr(sys, "argv", ["arch_zoo_screen.py", "--mixed-precision", "fp16"])
+    run = make_run(parse_args(), 12000, 43)
+    assert run.mixed_precision == "fp16"
+    assert run.steps == 12000 and run.seed == 43
+
+    monkeypatch.setattr(sys, "argv", ["arch_zoo_screen.py", "--mixed-precision", "int8"])
+    with pytest.raises(SystemExit):
+        parse_args()

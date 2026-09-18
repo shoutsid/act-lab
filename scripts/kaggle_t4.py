@@ -20,7 +20,11 @@ Modes (``ACT_T4_MODE=<mode>``):
 - ``control``   runbook 2b: the pool-matched (loss-blind) control queue;
 - ``null``      runbook 2c: the do-nothing null queue;
 - ``verdict``   runbook 4: restore all three queues from Kaggle and compute
-                the pre-registered verdict.
+                the pre-registered verdict;
+- ``archzoo``   the architecture-search horizon arm
+                (``artifacts/arch-zoo-100m-v3-crossed-horizon10x/NOTES.md``):
+                one ``scripts/arch_zoo_screen.py`` sweep per T4, one seed each,
+                the ledgers copied into the kernel output on exit.
 
 Push each mode as a script kernel with the metadata this module writes, then
 re-push the *same* kernel until its queue reports complete: restore latest,
@@ -85,6 +89,39 @@ VERDICT_EXIT_CODES = {0: "PASS", 1: "FAIL", 2: "PASS with qualification"}
 
 INPUT_ROOT = Path("/kaggle/input")
 WORK_ROOT = Path("/kaggle/working/act-lab")
+
+# --- The architecture-search horizon arm (ARCH_SEARCH_FINDINGS.md §3, §11) ---
+# The crossed depth x hidden_size factorial of ``arch-zoo-100m-v3-crossed``, run
+# 10x longer. Every design flag below is the one that arm's ledgers record, so
+# the candidate set is byte-identical (checked by ``--dry-run`` before the push
+# and asserted by ``verify_record.py`` once the ledgers land); only the training
+# length, the precision and the host differ - which is the arm's whole question.
+ARCHZOO_EXPERIMENT = "arch-zoo-100m-v3-crossed-horizon10x"
+ARCHZOO_KERNEL = "act-t4-archzoo"
+TOKENS_DATASET_SLUG = "act-lab-tinystories-tokens"
+# One seed per T4: the sweep is single-process, so the second card is only used
+# by running a second seed beside the first. Seeds 42/43 are the crossed arm's
+# own first two, so every 12,000-step row has a same-seed 1200-step fp32 row in
+# the committed record to pair with.
+ARCHZOO_SEEDS = (42, 43)
+# 1200 is the same-precision anchor: fp16 losses are not comparable to the
+# record's fp32 ones, so the decay 1200 -> 12000 is measured inside this arm and
+# the anchor-vs-record gap measures the precision offset directly.
+ARCHZOO_FLAT_STEPS = "1200,12000"
+ARCHZOO_PRECISION = "fp16"
+# Conservative for fp16 on a T4 at ~78M parameters: the dtype probe measured
+# 5,433 tok/s at the 285M declared shape, 2.56x its fp32 rate. The token budget
+# guard is sized so it never binds - the wall clock below is the binding guard.
+ARCHZOO_ASSUMED_TOKENS_PER_S = 9_000.0
+ARCHZOO_BUDGET_HOURS = 12.0
+# Kaggle's session cap is 12 h; the kernel output is only saved on a clean exit,
+# so the sweeps are stopped with margin and whatever ledger rows exist are kept.
+ARCHZOO_DEADLINE_HOURS = 11.0
+ARCHZOO_POLL_SECONDS = 300.0
+# Written beside the ledgers and read back by ``kaggle_queue.py --queue archzoo``:
+# the kernel exits 0 whatever happened (a non-zero exit puts the output at
+# risk), so the outcome travels as data rather than as an exit code.
+ARCHZOO_STATUS_NAME = "archzoo-status.json"
 
 
 CONTAINER_NAME_ENV = "KAGGLE_CONTAINER_NAME"
@@ -247,18 +284,99 @@ def verdict_argv(
     ]
 
 
+def find_tokens_root(input_root: str | Path = INPUT_ROOT) -> Path | None:
+    """Locate the attached TinyStories token stream anywhere in the mount tree.
+
+    Same layout hazard as :func:`find_code_root`: the dataset may mount at any
+    depth, so the pair ``tokens.npy`` + ``val-tokens.npy`` is searched for rather
+    than assumed. Both files are required - a stream without its held-out file
+    would make the sweep carve validation off the training tail, which is a
+    different measurement from the record's.
+    """
+    root = Path(input_root)
+    if not root.is_dir():
+        return None
+    for candidate in sorted(root.rglob("tokens.npy")):
+        if (candidate.parent / "val-tokens.npy").is_file():
+            return candidate.parent
+    return None
+
+
+def archzoo_argv(
+    python: str,
+    seed: int,
+    *,
+    data_dir: str | Path,
+    artifacts_root: str | Path,
+) -> list[str]:
+    """The horizon arm's launch line for one seed.
+
+    The design half restates ``arch-zoo-100m-v3-crossed`` flag for flag (crossed
+    ``depth x hidden_size``, 2 replicates, 78M +/-5%, context 1024, batch 2, zoo
+    seed 42); the arm half is what its NOTES.md pre-registers: flat at 1200 and
+    12,000 steps, fp16, one seed.
+    """
+    data_dir = Path(data_dir)
+    return [
+        python,
+        "scripts/arch_zoo_screen.py",
+        "--experiment-id",
+        ARCHZOO_EXPERIMENT,
+        "--design",
+        "crossed",
+        "--cross-factors",
+        "depth,hidden_size",
+        "--cross-replicates",
+        "2",
+        "--match-target",
+        "78000000",
+        "--match-tolerance",
+        "0.05",
+        "--zoo-seed",
+        "42",
+        "--context-size",
+        "1024",
+        "--batch-size",
+        "2",
+        "--plan",
+        "flat",
+        "--flat-steps",
+        ARCHZOO_FLAT_STEPS,
+        "--finalist-seeds",
+        str(seed),
+        "--mixed-precision",
+        ARCHZOO_PRECISION,
+        "--device",
+        "cuda",
+        "--data-path",
+        str(data_dir / "tokens.npy"),
+        "--val-data-path",
+        str(data_dir / "val-tokens.npy"),
+        "--artifacts-root",
+        str(artifacts_root),
+        "--budget-hours",
+        f"{ARCHZOO_BUDGET_HOURS:g}",
+        "--assumed-tokens-per-s",
+        f"{ARCHZOO_ASSUMED_TOKENS_PER_S:g}",
+    ]
+
+
 def kernel_metadata(
     kernel_id: str,
     title: str,
     *,
     gpu: bool = True,
     code_file: str = "kaggle_t4.py",
+    extra_datasets: tuple[str, ...] = (),
 ) -> dict[str, object]:
     """Metadata for pushing one mode's kernel.
 
     ``machine_shape`` is the only honoured accelerator key; ``gpu_type`` is
     silently ignored by the CLI. Internet stays on for the dataset API.
+    ``extra_datasets`` are attached after the code dataset, for a mode whose
+    input is a dataset the code does not carry (the token stream).
     """
+    owner = os.environ.get(OWNER_ENV, DEFAULT_OWNER)
     return {
         "id": kernel_id,
         "title": title,
@@ -270,7 +388,7 @@ def kernel_metadata(
         "enable_tpu": False,
         "machine_shape": "NvidiaTeslaT4" if gpu else "",
         "enable_internet": True,
-        "dataset_sources": [f"{os.environ.get(OWNER_ENV, DEFAULT_OWNER)}/act-lab-code"],
+        "dataset_sources": [f"{owner}/act-lab-code", *extra_datasets],
         "competition_sources": [],
         "kernel_sources": [],
     }
@@ -287,7 +405,7 @@ DIAGNOSTIC_MODES = {
     # placement check is about devices) but costs a few minutes, not a window.
     "selfcheck": ("act-t4-selfcheck", True),
 }
-PUSH_MODES = (*DIAGNOSTIC_MODES, "verdict", *QUEUES)
+PUSH_MODES = (*DIAGNOSTIC_MODES, "verdict", "archzoo", *QUEUES)
 
 
 def metadata_for(mode: str) -> dict[str, object]:
@@ -296,6 +414,14 @@ def metadata_for(mode: str) -> dict[str, object]:
     if mode in QUEUES:
         queue = QUEUES[mode]
         return kernel_metadata(queue.kernel_id, queue.title)
+    if mode == "archzoo":
+        # The sweep reads the token stream from a second attached dataset: the
+        # code dataset ships only tracked files and the stream is local scratch.
+        return kernel_metadata(
+            f"{owner}/{ARCHZOO_KERNEL}",
+            ARCHZOO_KERNEL,
+            extra_datasets=(f"{owner}/{TOKENS_DATASET_SLUG}",),
+        )
     if mode == "verdict":
         # The verdict only downloads datasets and does arithmetic - no
         # accelerator, so it never queues behind a GPU and costs no quota.
@@ -352,6 +478,24 @@ def _keep(path: Path) -> None:
         target = Path("/kaggle/working") / path.name
         shutil.copy(path, target)
         _log(f"kept {target}")
+
+
+def _keep_tree(path: Path) -> None:
+    """Copy a whole experiment directory into the kernel output.
+
+    The zoo ledgers are kilobytes, so unlike the checkpoint handoff they can
+    ride the kernel output rather than a dataset publish - one fewer API call
+    on the exit path, and ``kaggle kernels output`` fetches them.
+    """
+    if not path.is_dir():
+        _log(f"nothing to keep: {path} is not a directory")
+        return
+    target = Path("/kaggle/working") / path.name
+    if target.resolve() == path.resolve():
+        return
+    shutil.copytree(path, target, dirs_exist_ok=True)
+    files = sorted(p.name for p in target.iterdir() if p.is_file())
+    _log(f"kept {target} ({len(files)} files: {', '.join(files)})")
 
 
 def report_resources() -> None:
@@ -602,6 +746,138 @@ def mode_session(queue: Queue) -> None:
     _log(f"=== {queue.mode} session finished after {(time.time() - started) / 3600:.2f} h ===")
 
 
+def _ledger_rows(experiment_dir: Path, seed: int) -> dict[str, int]:
+    """Completed runs per training length for one seed, read off its ledgers."""
+    rows: dict[str, int] = {}
+    for ledger in sorted(experiment_dir.glob(f"flat*_seed{seed}_results.jsonl")):
+        length = ledger.name.split("_seed")[0].removeprefix("flat")
+        try:
+            rows[length] = sum(1 for line in ledger.read_text().splitlines() if line.strip())
+        except OSError:
+            rows[length] = 0
+    return rows
+
+
+def mode_archzoo() -> None:
+    """The horizon arm: one seed per T4, ledgers into the kernel output.
+
+    ``scripts/arch_zoo_screen.py`` is single-process and the two members of a
+    T4x2 host are otherwise idle, so parallelism is one sweep per device with
+    ``CUDA_VISIBLE_DEVICES`` set, not a distributed run - the same shape as the
+    session runner's one-arm-per-GPU placement. Each sweep owns its own seed's
+    ledgers (``flat<steps>_seed<seed>_results.jsonl``); the shared design files
+    are written identically by both. The wall clock is the binding guard: the
+    kernel output only survives a clean exit, so at the deadline the sweeps are
+    stopped and whatever rows exist are kept rather than lost with the session.
+    """
+    import torch
+
+    started = time.time()
+    _log("=== ACT lab: architecture-zoo horizon arm ===")
+    _log(
+        f"experiment={ARCHZOO_EXPERIMENT} seeds={ARCHZOO_SEEDS} "
+        f"steps={ARCHZOO_FLAT_STEPS} precision={ARCHZOO_PRECISION} "
+        f"deadline={ARCHZOO_DEADLINE_HOURS:g}h"
+    )
+    work, env = _bootstrap()
+
+    from act.training.runtime import gpu_inventory
+
+    if not torch.cuda.is_available():
+        raise SystemExit("no CUDA device on this kernel - enable a GPU accelerator")
+    devices = torch.cuda.device_count()
+    _log(f"torch {torch.__version__} | {devices} device(s): {gpu_inventory()}")
+    report_resources()
+
+    data_dir = find_tokens_root()
+    if data_dir is None:
+        raise SystemExit(
+            "no token stream under /kaggle/input (expected tokens.npy beside "
+            f"val-tokens.npy; attach the {TOKENS_DATASET_SLUG} dataset)"
+        )
+    _log(f"token stream: {data_dir}")
+
+    artifacts_root = work / "artifacts"
+    experiment_dir = artifacts_root / ARCHZOO_EXPERIMENT
+    experiment_dir.mkdir(parents=True, exist_ok=True)
+
+    sweeps: list[tuple[int, subprocess.Popen[bytes], object]] = []
+    for index, seed in enumerate(ARCHZOO_SEEDS):
+        device = index % devices
+        argv = archzoo_argv(
+            sys.executable, seed, data_dir=data_dir, artifacts_root=artifacts_root
+        )
+        log_path = experiment_dir / f"run_seed{seed}.log"
+        handle = open(log_path, "wb")  # noqa: SIM115 - closed after the wait loop
+        _log(f"$ CUDA_VISIBLE_DEVICES={device} {' '.join(argv)}  > {log_path.name}")
+        proc = subprocess.Popen(
+            argv,
+            env=dict(env, CUDA_VISIBLE_DEVICES=str(device), PYTHONUNBUFFERED="1"),
+            stdout=handle,
+            stderr=subprocess.STDOUT,
+        )
+        sweeps.append((seed, proc, handle))
+
+    deadline = started + ARCHZOO_DEADLINE_HOURS * 3600
+    stopped_at_deadline = False
+    while any(proc.poll() is None for _, proc, _ in sweeps):
+        if time.time() >= deadline:
+            stopped_at_deadline = True
+            _log(f"deadline {ARCHZOO_DEADLINE_HOURS:g} h reached: stopping the sweeps")
+            for _, proc, _ in sweeps:
+                if proc.poll() is None:
+                    proc.terminate()
+            for _, proc, _ in sweeps:
+                try:
+                    proc.wait(timeout=120)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+            break
+        time.sleep(min(ARCHZOO_POLL_SECONDS, max(1.0, deadline - time.time())))
+        elapsed = (time.time() - started) / 3600
+        progress = ", ".join(
+            f"seed {seed}: " + (
+                " ".join(f"{k}x{v}" for k, v in sorted(_ledger_rows(experiment_dir, seed).items()))
+                or "0 rows"
+            )
+            + ("" if proc.poll() is None else f" (exit {proc.returncode})")
+            for seed, proc, _ in sweeps
+        )
+        _log(f"[{elapsed:5.2f} h] {progress}")
+
+    for _, _, handle in sweeps:
+        handle.close()  # type: ignore[attr-defined]
+
+    for seed, proc, _ in sweeps:
+        log_path = experiment_dir / f"run_seed{seed}.log"
+        tail = log_path.read_bytes()[-3000:].decode("utf-8", "replace") if log_path.is_file() else ""
+        _log(f"--- seed {seed}: exit {proc.returncode}; log tail ---")
+        _log(tail)
+
+    # Like the verdict kernel, this one exits 0 whatever happened: the ledgers
+    # travel in the kernel output, which a non-zero exit would put at risk, so
+    # the outcome travels beside them and the driver reads it back.
+    hours = (time.time() - started) / 3600
+    status = {
+        "experiment": ARCHZOO_EXPERIMENT,
+        "seeds": list(ARCHZOO_SEEDS),
+        "flat_steps": ARCHZOO_FLAT_STEPS,
+        "mixed_precision": ARCHZOO_PRECISION,
+        "devices": devices,
+        "hours": hours,
+        "stopped_at_deadline": stopped_at_deadline,
+        "exit_codes": {str(seed): proc.returncode for seed, proc, _ in sweeps},
+        "ledger_rows": {str(seed): _ledger_rows(experiment_dir, seed) for seed, _, _ in sweeps},
+        "complete": not stopped_at_deadline
+        and all(proc.returncode == 0 for _, proc, _ in sweeps),
+    }
+    (experiment_dir / ARCHZOO_STATUS_NAME).write_text(json.dumps(status, indent=2) + "\n")
+    _keep_tree(experiment_dir)
+    report_resources()
+    _log(json.dumps(status, indent=2))
+    _log(f"=== archzoo finished after {hours:.2f} h (complete={status['complete']}) ===")
+
+
 def mode_dtypeprobe() -> None:
     """Diagnostic: the declared step loop timed in fp32 and in fp16.
 
@@ -729,6 +1005,9 @@ def main() -> int:
         return 0
     if mode == "verdict":
         mode_verdict()
+        return 0
+    if mode == "archzoo":
+        mode_archzoo()
         return 0
     raise SystemExit(
         f"set {MODE_ENV} to one of: metadata, " + ", ".join(PUSH_MODES)

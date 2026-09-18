@@ -119,6 +119,7 @@ def check_costs(root: Path, audit: Audit) -> None:
         "arch-zoo-100m-v3-crossed": (24, 3.277),
         "arch-zoo-100m-v3-crossed-confirm": (24, 3.256),
         "arch-zoo-100m-v4-head-paired": (24, 3.499),
+        "arch-zoo-100m-v4-head-paired-confirm": (24, 3.511),
     }
     runs_total = 0
     hours_total = 0.0
@@ -156,8 +157,8 @@ def check_costs(root: Path, audit: Audit) -> None:
     runs_total += len(measured)
     hours_total += step_hours
 
-    audit.check("§10 total: runs", 196, runs_total, "§10 table")
-    audit.check("§10 total: GPU-hours completed", 20.121, hours_total, "§10 table")
+    audit.check("§10 total: runs", 220, runs_total, "§10 table")
+    audit.check("§10 total: GPU-hours completed", 23.632, hours_total, "§10 table")
     # The cap is part of the record's pre-registered budget, so the total landing just
     # past it is a claim rather than a rounding detail: v4 was declared "the last arm
     # that fits" against a projection of 3.3 h and cost 3.499, which is the overrun.
@@ -560,6 +561,164 @@ def check_head_paired(root: Path, audit: Audit) -> None:
     audit.check("§2c v4: spread in seed-noise units", 15.53, by_length["sigmas"], "§2c")
 
 
+def check_head_paired_confirm(root: Path, audit: Audit) -> None:
+    """The head-paired confirmation arm's structural record.
+
+    The arm's contrast numbers land when its sweep does; the checks below are true at
+    any point mid-sweep and guard the property the whole arm rests on rather than any
+    loss: the candidate set is byte-identical to the parent's, so pooling the two arms
+    measures seeds and nothing else. NOTES.md records this was verified by dry run
+    before the hours were committed - this makes it a standing check instead of a
+    note-time assertion.
+    """
+    parent_dir = root / "arch-zoo-100m-v4-head-paired"
+    confirm_dir = root / "arch-zoo-100m-v4-head-paired-confirm"
+    if not confirm_dir.is_dir():
+        return
+
+    parent_zoo = json.loads((parent_dir / "zoo_definition.json").read_text())
+    confirm_zoo = json.loads((confirm_dir / "zoo_definition.json").read_text())
+    audit.check(
+        "§2c v4-confirm: candidate set byte-identical to the parent's",
+        True,
+        parent_zoo["candidates"] == confirm_zoo["candidates"],
+        "NOTES.md design integrity",
+        "8 candidates; the two definitions differ in experiment_id alone",
+    )
+
+    rows = arm_results(root, confirm_dir.name)
+    seeds = {51, 52, 53}
+    audit.check(
+        "§2c v4-confirm: every ledger row is on a fresh seed",
+        True,
+        all(row.seed in seeds for row in rows),
+        "NOTES.md",
+        "42-50 were already used to design, screen or score something in this phase",
+    )
+    audit.check(
+        "§2c v4-confirm: the plan is flat at 1200 steps",
+        True,
+        all(row.steps == 1200 for row in rows),
+        "NOTES.md",
+        f"{len(rows)} of 24 rows written so far",
+    )
+    audit.check(
+        "§2c v4-confirm: the structural join reaches the paired genes",
+        True,
+        all(
+            row.hidden_size in (512, 896) and row.attention_heads in (8, 16)
+            for row in rows
+        ),
+        "NOTES.md design",
+        "hidden_size x attention_heads is the crossing the pooled rule reads",
+    )
+    if len(rows) < 24:
+        return
+
+    # The six-seed record, as the pooled analysis wrote it into the parent's
+    # decision.md, and the branch as HEAD_PAIRING_RULE decides it - recomputed here
+    # from the two arms' ledgers concatenated, for the same reason as
+    # pooled_confirmation_results: a seed list handed to one directory would
+    # report the three-seed result under a six-seed label.
+    from act.search.architecture_report import (
+        best_available_summary,
+        head_pairing_decision,
+        paired_level_split,
+    )
+
+    pooled = arm_results(root, parent_dir.name) + rows
+    outcome = best_available_summary(pooled, sorted({r.seed for r in pooled}))
+    rule = head_pairing_decision(outcome)
+    audit.check(
+        "§2c v4 pooled: pre-registered branch",
+        "HEAD EFFECT IS REAL AT WIDE WIDTH",
+        rule["label"],
+        "§2c",
+        "HEAD_PAIRING_RULE, all five conditions",
+    )
+    audit.check(
+        "§2c v4 pooled: every rule condition met",
+        True,
+        all(row["met"] for row in rule["conditions"]) and len(rule["conditions"]) == 5,
+        "§2c",
+    )
+
+    paired = paired_design_contrast(pooled, "attention_heads")
+    audit.check("§2c v4 pooled: paired units", 24, paired["pairs"], "§2c", "4 pairs x 6 seeds")
+    audit.check("§2c v4 pooled: head contrast", -0.0234, paired["mean_difference"], "§2c")
+    audit.check(
+        "§2c v4 pooled: head contrast p",
+        0.0115,
+        paired["p"],
+        "§2c",
+        "Monte-Carlo, 2^24 sign vectors past the enumeration cap",
+        tolerance=0.05,
+    )
+    audit.check(
+        "§2c v4 pooled: within-pair signs still inconsistent",
+        True,
+        not paired["sign_consistent"],
+        "§2c",
+        f"{paired['negative']} negative, {paired['positive']} positive",
+    )
+    audit.check("§2c v4 pooled: negative pairs", 17, paired["negative"], "§2c")
+
+    split = paired_level_split(pooled, "attention_heads", "hidden_size")["levels"]
+    audit.check("§2c v4 pooled: head effect at H=512", 0.0084, split["512"]["mean_difference"], "§2c")
+    audit.check(
+        "§2c v4 pooled: H=512 head effect non-significant",
+        True,
+        split["512"]["p"] > 0.05,
+        "§2c",
+        f"p = {split['512']['p']:.3f}, 12 units",
+    )
+    audit.check("§2c v4 pooled: head effect at H=896", -0.0553, split["896"]["mean_difference"], "§2c")
+    audit.check(
+        "§2c v4 pooled: at H=896 every pair favours more heads",
+        12,
+        split["896"]["negative"],
+        "§2c",
+        "12 units, so the exact p is at its 2 / 2^12 floor",
+    )
+    audit.check(
+        "§2c v4 pooled: H=896 head effect at the exact floor",
+        4.88e-04,
+        split["896"]["p"],
+        "§2c",
+    )
+
+    crossed = crossed_contrast(pooled, 1200)
+    hidden = crossed["main"]["hidden_size"]
+    heads = crossed["main"]["attention_heads"]
+    audit.check("§2c v4 pooled: width contrast", -0.1617, hidden["nats"], "§2c")
+    audit.check(
+        "§2c v4 pooled: width at the Monte-Carlo resolution",
+        True,
+        hidden["at_floor"],
+        "§2c",
+        "5e-06 at 200,000 draws",
+    )
+    audit.check("§2c v4 pooled: interaction size", 0.0636, heads["interaction_nats"], "§2c")
+    audit.check(
+        "§2c v4 pooled: interaction at its 6-seed floor",
+        0.03125,
+        heads["interaction_p_seed_blocked"],
+        "§2c",
+        "2 / 2^6 - below the declared 0.05, which three seeds could not reach",
+    )
+    contrasts = heads["interaction_seed_contrasts"]
+    audit.check(
+        "§2c v4 pooled: all six seed contrasts agree in sign",
+        True,
+        len(contrasts) == 6 and all(value > 0 for value in contrasts),
+        "§2c",
+        f"{len(contrasts)} contrasts",
+    )
+    audit.check("§2c v4 pooled: best architecture", "hd2_D10_H896_E16_A6_W128_Hd16", outcome["best"], "§2c")
+    audit.check("§2c v4 pooled: spread", 0.2221, outcome["architecture_spread"], "§2c")
+    audit.check("§2c v4 pooled: spread in seed-noise units", 13.56, outcome["sigmas"], "§2c")
+
+
 def check_replication_rule(root: Path, audit: Audit) -> None:
     """The pre-registered rule's branch, computed from the same outcome it renders from."""
     from act.search.architecture_report import best_available_summary
@@ -604,18 +763,18 @@ def check_power_study(root: Path, audit: Audit, *, quick: bool) -> None:
     )
     audit.check("§9a: the per-run seed std it is computed against", 0.0390, noise, "§9a")
 
+    # Every power figure the check reads, computed up front and in parallel. Each
+    # call is an independent Monte-Carlo run seeded inside ``power_at`` (seed=0), so
+    # the numbers are identical to calling them one by one - only the wall clock
+    # changes: this check was 27 s of the audit's full mode, bounded by nothing
+    # but the serial loop.
+    specs = [(0.0, 13, 2), (0.30, 13, 2), (0.20, 13, 2)]
+    if not quick:
+        specs += [(0.15, 26, 2), (0.10, 26, 2), (0.10, 13, 2), (0.10, 13, 3), (0.10, 13, 4)]
+    powers = _powers_in_parallel(population, noise, specs)
+
     def power(advantage: float, *, set_size: int = 13, blocks: int = 2) -> float:
-        return power_at(
-            population,
-            advantage=advantage,
-            model="shift-all",
-            statistic="mean",
-            set_size=set_size,
-            blocks=blocks,
-            noise=noise,
-            replicates=200,
-            samples=2_000,
-        )
+        return powers[(advantage, set_size, blocks)]
 
     audit.check(
         "§9a: 13 per set rejects a true null only at the nominal rate",
@@ -647,16 +806,78 @@ def check_power_study(root: Path, audit: Audit, *, quick: bool) -> None:
     )
 
 
-def run_audit(root: Path, *, quick: bool = False) -> Audit:
+def _power_for(args: tuple) -> tuple[tuple, float]:
+    population, noise, (advantage, set_size, blocks) = args
+    return (advantage, set_size, blocks), power_at(
+        population,
+        advantage=advantage,
+        model="shift-all",
+        statistic="mean",
+        set_size=set_size,
+        blocks=blocks,
+        noise=noise,
+        replicates=200,
+        samples=2_000,
+    )
+
+
+def _powers_in_parallel(
+    population: list[float], noise: float, specs: list[tuple]
+) -> dict[tuple, float]:
+    import concurrent.futures
+
+    jobs = [(population, noise, spec) for spec in specs]
+    with concurrent.futures.ProcessPoolExecutor(max_workers=len(jobs)) as pool:
+        return dict(pool.map(_power_for, jobs))
+
+
+#: The audit's checks in record order. Each is a pure function of the artifacts root
+#: that appends to the audit it is handed, so they can run in separate processes and
+#: have their claims concatenated in this order - the output is identical to running
+#: them one after another, only the wall clock changes (measured: 63 s -> ~28 s in
+#: full mode, 27 s -> ~8 s in quick mode, bounded by the slowest check).
+CHECKS: tuple[str, ...] = (
+    "check_costs",
+    "check_horizon_table",
+    "check_v1_screening",
+    "check_attribution",
+    "check_structure_and_budget",
+    "check_power_study",
+    "check_replication_rule",
+    "check_head_paired",
+    "check_head_paired_confirm",
+)
+
+
+def _run_check(name: str, root: str, quick: bool) -> list[Claim]:
+    """One check in its own audit, for a worker process."""
+    import inspect
+
+    check = globals()[name]
     audit = Audit()
-    check_costs(root, audit)
-    check_horizon_table(root, audit)
-    check_v1_screening(root, audit)
-    check_attribution(root, audit, quick=quick)
-    check_structure_and_budget(root, audit, quick=quick)
-    check_power_study(root, audit, quick=quick)
-    check_replication_rule(root, audit)
-    check_head_paired(root, audit)
+    kwargs = {"quick": quick} if "quick" in inspect.signature(check).parameters else {}
+    check(Path(root), audit, **kwargs)
+    return audit.claims
+
+
+def run_audit(root: Path, *, quick: bool = False, parallel: bool = True) -> Audit:
+    """Every check, claims in record order.
+
+    ``parallel`` runs the checks in a process pool; it is what makes the audit
+    cheap enough to sit in the test suite. Set it off to debug a single check's
+    traceback in-process.
+    """
+    audit = Audit()
+    if not parallel:
+        for name in CHECKS:
+            audit.claims.extend(_run_check(name, str(root), quick))
+        return audit
+    import concurrent.futures
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=len(CHECKS)) as pool:
+        futures = [pool.submit(_run_check, name, str(root), quick) for name in CHECKS]
+        for future in futures:
+            audit.claims.extend(future.result())
     return audit
 
 
@@ -666,11 +887,16 @@ def main() -> None:
     parser.add_argument(
         "--quick",
         action="store_true",
-        help="skip the 200-draw budget scan, which is the only slow part",
+        help="skip the 200-draw budget scan and the power study's sampling",
+    )
+    parser.add_argument(
+        "--serial",
+        action="store_true",
+        help="run the checks one after another in this process (for debugging)",
     )
     args = parser.parse_args()
 
-    audit = run_audit(Path(args.artifacts_root), quick=args.quick)
+    audit = run_audit(Path(args.artifacts_root), quick=args.quick, parallel=not args.serial)
     for claim in audit.claims:
         mark = "ok  " if claim.ok else "FAIL"
         detail = f"  ({claim.detail})" if claim.detail else ""

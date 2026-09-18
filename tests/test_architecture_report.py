@@ -187,9 +187,9 @@ def test_best_available_summary_falls_back_to_shorter_stages():
 # --- the decision rule ----------------------------------------------------
 
 
-def decision_text(tmp_path, results, steps=STEPS, seeds=(42,)) -> str:
+def decision_text(tmp_path, results, steps=STEPS, seeds=(42,), samples=200_000) -> str:
     path = tmp_path / "decision.md"
-    write_decision(path, effect_summary(results, steps, list(seeds)))
+    write_decision(path, effect_summary(results, steps, list(seeds), samples=samples))
     return path.read_text()
 
 
@@ -401,7 +401,9 @@ def test_recorded_v2_effect_survives_dropping_any_one_architecture():
     worst_p = 0.0
     for dropped in names:
         reduced = [r for r in results if r.name != dropped]
-        blocked = blocked_permutation_test(reduced, 1200)
+        # 20k draws resolve to 5e-05, far below the 0.01 this asserts; the default
+        # 200k is the record's resolution and costs 8x here for no extra decision.
+        blocked = blocked_permutation_test(reduced, 1200, samples=20_000)
         assert blocked["available"], f"dropping {dropped} left no testable design"
         assert blocked["architectures"] == len(names) - 1
         worst_p = max(worst_p, blocked["p"])
@@ -2225,7 +2227,7 @@ def test_recorded_structural_signal_is_present_at_a_third_of_the_cost():
 # --- procedure floors on the crossed contrasts -----------------------------
 
 
-def test_crossed_main_effect_reports_its_exact_floor_signal():
+def test_crossed_main_effect_reports_its_exact_floor_signal(tmp_path):
     """The main effects are the phase's headline numbers and they land on the
     enumeration's floor. A record that printed only `p = 4.3e-05` would invite the
     reader to treat it as "this is how significant the effect is"; what it actually
@@ -2243,13 +2245,13 @@ def test_crossed_main_effect_reports_its_exact_floor_signal():
         assert main["at_floor"] is True, gene
         assert main["p"] == pytest.approx(main["min_achievable_p"])
 
-    text = decision_text(Path("/tmp"), design, steps=STEPS, seeds=(42, 43, 44))
+    text = decision_text(tmp_path, design, steps=STEPS, seeds=(42, 43, 44))
     assert "Procedure floor" in text
     assert "at floor" in text
     assert "largest the design can express" in text
 
 
-def test_crossed_main_effect_is_not_labelled_at_floor_when_it_is_not():
+def test_crossed_main_effect_is_not_labelled_at_floor_when_it_is_not(tmp_path):
     """The floor label is a claim about the design, so it must not be applied to a
     weak or noisy effect. Same design, one arm's difference buried in noise: the
     p must rise off the floor and the label must clear."""
@@ -2258,11 +2260,11 @@ def test_crossed_main_effect_is_not_labelled_at_floor_when_it_is_not():
     main = contrast["main"]["hidden_size"]
     assert main["p"] > main["min_achievable_p"]
     assert main["at_floor"] is False
-    text = decision_text(Path("/tmp"), design, steps=STEPS, seeds=(42, 43, 44))
+    text = decision_text(tmp_path, design, steps=STEPS, seeds=(42, 43, 44))
     assert "largest the design can express" not in text
 
 
-def test_monte_carlo_main_effect_still_reports_a_floor():
+def test_monte_carlo_main_effect_still_reports_a_floor(tmp_path):
     """Past the enumeration cap the exact test becomes Monte-Carlo, whose floor is
     1/(samples+1). Leaving it unstated would let a sampling resolution pass for a
     strong result - the same failure mode as quoting a floor-bound p as though it
@@ -2283,7 +2285,7 @@ def test_monte_carlo_main_effect_still_reports_a_floor():
         assert main["at_floor"] is True, gene
 
     text = decision_text(
-        Path("/tmp"), six, steps=STEPS, seeds=tuple(sorted({e.seed for e in six}))
+        tmp_path, six, steps=STEPS, seeds=tuple(sorted({e.seed for e in six})), samples=2_000
     )
     assert "Procedure floor" in text
     assert "raise `--samples`" in text
