@@ -8,8 +8,12 @@ import torch
 
 from act.model.dense import DenseCausalLM
 from act.model.moe import StaticMoECausalLM
+from act.model.v0_moe import V0MoECausalLM
 
-LanguageModel = DenseCausalLM | StaticMoECausalLM
+#: Any model exposing ``forward(tokens) -> logits`` and ``loss(tokens) -> scalar``.
+#: The architecture-search path builds ``V0MoECausalLM``, so it belongs here: a
+#: finalist that could not be probed would silently skip section 19's evaluation.
+LanguageModel = DenseCausalLM | StaticMoECausalLM | V0MoECausalLM
 
 
 @dataclass(frozen=True)

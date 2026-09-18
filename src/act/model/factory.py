@@ -190,8 +190,17 @@ def rebuild_model_from_genome(
     return rebuilt
 
 
-def v0_moe_config_from_genome(genome: ArchitectureGenome) -> V0MoEConfig:
-    """Derive the declared-scale MoE config from a V0 MoE genome."""
+def v0_moe_config_from_genome(
+    genome: ArchitectureGenome, *, honor_module_types: bool = False
+) -> V0MoEConfig:
+    """Derive the declared-scale MoE config from a V0 MoE genome.
+
+    ``honor_module_types`` is opt-in. Historically ``layer.module`` was metadata
+    on this path and the model always built attention, so honouring it by
+    default would silently change the reconstruction of every already-recorded
+    genome whose module metadata had been edited by a topology mutation. Static
+    architecture search opts in; legacy and churn paths keep the old meaning.
+    """
     validation = validate_genome(genome)
     if not validation.valid:
         raise ValueError("cannot build V0 MoE model from invalid genome: " + "; ".join(validation.errors))
@@ -218,14 +227,17 @@ def v0_moe_config_from_genome(genome: ArchitectureGenome) -> V0MoEConfig:
         expert_ids=tuple(
             tuple(expert.id for expert in layer.experts) for layer in enabled
         ),
+        module_types=tuple(layer.module for layer in enabled) if honor_module_types else (),
     )
 
 
 def v0_moe_model_from_genome(
     genome: ArchitectureGenome,
+    *,
+    honor_module_types: bool = False,
 ) -> V0MoECausalLM:
     """Construct a fresh V0 sparse-MoE model matching a genome exactly."""
-    config = v0_moe_config_from_genome(genome)
+    config = v0_moe_config_from_genome(genome, honor_module_types=honor_module_types)
     return V0MoECausalLM(config)
 
 

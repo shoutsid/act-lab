@@ -26,10 +26,17 @@ both reproduced to the parameter by :func:`estimated_parameter_count`.
 """
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 import torch
 from torch import Tensor, nn
 from torch.utils.checkpoint import checkpoint
+
+
+MoEModuleType = Literal["attention", "gdn", "hybrid"]
+"""Per-layer sequence-mixer choice: attention, a gated delta mixer, or both."""
+
+MODULE_TYPES: frozenset[str] = frozenset({"attention", "gdn", "hybrid"})
 
 
 @dataclass(frozen=True)
@@ -47,8 +54,39 @@ class V0MoEConfig:
     rotary_base: float = 10_000.0
     norm_epsilon: float = 1e-6
     expert_ids: tuple[tuple[str, ...], ...] = field(default=())
+    module_types: tuple[str, ...] = ()
+    """Per-layer sequence mixers; empty means every layer is ``attention``.
+
+    Empty is the historical default and keeps every pre-existing configuration,
+    model reconstruction and parameter count bit-identical. This field is only
+    populated by callers that opt in (see ``honor_module_types`` on
+    :func:`act.model.factory.v0_moe_config_from_genome`).
+    """
+
+    gdn_chunk_size: int = 0
+    """Timesteps per checkpointed segment of the gated delta scan; 0 disables it.
+
+    The recurrence is written as an explicit loop, which means autograd retains
+    a ``(batch, heads, key_dim, value_dim)`` write *and* state tensor for every
+    one of the ``context_size`` steps. At batch 2, context 1024 and hidden 768
+    that is roughly 0.8 GB retained per GDN layer - measured, not estimated: 2
+    GDN layers peak at 5.0 GB, 4 at 6.6 GB, and 8 exceed an 8 GB card. Segmenting
+    the scan into checkpointed chunks stores only the chunk boundaries and
+    recomputes within a chunk, which cuts retention by roughly an order of
+    magnitude at the cost of one extra forward per segment.
+
+    Default 0 keeps every existing configuration bit-identical; the chunked path
+    is an opt-in that must produce the same numbers (see
+    ``tests/test_gated_delta_mixer.py``).
+    """
 
     def __post_init__(self) -> None:
+        if len(self.module_types) not in (0, self.depth):
+            raise ValueError("module_types must be empty or carry one entry per layer")
+        if self.gdn_chunk_size < 0:
+            raise ValueError("gdn_chunk_size must not be negative")
+        if any(module not in MODULE_TYPES for module in self.module_types):
+            raise ValueError("unsupported module type in module_types")
         if self.hidden_size % self.attention_heads:
             raise ValueError("hidden_size must be divisible by attention_heads")
         if len(self.experts_per_layer) != self.depth:
@@ -140,6 +178,45 @@ def validate_declared_v0_config(config: V0MoEConfig) -> None:
         raise ValueError("declared config: context_size must stay kernel-aligned")
 
 
+def resolve_module_types(config: V0MoEConfig) -> tuple[str, ...]:
+    """Per-layer mixer for every block, defaulting to all-attention."""
+    if not config.module_types:
+        return ("attention",) * config.depth
+    if len(config.module_types) == 1:
+        return config.module_types * config.depth
+    return config.module_types
+
+
+def mixer_parameter_count(config: V0MoEConfig, module_type: str = "attention") -> int:
+    """Parameters in one block's sequence mixer.
+
+    Attention is ``4 h^2`` (fused QKV plus output). The gated delta mixer adds
+    two ``h x heads`` gate projections, keeping it within a few percent of an
+    attention block at matched width.
+    """
+    h = config.hidden_size
+    attention = 4 * h * h
+    if module_type == "attention":
+        return attention
+    gdn = attention + 2 * h * config.attention_heads
+    if module_type == "gdn":
+        return gdn
+    if module_type == "hybrid":
+        return attention + gdn
+    raise ValueError(f"unsupported module type {module_type}")
+
+
+def _norm_parameter_count(module_type: str) -> int:
+    """RMSNorm widths in a block: every block has ``norm_moe``, plus one norm
+    per mixer present (``norm_attn`` and/or ``norm_mixer``)."""
+    count = 1
+    if module_type in {"attention", "hybrid"}:
+        count += 1
+    if module_type in {"gdn", "hybrid"}:
+        count += 1
+    return count
+
+
 def estimated_parameter_count(config: V0MoEConfig) -> tuple[int, int]:
     """Return ``(total, active)`` parameter counts without materializing weights.
 
@@ -148,17 +225,19 @@ def estimated_parameter_count(config: V0MoEConfig) -> tuple[int, int]:
     convention the pre-registered cost identity uses.
     """
     h = config.hidden_size
-    attention = 4 * h * h  # fused QKV + output projections, bias-free
-    block_norms = 2 * h  # norm_attn + norm_moe per block
+    module_types = resolve_module_types(config)
     router = lambda count: h * count  # noqa: E731 - bias-free routing head
     expert = 2 * h * config.expert_width
     embeddings = config.vocab_size * h  # tied: covers input and output head
     final_norm = h
     total = embeddings + final_norm
     active = embeddings + final_norm
-    for count in config.experts_per_layer:
-        total += attention + block_norms + router(count) + count * expert
-        active += attention + block_norms + router(count) + config.active_experts * expert
+    for index, count in enumerate(config.experts_per_layer):
+        module_type = module_types[index]
+        mixer = mixer_parameter_count(config, module_type)
+        norms = _norm_parameter_count(module_type) * h
+        total += mixer + norms + router(count) + count * expert
+        active += mixer + norms + router(count) + config.active_experts * expert
     return total, active
 
 
@@ -209,6 +288,124 @@ class _SelfAttention(nn.Module):
         attended = nn.functional.scaled_dot_product_attention(q, k, v, is_causal=True)
         attended = attended.transpose(1, 2).reshape(batch, seq, self.heads * self.head_dim)
         return self.out(attended)
+
+
+class _GatedDeltaMixer(nn.Module):
+    """Gated delta-rule sequence mixer with a linear-time recurrent state.
+
+    Per head, with ``S`` the ``(key_dim x value_dim)`` state and ``q_t``/``k_t``
+    L2-normalized, this implements exactly::
+
+        alpha_t = exp(-softplus(gate_t))   decay, one value per key dimension
+        beta_t  = sigmoid(write_t)         write strength, one value per head
+        S_t     = diag(alpha_t) (I - beta_t k_t k_t^T) S_{t-1} + beta_t k_t v_t^T
+        o_t     = S_t^T q_t
+
+    The erase term makes each write a *correction* of the state's current
+    prediction ``S_{t-1}^T k_t`` rather than an accumulation, and the gate decays
+    the retained state along the key dimension.
+
+    This is a compact member of the Gated DeltaNet family, not Qwen3-Next's
+    block: it shares one key/value dimension and omits the short convolution, so
+    its cost is comparable to attention (``4 h^2`` plus the two ``h x heads``
+    gates) rather than reproducing that model's geometry. The recurrence is
+    deliberately written as an explicit scan and pinned by test, because a wrong
+    mixer would corrupt a search for exactly the reason a wrong seed did.
+    """
+
+    def __init__(self, config: V0MoEConfig) -> None:
+        super().__init__()
+        hidden = config.hidden_size
+        self.heads = config.attention_heads
+        self.head_dim = hidden // self.heads
+        self.q_proj = nn.Linear(hidden, hidden, bias=False)
+        self.k_proj = nn.Linear(hidden, hidden, bias=False)
+        self.v_proj = nn.Linear(hidden, hidden, bias=False)
+        self.gate_proj = nn.Linear(hidden, self.heads, bias=False)
+        self.write_proj = nn.Linear(hidden, self.heads, bias=False)
+        self.out = nn.Linear(hidden, hidden, bias=False)
+        self.chunk_size = config.gdn_chunk_size
+
+    def project(self, hidden: Tensor) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
+        """Return ``(q, k, v, alpha, beta)`` with gates already activated."""
+        batch, seq, _ = hidden.shape
+        shape = (batch, seq, self.heads, self.head_dim)
+        q = nn.functional.normalize(self.q_proj(hidden).reshape(shape), dim=-1)
+        k = nn.functional.normalize(self.k_proj(hidden).reshape(shape), dim=-1)
+        v = self.v_proj(hidden).reshape(shape)
+        alpha = torch.exp(-nn.functional.softplus(self.gate_proj(hidden)))
+        beta = torch.sigmoid(self.write_proj(hidden))
+        return q, k, v, alpha, beta
+
+    def scan_segment(
+        self,
+        state: Tensor,
+        q: Tensor,
+        k: Tensor,
+        v: Tensor,
+        alpha: Tensor,
+        beta: Tensor,
+    ) -> tuple[Tensor, Tensor]:
+        """Advance the recurrence over one segment; returns ``(state, outputs)``.
+
+        Kept parameter-free and pure so it can be wrapped in ``checkpoint``
+        without the module's weights entering the segment's saved state.
+        """
+        seq = q.shape[1]
+        outputs: list[Tensor] = []
+        for step in range(seq):
+            q_t, k_t, v_t = q[:, step], k[:, step], v[:, step]
+            gate = alpha[:, step].unsqueeze(-1).unsqueeze(-1)
+            strength = beta[:, step].unsqueeze(-1).unsqueeze(-1)
+            prediction = torch.einsum("bhij,bhi->bhj", state, k_t)
+            error = v_t - prediction
+            write = torch.einsum("bhi,bhj->bhij", k_t, error)
+            state = state * gate + strength * write
+            outputs.append(torch.einsum("bhij,bhi->bhj", state, q_t))
+        return state, torch.stack(outputs, dim=1)
+
+    def mix(
+        self,
+        q: Tensor,
+        k: Tensor,
+        v: Tensor,
+        alpha: Tensor,
+        beta: Tensor,
+        chunk_size: int = 0,
+    ) -> Tensor:
+        """Run the recurrence over ``(batch, seq, heads, head_dim)`` inputs.
+
+        ``chunk_size > 0`` splits the scan into checkpointed segments so the
+        segment boundaries are the only state autograd retains. The arithmetic
+        and its order are unchanged, so a chunked run is numerically identical
+        to an unchunked one and the setting can never confound a comparison.
+        """
+        batch, seq, _, dim = q.shape
+        state = q.new_zeros(batch, self.heads, dim, dim)
+
+        if chunk_size <= 0 or chunk_size >= seq:
+            state, stacked = self.scan_segment(state, q, k, v, alpha, beta)
+        else:
+            pieces: list[Tensor] = []
+            for start in range(0, seq, chunk_size):
+                stop = min(start + chunk_size, seq)
+                state, piece = checkpoint(
+                    self.scan_segment,
+                    state,
+                    q[:, start:stop],
+                    k[:, start:stop],
+                    v[:, start:stop],
+                    alpha[:, start:stop],
+                    beta[:, start:stop],
+                    use_reentrant=False,
+                )
+                pieces.append(piece)
+            stacked = torch.cat(pieces, dim=1)
+        return self.out(stacked.reshape(batch, seq, self.heads * dim))
+
+    def forward(self, hidden: Tensor) -> Tensor:
+        q, k, v, alpha, beta = self.project(hidden)
+        return self.mix(q, k, v, alpha, beta, self.chunk_size)
 
 
 class _MoEFeedForward(nn.Module):
@@ -306,15 +503,36 @@ class _MoEFeedForward(nn.Module):
 
 
 class V0MoEBlock(nn.Module):
-    def __init__(self, config: V0MoEConfig, expert_ids: tuple[str, ...]) -> None:
+    """A sequence mixer followed by a sparse MoE feed-forward, both residual."""
+
+    def __init__(
+        self,
+        config: V0MoEConfig,
+        expert_ids: tuple[str, ...],
+        module_type: str = "attention",
+    ) -> None:
         super().__init__()
-        self.norm_attn = _RMSNorm(config.hidden_size, config.norm_epsilon)
-        self.attention = _SelfAttention(config)
+        if module_type not in MODULE_TYPES:
+            raise ValueError(f"unsupported module type {module_type}")
+        self.module_type = module_type
+        self.attention = (
+            _SelfAttention(config) if module_type in {"attention", "hybrid"} else None
+        )
+        self.mixer = (
+            _GatedDeltaMixer(config) if module_type in {"gdn", "hybrid"} else None
+        )
+        if self.attention is not None:
+            self.norm_attn = _RMSNorm(config.hidden_size, config.norm_epsilon)
+        if self.mixer is not None:
+            self.norm_mixer = _RMSNorm(config.hidden_size, config.norm_epsilon)
         self.norm_moe = _RMSNorm(config.hidden_size, config.norm_epsilon)
         self.moe = _MoEFeedForward(config, expert_ids)
 
     def forward(self, hidden: Tensor, positions: Tensor) -> Tensor:
-        hidden = hidden + self.attention(self.norm_attn(hidden), positions)
+        if self.attention is not None:
+            hidden = hidden + self.attention(self.norm_attn(hidden), positions)
+        if self.mixer is not None:
+            hidden = hidden + self.mixer(self.norm_mixer(hidden))
         return hidden + self.moe(self.norm_moe(hidden))
 
 
@@ -328,9 +546,11 @@ class V0MoECausalLM(nn.Module):
             tuple(f"L{layer}E{expert}" for expert in range(config.experts_per_layer[layer]))
             for layer in range(config.depth)
         )
+        module_types = resolve_module_types(config)
         self.token_embedding = nn.Embedding(config.vocab_size, config.hidden_size)
         self.blocks = nn.ModuleList(
-            V0MoEBlock(config, expert_ids[layer]) for layer in range(config.depth)
+            V0MoEBlock(config, expert_ids[layer], module_types[layer])
+            for layer in range(config.depth)
         )
         self.final_norm = _RMSNorm(config.hidden_size, config.norm_epsilon)
         self.activation_checkpointing = False
