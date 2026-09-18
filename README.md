@@ -85,6 +85,147 @@ The test requires interrupted training followed by checkpoint restore to match
 continuous training parameter-for-parameter. This is the baseline contract
 before adding a static MoE or topology mutation to the real training runtime.
 
+## Architecture search phase
+
+Random topology churn did not reliably improve real-text training, and the
+probe-based adaptive selector did not beat random churn, so the project pivoted
+to the question underneath it: **does architecture materially affect training
+efficiency at these scales, and is a better architecture findable by search?**
+
+The answer, on the evidence in `artifacts/ARCH_SEARCH_FINDINGS.md`, is **yes**,
+and the lever is the residual stream. At a matched total-parameter budget
+(×1.02–1.08 across the phase's matched designs, ×1.08 on this one) an 8-candidate
+design reaches a 0.2462-nat spread against 0.0148 nats of seed noise, exact
+seed-matched `p <= 5e-06` (the Monte-Carlo resolution over 8 candidates x 3 seeds),
+surviving both leave-one-architecture-out and a switch from held-out to training
+loss. A crossed
+factorial then attributes it — **hidden size −0.1836 nats, depth +0.0783 nats with
+shallow beating deep**, both at the exact enumeration's floor `p = 4.3e-05` and
+both surviving a switch to training loss. The active-parameters hypothesis that
+motivated the earlier phase is refuted: across a ×4.5 range under a matched
+budget, active parameters show no association with loss, and the fully dense
+design places seventh of eight.
+
+That attribution was then **replicated on fresh seeds and the interaction with it**:
+three seeds never used to design or screen anything give −0.1851 / +0.0865, and
+pooling all six (48 runs) leaves the main effects at −0.1843 / +0.0824 with the
+same ranking, while the interaction the three-seed arm could only call a lead
+resolves to **+0.0827 nats** with every one of the six seed contrasts agreeing and
+the calibrated test at its six-seed floor. The reading is that the depth penalty
+depends on the width — so a search has to mutate the two **jointly**, not one at a
+time. How a branch like that is decided is pre-registered, and evaluated by
+`--replication-rule` rather than by eye.
+
+That `p = 4.3e-05` is worth reading carefully, and the decision record now labels
+it: with 46,656 re-splittings the exact test cannot report less than 2/46,656, so
+the main effects sit on the *procedure's* floor. The p says the observed
+separation is the largest that design can express; the effect *size* in nats is
+the quantity that carries the finding. Every test in the project reports its floor
+beside its p for the same reason — the horizon arm had already shown what reading
+a floor-bound statistic as evidence costs, and the confirmation arm what it costs
+the other way round: a rule whose threshold sits *below* the test's floor cannot be
+decided by more analysis of the same seeds, only by more seeds.
+
+One confound was recorded against that attribution rather than hidden: this model
+family fixes `heads = hidden_size / 64`, so "wider residual stream" and "more
+attention heads" are the same knob in every design run, and head count is
+**parameter-free** at fixed hidden size — so the two readings implied opposite
+advice about where to spend a search budget. A head-paired arm then broke the
+confound with two candidates differing in nothing but head count, matched to
+*identical* total and active parameters, and the answer keeps the attribution as
+given: **head count is worth −0.018 nats pooled (p = 0.14, signs 8/4) while width
+holds at −0.1562 nats at the factorial's floor**, so the lever is residual-stream
+width rather than a free gene wearing its name. What that arm leaves is a lead it
+cannot decide — the head effect is level-dependent (+0.011 nats at hidden 512,
+−0.046 at 896, with all six wide-level pairs favouring more heads) and the
+interaction's three-seed floor is 0.25 — so more heads stay a candidate at wide
+hidden sizes, worth about a quarter of the width effect at zero parameter cost.
+
+The effect's *size* depends on the training horizon, and that was measured rather
+than assumed: the spread decays 1.65× per doubling of training, replicating the
+earlier estimate on a controlled design — but seed noise decays with it, so the
+ordering is horizon-stable and the same architecture wins at 400, 800 and 1200
+steps.
+
+What survives a *short* run is not just the ordering but the explanation: fitting
+the genes the factorial identified as a **fixed** model at 400 and at 1200 steps
+gives R² 0.927 vs 0.953 with the identified lever individually significant at both
+(p = 0.0145 vs 0.00035), on the same eight candidates. A 400-step screen therefore costs ~1.1 GPU-hours against 3.2 for the same
+answer, which is the largest available saving in a phase whose GPU budget is now
+the binding constraint. Screening eliminates; it does not adjudicate a near tie,
+because promotion needs the margin to clear the seed noise — which the halving
+plan now prints for each cut, naming the two candidates it could not separate and
+any others inside the noise. The threshold is derived, not pinned: it is the
+standard error of the difference between two screen means, `std * sqrt(2 / seeds)`,
+from the measured seed stds of the matched horizon set (0.0286 nats at 400 steps,
+0.0165 at 800, 0.0148 at 1200) — so a two-seed 400-step screen needs a 0.0286-nat
+margin, and `--screen-noise-nats` overrides it. `--plan screen` is that loop as a runnable plan — screen every candidate
+at `--stage1-steps`, confirm the survivors at `--stage3-steps` — and
+`--promote-ties` acts on the print: when the cut sits inside the noise it advances
+the whole borderline set, including the candidate the cut landed on, instead of
+letting an unresolvable margin decide which candidate is never trained again.
+
+What a matched budget can and cannot identify is derived in §2b of that document
+— at fixed total parameters the free genes are not independent, expert count and
+width are one knob rather than two, and the obvious factorial (hidden × width)
+turns out to be fully confounded with depth, which is checkable by enumeration
+before spending GPU hours.
+
+```bash
+# screen a matched or crossed zoo, then report on it without retraining
+PYTHONPATH=src python scripts/arch_zoo_screen.py --design crossed \
+  --cross-factors depth,hidden_size --match-target 78000000 \
+  --plan screen --promote-ties --finalist-seeds 42,43,44
+PYTHONPATH=src python scripts/arch_zoo_analyze.py --experiment-id <id> --write
+```
+
+Analysis runs on a partial sweep: a seed that is still training is dropped from
+the crossed and paired contrasts — and from the seed-matched test, where the block
+count printed beside the p is the survivors — and **named** in the decision, so an
+interrupted arm reports over the seeds that finished instead of losing its
+headline test. The same disclosure separates an unfinished seed (fewer rows than
+the fullest seed) from an unbalanced one, which is a zoo defect and still refuses. A
+confirmation arm's four-outcome rule is applied by `--replication-rule` rather
+than read by eye, with its thresholds in `REPLICATION_RULE`. A sweep also says at
+launch when another one is already running, because a shared GPU is otherwise
+invisible from inside it: candidates just take proportionally longer, and the
+budget guard counts tokens rather than hours, so the arm looks stalled rather than
+contended. It also states its own plan before training — runs, tokens and projected
+GPU-hours — and, when the token budget guard would stop it part way, the stage and
+seed at which it would stop, so an arm that does not fit is visible on paper rather
+than discovered hours in. `--dry-run` prints the same without touching the GPU.
+
+Section 11's random arm has to match the curated set's *total* parameters, not
+just its parameter band. The band is a per-candidate constraint and the arm's
+budget is the set total, so they are different quantities: over 200 draws of the
+same size, a band-matched draw carries a **median 1.12×** the curated set's total
+(p10–p90 1.05×–1.18×, range 1.00×–1.25×, because the curated set sits at 86M
+against the nominal 100M — and a median 1.15× even at a ±15% band, so tightening
+the band does not buy equal compute). That is more training rather than a fair
+comparison:
+
+```bash
+PYTHONPATH=src python scripts/space_typicality.py \
+  --definition artifacts/arch-zoo-100m-v1/zoo_definition.json \
+  --budget-set artifacts/arch-zoo-100m-v1/zoo_definition.json \
+  --budget-candidates 13 --target-params 100000000 --tolerance 0.3
+```
+
+The record's own numbers are checked the same way as the code is. This recomputes
+every load-bearing figure from the ledgers — cost rows, the spread-and-noise table,
+the factorial's effects and their floors, the budget match, the structural claims —
+and fails when the document and the artifacts disagree:
+
+```bash
+PYTHONPATH=src python scripts/verify_record.py
+```
+
+The scan prints the launch command for the arm it matched, with every flag that
+decides the draw — the band included, because the driver's own default band draws a
+different set from the same seed (1.14× the curated budget against the matched
+0.9996×). Only then is the random arm trained on the architectures whose budget was
+matched.
+
 ## Deterministic token shards
 
 The shared data contract can generate checksum-addressed synthetic shards while
