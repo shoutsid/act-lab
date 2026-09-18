@@ -11,7 +11,11 @@ the tests: every decision is exercised against an injected fake client.
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import subprocess
+import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -31,6 +35,35 @@ import tarfile
 
 from act.training import V0SessionConfig, run_v0_session
 from act.training.v0_handoff import HANDOFF_DATASET, publish_seed, restore_seed
+
+
+class StubResponse:
+    def __init__(self, status_code: int) -> None:
+        self.status_code = status_code
+
+
+class StubHTTPError(Exception):
+    def __init__(self, message: str, response: StubResponse | None = None) -> None:
+        super().__init__(message)
+        self.response = response
+
+
+def stub_requests(monkeypatch, status_code: int) -> None:
+    """Stand in for the parts of `requests` the adapter touches.
+
+    `requests` is an optional Kaggle-side dependency (it ships with `kaggle`), so
+    the tests must not need it installed - which the module docstring already
+    promises and this file previously broke by importing it directly. The adapter
+    detects a missing dataset from the exception *type*, so a stub module with
+    that type is enough to exercise the real branch, and it keeps the test
+    independent of what happens to be installed in the running interpreter.
+    """
+    module = types.ModuleType("requests")
+    module.exceptions = types.SimpleNamespace(HTTPError=StubHTTPError)  # type: ignore[attr-defined]
+    module.models = types.SimpleNamespace(  # type: ignore[attr-defined]
+        Response=lambda: StubResponse(status_code)
+    )
+    monkeypatch.setitem(sys.modules, "requests", module)
 
 
 class FakeClient:
@@ -390,16 +423,15 @@ def test_restore_latest_ignores_partial_versions(tmp_path: Path) -> None:
     assert restored == []  # a manifest-less seed is not a version
 
 
-def test_restore_latest_treats_missing_dataset_as_bootstrap(tmp_path: Path) -> None:
+def test_restore_latest_treats_missing_dataset_as_bootstrap(
+    tmp_path: Path, monkeypatch
+) -> None:
     """Session 1 has nothing to restore: absence warns and continues."""
-    import requests
-
-    response = requests.models.Response()
-    response.status_code = 404
+    stub_requests(monkeypatch, status_code=404)
     client = FakeClient()
 
     def missing_download(dataset: str, target: Path) -> None:
-        raise requests.exceptions.HTTPError("404 not found", response=response)
+        raise StubHTTPError("404 not found", response=StubResponse(404))
 
     client.download_files = missing_download  # type: ignore[method-assign]
     messages: list[str] = []
@@ -436,8 +468,35 @@ def test_default_client_requires_the_kaggle_package(monkeypatch) -> None:
         kaggle_remote.default_client()
 
 
-def test_kaggle_api_adapter_is_lazy(monkeypatch) -> None:
-    """KaggleApiAdapter must not import kaggle at construction of the module."""
-    assert kaggle_remote.KAGGLE_AVAILABLE is True  # installed in this env
-    adapter = kaggle_remote.KaggleApiAdapter  # not instantiated here
-    assert adapter.__init__ is not None
+def test_kaggle_api_adapter_is_lazy() -> None:
+    """The adapter module must not import `kaggle` when it is imported.
+
+    The old form of this test asserted `KAGGLE_AVAILABLE is True`, with the
+    comment "installed in this env" - which made a statement about the machine
+    into a test, and failed on every interpreter without the optional package
+    even though the *code* is explicitly built to run without it (the flag is an
+    `importlib.util.find_spec` probe, not an import).
+
+    The property worth pinning is the import graph, and it is measured in a fresh
+    interpreter for two reasons: the answer does not depend on whether `kaggle`
+    happens to be installed, and it cannot be polluted by anything else in this
+    session that already imported it.
+    """
+    probe = (
+        "import sys, act.ops.kaggle_remote as m;"
+        " print(m.KAGGLE_AVAILABLE, 'kaggle' in sys.modules)"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        text=True,
+        check=True,
+        env={**os.environ, "PYTHONPATH": "src"},
+        cwd=Path(__file__).resolve().parent.parent,
+    )
+    available, imported = result.stdout.split()
+    # `available` may be either value depending on the interpreter; what must hold
+    # in both is that probing for the package did not import it.
+    assert imported == "False", result.stdout
+    assert available == ("True" if kaggle_remote.KAGGLE_AVAILABLE else "False")
+    assert kaggle_remote.KaggleApiAdapter.__init__ is not None
