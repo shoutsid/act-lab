@@ -1,15 +1,12 @@
-node_modules/
-.vercel/
 .venv/
-.grok/
-# Session state of the coding agent that works in this tree: tool scratch, not
+# Session state of the coding agents that work in this tree: tool scratch, not
 # project content, and rewriting it on every turn would keep the branch dirty.
 .omo/
+.codegraph
+.freebuff/
 AGENTS.md
 .project_id
-.node_modules.lock
 *.egg-info/
-.grok/app-env.json
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -66,6 +63,4 @@ artifacts/arch-zoo-*/*
 artifacts/mixer-benchmark/*
 !artifacts/mixer-benchmark/FINDINGS.md
 !artifacts/mixer-benchmark/mixer_throughput.json
-screenshots/*
-!screenshots/.gitkeep
 .DS_Store
