@@ -1,0 +1,27 @@
+{
+  "candidates_generated": 13,
+  "runs_completed": 47,
+  "candidate_training_flops": 2.29095046643712e+16,
+  "candidate_evaluation_flops": 556634757660672.0,
+  "search_overhead_flops": 0.0,
+  "total_search_flops": 2.346613942203187e+16,
+  "tokens_trained": 63078400,
+  "wall_clock_hours": 3.597536000307769,
+  "by_stage": {
+    "400": {
+      "runs": 26,
+      "tokens": 21299200,
+      "elapsed_hours": 1.244231414153328
+    },
+    "800": {
+      "runs": 12,
+      "tokens": 19660800,
+      "elapsed_hours": 1.09697978710611
+    },
+    "1200": {
+      "runs": 9,
+      "tokens": 22118400,
+      "elapsed_hours": 1.256324799048331
+    }
+  }
+}

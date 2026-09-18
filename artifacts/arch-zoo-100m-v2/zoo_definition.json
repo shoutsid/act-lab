@@ -1,0 +1,4536 @@
+{
+  "experiment_id": "arch-zoo-100m-v2",
+  "context_size": 1024,
+  "batch_size": 2,
+  "candidates": [
+    {
+      "name": "mtot_D5_H512_E16_A2_W832",
+      "family": "matched_total",
+      "genome": {
+        "version": 1,
+        "seed": 42,
+        "hidden_size": 512,
+        "vocab_size": 8192,
+        "layers": [
+          {
+            "id": "L0",
+            "index": 0,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L0E0",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E1",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E2",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E3",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E4",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E5",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E6",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E7",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E8",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E9",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E10",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E11",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E12",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E13",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E14",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E15",
+                "width": 832,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 2,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 8,
+            "kv_heads": 8,
+            "ffn_width": 832,
+            "residual_paths": 1
+          },
+          {
+            "id": "L1",
+            "index": 1,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L1E0",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E1",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E2",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E3",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E4",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E5",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E6",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E7",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E8",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E9",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E10",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E11",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E12",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E13",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E14",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E15",
+                "width": 832,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 2,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 8,
+            "kv_heads": 8,
+            "ffn_width": 832,
+            "residual_paths": 1
+          },
+          {
+            "id": "L2",
+            "index": 2,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L2E0",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E1",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E2",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E3",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E4",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E5",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E6",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E7",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E8",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E9",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E10",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E11",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E12",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E13",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E14",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E15",
+                "width": 832,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 2,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 8,
+            "kv_heads": 8,
+            "ffn_width": 832,
+            "residual_paths": 1
+          },
+          {
+            "id": "L3",
+            "index": 3,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L3E0",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E1",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E2",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E3",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E4",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E5",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E6",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E7",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E8",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E9",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E10",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E11",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E12",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E13",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E14",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E15",
+                "width": 832,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 2,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 8,
+            "kv_heads": 8,
+            "ffn_width": 832,
+            "residual_paths": 1
+          },
+          {
+            "id": "L4",
+            "index": 4,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L4E0",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E1",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E2",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E3",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E4",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E5",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E6",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E7",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E8",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E9",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E10",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E11",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E12",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E13",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E14",
+                "width": 832,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E15",
+                "width": 832,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 2,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 8,
+            "kv_heads": 8,
+            "ffn_width": 832,
+            "residual_paths": 1
+          }
+        ],
+        "max_params": 1000000000,
+        "max_active_params": 1000000000,
+        "context_size": 1024
+      },
+      "total_params": 77641216,
+      "active_params": 18003456,
+      "description": "depth=5 hidden=512 heads=8 experts=16 active=2 expert_width=832"
+    },
+    {
+      "name": "mtot_D12_H640_E12_A3_W288",
+      "family": "matched_total",
+      "genome": {
+        "version": 1,
+        "seed": 42,
+        "hidden_size": 640,
+        "vocab_size": 8192,
+        "layers": [
+          {
+            "id": "L0",
+            "index": 0,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L0E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E11",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 3,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 10,
+            "kv_heads": 10,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L1",
+            "index": 1,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L1E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E11",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 3,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 10,
+            "kv_heads": 10,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L2",
+            "index": 2,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L2E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E11",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 3,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 10,
+            "kv_heads": 10,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L3",
+            "index": 3,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L3E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E11",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 3,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 10,
+            "kv_heads": 10,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L4",
+            "index": 4,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L4E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E11",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 3,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 10,
+            "kv_heads": 10,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L5",
+            "index": 5,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L5E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E11",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 3,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 10,
+            "kv_heads": 10,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L6",
+            "index": 6,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L6E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E11",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 3,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 10,
+            "kv_heads": 10,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L7",
+            "index": 7,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L7E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E11",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 3,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 10,
+            "kv_heads": 10,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L8",
+            "index": 8,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L8E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E11",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 3,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 10,
+            "kv_heads": 10,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L9",
+            "index": 9,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L9E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E11",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 3,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 10,
+            "kv_heads": 10,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L10",
+            "index": 10,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L10E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E11",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 3,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 10,
+            "kv_heads": 10,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L11",
+            "index": 11,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L11E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E11",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 3,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 10,
+            "kv_heads": 10,
+            "ffn_width": 288,
+            "residual_paths": 1
+          }
+        ],
+        "max_params": 1000000000,
+        "max_active_params": 1000000000,
+        "context_size": 1024
+      },
+      "total_params": 78096000,
+      "active_params": 38282880,
+      "description": "depth=12 hidden=640 heads=10 experts=12 active=3 expert_width=288"
+    },
+    {
+      "name": "mtot_D8_H832_E6_A2_W576",
+      "family": "matched_total",
+      "genome": {
+        "version": 1,
+        "seed": 42,
+        "hidden_size": 832,
+        "vocab_size": 8192,
+        "layers": [
+          {
+            "id": "L0",
+            "index": 0,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L0E0",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E1",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E2",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E3",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E4",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E5",
+                "width": 576,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 2,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 13,
+            "kv_heads": 13,
+            "ffn_width": 576,
+            "residual_paths": 1
+          },
+          {
+            "id": "L1",
+            "index": 1,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L1E0",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E1",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E2",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E3",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E4",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E5",
+                "width": 576,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 2,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 13,
+            "kv_heads": 13,
+            "ffn_width": 576,
+            "residual_paths": 1
+          },
+          {
+            "id": "L2",
+            "index": 2,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L2E0",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E1",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E2",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E3",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E4",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E5",
+                "width": 576,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 2,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 13,
+            "kv_heads": 13,
+            "ffn_width": 576,
+            "residual_paths": 1
+          },
+          {
+            "id": "L3",
+            "index": 3,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L3E0",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E1",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E2",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E3",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E4",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E5",
+                "width": 576,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 2,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 13,
+            "kv_heads": 13,
+            "ffn_width": 576,
+            "residual_paths": 1
+          },
+          {
+            "id": "L4",
+            "index": 4,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L4E0",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E1",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E2",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E3",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E4",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E5",
+                "width": 576,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 2,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 13,
+            "kv_heads": 13,
+            "ffn_width": 576,
+            "residual_paths": 1
+          },
+          {
+            "id": "L5",
+            "index": 5,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L5E0",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E1",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E2",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E3",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E4",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E5",
+                "width": 576,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 2,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 13,
+            "kv_heads": 13,
+            "ffn_width": 576,
+            "residual_paths": 1
+          },
+          {
+            "id": "L6",
+            "index": 6,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L6E0",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E1",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E2",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E3",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E4",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E5",
+                "width": 576,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 2,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 13,
+            "kv_heads": 13,
+            "ffn_width": 576,
+            "residual_paths": 1
+          },
+          {
+            "id": "L7",
+            "index": 7,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L7E0",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E1",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E2",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E3",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E4",
+                "width": 576,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E5",
+                "width": 576,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 2,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 13,
+            "kv_heads": 13,
+            "ffn_width": 576,
+            "residual_paths": 1
+          }
+        ],
+        "max_params": 1000000000,
+        "max_active_params": 1000000000,
+        "context_size": 1024
+      },
+      "total_params": 75027264,
+      "active_params": 44356416,
+      "description": "depth=8 hidden=832 heads=13 experts=6 active=2 expert_width=576"
+    },
+    {
+      "name": "mtot_D6_H896_E16_A6_W288",
+      "family": "matched_total",
+      "genome": {
+        "version": 1,
+        "seed": 42,
+        "hidden_size": 896,
+        "vocab_size": 8192,
+        "layers": [
+          {
+            "id": "L0",
+            "index": 0,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L0E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E11",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E12",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E13",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E14",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E15",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L1",
+            "index": 1,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L1E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E11",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E12",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E13",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E14",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E15",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L2",
+            "index": 2,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L2E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E11",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E12",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E13",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E14",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E15",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L3",
+            "index": 3,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L3E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E11",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E12",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E13",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E14",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E15",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L4",
+            "index": 4,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L4E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E11",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E12",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E13",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E14",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E15",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 288,
+            "residual_paths": 1
+          },
+          {
+            "id": "L5",
+            "index": 5,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L5E0",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E1",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E2",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E3",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E4",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E5",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E6",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E7",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E8",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E9",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E10",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E11",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E12",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E13",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E14",
+                "width": 288,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E15",
+                "width": 288,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 288,
+            "residual_paths": 1
+          }
+        ],
+        "max_params": 1000000000,
+        "max_active_params": 1000000000,
+        "context_size": 1024
+      },
+      "total_params": 76250496,
+      "active_params": 45284736,
+      "description": "depth=6 hidden=896 heads=14 experts=16 active=6 expert_width=288"
+    },
+    {
+      "name": "mtot_D6_H576_E6_A4_W1536",
+      "family": "matched_total",
+      "genome": {
+        "version": 1,
+        "seed": 42,
+        "hidden_size": 576,
+        "vocab_size": 8192,
+        "layers": [
+          {
+            "id": "L0",
+            "index": 0,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L0E0",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E1",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E2",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E3",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E4",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E5",
+                "width": 1536,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 1536,
+            "residual_paths": 1
+          },
+          {
+            "id": "L1",
+            "index": 1,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L1E0",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E1",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E2",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E3",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E4",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E5",
+                "width": 1536,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 1536,
+            "residual_paths": 1
+          },
+          {
+            "id": "L2",
+            "index": 2,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L2E0",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E1",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E2",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E3",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E4",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E5",
+                "width": 1536,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 1536,
+            "residual_paths": 1
+          },
+          {
+            "id": "L3",
+            "index": 3,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L3E0",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E1",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E2",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E3",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E4",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E5",
+                "width": 1536,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 1536,
+            "residual_paths": 1
+          },
+          {
+            "id": "L4",
+            "index": 4,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L4E0",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E1",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E2",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E3",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E4",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E5",
+                "width": 1536,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 1536,
+            "residual_paths": 1
+          },
+          {
+            "id": "L5",
+            "index": 5,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L5E0",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E1",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E2",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E3",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E4",
+                "width": 1536,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E5",
+                "width": 1536,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 1536,
+            "residual_paths": 1
+          }
+        ],
+        "max_params": 1000000000,
+        "max_active_params": 1000000000,
+        "context_size": 1024
+      },
+      "total_params": 76410432,
+      "active_params": 55176768,
+      "description": "depth=6 hidden=576 heads=9 experts=6 active=4 expert_width=1536"
+    },
+    {
+      "name": "mtot_D10_H512_E8_A6_W768",
+      "family": "matched_total",
+      "genome": {
+        "version": 1,
+        "seed": 42,
+        "hidden_size": 512,
+        "vocab_size": 8192,
+        "layers": [
+          {
+            "id": "L0",
+            "index": 0,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L0E0",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E1",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E2",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E3",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E4",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E5",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E6",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E7",
+                "width": 768,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 8,
+            "kv_heads": 8,
+            "ffn_width": 768,
+            "residual_paths": 1
+          },
+          {
+            "id": "L1",
+            "index": 1,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L1E0",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E1",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E2",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E3",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E4",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E5",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E6",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E7",
+                "width": 768,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 8,
+            "kv_heads": 8,
+            "ffn_width": 768,
+            "residual_paths": 1
+          },
+          {
+            "id": "L2",
+            "index": 2,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L2E0",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E1",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E2",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E3",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E4",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E5",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E6",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E7",
+                "width": 768,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 8,
+            "kv_heads": 8,
+            "ffn_width": 768,
+            "residual_paths": 1
+          },
+          {
+            "id": "L3",
+            "index": 3,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L3E0",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E1",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E2",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E3",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E4",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E5",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E6",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E7",
+                "width": 768,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 8,
+            "kv_heads": 8,
+            "ffn_width": 768,
+            "residual_paths": 1
+          },
+          {
+            "id": "L4",
+            "index": 4,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L4E0",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E1",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E2",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E3",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E4",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E5",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E6",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E7",
+                "width": 768,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 8,
+            "kv_heads": 8,
+            "ffn_width": 768,
+            "residual_paths": 1
+          },
+          {
+            "id": "L5",
+            "index": 5,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L5E0",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E1",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E2",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E3",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E4",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E5",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E6",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E7",
+                "width": 768,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 8,
+            "kv_heads": 8,
+            "ffn_width": 768,
+            "residual_paths": 1
+          },
+          {
+            "id": "L6",
+            "index": 6,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L6E0",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E1",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E2",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E3",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E4",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E5",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E6",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E7",
+                "width": 768,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 8,
+            "kv_heads": 8,
+            "ffn_width": 768,
+            "residual_paths": 1
+          },
+          {
+            "id": "L7",
+            "index": 7,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L7E0",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E1",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E2",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E3",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E4",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E5",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E6",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E7",
+                "width": 768,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 8,
+            "kv_heads": 8,
+            "ffn_width": 768,
+            "residual_paths": 1
+          },
+          {
+            "id": "L8",
+            "index": 8,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L8E0",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E1",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E2",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E3",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E4",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E5",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E6",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E7",
+                "width": 768,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 8,
+            "kv_heads": 8,
+            "ffn_width": 768,
+            "residual_paths": 1
+          },
+          {
+            "id": "L9",
+            "index": 9,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L9E0",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E1",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E2",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E3",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E4",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E5",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E6",
+                "width": 768,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E7",
+                "width": 768,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 6,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 8,
+            "kv_heads": 8,
+            "ffn_width": 768,
+            "residual_paths": 1
+          }
+        ],
+        "max_params": 1000000000,
+        "max_active_params": 1000000000,
+        "context_size": 1024
+      },
+      "total_params": 77646336,
+      "active_params": 61917696,
+      "description": "depth=10 hidden=512 heads=8 experts=8 active=6 expert_width=768"
+    },
+    {
+      "name": "mtot_D14_H896_E8_A5_W128",
+      "family": "matched_total",
+      "genome": {
+        "version": 1,
+        "seed": 42,
+        "hidden_size": 896,
+        "vocab_size": 8192,
+        "layers": [
+          {
+            "id": "L0",
+            "index": 0,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L0E0",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E1",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E2",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E3",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E4",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E5",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E6",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E7",
+                "width": 128,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 5,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 128,
+            "residual_paths": 1
+          },
+          {
+            "id": "L1",
+            "index": 1,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L1E0",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E1",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E2",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E3",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E4",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E5",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E6",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E7",
+                "width": 128,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 5,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 128,
+            "residual_paths": 1
+          },
+          {
+            "id": "L2",
+            "index": 2,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L2E0",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E1",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E2",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E3",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E4",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E5",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E6",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E7",
+                "width": 128,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 5,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 128,
+            "residual_paths": 1
+          },
+          {
+            "id": "L3",
+            "index": 3,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L3E0",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E1",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E2",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E3",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E4",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E5",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E6",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E7",
+                "width": 128,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 5,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 128,
+            "residual_paths": 1
+          },
+          {
+            "id": "L4",
+            "index": 4,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L4E0",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E1",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E2",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E3",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E4",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E5",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E6",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E7",
+                "width": 128,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 5,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 128,
+            "residual_paths": 1
+          },
+          {
+            "id": "L5",
+            "index": 5,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L5E0",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E1",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E2",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E3",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E4",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E5",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E6",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E7",
+                "width": 128,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 5,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 128,
+            "residual_paths": 1
+          },
+          {
+            "id": "L6",
+            "index": 6,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L6E0",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E1",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E2",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E3",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E4",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E5",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E6",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E7",
+                "width": 128,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 5,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 128,
+            "residual_paths": 1
+          },
+          {
+            "id": "L7",
+            "index": 7,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L7E0",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E1",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E2",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E3",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E4",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E5",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E6",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E7",
+                "width": 128,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 5,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 128,
+            "residual_paths": 1
+          },
+          {
+            "id": "L8",
+            "index": 8,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L8E0",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E1",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E2",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E3",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E4",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E5",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E6",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E7",
+                "width": 128,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 5,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 128,
+            "residual_paths": 1
+          },
+          {
+            "id": "L9",
+            "index": 9,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L9E0",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E1",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E2",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E3",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E4",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E5",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E6",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E7",
+                "width": 128,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 5,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 128,
+            "residual_paths": 1
+          },
+          {
+            "id": "L10",
+            "index": 10,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L10E0",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E1",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E2",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E3",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E4",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E5",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E6",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E7",
+                "width": 128,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 5,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 128,
+            "residual_paths": 1
+          },
+          {
+            "id": "L11",
+            "index": 11,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L11E0",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E1",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E2",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E3",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E4",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E5",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E6",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E7",
+                "width": 128,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 5,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 128,
+            "residual_paths": 1
+          },
+          {
+            "id": "L12",
+            "index": 12,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L12E0",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L12E1",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L12E2",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L12E3",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L12E4",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L12E5",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L12E6",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L12E7",
+                "width": 128,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 5,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 128,
+            "residual_paths": 1
+          },
+          {
+            "id": "L13",
+            "index": 13,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L13E0",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L13E1",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L13E2",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L13E3",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L13E4",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L13E5",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L13E6",
+                "width": 128,
+                "birth_step": 0
+              },
+              {
+                "id": "L13E7",
+                "width": 128,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 5,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 14,
+            "kv_heads": 14,
+            "ffn_width": 128,
+            "residual_paths": 1
+          }
+        ],
+        "max_params": 1000000000,
+        "max_active_params": 1000000000,
+        "context_size": 1024
+      },
+      "total_params": 78114176,
+      "active_params": 68480384,
+      "description": "depth=14 hidden=896 heads=14 experts=8 active=5 expert_width=128"
+    },
+    {
+      "name": "mtot_D14_H576_E4_A4_W896",
+      "family": "matched_total",
+      "genome": {
+        "version": 1,
+        "seed": 42,
+        "hidden_size": 576,
+        "vocab_size": 8192,
+        "layers": [
+          {
+            "id": "L0",
+            "index": 0,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L0E0",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E1",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E2",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L0E3",
+                "width": 896,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 896,
+            "residual_paths": 1
+          },
+          {
+            "id": "L1",
+            "index": 1,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L1E0",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E1",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E2",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L1E3",
+                "width": 896,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 896,
+            "residual_paths": 1
+          },
+          {
+            "id": "L2",
+            "index": 2,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L2E0",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E1",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E2",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L2E3",
+                "width": 896,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 896,
+            "residual_paths": 1
+          },
+          {
+            "id": "L3",
+            "index": 3,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L3E0",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E1",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E2",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L3E3",
+                "width": 896,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 896,
+            "residual_paths": 1
+          },
+          {
+            "id": "L4",
+            "index": 4,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L4E0",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E1",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E2",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L4E3",
+                "width": 896,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 896,
+            "residual_paths": 1
+          },
+          {
+            "id": "L5",
+            "index": 5,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L5E0",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E1",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E2",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L5E3",
+                "width": 896,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 896,
+            "residual_paths": 1
+          },
+          {
+            "id": "L6",
+            "index": 6,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L6E0",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E1",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E2",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L6E3",
+                "width": 896,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 896,
+            "residual_paths": 1
+          },
+          {
+            "id": "L7",
+            "index": 7,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L7E0",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E1",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E2",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L7E3",
+                "width": 896,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 896,
+            "residual_paths": 1
+          },
+          {
+            "id": "L8",
+            "index": 8,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L8E0",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E1",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E2",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L8E3",
+                "width": 896,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 896,
+            "residual_paths": 1
+          },
+          {
+            "id": "L9",
+            "index": 9,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L9E0",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E1",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E2",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L9E3",
+                "width": 896,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 896,
+            "residual_paths": 1
+          },
+          {
+            "id": "L10",
+            "index": 10,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L10E0",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E1",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E2",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L10E3",
+                "width": 896,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 896,
+            "residual_paths": 1
+          },
+          {
+            "id": "L11",
+            "index": 11,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L11E0",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E1",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E2",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L11E3",
+                "width": 896,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 896,
+            "residual_paths": 1
+          },
+          {
+            "id": "L12",
+            "index": 12,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L12E0",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L12E1",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L12E2",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L12E3",
+                "width": 896,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 896,
+            "residual_paths": 1
+          },
+          {
+            "id": "L13",
+            "index": 13,
+            "ffn": "moe",
+            "experts": [
+              {
+                "id": "L13E0",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L13E1",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L13E2",
+                "width": 896,
+                "birth_step": 0
+              },
+              {
+                "id": "L13E3",
+                "width": 896,
+                "birth_step": 0
+              }
+            ],
+            "active_experts": 4,
+            "enabled": true,
+            "inputs": [],
+            "module": "attention",
+            "heads": 9,
+            "kv_heads": 9,
+            "ffn_width": 896,
+            "residual_paths": 1
+          }
+        ],
+        "max_params": 1000000000,
+        "max_active_params": 1000000000,
+        "context_size": 1024
+      },
+      "total_params": 81149760,
+      "active_params": 81149760,
+      "description": "depth=14 hidden=576 heads=9 experts=4 active=4 expert_width=896"
+    }
+  ]
+}

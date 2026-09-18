@@ -1,0 +1,634 @@
+{
+  "available": true,
+  "steps": 1200,
+  "ranked": [
+    {
+      "name": "mtot_D6_H896_E16_A6_W288",
+      "mean_val_loss": 2.744587446252505,
+      "runs": 3
+    },
+    {
+      "name": "mtot_D8_H832_E6_A2_W576",
+      "mean_val_loss": 2.7858919948339462,
+      "runs": 3
+    },
+    {
+      "name": "mtot_D14_H896_E8_A5_W128",
+      "mean_val_loss": 2.793244813879331,
+      "runs": 3
+    },
+    {
+      "name": "mtot_D6_H576_E6_A4_W1536",
+      "mean_val_loss": 2.87308398882548,
+      "runs": 3
+    },
+    {
+      "name": "mtot_D12_H640_E12_A3_W288",
+      "mean_val_loss": 2.880269313851992,
+      "runs": 3
+    },
+    {
+      "name": "mtot_D5_H512_E16_A2_W832",
+      "mean_val_loss": 2.9213716089725494,
+      "runs": 3
+    },
+    {
+      "name": "mtot_D14_H576_E4_A4_W896",
+      "mean_val_loss": 2.9604296882947287,
+      "runs": 3
+    },
+    {
+      "name": "mtot_D10_H512_E8_A6_W768",
+      "mean_val_loss": 2.9908190617958703,
+      "runs": 3
+    }
+  ],
+  "best": "mtot_D6_H896_E16_A6_W288",
+  "best_mean_val_loss": 2.744587446252505,
+  "best_runs": 3,
+  "architecture_spread": 0.24623161554336548,
+  "within_seed_std": 0.014839923333836793,
+  "sigmas": 16.592512643372494,
+  "multi_seed": true,
+  "paired_vs_best": [
+    {
+      "candidate": "mtot_D8_H832_E6_A2_W576",
+      "mean_delta_vs_best": 0.041304548581441246,
+      "paired_seeds": [
+        42,
+        43,
+        44
+      ],
+      "delta_per_seed": [
+        0.04230624437332153,
+        0.026526227593421936,
+        0.05508117377758026
+      ]
+    },
+    {
+      "candidate": "mtot_D14_H896_E8_A5_W128",
+      "mean_delta_vs_best": 0.048657367626825966,
+      "paired_seeds": [
+        42,
+        43,
+        44
+      ],
+      "delta_per_seed": [
+        0.032269686460494995,
+        0.043186917901039124,
+        0.07051549851894379
+      ]
+    },
+    {
+      "candidate": "mtot_D6_H576_E6_A4_W1536",
+      "mean_delta_vs_best": 0.12849654257297516,
+      "paired_seeds": [
+        42,
+        43,
+        44
+      ],
+      "delta_per_seed": [
+        0.10723738372325897,
+        0.14153417944908142,
+        0.13671806454658508
+      ]
+    },
+    {
+      "candidate": "mtot_D12_H640_E12_A3_W288",
+      "mean_delta_vs_best": 0.1356818675994873,
+      "paired_seeds": [
+        42,
+        43,
+        44
+      ],
+      "delta_per_seed": [
+        0.14881743490695953,
+        0.12890706956386566,
+        0.12932109832763672
+      ]
+    },
+    {
+      "candidate": "mtot_D5_H512_E16_A2_W832",
+      "mean_delta_vs_best": 0.17678416272004446,
+      "paired_seeds": [
+        42,
+        43,
+        44
+      ],
+      "delta_per_seed": [
+        0.18898895382881165,
+        0.13956232368946075,
+        0.20180121064186096
+      ]
+    },
+    {
+      "candidate": "mtot_D14_H576_E4_A4_W896",
+      "mean_delta_vs_best": 0.2158422420422236,
+      "paired_seeds": [
+        42,
+        43,
+        44
+      ],
+      "delta_per_seed": [
+        0.2229512333869934,
+        0.2088964879512787,
+        0.21567900478839874
+      ]
+    },
+    {
+      "candidate": "mtot_D10_H512_E8_A6_W768",
+      "mean_delta_vs_best": 0.24623161554336548,
+      "paired_seeds": [
+        42,
+        43,
+        44
+      ],
+      "delta_per_seed": [
+        0.2428237497806549,
+        0.2404419183731079,
+        0.2554291784763336
+      ]
+    }
+  ],
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "seeds_per_architecture": {
+    "mtot_D5_H512_E16_A2_W832": [
+      42,
+      43,
+      44
+    ],
+    "mtot_D12_H640_E12_A3_W288": [
+      42,
+      43,
+      44
+    ],
+    "mtot_D8_H832_E6_A2_W576": [
+      42,
+      43,
+      44
+    ],
+    "mtot_D6_H896_E16_A6_W288": [
+      42,
+      43,
+      44
+    ],
+    "mtot_D6_H576_E6_A4_W1536": [
+      42,
+      43,
+      44
+    ],
+    "mtot_D10_H512_E8_A6_W768": [
+      42,
+      43,
+      44
+    ],
+    "mtot_D14_H896_E8_A5_W128": [
+      42,
+      43,
+      44
+    ],
+    "mtot_D14_H576_E4_A4_W896": [
+      42,
+      43,
+      44
+    ]
+  },
+  "anova": {
+    "available": true,
+    "test": "one-way ANOVA (unpaired)",
+    "architectures": 8,
+    "seeds_per_architecture": [
+      3
+    ],
+    "ss_between": 0.16262803011806204,
+    "ss_within": 0.004468367118306116,
+    "df_between": 7,
+    "df_within": 16,
+    "f": 83.18949671246818,
+    "p": 2.1866016531023485e-11
+  },
+  "blocked_test": {
+    "available": true,
+    "test": "blocked permutation (monte-carlo)",
+    "method": "monte-carlo",
+    "architectures": 8,
+    "blocks": 3,
+    "names": [
+      "mtot_D6_H896_E16_A6_W288",
+      "mtot_D8_H832_E6_A2_W576",
+      "mtot_D14_H896_E8_A5_W128",
+      "mtot_D6_H576_E6_A4_W1536",
+      "mtot_D12_H640_E12_A3_W288",
+      "mtot_D5_H512_E16_A2_W832",
+      "mtot_D14_H576_E4_A4_W896",
+      "mtot_D10_H512_E8_A6_W768"
+    ],
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "p": 4.9999750001249995e-06,
+    "p_ranks": 4.9999750001249995e-06,
+    "p_paired_t_reference": 0.00035642403177824024,
+    "statistic": 0.16262803011806204,
+    "exact": false,
+    "assignments": 65548320768000,
+    "rank_assignments": 65548320768000,
+    "min_achievable_p": 6.151187326782565e-10,
+    "p_resolution": 4.9999750001249995e-06,
+    "orderings": [
+      [
+        "mtot_D6_H896_E16_A6_W288",
+        "mtot_D14_H896_E8_A5_W128",
+        "mtot_D8_H832_E6_A2_W576",
+        "mtot_D6_H576_E6_A4_W1536",
+        "mtot_D12_H640_E12_A3_W288",
+        "mtot_D5_H512_E16_A2_W832",
+        "mtot_D14_H576_E4_A4_W896",
+        "mtot_D10_H512_E8_A6_W768"
+      ],
+      [
+        "mtot_D6_H896_E16_A6_W288",
+        "mtot_D8_H832_E6_A2_W576",
+        "mtot_D14_H896_E8_A5_W128",
+        "mtot_D12_H640_E12_A3_W288",
+        "mtot_D5_H512_E16_A2_W832",
+        "mtot_D6_H576_E6_A4_W1536",
+        "mtot_D14_H576_E4_A4_W896",
+        "mtot_D10_H512_E8_A6_W768"
+      ],
+      [
+        "mtot_D6_H896_E16_A6_W288",
+        "mtot_D8_H832_E6_A2_W576",
+        "mtot_D14_H896_E8_A5_W128",
+        "mtot_D12_H640_E12_A3_W288",
+        "mtot_D6_H576_E6_A4_W1536",
+        "mtot_D5_H512_E16_A2_W832",
+        "mtot_D14_H576_E4_A4_W896",
+        "mtot_D10_H512_E8_A6_W768"
+      ]
+    ]
+  },
+  "rank_stability": [
+    {
+      "from_steps": 400,
+      "to_steps": 800,
+      "architectures": 8,
+      "spearman": 0.9523809523809524,
+      "best_at_from": "mtot_D6_H896_E16_A6_W288",
+      "best_at_to": "mtot_D6_H896_E16_A6_W288",
+      "winner_preserved": true,
+      "gap_at_from": 0.545662427941958,
+      "gap_at_to": 0.32438959181308746
+    },
+    {
+      "from_steps": 800,
+      "to_steps": 1200,
+      "architectures": 8,
+      "spearman": 0.9761904761904763,
+      "best_at_from": "mtot_D6_H896_E16_A6_W288",
+      "best_at_to": "mtot_D6_H896_E16_A6_W288",
+      "winner_preserved": true,
+      "gap_at_from": 0.32438959181308746,
+      "gap_at_to": 0.24623161554336548
+    }
+  ],
+  "spread_by_length": {
+    "400": {
+      "architectures": 8,
+      "spread": 0.545662427941958,
+      "within_seed_std": 0.028582226840490076,
+      "sigmas": 19.090969747989096,
+      "best": "mtot_D6_H896_E16_A6_W288"
+    },
+    "800": {
+      "architectures": 8,
+      "spread": 0.32438959181308746,
+      "within_seed_std": 0.01645709350061263,
+      "sigmas": 19.711232229494946,
+      "best": "mtot_D6_H896_E16_A6_W288"
+    },
+    "1200": {
+      "architectures": 8,
+      "spread": 0.24623161554336548,
+      "within_seed_std": 0.014839923333836793,
+      "sigmas": 16.592512643372494,
+      "best": "mtot_D6_H896_E16_A6_W288"
+    },
+    "decay": {
+      "from_steps": 400,
+      "to_steps": 1200,
+      "doublings": 1.584962500721156,
+      "spread_shrink": 2.2160534776894143,
+      "per_doubling": 1.6521019868371942,
+      "sigmas_at_first": 19.090969747989096,
+      "sigmas_at_last": 16.592512643372494,
+      "best_at_every_length": true
+    }
+  },
+  "structural_signal_by_length": {
+    "400": {
+      "available": true,
+      "reason": null,
+      "architectures": 8,
+      "r_squared": 0.9266861852721742,
+      "p_model": 0.0023998800059997,
+      "genes": [
+        {
+          "gene": "hidden_size",
+          "beta": -0.8631513749934451,
+          "p": 0.014499275036248187
+        },
+        {
+          "gene": "depth",
+          "beta": 0.5277084503592774,
+          "p": 0.17504124793760312
+        }
+      ],
+      "dropped": []
+    },
+    "800": {
+      "available": true,
+      "reason": null,
+      "architectures": 8,
+      "r_squared": 0.9364441197551512,
+      "p_model": 0.0018499075046247689,
+      "genes": [
+        {
+          "gene": "hidden_size",
+          "beta": -0.944092268344068,
+          "p": 0.0007499625018749063
+        },
+        {
+          "gene": "depth",
+          "beta": 0.33528974013604185,
+          "p": 0.4073296335183241
+        }
+      ],
+      "dropped": []
+    },
+    "1200": {
+      "available": true,
+      "reason": null,
+      "architectures": 8,
+      "r_squared": 0.9533173618039312,
+      "p_model": 0.0010999450027498626,
+      "genes": [
+        {
+          "gene": "hidden_size",
+          "beta": -0.9593766527418406,
+          "p": 0.00034998250087495624
+        },
+        {
+          "gene": "depth",
+          "beta": 0.3100748700210818,
+          "p": 0.4442277886105695
+        }
+      ],
+      "dropped": []
+    },
+    "model": {
+      "pre_specified": [
+        "hidden_size",
+        "depth"
+      ]
+    },
+    "agreement": {
+      "leading_genes": [
+        "hidden_size",
+        "hidden_size"
+      ],
+      "same_leading_gene": true,
+      "same_leading_sign": true
+    }
+  },
+  "axis_association": {
+    "available": true,
+    "steps": 1200,
+    "architectures": 8,
+    "axes": [
+      {
+        "axis": "total parameters",
+        "held": false,
+        "spearman": 0.5952380952380953,
+        "p": 0.13229166666666667,
+        "p_exact": true,
+        "p_t_approximation": 0.11952980613879269,
+        "min": 75027264.0,
+        "max": 81149760.0,
+        "spread_ratio": 1.0816036154537103
+      },
+      {
+        "axis": "active parameters",
+        "held": false,
+        "spearman": 0.2142857142857143,
+        "p": 0.6190972222222222,
+        "p_exact": true,
+        "p_t_approximation": 0.6103444156452669,
+        "min": 18003456.0,
+        "max": 81149760.0,
+        "spread_ratio": 4.507454568722805
+      },
+      {
+        "axis": "active / total parameters",
+        "held": false,
+        "spearman": 0.2142857142857143,
+        "p": 0.6190972222222222,
+        "p_exact": true,
+        "p_t_approximation": 0.6103444156452669,
+        "min": 0.23188013953825762,
+        "max": 1.0,
+        "spread_ratio": 4.312572874896909
+      },
+      {
+        "axis": "contracted FLOPs/token",
+        "held": false,
+        "spearman": 0.2380952380952381,
+        "p": 0.5821428571428572,
+        "p_exact": true,
+        "p_t_approximation": 0.5701563208157683,
+        "min": 139478016.0,
+        "max": 585988992.0,
+        "spread_ratio": 4.201300024227474
+      },
+      {
+        "axis": "dense-runtime FLOPs/token",
+        "held": false,
+        "spearman": 0.0,
+        "p": 1.0,
+        "p_exact": true,
+        "p_t_approximation": 1.0,
+        "min": 497304576.0,
+        "max": 622825728.0,
+        "spread_ratio": 1.252402970046268
+      },
+      {
+        "axis": "measured throughput",
+        "held": false,
+        "spearman": -0.14285714285714288,
+        "p": 0.7520337301587302,
+        "p_exact": true,
+        "p_t_approximation": 0.735764859879812,
+        "min": 4014.8383214479204,
+        "max": 6495.835482122756,
+        "spread_ratio": 1.6179569292793048
+      },
+      {
+        "axis": "depth",
+        "held": false,
+        "spearman": 0.22893227903814295,
+        "p": 0.5630952380952381,
+        "p_exact": true,
+        "p_t_approximation": 0.585514087125439,
+        "min": 5.0,
+        "max": 14.0,
+        "spread_ratio": 2.8
+      },
+      {
+        "axis": "hidden size",
+        "held": false,
+        "spearman": -0.8607483448197477,
+        "p": 0.013095238095238096,
+        "p_exact": true,
+        "p_t_approximation": 0.006065193275297367,
+        "min": 512.0,
+        "max": 896.0,
+        "spread_ratio": 1.75
+      },
+      {
+        "axis": "attention heads",
+        "held": false,
+        "spearman": -0.8607483448197477,
+        "p": 0.013095238095238096,
+        "p_exact": true,
+        "p_t_approximation": 0.006065193275297367,
+        "min": 8.0,
+        "max": 14.0,
+        "spread_ratio": 1.75
+      },
+      {
+        "axis": "expert count",
+        "held": false,
+        "spearman": -0.1939714579875488,
+        "p": 0.6781746031746032,
+        "p_exact": true,
+        "p_t_approximation": 0.6453232462877742,
+        "min": 4.0,
+        "max": 16.0,
+        "spread_ratio": 4.0
+      },
+      {
+        "axis": "active experts",
+        "held": false,
+        "spearman": 0.0,
+        "p": 1.0,
+        "p_exact": true,
+        "p_t_approximation": 1.0,
+        "min": 2.0,
+        "max": 6.0,
+        "spread_ratio": 3.0
+      },
+      {
+        "axis": "expert width",
+        "held": false,
+        "spearman": 0.5030030300035688,
+        "p": 0.20218253968253969,
+        "p_exact": true,
+        "p_t_approximation": 0.203876682008432,
+        "min": 128.0,
+        "max": 1536.0,
+        "spread_ratio": 12.0
+      }
+    ],
+    "collinearity": {
+      "available": true,
+      "leading": "hidden size",
+      "leading_spearman": -0.8607483448197477,
+      "entangled": [
+        {
+          "axis": "attention heads",
+          "spearman": 1.0
+        },
+        {
+          "axis": "expert width",
+          "spearman": -0.737859747708474
+        }
+      ],
+      "threshold": 0.7,
+      "spread_axes": 12,
+      "structural_axes_unrecorded": [],
+      "caveat": "Among 12 spread axes, `hidden size` tracks loss most strongly, but it moves with `attention heads` (+1.00), `expert width` (-0.74) at |rho| >= 0.7, so this set cannot separate them."
+    },
+    "multiple_comparisons": "12 axes tested uncorrected; treat any single marginal p-value as a hypothesis, not a result. Exact p-values are enumerated over n! arrangements and are not comparable to a chi-square test."
+  },
+  "joint_structural_fit": {
+    "available": true,
+    "steps": 1200,
+    "architectures": 8,
+    "genes": [
+      {
+        "gene": "hidden_size",
+        "beta": -1.002924226487364,
+        "p": 0.05859707014649267,
+        "min": 512.0,
+        "max": 896.0
+      },
+      {
+        "gene": "expert_width",
+        "beta": -0.06840723700738559,
+        "p": 0.9151042447877606,
+        "min": 128.0,
+        "max": 1536.0
+      },
+      {
+        "gene": "depth",
+        "beta": 0.28745939192445896,
+        "p": 0.5339233038348082,
+        "min": 5.0,
+        "max": 14.0
+      }
+    ],
+    "r_squared": 0.95537971939812,
+    "p_model": 0.004649767511624419,
+    "entangled": [
+      {
+        "a": "hidden_size",
+        "b": "expert_width",
+        "spearman": -0.737859747708474
+      }
+    ],
+    "dropped": [
+      {
+        "gene": "attention_heads",
+        "duplicate_of": "hidden_size",
+        "spearman": 1.0
+      }
+    ],
+    "samples": 20000,
+    "caveat": "Coefficients are standardised and each p-value is two-sided against a permutation null, but predictors are collinear by construction here, so a coefficient surviving the model does not mean the underlying lever is identified. Use a designed set to separate them.; `hidden_size` and `expert_width` move together at rho=-0.74 and cannot be told apart at this size, so their split in the fit is arbitrary."
+  },
+  "crossed_contrast": {
+    "available": false,
+    "reason": "fewer than two binary structural genes"
+  },
+  "paired_contrasts": {},
+  "compute_units": {
+    "available": true,
+    "spread": 0.24623161554336548,
+    "slope_per_step": 0.0006708008470013739,
+    "fitted_between": [
+      800,
+      1200
+    ],
+    "slope_pairs": 24,
+    "equivalent_steps": 367.0711160310463,
+    "fraction_of_budget": 0.3058925966925386
+  },
+  "selection_caveat": "",
+  "screened_at_shorter_lengths": 8
+}

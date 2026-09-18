@@ -1,0 +1,44 @@
+{
+  "candidates_generated": 8,
+  "runs_completed": 72,
+  "candidate_training_flops": 4.58323314868224e+16,
+  "candidate_evaluation_flops": 916646629736448.0,
+  "search_overhead_flops": 0.0,
+  "total_search_flops": 4.674897811655885e+16,
+  "tokens_trained": 117964800,
+  "wall_clock_hours": 6.454893519841466,
+  "by_stage": {
+    "400": {
+      "runs": 24,
+      "tokens": 19660800,
+      "elapsed_hours": 1.079139625830301
+    },
+    "800": {
+      "runs": 24,
+      "tokens": 39321600,
+      "elapsed_hours": 2.1745810067314113
+    },
+    "1200": {
+      "runs": 24,
+      "tokens": 58982400,
+      "elapsed_hours": 3.201172887279754
+    }
+  },
+  "pooled_experiments": [
+    "arch-zoo-100m-v2",
+    "arch-zoo-100m-v2-horizon"
+  ],
+  "by_experiment": {
+    "arch-zoo-100m-v2": {
+      "runs_completed": 24,
+      "tokens_trained": 58982400,
+      "wall_clock_hours": 3.201172887279754
+    },
+    "arch-zoo-100m-v2-horizon": {
+      "runs_completed": 48,
+      "tokens_trained": 58982400,
+      "wall_clock_hours": 3.2537206325617123
+    }
+  },
+  "pooled_note": "Pooled analysis: the totals above span every experiment in pooled_experiments and are written into the primary one's directory. Read by_experiment for each arm's own share."
+}

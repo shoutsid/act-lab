@@ -1,0 +1,114 @@
+{
+  "config": {
+    "depth": 8,
+    "hidden_size": 768,
+    "expert_count": 8,
+    "active_experts": 2,
+    "context_size": 1024,
+    "batch_size": 2,
+    "steps": 12,
+    "warmup": 3,
+    "seed": 42,
+    "device": "auto",
+    "patterns": "all_attention,all_gdn,gdn_3to1,att_3to1,alternating,gdn_att_first,gdn_att_last,all_hybrid,hybrid_quarter",
+    "out": "artifacts/mixer-benchmark/mixer_throughput.json"
+  },
+  "records": [
+    {
+      "pattern": "all_attention_D8",
+      "module_types": "a/a/a/a/a/a/a/a",
+      "total_params": 100725504,
+      "active_params": 44102400,
+      "steps": 12,
+      "tokens": 24576,
+      "median_step_s": 0.4269661424914375,
+      "total_step_s": 5.1272488389513455,
+      "tokens_per_s": 4793.2138212793325,
+      "peak_memory_mb": 3498.24853515625,
+      "final_loss": 9.036295890808105,
+      "mixed_precision": "off",
+      "context_size": 1024,
+      "batch_size": 2
+    },
+    {
+      "pattern": "mixer_all_gdn_D8_H768",
+      "error": "out_of_memory"
+    },
+    {
+      "pattern": "mixer_all_hybrid_D8_H768",
+      "error": "out_of_memory"
+    },
+    {
+      "pattern": "alternating_D8",
+      "module_types": "g/a/g/a/g/a/g/a",
+      "total_params": 100799232,
+      "active_params": 44176128,
+      "steps": 12,
+      "tokens": 24576,
+      "median_step_s": 2.9184129664936336,
+      "total_step_s": 35.123640744976,
+      "tokens_per_s": 699.699674599231,
+      "peak_memory_mb": 6605.18994140625,
+      "final_loss": 8.83376693725586,
+      "mixed_precision": "off",
+      "context_size": 1024,
+      "batch_size": 2
+    },
+    {
+      "pattern": "att_3to1_D8",
+      "module_types": "a/a/a/g/a/a/a/g",
+      "total_params": 100762368,
+      "active_params": 44139264,
+      "steps": 12,
+      "tokens": 24576,
+      "median_step_s": 1.6733187465142692,
+      "total_step_s": 20.327817697019782,
+      "tokens_per_s": 1208.9836875899882,
+      "peak_memory_mb": 5047.65673828125,
+      "final_loss": 8.994983673095703,
+      "mixed_precision": "off",
+      "context_size": 1024,
+      "batch_size": 2
+    },
+    {
+      "pattern": "mixer_gdn_3to1_D8_H768",
+      "error": "out_of_memory"
+    },
+    {
+      "pattern": "gdn_att_first_D8",
+      "module_types": "a/a/a/a/g/g/g/g",
+      "total_params": 100799232,
+      "active_params": 44176128,
+      "steps": 12,
+      "tokens": 24576,
+      "median_step_s": 2.943372848982108,
+      "total_step_s": 35.487007403949974,
+      "tokens_per_s": 692.5351501255218,
+      "peak_memory_mb": 6605.93994140625,
+      "final_loss": 8.936458587646484,
+      "mixed_precision": "off",
+      "context_size": 1024,
+      "batch_size": 2
+    },
+    {
+      "pattern": "gdn_att_last_D8",
+      "module_types": "g/g/g/g/a/a/a/a",
+      "total_params": 100799232,
+      "active_params": 44176128,
+      "steps": 12,
+      "tokens": 24576,
+      "median_step_s": 2.9152285019954434,
+      "total_step_s": 35.13341548794415,
+      "tokens_per_s": 699.5050056671299,
+      "peak_memory_mb": 6597.43994140625,
+      "final_loss": 8.805479049682617,
+      "mixed_precision": "off",
+      "context_size": 1024,
+      "batch_size": 2
+    },
+    {
+      "pattern": "mixer_hybrid_quarter_D8_H768",
+      "error": "out_of_memory"
+    }
+  ]
+}

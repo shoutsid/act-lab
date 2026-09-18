@@ -1,0 +1,22 @@
+{
+  "candidates_generated": 8,
+  "runs_completed": 48,
+  "candidate_training_flops": 2.29161657434112e+16,
+  "candidate_evaluation_flops": 611097753157632.0,
+  "search_overhead_flops": 0.0,
+  "total_search_flops": 2.352726349656883e+16,
+  "tokens_trained": 58982400,
+  "wall_clock_hours": 3.2537206325617123,
+  "by_stage": {
+    "400": {
+      "runs": 24,
+      "tokens": 19660800,
+      "elapsed_hours": 1.079139625830301
+    },
+    "800": {
+      "runs": 24,
+      "tokens": 39321600,
+      "elapsed_hours": 2.1745810067314113
+    }
+  }
+}

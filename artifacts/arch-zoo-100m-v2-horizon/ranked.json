@@ -1,0 +1,596 @@
+{
+  "available": true,
+  "steps": 800,
+  "ranked": [
+    {
+      "name": "mtot_D6_H896_E16_A6_W288",
+      "mean_val_loss": 2.9830495168765387,
+      "runs": 3
+    },
+    {
+      "name": "mtot_D14_H896_E8_A5_W128",
+      "mean_val_loss": 3.0287578105926514,
+      "runs": 3
+    },
+    {
+      "name": "mtot_D8_H832_E6_A2_W576",
+      "mean_val_loss": 3.0295253843069077,
+      "runs": 3
+    },
+    {
+      "name": "mtot_D6_H576_E6_A4_W1536",
+      "mean_val_loss": 3.1267484625180564,
+      "runs": 3
+    },
+    {
+      "name": "mtot_D12_H640_E12_A3_W288",
+      "mean_val_loss": 3.1703810642162957,
+      "runs": 3
+    },
+    {
+      "name": "mtot_D5_H512_E16_A2_W832",
+      "mean_val_loss": 3.1937072426080704,
+      "runs": 3
+    },
+    {
+      "name": "mtot_D14_H576_E4_A4_W896",
+      "mean_val_loss": 3.256652037302653,
+      "runs": 3
+    },
+    {
+      "name": "mtot_D10_H512_E8_A6_W768",
+      "mean_val_loss": 3.307439108689626,
+      "runs": 3
+    }
+  ],
+  "best": "mtot_D6_H896_E16_A6_W288",
+  "best_mean_val_loss": 2.9830495168765387,
+  "best_runs": 3,
+  "architecture_spread": 0.32438959181308746,
+  "within_seed_std": 0.01645709350061263,
+  "sigmas": 19.711232229494946,
+  "multi_seed": true,
+  "paired_vs_best": [
+    {
+      "candidate": "mtot_D14_H896_E8_A5_W128",
+      "mean_delta_vs_best": 0.04570829371611277,
+      "paired_seeds": [
+        42,
+        43,
+        44
+      ],
+      "delta_per_seed": [
+        0.036822378635406494,
+        0.029506072402000427,
+        0.0707964301109314
+      ]
+    },
+    {
+      "candidate": "mtot_D8_H832_E6_A2_W576",
+      "mean_delta_vs_best": 0.04647586743036906,
+      "paired_seeds": [
+        42,
+        43,
+        44
+      ],
+      "delta_per_seed": [
+        0.058833375573158264,
+        0.028880909085273743,
+        0.05171331763267517
+      ]
+    },
+    {
+      "candidate": "mtot_D6_H576_E6_A4_W1536",
+      "mean_delta_vs_best": 0.14369894564151764,
+      "paired_seeds": [
+        42,
+        43,
+        44
+      ],
+      "delta_per_seed": [
+        0.1297667920589447,
+        0.14793162047863007,
+        0.15339842438697815
+      ]
+    },
+    {
+      "candidate": "mtot_D12_H640_E12_A3_W288",
+      "mean_delta_vs_best": 0.1873315473397573,
+      "paired_seeds": [
+        42,
+        43,
+        44
+      ],
+      "delta_per_seed": [
+        0.1917698234319687,
+        0.17264223098754883,
+        0.19758258759975433
+      ]
+    },
+    {
+      "candidate": "mtot_D5_H512_E16_A2_W832",
+      "mean_delta_vs_best": 0.21065772573153177,
+      "paired_seeds": [
+        42,
+        43,
+        44
+      ],
+      "delta_per_seed": [
+        0.21698905527591705,
+        0.17464768886566162,
+        0.24033643305301666
+      ]
+    },
+    {
+      "candidate": "mtot_D14_H576_E4_A4_W896",
+      "mean_delta_vs_best": 0.2736025204261144,
+      "paired_seeds": [
+        42,
+        43,
+        44
+      ],
+      "delta_per_seed": [
+        0.2905181497335434,
+        0.275460422039032,
+        0.2548289895057678
+      ]
+    },
+    {
+      "candidate": "mtot_D10_H512_E8_A6_W768",
+      "mean_delta_vs_best": 0.32438959181308746,
+      "paired_seeds": [
+        42,
+        43,
+        44
+      ],
+      "delta_per_seed": [
+        0.31781594455242157,
+        0.3261662423610687,
+        0.3291865885257721
+      ]
+    }
+  ],
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "seeds_per_architecture": {
+    "mtot_D5_H512_E16_A2_W832": [
+      42,
+      43,
+      44
+    ],
+    "mtot_D12_H640_E12_A3_W288": [
+      42,
+      43,
+      44
+    ],
+    "mtot_D8_H832_E6_A2_W576": [
+      42,
+      43,
+      44
+    ],
+    "mtot_D6_H896_E16_A6_W288": [
+      42,
+      43,
+      44
+    ],
+    "mtot_D6_H576_E6_A4_W1536": [
+      42,
+      43,
+      44
+    ],
+    "mtot_D10_H512_E8_A6_W768": [
+      42,
+      43,
+      44
+    ],
+    "mtot_D14_H896_E8_A5_W128": [
+      42,
+      43,
+      44
+    ],
+    "mtot_D14_H576_E4_A4_W896": [
+      42,
+      43,
+      44
+    ]
+  },
+  "anova": {
+    "available": true,
+    "test": "one-way ANOVA (unpaired)",
+    "architectures": 8,
+    "seeds_per_architecture": [
+      3
+    ],
+    "ss_between": 0.28430732395189906,
+    "ss_within": 0.005376762597747516,
+    "df_between": 7,
+    "df_within": 16,
+    "f": 120.8618197430354,
+    "p": 1.1998844408541565e-12
+  },
+  "blocked_test": {
+    "available": true,
+    "test": "blocked permutation (monte-carlo)",
+    "method": "monte-carlo",
+    "architectures": 8,
+    "blocks": 3,
+    "names": [
+      "mtot_D6_H896_E16_A6_W288",
+      "mtot_D14_H896_E8_A5_W128",
+      "mtot_D8_H832_E6_A2_W576",
+      "mtot_D6_H576_E6_A4_W1536",
+      "mtot_D12_H640_E12_A3_W288",
+      "mtot_D5_H512_E16_A2_W832",
+      "mtot_D14_H576_E4_A4_W896",
+      "mtot_D10_H512_E8_A6_W768"
+    ],
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "p": 4.9999750001249995e-06,
+    "p_ranks": 4.9999750001249995e-06,
+    "p_paired_t_reference": 0.0001098704218776576,
+    "statistic": 0.28430732395189917,
+    "exact": false,
+    "assignments": 65548320768000,
+    "rank_assignments": 65548320768000,
+    "min_achievable_p": 6.151187326782565e-10,
+    "p_resolution": 4.9999750001249995e-06,
+    "orderings": [
+      [
+        "mtot_D6_H896_E16_A6_W288",
+        "mtot_D14_H896_E8_A5_W128",
+        "mtot_D8_H832_E6_A2_W576",
+        "mtot_D6_H576_E6_A4_W1536",
+        "mtot_D12_H640_E12_A3_W288",
+        "mtot_D5_H512_E16_A2_W832",
+        "mtot_D14_H576_E4_A4_W896",
+        "mtot_D10_H512_E8_A6_W768"
+      ],
+      [
+        "mtot_D6_H896_E16_A6_W288",
+        "mtot_D8_H832_E6_A2_W576",
+        "mtot_D14_H896_E8_A5_W128",
+        "mtot_D6_H576_E6_A4_W1536",
+        "mtot_D12_H640_E12_A3_W288",
+        "mtot_D5_H512_E16_A2_W832",
+        "mtot_D14_H576_E4_A4_W896",
+        "mtot_D10_H512_E8_A6_W768"
+      ],
+      [
+        "mtot_D6_H896_E16_A6_W288",
+        "mtot_D8_H832_E6_A2_W576",
+        "mtot_D14_H896_E8_A5_W128",
+        "mtot_D6_H576_E6_A4_W1536",
+        "mtot_D12_H640_E12_A3_W288",
+        "mtot_D5_H512_E16_A2_W832",
+        "mtot_D14_H576_E4_A4_W896",
+        "mtot_D10_H512_E8_A6_W768"
+      ]
+    ]
+  },
+  "rank_stability": [
+    {
+      "from_steps": 400,
+      "to_steps": 800,
+      "architectures": 8,
+      "spearman": 0.9523809523809524,
+      "best_at_from": "mtot_D6_H896_E16_A6_W288",
+      "best_at_to": "mtot_D6_H896_E16_A6_W288",
+      "winner_preserved": true,
+      "gap_at_from": 0.545662427941958,
+      "gap_at_to": 0.32438959181308746
+    }
+  ],
+  "spread_by_length": {
+    "400": {
+      "architectures": 8,
+      "spread": 0.545662427941958,
+      "within_seed_std": 0.028582226840490076,
+      "sigmas": 19.090969747989096,
+      "best": "mtot_D6_H896_E16_A6_W288"
+    },
+    "800": {
+      "architectures": 8,
+      "spread": 0.32438959181308746,
+      "within_seed_std": 0.01645709350061263,
+      "sigmas": 19.711232229494946,
+      "best": "mtot_D6_H896_E16_A6_W288"
+    },
+    "decay": {
+      "from_steps": 400,
+      "to_steps": 800,
+      "doublings": 1.0,
+      "spread_shrink": 1.682120640468537,
+      "per_doubling": 1.682120640468537,
+      "sigmas_at_first": 19.090969747989096,
+      "sigmas_at_last": 19.711232229494946,
+      "best_at_every_length": true
+    }
+  },
+  "structural_signal_by_length": {
+    "400": {
+      "available": true,
+      "reason": null,
+      "architectures": 8,
+      "r_squared": 0.9266861852721742,
+      "p_model": 0.0023998800059997,
+      "genes": [
+        {
+          "gene": "hidden_size",
+          "beta": -0.8631513749934451,
+          "p": 0.014499275036248187
+        },
+        {
+          "gene": "depth",
+          "beta": 0.5277084503592774,
+          "p": 0.17504124793760312
+        }
+      ],
+      "dropped": []
+    },
+    "800": {
+      "available": true,
+      "reason": null,
+      "architectures": 8,
+      "r_squared": 0.9364441197551512,
+      "p_model": 0.0018499075046247689,
+      "genes": [
+        {
+          "gene": "hidden_size",
+          "beta": -0.944092268344068,
+          "p": 0.0007499625018749063
+        },
+        {
+          "gene": "depth",
+          "beta": 0.33528974013604185,
+          "p": 0.4073296335183241
+        }
+      ],
+      "dropped": []
+    },
+    "model": {
+      "pre_specified": [
+        "hidden_size",
+        "depth"
+      ]
+    },
+    "agreement": {
+      "leading_genes": [
+        "hidden_size",
+        "hidden_size"
+      ],
+      "same_leading_gene": true,
+      "same_leading_sign": true
+    }
+  },
+  "axis_association": {
+    "available": true,
+    "steps": 800,
+    "architectures": 8,
+    "axes": [
+      {
+        "axis": "total parameters",
+        "held": false,
+        "spearman": 0.4523809523809524,
+        "p": 0.26746031746031745,
+        "p_exact": true,
+        "p_t_approximation": 0.2604047674368853,
+        "min": 75027264.0,
+        "max": 81149760.0,
+        "spread_ratio": 1.0816036154537103
+      },
+      {
+        "axis": "active parameters",
+        "held": false,
+        "spearman": 0.11904761904761905,
+        "p": 0.7930059523809524,
+        "p_exact": true,
+        "p_t_approximation": 0.7788857260523796,
+        "min": 18003456.0,
+        "max": 81149760.0,
+        "spread_ratio": 4.507454568722805
+      },
+      {
+        "axis": "active / total parameters",
+        "held": false,
+        "spearman": 0.11904761904761905,
+        "p": 0.7930059523809524,
+        "p_exact": true,
+        "p_t_approximation": 0.7788857260523796,
+        "min": 0.23188013953825762,
+        "max": 1.0,
+        "spread_ratio": 4.312572874896909
+      },
+      {
+        "axis": "contracted FLOPs/token",
+        "held": false,
+        "spearman": 0.1666666666666667,
+        "p": 0.7033234126984127,
+        "p_exact": true,
+        "p_t_approximation": 0.693238811728395,
+        "min": 139478016.0,
+        "max": 585988992.0,
+        "spread_ratio": 4.201300024227474
+      },
+      {
+        "axis": "dense-runtime FLOPs/token",
+        "held": false,
+        "spearman": -0.07142857142857144,
+        "p": 0.8819940476190476,
+        "p_exact": true,
+        "p_t_approximation": 0.8665262706759088,
+        "min": 497304576.0,
+        "max": 622825728.0,
+        "spread_ratio": 1.252402970046268
+      },
+      {
+        "axis": "measured throughput",
+        "held": false,
+        "spearman": -0.04761904761904763,
+        "p": 0.9348710317460317,
+        "p_exact": true,
+        "p_t_approximation": 0.9108491685195836,
+        "min": 3928.2430791166116,
+        "max": 6386.0559780477715,
+        "spread_ratio": 1.625677395576008
+      },
+      {
+        "axis": "depth",
+        "held": false,
+        "spearman": 0.14458880781356398,
+        "p": 0.714186507936508,
+        "p_exact": true,
+        "p_t_approximation": 0.7326507408997529,
+        "min": 5.0,
+        "max": 14.0,
+        "spread_ratio": 2.8
+      },
+      {
+        "axis": "hidden size",
+        "held": false,
+        "spearman": -0.8971179931924131,
+        "p": 0.00753968253968254,
+        "p_exact": true,
+        "p_t_approximation": 0.0025166947072647545,
+        "min": 512.0,
+        "max": 896.0,
+        "spread_ratio": 1.75
+      },
+      {
+        "axis": "attention heads",
+        "held": false,
+        "spearman": -0.8971179931924131,
+        "p": 0.00753968253968254,
+        "p_exact": true,
+        "p_t_approximation": 0.0025166947072647545,
+        "min": 8.0,
+        "max": 14.0,
+        "spread_ratio": 1.75
+      },
+      {
+        "axis": "expert count",
+        "held": false,
+        "spearman": -0.24246432248443597,
+        "p": 0.5942460317460317,
+        "p_exact": true,
+        "p_t_approximation": 0.5628829267771581,
+        "min": 4.0,
+        "max": 16.0,
+        "spread_ratio": 4.0
+      },
+      {
+        "axis": "active experts",
+        "held": false,
+        "spearman": -0.10910894511799618,
+        "p": 0.8595238095238096,
+        "p_exact": true,
+        "p_t_approximation": 0.7970385741881917,
+        "min": 2.0,
+        "max": 6.0,
+        "spread_ratio": 3.0
+      },
+      {
+        "axis": "expert width",
+        "held": false,
+        "spearman": 0.5748606057183643,
+        "p": 0.13834325396825398,
+        "p_exact": true,
+        "p_t_approximation": 0.13605826238809157,
+        "min": 128.0,
+        "max": 1536.0,
+        "spread_ratio": 12.0
+      }
+    ],
+    "collinearity": {
+      "available": true,
+      "leading": "hidden size",
+      "leading_spearman": -0.8971179931924131,
+      "entangled": [
+        {
+          "axis": "attention heads",
+          "spearman": 1.0
+        },
+        {
+          "axis": "expert width",
+          "spearman": -0.737859747708474
+        }
+      ],
+      "threshold": 0.7,
+      "spread_axes": 12,
+      "structural_axes_unrecorded": [],
+      "caveat": "Among 12 spread axes, `hidden size` tracks loss most strongly, but it moves with `attention heads` (+1.00), `expert width` (-0.74) at |rho| >= 0.7, so this set cannot separate them."
+    },
+    "multiple_comparisons": "12 axes tested uncorrected; treat any single marginal p-value as a hypothesis, not a result. Exact p-values are enumerated over n! arrangements and are not comparable to a chi-square test."
+  },
+  "joint_structural_fit": {
+    "available": true,
+    "steps": 800,
+    "architectures": 8,
+    "genes": [
+      {
+        "gene": "hidden_size",
+        "beta": -1.2170189105052036,
+        "p": 0.007549622518874056,
+        "min": 512.0,
+        "max": 896.0
+      },
+      {
+        "gene": "expert_width",
+        "beta": -0.5054725653683618,
+        "p": 0.423928803559822,
+        "min": 128.0,
+        "max": 1536.0
+      },
+      {
+        "gene": "expert_count",
+        "beta": -0.30885405804495714,
+        "p": 0.4950752462376881,
+        "min": 4.0,
+        "max": 16.0
+      }
+    ],
+    "r_squared": 0.9602708173989793,
+    "p_model": 0.00439978001099945,
+    "entangled": [
+      {
+        "a": "hidden_size",
+        "b": "expert_width",
+        "spearman": -0.737859747708474
+      }
+    ],
+    "dropped": [
+      {
+        "gene": "attention_heads",
+        "duplicate_of": "hidden_size",
+        "spearman": 1.0
+      }
+    ],
+    "samples": 20000,
+    "caveat": "Coefficients are standardised and each p-value is two-sided against a permutation null, but predictors are collinear by construction here, so a coefficient surviving the model does not mean the underlying lever is identified. Use a designed set to separate them.; `hidden_size` and `expert_width` move together at rho=-0.74 and cannot be told apart at this size, so their split in the fit is arbitrary."
+  },
+  "crossed_contrast": {
+    "available": false,
+    "reason": "fewer than two binary structural genes"
+  },
+  "paired_contrasts": {},
+  "compute_units": {
+    "available": true,
+    "spread": 0.32438959181308746,
+    "slope_per_step": 0.0014969834033399815,
+    "fitted_between": [
+      400,
+      800
+    ],
+    "slope_pairs": 24,
+    "equivalent_steps": 216.6955165229811,
+    "fraction_of_budget": 0.27086939565372636
+  },
+  "selection_caveat": "",
+  "screened_at_shorter_lengths": 8
+}

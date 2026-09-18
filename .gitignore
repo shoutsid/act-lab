@@ -2,6 +2,9 @@ node_modules/
 .vercel/
 .venv/
 .grok/
+# Session state of the coding agent that works in this tree: tool scratch, not
+# project content, and rewriting it on every turn would keep the branch dirty.
+.omo/
 AGENTS.md
 .project_id
 .node_modules.lock
@@ -33,6 +36,36 @@ artifacts/real-proof/*
 !artifacts/real-lm/
 artifacts/real-lm/*
 !artifacts/real-lm/report.json
+# Architecture-search record (2026-09-17). Every file here is load-bearing:
+# the per-seed ledgers are the primary data (regenerating them costs GPU
+# hours), `zoo_definition.json` is needed by scripts/arch_zoo_analyze.py to
+# join structural axes onto old ledgers, and tests pin the phase's headline
+# result by reading those ledgers. Only the progress logs are scratch.
+!artifacts/ARCH_SEARCH_FINDINGS.md
+!artifacts/arch-zoo/
+artifacts/arch-zoo/*
+!artifacts/arch-zoo/PERFORMANCE_NOTES.md
+!artifacts/arch-zoo/SCREENING_AUDIT.md
+!artifacts/arch-zoo/analysis.md
+!artifacts/arch-zoo/zoo_definition.json
+!artifacts/arch-zoo/zoo_results.json
+# One block per family, not per experiment: the durable filenames are the same in
+# every arch-zoo arm, and a new arm that needs a .gitignore edit before its
+# evidence is committable is a new arm whose evidence gets silently dropped.
+!artifacts/arch-zoo-*/
+artifacts/arch-zoo-*/*
+!artifacts/arch-zoo-*/NOTES.md
+!artifacts/arch-zoo-*/decision.md
+!artifacts/arch-zoo-*/ranked.json
+!artifacts/arch-zoo-*/search_cost.json
+!artifacts/arch-zoo-*/matching_report.json
+!artifacts/arch-zoo-*/distance_matrix.json
+!artifacts/arch-zoo-*/zoo_definition.json
+!artifacts/arch-zoo-*/*_seed*_results.jsonl
+!artifacts/mixer-benchmark/
+artifacts/mixer-benchmark/*
+!artifacts/mixer-benchmark/FINDINGS.md
+!artifacts/mixer-benchmark/mixer_throughput.json
 screenshots/*
 !screenshots/.gitkeep
 .DS_Store

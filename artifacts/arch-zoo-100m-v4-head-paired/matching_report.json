@@ -1,0 +1,190 @@
+{
+  "candidates": [
+    {
+      "name": "hd1_D10_H512_E4_A2_W1536_Hd16",
+      "family": "head_paired",
+      "total_params": 77625856,
+      "active_params": 46168576,
+      "expert_width": 1536,
+      "contracted_flops_per_token": 339926016.0,
+      "dense_runtime_flops_per_token": 528669696.0,
+      "runtime_over_contract": 1.555249292834356
+    },
+    {
+      "name": "hd1_D10_H512_E4_A2_W1536_Hd8",
+      "family": "head_paired",
+      "total_params": 77625856,
+      "active_params": 46168576,
+      "expert_width": 1536,
+      "contracted_flops_per_token": 339926016.0,
+      "dense_runtime_flops_per_token": 528669696.0,
+      "runtime_over_contract": 1.555249292834356
+    },
+    {
+      "name": "hd2_D10_H896_E16_A6_W128_Hd16",
+      "family": "head_paired",
+      "total_params": 76315008,
+      "active_params": 53377408,
+      "expert_width": 128,
+      "contracted_flops_per_token": 430364928.0,
+      "dense_runtime_flops_per_token": 567990528.0,
+      "runtime_over_contract": 1.3197881403570135
+    },
+    {
+      "name": "hd2_D10_H896_E16_A6_W128_Hd8",
+      "family": "head_paired",
+      "total_params": 76315008,
+      "active_params": 53377408,
+      "expert_width": 128,
+      "contracted_flops_per_token": 430364928.0,
+      "dense_runtime_flops_per_token": 567990528.0,
+      "runtime_over_contract": 1.3197881403570135
+    },
+    {
+      "name": "hd3_D10_H512_E12_A6_W512_Hd16",
+      "family": "head_paired",
+      "total_params": 77666816,
+      "active_params": 46209536,
+      "expert_width": 512,
+      "contracted_flops_per_token": 340171776.0,
+      "dense_runtime_flops_per_token": 528915456.0,
+      "runtime_over_contract": 1.5548481482484897
+    },
+    {
+      "name": "hd3_D10_H512_E12_A6_W512_Hd8",
+      "family": "head_paired",
+      "total_params": 77666816,
+      "active_params": 46209536,
+      "expert_width": 512,
+      "contracted_flops_per_token": 340171776.0,
+      "dense_runtime_flops_per_token": 528915456.0,
+      "runtime_over_contract": 1.5548481482484897
+    },
+    {
+      "name": "hd4_D10_H896_E4_A3_W512_Hd16",
+      "family": "head_paired",
+      "total_params": 76207488,
+      "active_params": 67032448,
+      "expert_width": 512,
+      "contracted_flops_per_token": 512295168.0,
+      "dense_runtime_flops_per_token": 567345408.0,
+      "runtime_over_contract": 1.1074580504339249
+    },
+    {
+      "name": "hd4_D10_H896_E4_A3_W512_Hd8",
+      "family": "head_paired",
+      "total_params": 76207488,
+      "active_params": 67032448,
+      "expert_width": 512,
+      "contracted_flops_per_token": 512295168.0,
+      "dense_runtime_flops_per_token": 567345408.0,
+      "runtime_over_contract": 1.1074580504339249
+    }
+  ],
+  "param_matched": {
+    "spread": {
+      "min": 76207488,
+      "max": 77666816,
+      "ratio": 1.0191494043210032
+    },
+    "within_30pct_of_target": 8
+  },
+  "contracted_flop_matched": {
+    "spread": {
+      "min": 339926016.0,
+      "max": 512295168.0,
+      "ratio": 1.5070784343849692
+    }
+  },
+  "runtime_cost": {
+    "spread": {
+      "min": 528669696.0,
+      "max": 567990528.0,
+      "ratio": 1.0743769357266129
+    }
+  },
+  "note": "Matching on contracted FLOPs does not match wall clock: the dense-expert runtime evaluates every expert on every token, so runtime cost tracks total expert count.",
+  "head_paired_design": {
+    "pairs": [
+      {
+        "base": {
+          "depth": 10,
+          "hidden_size": 512,
+          "expert_count": 4,
+          "active_experts": 2,
+          "expert_width": 1536
+        },
+        "head_counts": [
+          8,
+          16
+        ],
+        "complete": true,
+        "total_params": 77625856,
+        "active_params": 46168576,
+        "total_exactly_matched": true,
+        "active_exactly_matched": true
+      },
+      {
+        "base": {
+          "depth": 10,
+          "hidden_size": 512,
+          "expert_count": 12,
+          "active_experts": 6,
+          "expert_width": 512
+        },
+        "head_counts": [
+          8,
+          16
+        ],
+        "complete": true,
+        "total_params": 77666816,
+        "active_params": 46209536,
+        "total_exactly_matched": true,
+        "active_exactly_matched": true
+      },
+      {
+        "base": {
+          "depth": 10,
+          "hidden_size": 896,
+          "expert_count": 4,
+          "active_experts": 3,
+          "expert_width": 512
+        },
+        "head_counts": [
+          8,
+          16
+        ],
+        "complete": true,
+        "total_params": 76207488,
+        "active_params": 67032448,
+        "total_exactly_matched": true,
+        "active_exactly_matched": true
+      },
+      {
+        "base": {
+          "depth": 10,
+          "hidden_size": 896,
+          "expert_count": 16,
+          "active_experts": 6,
+          "expert_width": 128
+        },
+        "head_counts": [
+          8,
+          16
+        ],
+        "complete": true,
+        "total_params": 76315008,
+        "active_params": 53377408,
+        "total_exactly_matched": true,
+        "active_exactly_matched": true
+      }
+    ],
+    "head_counts": [
+      8,
+      16
+    ],
+    "all_complete": true,
+    "all_exactly_matched": true,
+    "total_spread_ratio": 1.0191494043210032
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "candidates": [
+    {
+      "name": "xlolo_D5_H512_E12_A2_W1152",
+      "family": "crossed_depth_hidden_size",
+      "total_params": 80252416,
+      "active_params": 21270016,
+      "expert_width": 1152,
+      "contracted_flops_per_token": 159077376.0,
+      "dense_runtime_flops_per_token": 512971776.0,
+      "runtime_over_contract": 3.2246683274433696
+    },
+    {
+      "name": "xlolo_D5_H512_E16_A6_W832",
+      "family": "crossed_depth_hidden_size",
+      "total_params": 77641216,
+      "active_params": 35042816,
+      "expert_width": 832,
+      "contracted_flops_per_token": 241714176.0,
+      "dense_runtime_flops_per_token": 497304576.0,
+      "runtime_over_contract": 2.0574075721566283
+    },
+    {
+      "name": "xlohi_D5_H896_E16_A2_W384",
+      "family": "crossed_depth_hidden_size",
+      "total_params": 78528128,
+      "active_params": 30359168,
+      "expert_width": 384,
+      "contracted_flops_per_token": 237205248.0,
+      "dense_runtime_flops_per_token": 526219008.0,
+      "runtime_over_contract": 2.2184121659905265
+    },
+    {
+      "name": "xlohi_D5_H896_E4_A4_W1536",
+      "family": "crossed_depth_hidden_size",
+      "total_params": 78474368,
+      "active_params": 78474368,
+      "expert_width": 1536,
+      "contracted_flops_per_token": 525896448.0,
+      "dense_runtime_flops_per_token": 525896448.0,
+      "runtime_over_contract": 1.0
+    },
+    {
+      "name": "xhilo_D14_H512_E16_A2_W256",
+      "family": "crossed_depth_hidden_size",
+      "total_params": 77724160,
+      "active_params": 26343936,
+      "expert_width": 256,
+      "contracted_flops_per_token": 246144000.0,
+      "dense_runtime_flops_per_token": 554425344.0,
+      "runtime_over_contract": 2.2524430577223087
+    },
+    {
+      "name": "xhilo_D14_H512_E4_A4_W1024",
+      "family": "crossed_depth_hidden_size",
+      "total_params": 77638144,
+      "active_params": 77638144,
+      "expert_width": 1024,
+      "contracted_flops_per_token": 553909248.0,
+      "dense_runtime_flops_per_token": 553909248.0,
+      "runtime_over_contract": 1.0
+    },
+    {
+      "name": "xhihi_D14_H896_E4_A2_W288",
+      "family": "crossed_depth_hidden_size",
+      "total_params": 81275264,
+      "active_params": 66824576,
+      "expert_width": 288,
+      "contracted_flops_per_token": 555088128.0,
+      "dense_runtime_flops_per_token": 641792256.0,
+      "runtime_over_contract": 1.1561988513650936
+    },
+    {
+      "name": "xhihi_D14_H896_E8_A6_W128",
+      "family": "crossed_depth_hidden_size",
+      "total_params": 78114176,
+      "active_params": 71691648,
+      "expert_width": 128,
+      "contracted_flops_per_token": 584290560.0,
+      "dense_runtime_flops_per_token": 622825728.0,
+      "runtime_over_contract": 1.0659520633022037
+    }
+  ],
+  "param_matched": {
+    "spread": {
+      "min": 77638144,
+      "max": 81275264,
+      "ratio": 1.046847075581817
+    },
+    "within_30pct_of_target": 8
+  },
+  "contracted_flop_matched": {
+    "spread": {
+      "min": 159077376.0,
+      "max": 584290560.0,
+      "ratio": 3.672995963926385
+    }
+  },
+  "runtime_cost": {
+    "spread": {
+      "min": 497304576.0,
+      "max": 641792256.0,
+      "ratio": 1.2905416257420483
+    }
+  },
+  "note": "Matching on contracted FLOPs does not match wall clock: the dense-expert runtime evaluates every expert on every token, so runtime cost tracks total expert count.",
+  "crossed_design": {
+    "available": true,
+    "factors": [
+      "depth",
+      "hidden_size"
+    ],
+    "levels": {
+      "depth": {
+        "5": 4,
+        "14": 4
+      },
+      "hidden_size": {
+        "512": 4,
+        "896": 4
+      }
+    },
+    "spearman": 0.0,
+    "balanced": true,
+    "candidates": 8
+  }
+}
