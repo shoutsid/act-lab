@@ -152,15 +152,22 @@ def resolve_device(requested: str) -> torch.device:
     if requested == "cpu":
         return torch.device("cpu")
     if requested == "cuda" or requested.startswith("cuda:"):
+        # The *string* is validated before the hardware. `cuda:-1` is a typo on
+        # every host, and resolving it to "CUDA was requested but no compatible
+        # device is available" sends the reader after the wrong problem - which is
+        # also what made this branch untestable on a host with no GPU, so a
+        # one-GPU dev box could not check the validation it depends on.
+        index: str | None = None
+        if requested != "cuda":
+            index = requested.split(":", 1)[1]
+            if not index.isdigit():
+                raise ValueError(f"device index must be an integer, got {requested!r}")
         if not torch.cuda.is_available():
             raise RuntimeError(
                 "CUDA was requested but no compatible device is available"
             )
-        if requested == "cuda":
+        if index is None:
             return torch.device("cuda")
-        index = requested.split(":", 1)[1]
-        if not index.isdigit():
-            raise ValueError(f"device index must be an integer, got {requested!r}")
         count = torch.cuda.device_count()
         if int(index) >= count:
             raise ValueError(
