@@ -41,6 +41,7 @@ from act.search.architecture_report import (
     search_cost,
     spread_by_length,
     structural_signal_by_length,
+    two_set_blocked_test,
     variance_decomposition,
     verdict,
     with_structure,
@@ -2884,3 +2885,203 @@ def test_recorded_prespecified_screening_model_holds_at_every_length():
         # And the identified lever is significant at the cheapest length too.
         assert genes["hidden_size"]["beta"] < 0, length
         assert genes["hidden_size"]["p"] < 0.05, (length, genes["hidden_size"]["p"])
+
+
+# --- section 11: curated set versus random set ------------------------------
+
+
+def set_members(label: str, size: int) -> tuple[str, ...]:
+    return tuple(f"{label}_{index}" for index in range(size))
+
+
+def set_rows(
+    qualities: dict[str, list[float]],
+    generator: random.Random,
+    *,
+    noise: float,
+    seeds: tuple[int, ...] = (42, 43),
+) -> list[EvalResult]:
+    """Ledger rows for two named sets, where each member carries one quality.
+
+    The quality is the member's own - it is the same on every seed, which is what
+    the real arm's rows do and what an assignment in this design has to respect.
+    """
+    return [
+        result(f"{label}_{index}", quality + generator.gauss(0.0, noise), seed=seed)
+        for label, values in qualities.items()
+        for index, quality in enumerate(values)
+        for seed in seeds
+    ]
+
+
+def test_set_test_counts_member_splits_not_seed_splits():
+    """The null's unit is the architecture, so seeds do not multiply the labellings.
+
+    A set label is a property of a member and holds on every seed that member ran,
+    so one split is drawn and read through all the seeds. Counting a split per seed
+    instead would give C(12, 6) ** 3 = 7.9e8 labellings, and every one of them is a
+    design the sweep cannot produce - a candidate cannot be in the curated set on
+    one seed and outside it on another. It is also not harmless: an assignment that
+    varies by seed splits each member's rows across the two sides, which removes the
+    member-level spread from the null's differences while the observed difference
+    still carries it, so the null comes out ~1/sqrt(2) as wide as the value it is
+    testing and the test rejects on a real spread alone.
+    """
+    generator = random.Random(4)
+    qualities = {
+        label: [generator.uniform(3.0, 4.0) for _ in range(6)] for label in ("random", "manual")
+    }
+    rows = set_rows(qualities, generator, noise=0.01, seeds=(42, 43, 44))
+    sets = (("random", set_members("random", 6)), ("manual", set_members("manual", 6)))
+
+    outcome = two_set_blocked_test(rows, STEPS, sets)
+
+    assert outcome["available"], outcome
+    assert outcome["method"] == "exact"
+    assert outcome["assignments"] == math.comb(12, 6) == 924
+    assert outcome["min_achievable_p"] == pytest.approx(2 / 924)
+    assert outcome["seeds"] == [42, 43, 44]
+    # What the per-seed count would have been, so the two cannot be confused again.
+    assert math.comb(12, 6) ** 3 == 788_889_024
+
+
+def test_set_test_blocks_out_a_seed_wide_offset():
+    """A seed that trained everything worse is not evidence about the two sets."""
+    generator = random.Random(5)
+    qualities = {
+        label: [3.4 + 0.05 * index for index in range(6)] for label in ("random", "manual")
+    }
+    seeds = (42, 43, 44)
+    rows = [
+        result(
+            f"{label}_{index}",
+            quality + (5.0 if seed == 43 else 0.0) + generator.gauss(0.0, 0.01),
+            seed=seed,
+        )
+        for seed in seeds
+        for label, values in qualities.items()
+        for index, quality in enumerate(values)
+    ]
+    sets = (("random", set_members("random", 6)), ("manual", set_members("manual", 6)))
+
+    outcome = two_set_blocked_test(rows, STEPS, sets)
+
+    assert outcome["difference_nats"] == pytest.approx(0.0, abs=0.02)
+    assert outcome["p"] > 0.2
+    # Each seed's own difference is free of the offset, which is the mechanism.
+    assert all(abs(row["difference"]) < 0.02 for row in outcome["per_block"])
+
+
+def test_set_test_answers_each_statistic_with_one_sign_convention():
+    """``mean``, ``best`` and ``worst`` ask different questions; the sign is shared.
+
+    A negative difference favours the first set on all three, so a reader does not
+    have to remember which statistic inverted the comparison.
+    """
+    generator = random.Random(6)
+    size = 6
+    sets = (("random", set_members("random", size)), ("manual", set_members("manual", size)))
+    rows = set_rows(
+        {
+            "random": [3.6 + 0.02 * index for index in range(size)],
+            # Every manual member is 0.2 nats better, so all three statistics must
+            # say the second set is ahead.
+            "manual": [3.4 + 0.02 * index for index in range(size)],
+        },
+        generator,
+        noise=0.01,
+    )
+
+    for statistic in ("mean", "best", "worst"):
+        outcome = two_set_blocked_test(rows, STEPS, sets, statistic=statistic)
+        assert outcome["available"], (statistic, outcome)
+        assert outcome["statistic"] == statistic
+        assert outcome["difference_nats"] == pytest.approx(0.2, abs=0.05), statistic
+        assert outcome["per_set"]["random"]["mean"] > outcome["per_set"]["manual"]["mean"]
+        assert outcome["p"] < 0.05, statistic
+        assert outcome["sign_consistency"] is True
+
+
+def test_set_test_refuses_a_comparison_it_cannot_make():
+    """Unequal sets, shared members and one seed are refused with the reason."""
+    generator = random.Random(7)
+    size = 4
+    sets = (("random", set_members("random", size)), ("manual", set_members("manual", size)))
+    rows = set_rows(
+        {label: [3.5 + 0.01 * index for index in range(size)] for label in ("random", "manual")},
+        generator,
+        noise=0.01,
+    )
+
+    unbalanced = two_set_blocked_test(
+        rows,
+        STEPS,
+        (("random", set_members("random", size)), ("manual", set_members("manual", size + 1))),
+    )
+    assert not unbalanced["available"]
+    assert "unequal size" in unbalanced["reason"]
+
+    overlapping = two_set_blocked_test(
+        rows,
+        STEPS,
+        (("random", set_members("random", size)), ("manual", set_members("random", size))),
+    )
+    assert not overlapping["available"]
+    assert "share architectures" in overlapping["reason"]
+
+    one_seed = two_set_blocked_test(
+        set_rows(
+            {label: [3.5 + 0.01 * index for index in range(size)] for label in ("random", "manual")},
+            generator,
+            noise=0.01,
+            seeds=(42,),
+        ),
+        STEPS,
+        sets,
+    )
+    assert not one_seed["available"]
+    assert "2+ seeds" in one_seed["reason"]
+
+    missing = two_set_blocked_test(rows, STEPS + 100, sets)
+    assert not missing["available"]
+    assert "no 500-step rows" in missing["reason"]
+
+
+def test_set_test_is_calibrated_when_members_carry_spread_across_seeds():
+    """Regression, at the size the section 11 comparison actually runs.
+
+    The member-level spread here is ~19x the per-run noise, which is the regime the
+    real arm is in (a candidate's quality spread dwarfs its seed noise). Under a
+    null that is properly built the rejection rate stays in the nominal region no
+    matter how large that spread is - the split is the same quantity on both sides.
+    Under a per-seed split it does not: an assignment that breaks a member's rows
+    apart cancels the spread in the null while the observed difference still carries
+    it, and on this data the same 300 replicates rejected a true null 22.3% of the
+    time (17.5% at 13 candidates per set, where this comparison actually runs).
+    Left in, that would have entered the record as a more sensitive comparison than
+    the phase can buy.
+    """
+    generator = random.Random(11)
+    size = 6
+    sets = (("random", set_members("random", size)), ("manual", set_members("manual", size)))
+    replicates = 300
+    hits = 0
+    for _ in range(replicates):
+        qualities = {
+            label: [generator.uniform(3.0, 4.0) for _ in range(size)]
+            for label in ("random", "manual")
+        }
+        rows = set_rows(qualities, generator, noise=0.01)
+        # Forced onto the sampled path, which is the one an affordable comparison
+        # uses at 13 candidates per set (C(26, 13) = 10.4M labellings).
+        outcome = two_set_blocked_test(
+            rows, STEPS, sets, samples=400, max_assignments=100
+        )
+        assert outcome["method"] == "monte-carlo", outcome
+        assert outcome["assignments"] == math.comb(2 * size, size)
+        hits += outcome["p"] < 0.05
+
+    rate = hits / replicates
+    # 300 replicates put the sampling error on a 5% rate at ~1.3 points, so this
+    # separates a calibrated test from the 17% one with room to spare.
+    assert rate < 0.12, rate

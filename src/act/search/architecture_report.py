@@ -368,6 +368,209 @@ def blocked_permutation_test(
     }
 
 
+def two_set_blocked_test(
+    results: list[EvalResult],
+    steps: int,
+    sets: tuple[tuple[str, Sequence[str]], tuple[str, Sequence[str]]],
+    *,
+    statistic: str = "mean",
+    samples: int = 200_000,
+    max_assignments: int = 1_000_000,
+    seed: int = 0,
+) -> dict:
+    """Seed-blocked comparison of two *sets* of architectures under equal compute.
+
+    Section 11 asks a different question from every other test in this module: not
+    "does this architecture beat that one" but "does a curated *set* of 13 beat a
+    random draw of 13 trained with the same budget".    The unit of exchange under the null is therefore the set *label*, and a label
+    belongs to an architecture rather than to one run: with no curation effect the
+    two sets' members are interchangeable, so the null draws **one** split of the
+    ``2n`` members into two groups of ``n`` and reads every seed through that same
+    split. A seed blocks the comparison, it does not add a level of exchange - a
+    fresh split per seed would take each member's shared quality out of the null's
+    differences while the observed difference still carries it, and the test would
+    then reject on a real member-level spread alone. That is also what separates
+    this null from ``blocked_permutation_test``'s: an architecture null sets the
+    member effect to zero, and this one does not, so the two cannot be permuted the
+    same way. The assignment count is ``C(2n, n)``, not ``C(2n, n)**seeds``.
+
+    Equal compute is a precondition rather than an argument. Unequal set sizes
+    would compare two budgets rather than two selections, and a shared member would
+    make the two sets overlap, so both are refused with the reason rather than
+    computed over.
+
+    ``statistic`` picks the quantity the sets are compared on, and the choice is
+    substantive enough to name rather than average away:
+
+    * ``mean`` - is the curated set's *average* candidate better? This is the
+      question "does curation carry signal", and it averages the candidate-quality
+      spread down, so it is the better-powered of the three.
+    * ``best`` - does the curated set produce a better *winner*? This is what a
+      search budget actually buys, and it is dominated by the top of the quality
+      distribution, so it is noisier: with 13 candidates a set's best is one draw
+      from its upper tail.
+    * ``worst`` - is its floor higher (fewer duds)? The mirror of ``best``, and the
+      quantity a search that samples widely cares about when a bad candidate costs
+      the same as a good one.
+
+    The difference is signed as *first set minus second set*, so a negative value
+    means the first is better - the same convention every other contrast here uses.
+    """
+    functions = {"mean": lambda values: sum(values) / len(values), "best": min, "worst": max}
+    if statistic not in functions:
+        raise ValueError(f"unknown statistic {statistic!r}; choose from {sorted(functions)}")
+    measure = functions[statistic]
+
+    labels = (str(sets[0][0]), str(sets[1][0]))
+    members = (list(sets[0][1]), list(sets[1][1]))
+    if not members[0] or not members[1]:
+        return {"available": False, "reason": "both sets must name at least one architecture"}
+    if len(members[0]) != len(members[1]):
+        return {
+            "available": False,
+            "reason": (
+                f"sets of unequal size compare two budgets, not two selections: "
+                f"{len(members[0])} against {len(members[1])}"
+            ),
+        }
+    overlap = sorted(set(members[0]) & set(members[1]))
+    if overlap:
+        return {
+            "available": False,
+            "reason": "the sets share architectures: " + ", ".join(overlap),
+        }
+
+    every = [*members[0], *members[1]]
+    per_name: dict[str, dict[int, float]] = {}
+    for entry in results:
+        if entry.steps == steps and entry.name in set(every):
+            per_name.setdefault(entry.name, {})[entry.seed] = entry.validation_loss
+    absent = [name for name in every if not per_name.get(name)]
+    if absent:
+        return {
+            "available": False,
+            "reason": f"no {steps}-step rows for: " + ", ".join(sorted(absent)),
+        }
+    shared: set[int] | None = None
+    for name in every:
+        available = set(per_name[name])
+        shared = available if shared is None else (shared & available)
+    seeds = sorted(shared or [])
+    if len(seeds) < 2:
+        return {
+            "available": False,
+            "reason": (
+                f"a seed-blocked test needs 2+ seeds carrying both sets; {len(seeds)} do"
+            ),
+        }
+
+    n = len(members[0])
+    k = 2 * n
+    # The first set occupies the first n columns of every block, which is the
+    # observed labelling the null is measured against.
+    blocks = [
+        [per_name[name][block] for name in members[0]]
+        + [per_name[name][block] for name in members[1]]
+        for block in seeds
+    ]
+
+    def per_block_differences(selection: Sequence[int]) -> list[float]:
+        """One *member-level* split, applied to every block.
+
+        A label belongs to an architecture, not to one seed's run: the same 13
+        candidates sit on the same side in every seed, so a split that varies by
+        seed is not a labelling this design can produce. That is not pedantry. The
+        quantity the set null leaves in place is the *member* effect - one
+        candidate really is better than another, and that quality is shared by its
+        rows in every seed - so an assignment that breaks a member's rows apart
+        across sides cancels the member variance out of the null's differences
+        while the observed difference still carries it. The null would then be
+        narrower than the quantity it tests and a real member-level spread alone
+        would show up as a small p. Drawing one split and applying it to every
+        block keeps the two on the same scale.
+        """
+        chosen = set(selection)
+        differences = []
+        for values in blocks:
+            first = [value for index, value in enumerate(values) if index in chosen]
+            second = [value for index, value in enumerate(values) if index not in chosen]
+            differences.append(measure(first) - measure(second))
+        return differences
+
+    observed_selection = tuple(range(n))
+    observed_differences = per_block_differences(observed_selection)
+    observed = sum(observed_differences) / len(observed_differences)
+
+    # The assignment count is computed rather than materialised: at 13+13
+    # candidates a single split is already C(26,13) = 10.4M labellings, and
+    # building that list before checking the cap is what makes this test hang
+    # *because* it is about to sample instead of enumerate. The list is only ever
+    # built inside the branch that enumerates, where the cap bounds its size.
+    # The count is over member-level splits: seeds multiply the number of *values*
+    # the statistic averages, not the number of labellings the design can take.
+    assignments = math.comb(k, n)
+    if assignments <= max_assignments:
+        at_least = 0
+        for selection in combinations(range(k), n):
+            drawn = per_block_differences(selection)
+            if abs(sum(drawn) / len(drawn)) >= abs(observed) - 1e-12:
+                at_least += 1
+        p_value, method = at_least / assignments, "exact"
+    else:
+        generator = random.Random(seed)
+        at_least = 0
+        for _ in range(samples):
+            drawn = per_block_differences(tuple(generator.sample(range(k), n)))
+            if abs(sum(drawn) / len(drawn)) >= abs(observed) - 1e-12:
+                at_least += 1
+        # (r + 1) / (n + 1): a Monte-Carlo p of exactly 0 would claim more
+        # certainty than the draw count can support, and this test's design floor
+        # is far below what 200,000 draws can resolve.
+        p_value, method = (at_least + 1) / (samples + 1), "monte-carlo"
+
+    def describe(names: Sequence[str]) -> dict:
+        values = [per_name[name][block] for name in names for block in seeds]
+        return {
+            "runs": len(values),
+            "mean": sum(values) / len(values),
+            "best": min(values),
+            "worst": max(values),
+        }
+
+    return {
+        "available": True,
+        "steps": steps,
+        "statistic": statistic,
+        "labels": list(labels),
+        "per_block": [
+            {
+                "seed": block,
+                "difference": difference,
+                labels[0]: measure(blocks[index][:n]),
+                labels[1]: measure(blocks[index][n:]),
+            }
+            for index, (block, difference) in enumerate(zip(seeds, observed_differences))
+        ],
+        "difference_nats": observed,
+        "per_set": {labels[0]: describe(members[0]), labels[1]: describe(members[1])},
+        "p": p_value,
+        "method": method,
+        "assignments": assignments,
+        # The design's own floor: two label assignments attain the extreme, since
+        # swapping the two sets gives the mirror of the same statistic.
+        "min_achievable_p": 2 / assignments,
+        "p_resolution": (1 / (samples + 1)) if method == "monte-carlo" else None,
+        "sign_consistency": all(value < 0 for value in observed_differences)
+        or all(value > 0 for value in observed_differences),
+        "seeds": seeds,
+        "note": (
+            "Difference is the first set minus the second, averaged over seeds, so a "
+            "negative value favours the first. Effect sizes are horizon-dependent "
+            "(section 3): quote this with its training length."
+        ),
+    }
+
+
 def paired_contrast_test(pairs: Sequence[tuple[float, float]]) -> dict:
     """Exact sign-permutation test on paired differences.
 
