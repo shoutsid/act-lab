@@ -786,7 +786,7 @@ the axis is one kernel away from being searchable rather than one refactor away.
 | Seed-matched results | §20 implemented and used; exact blocked permutation test, extended with a crossed factorial (`crossed_contrast`) whose main effects are exact and whose interaction is reported against three nulls; the confirmation arm's four-outcome rule is evaluated by `replication_decision`/`--replication-rule` with the thresholds in `REPLICATION_RULE`, so a pooled branch is read mechanically rather than by eye |
 | Robustness checks on the headline claims | Held-out-loss effects re-run on training loss (v2 and the crossed factorial), so neither is a holdout-split artifact; leave-one-out over candidates where the design allows it (v2's 8 distinct configurations) and an explicit *refusal* where it does not (the crossed arm's 2-per-cell design becomes unbalanced, which used to crash rather than report); spread-not-worse and dropped-candidate guards; an **in-flight seed is dropped from the crossed and paired contrasts and named**, so a sweep analysed while its last seed is still training reports the contrast over the seeds that finished rather than reporting nothing — the drop is disclosed in the decision and the procedure floor moves with it, and only a seed short of the fullest one's row count is droppable, so an unbalanced-but-complete seed still refuses; a seed that stopped *between* pairs leaves nothing incomplete and is named by its pair count instead, because the unit count is the only place that shows and the floor printed beside the p moves with it; the seed-matched permutation test runs only over a complete rectangle, so the seeds and architectures it had to intersect away are named too — the block count beside its p is the survivors, not the design, and a dropped seed that wrote as many rows as any other is called a zoo defect rather than an unfinished sweep. All pinned by tests against the real ledgers |
 | Procedure floors reported beside every p | `min_achievable_p` on the blocked permutation test, the crossed main effects (2/46,656 = 4.29e-05, both **at floor**), the seed-blocked interaction (2/2^seeds) and the paired contrast (2/2^12). Added after the horizon arm showed what a floor-bound statistic read as evidence costs: a p that is the most extreme its test can express is a statement about the design, not about the effect |
-| §11 random-vs-manual readiness | `RandomArchitectureSearch` baseline plus `scripts/space_typicality.py`, which checks whether the curated sets occupy a distinguishable region of the space before any equal-compute comparison is run. They do not (§9a), so the comparison is not circular — and the *budget* check is done too, which is the one condition a band does not buy: a band-matched 13-candidate draw carries a **median 1.12×** the curated set's total parameters (p10–p90 1.05–1.18×, range 1.00–1.25× over 200 draws, median 1.15× at a ±15% band), because the curated set sits at 86M against the nominal 100M — so a budget-matched sampler seed must be pre-registered (§9a) |
+| §11 random-vs-manual readiness | `RandomArchitectureSearch` baseline plus `scripts/space_typicality.py`, which checks whether the curated sets occupy a distinguishable region of the space before any equal-compute comparison is run. They do not (§9a), so the comparison is not circular — and the *budget* check is done too, which is the one condition a band does not buy: a band-matched 13-candidate draw carries a **median 1.12×** the curated set's total parameters (p10–p90 1.05–1.18×, range 1.00–1.25× over 200 draws, median 1.15× at a ±15% band), because the curated set sits at 86M against the nominal 100M — so a budget-matched sampler seed must be pre-registered (§9a). The *size* condition is now measured too, before the hours: `scripts/set_comparison_power.py` puts 80% power at a **0.30-nat set-mean advantage** for 13 candidates per set over 2 seeds (26 runs, ~1.20 GPU-hours), and shows the lever is candidates per set rather than seeds — 26 per set reaches 0.155 nats at 2.39 GPU-hours, while 2/3/4 seeds are indistinguishable. §11 as designed is therefore affordable but not decidable at the curated set's size, and its coverage form is invisible at any size measured (§9a) |
 | Decision on whether differences are real | `decision.md` per experiment — v1 NOT ESTABLISHED (power floor 1/36); v2 **ESTABLISHED** at p <= 5e-06 on 3 seeds (v1's figure was 0.00023 on 2); crossed **ESTABLISHED** at p <= 5e-06 with both main effects at the exact floor; the six-seed pooled record (crossed + confirmation) **ESTABLISHED** at p <= 5e-06 on 6 seeds, spread 0.3018 nats; head-paired **ESTABLISHED** as well (spread 0.2126 nats, p <= 5e-06) and its own question answered — the head contrast is non-significant at −0.0177 nats (p = 0.14) while the width contrast sits at the exact floor; each design's power floor and procedure resolution stated |
 | No 285M run | none |
 
@@ -875,14 +875,16 @@ Running or done, and the reason each was worth the hours:
 Module-type widening (§14) is **not** in that list because it is not runnable at
 this scale on this card, which is a finding rather than an omission.
 
-## 9a. The §11 random-vs-manual comparison: ready, and now de-confounded
+## 9a. The §11 random-vs-manual comparison: ready, de-confounded, and out of reach at its own size
 
 §11 asks for the first scientific comparison of randomly sampled vs manually
 selected architectures under equal compute. The precondition this document
 previously set — an architecture effect distinguishable from seed noise — is met
 by §2a: 0.2462 nats of spread against 0.0148 nats of seed noise, at p <= 5e-06,
 with the lever identified as residual-stream width (§2c), so the comparison has a
-declared direction rather than only a null to reject.
+declared direction rather than only a null to reject. The section now closes on a
+fourth condition that no GPU time fixes: at the curated set's own 13 candidates the
+comparison cannot see the effect it is asking about (§9a, last condition).
 
 ### The confound, checked before the hours were spent
 
@@ -932,8 +934,9 @@ separate those.
 
 ### Conditions that still apply
 
-Three were learned in this phase, and the third was measured while checking the
-draw rather than assumed:
+Four were learned in this phase, and the last two were measured rather than
+assumed — the third while checking the draw, the fourth before any hours were
+spent on it:
 
 - **Equal compute must mean equal *total* parameters, not equal FLOPs.** §2a shows
   a ×4.51 spread in active parameters under a matched total budget has no
@@ -978,6 +981,40 @@ total parameters over a set is what the arm's training budget is, and a band is
   mean 7.8 spread 3.2; hidden mean 718.8 spread 137.8) sits near the population's
   (9.49 / 3.50 and 716 / 144), which is what makes it usable as the comparison's
   random arm rather than a second designed one.
+- **The design has to be able to see the effect, and at 13 candidates per set it
+  cannot.** Measured with no GPU time at all — `scripts/set_comparison_power.py`
+  draws both sets from the curated arm's own measured candidate spread (0.7411
+  nats across its 13 candidates at 400 steps) through its measured per-run seed
+  std (0.0390) and runs the shipped seed-blocked test on the result: at 13
+  candidates per set over 2 shared seeds — 26 runs to buy, **~1.20 GPU-hours** —
+  **80% power needs a 0.30-nat set-mean advantage.** The null rows of that table
+  read 0.04/0.04/0.03 against the nominal 0.05 for the `mean`/`best`/`worst`
+  statistics, so the power figures above them are the test's own and not a
+  calibration artifact.
+
+  What more GPU time can and cannot buy is the reason this is a condition rather
+  than a caution, and both rows are measured at 200 replicates x 2000 draws:
+
+  | candidates per set | runs to buy | GPU-hours | 80% power at | power at 0.10 nats |
+  |---|---|---|---|---|
+  | 13 (the curated set's size) | 26 | 1.20 | **0.30 nats** | 0.23 |
+  | 26 | 52 | 2.39 | **0.155 nats** | 0.41 |
+  | 52 | 104 | 4.78 | **0.11 nats** | 0.69 |
+
+  **Seeds are not the lever.** The same design at 2, 3 and 4 shared seeds gives
+  0.23 / 0.21 / 0.22 power at a 0.10-nat advantage and 0.64 / 0.65 / 0.66 at 0.20,
+  i.e. identical to within the table's resolution, because the uncertainty is
+  *which* candidates each set drew and a candidate is on the same side on every
+  seed — the member-level split is drawn once, so no number of seeds averages it
+  away. Candidates per set is the lever that works, and the curated arm holds 13,
+  which is the size that needs a 0.30-nat effect. The coverage form of the
+  hypothesis — curation finds a better *winner*, the mechanism §9a itself
+  predicted — is invisible at every size measured, across a winner made better by
+  up to 0.60 nats: a permutation null on the sets' floors already contains that
+  winner, since half its assignments put the member on either side, so the floor
+  difference keeps its magnitude whatever the labelling. What §11 can measure at
+  this scale is the set-mean form, and that is not affordable at the curated set's
+  size.
 `RandomArchitectureSearch` is implemented and tested against the same grid the
 curated sets draw from, so a *band-matched* draw is one command; a
 *budget-matched* one is the condition above, and it is checkable with no GPU. What

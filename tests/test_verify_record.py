@@ -50,6 +50,8 @@ def test_the_audit_covers_the_headline_claims_rather_than_a_sample():
         "§2c v4: lands on the pre-registered 'width is the lever' condition",
         "§4 400: seed std",
         "§4a: the eventual winner's place at 400 steps",
+        "§9a: 80% power is reached at 0.30 nats, and not at 0.20",
+        "§9a: 13 per set rejects a true null only at the nominal rate",
         "§10 total: runs",
         "README: the fully dense design's rank",
         "promotion threshold at 2 seeds / 400 steps",

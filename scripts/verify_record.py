@@ -50,6 +50,7 @@ from arch_zoo_screen import (  # noqa: E402
     SCREEN_SEED_STD_BY_STEPS,
     comparison_noise_nats,
 )
+from set_comparison_power import candidate_population, power_at  # noqa: E402
 from space_typicality import budget_matching_draw, set_total_params  # noqa: E402
 
 #: Documented values are quoted from the record to the precision it states them at, so
@@ -585,6 +586,67 @@ def check_replication_rule(root: Path, audit: Audit) -> None:
     )
 
 
+def check_power_study(root: Path, audit: Audit, *, quick: bool) -> None:
+    """§9a's size condition: what the affordable §11 comparison can and cannot see.
+
+    The record's fourth precondition is a power figure, not a measured loss, so it is
+    recomputed from the same population and noise the study reads out of the ledgers.
+    The power *rates* are checked as orderings rather than as decimals: they are
+    deterministic given the seeds, but the record quotes them to two places and a
+    relative tolerance on a 0.04 rate is not a meaningful test.
+    """
+    population, noise = candidate_population(root, "arch-zoo-100m-v1", 400)
+    audit.check(
+        "§9a: the candidate spread the power is computed from",
+        0.7411,
+        max(population) - min(population),
+        "§9a",
+    )
+    audit.check("§9a: the per-run seed std it is computed against", 0.0390, noise, "§9a")
+
+    def power(advantage: float, *, set_size: int = 13, blocks: int = 2) -> float:
+        return power_at(
+            population,
+            advantage=advantage,
+            model="shift-all",
+            statistic="mean",
+            set_size=set_size,
+            blocks=blocks,
+            noise=noise,
+            replicates=200,
+            samples=2_000,
+        )
+
+    audit.check(
+        "§9a: 13 per set rejects a true null only at the nominal rate",
+        True,
+        power(0.0) < 0.08,
+        "§9a",
+        "the power table's own null row",
+    )
+    audit.check(
+        "§9a: 80% power is reached at 0.30 nats, and not at 0.20",
+        True,
+        power(0.30) >= 0.8 and power(0.20) < 0.8,
+        "§9a",
+    )
+    if quick:
+        return
+    audit.check(
+        "§9a: 26 per set reaches 80% power at 0.155 nats",
+        True,
+        power(0.15, set_size=26) > 0.7 and power(0.10, set_size=26) < 0.5,
+        "§9a",
+    )
+    audit.check(
+        "§9a: more seeds are not the lever",
+        True,
+        all(abs(power(0.10, blocks=blocks) - power(0.10)) < 0.08 for blocks in (3, 4)),
+        "§9a",
+        "2, 3 and 4 seeds agree at a 0.10-nat advantage",
+    )
+
+
 def run_audit(root: Path, *, quick: bool = False) -> Audit:
     audit = Audit()
     check_costs(root, audit)
@@ -592,6 +654,7 @@ def run_audit(root: Path, *, quick: bool = False) -> Audit:
     check_v1_screening(root, audit)
     check_attribution(root, audit, quick=quick)
     check_structure_and_budget(root, audit, quick=quick)
+    check_power_study(root, audit, quick=quick)
     check_replication_rule(root, audit)
     check_head_paired(root, audit)
     return audit
