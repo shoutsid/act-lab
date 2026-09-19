@@ -61,6 +61,20 @@ Watch progress, or report on a partial sweep at any point, with:
 PYTHONPATH=src python scripts/arch_zoo_analyze.py --experiment-id arch-zoo-100m-v1 --write
 ```
 
+The `decision.md` committed in this directory is the **pooled six-seed** record, not the
+three-seed one the command above writes. Section 9's open item asked for these finalists
+to be re-run on seeds that took no part in screening, and that arm is
+`arch-zoo-100m-v1-finalists-6seed`; pooling the two lowers this design's power floor
+from 1/36 to 1/7776, so the pooled write is the authoritative record here and is what
+the branch quoted above was read from:
+
+```
+PYTHONPATH=src python scripts/arch_zoo_analyze.py \
+  --experiment-id arch-zoo-100m-v1 \
+  --also arch-zoo-100m-v1-finalists-6seed \
+  --finalist-order-rule --write
+```
+
 Reproduce from scratch:
 
 ```

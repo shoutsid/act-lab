@@ -13,6 +13,7 @@ unresolved is every candidate the cut could have chosen between.
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -236,6 +237,79 @@ def test_the_driver_writes_its_promotion_verdicts_into_the_decision(tmp_path, mo
     assert "| Stage 1 | 400 | 2 | 0.0286 | 0.0286 |" in text
     assert "| Stage 2 | 800 | 2 | 0.0165 | 0.0165 |" in text
     assert "decided by the data" in text
+
+
+def test_a_flat_arm_does_not_claim_the_screening_seeds_it_never_ran(tmp_path, monkeypatch):
+    """The record's seed list has to be the seeds it was actually read over.
+
+    A flat plan trains no screening stage, so `--screen-seeds` names seeds that never
+    produce a row. Taking the *plan's* union wrote a record whose `seeds` read
+    `[42, 43, 45, 46, 47]` against three seeds of ledgers - contradicting its own
+    `seeds_per_architecture`, and therefore the rendered decision, which lists the
+    rows. `arch_zoo_analyze.py` derives the set from the results, so the two writers
+    disagreed about what the same arm had been read over; this is the arm the
+    freshness check caught it on.
+    """
+    import arch_zoo_screen as screen
+    from act.search.architecture_eval import EvalResult
+
+    def fake_evaluate_batch(candidates, *, run, device, output_dir, tag):
+        return [
+            EvalResult(
+                name=candidate.name,
+                family=candidate.family,
+                genome_hash=f"hash-{candidate.name}",
+                seed=run.seed,
+                total_params=candidate.total_params,
+                active_params=candidate.active_params,
+                contracted_flops_per_token=2.5e8,
+                dense_runtime_flops_per_token=4.0e8,
+                training_flops=2.5e8 * run.train_tokens,
+                validation_flops=2.5e8 * 16 * 2 * 1024,
+                final_train_loss=3.1 + 0.02 * index,
+                mean_train_loss=3.15 + 0.02 * index,
+                validation_loss=3.0 + 0.02 * index,
+                steps=run.steps,
+                train_tokens=run.train_tokens,
+                val_tokens=16 * 2 * 1024,
+                elapsed_s=100.0,
+                measured_step_s=0.25,
+                measured_tokens_per_s=5000.0,
+                peak_memory_mb=3000.0,
+                device="cpu",
+                description="",
+                val_source="holdout:2000000",
+            )
+            for index, candidate in enumerate(candidates)
+        ]
+
+    monkeypatch.setattr(screen, "evaluate_batch", fake_evaluate_batch)
+    directory = tmp_path / "flat-arm"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "arch_zoo_screen.py",
+            "--experiment-id", str(directory),
+            "--artifacts-root", str(tmp_path),
+            "--design", "matched-total",
+            "--candidates", "3",
+            "--plan", "flat",
+            "--flat-steps", "1200",
+            "--screen-seeds", "42,43",
+            "--finalist-seeds", "45,46,47",
+            "--budget-hours", "100",
+        ],
+    )
+    screen.main()
+
+    record = json.loads((directory / "ranked.json").read_text())
+    assert record["seeds"] == [45, 46, 47]
+    # And that is the same set every ranking row was read over, so the record cannot
+    # disagree with itself about which seeds exist.
+    assert {frozenset(seeds) for seeds in record["seeds_per_architecture"].values()} == {
+        frozenset({45, 46, 47})
+    }
 
 
 def test_the_screen_plan_is_executable_and_restarts_only_its_own_ledgers(tmp_path):

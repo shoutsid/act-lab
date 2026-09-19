@@ -250,6 +250,22 @@ Six seeds on 3 architectures keeps the exact enumeration viable (6^6 = 46,656
 assignments) and lowers the design's power floor from 1/36 to 1/7776, so it can
 resolve what 3 seeds could not.
 
+That sketch is superseded and its ids are dead: the arm was later run as
+`arch-zoo-100m-v1-finalists-6seed`, not `arch-zoo-100m-v1-confirm`. See that
+directory for what it found - the ordering came back **coupled** to the screening
+seeds, so no ranking was carried out of it.
+
+**How this directory's own record is produced.** The committed `decision.md` here is
+the pooled v2 + horizon write. `--signal-genes` is not optional for reproducing it:
+the by-length table reports one pre-specified model across lengths, and without the
+flag each length selects its own predictors and the reported coefficients change.
+
+```
+PYTHONPATH=src python scripts/arch_zoo_analyze.py \
+  --experiment-id arch-zoo-100m-v2 --also arch-zoo-100m-v2-horizon \
+  --signal-genes hidden_size,depth --write
+```
+
 **Horizon arm** (~3.6 GPU-hours, *run* — see the decay section above). To measure
 the decay on a matched design instead of inferring it from v1's curated families.
 It went to its own directory rather than this one, because `--plan flat` here

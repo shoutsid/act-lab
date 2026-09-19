@@ -87,6 +87,15 @@ PYTHONPATH=src python scripts/arch_zoo_analyze.py \
   --signal-genes hidden_size,depth --write
 ```
 
+The record in *this* directory is the horizon arm's own read, at both lengths. That is
+the command which reproduces it:
+
+```
+PYTHONPATH=src python scripts/arch_zoo_analyze.py \
+  --experiment-id arch-zoo-100m-v2-horizon \
+  --signal-genes hidden_size,depth --write
+```
+
 `--signal-genes` names the model used for the by-length fit, so each length
 estimates the *same* coefficients rather than selecting its own predictors. The
 committed `decision.md` was generated with it. Re-running without the flag

@@ -146,8 +146,16 @@ discovered when the budget is gone.
 
 ```
 PYTHONPATH=src python scripts/arch_zoo_analyze.py \
-  --experiment-id arch-zoo-100m-v4-head-paired --samples 200000 --write
+  --experiment-id arch-zoo-100m-v4-head-paired \
+  --also arch-zoo-100m-v4-head-paired-confirm \
+  --samples 200000 --head-rule --write
 ```
+
+`--also` pools this arm with `arch-zoo-100m-v4-head-paired-confirm`, which is what the
+committed `decision.md` in this directory records - the confirmation re-ran the same
+candidates on fresh seeds, so the two row sets pool to six seed blocks - and
+`--head-rule` renders the pre-registered branch. Without both, the command reproduces
+the three-seed record this arm closed on before its confirmation ran.
 
 The analysis was wired and validated **before** the arm was launched, so the
 numbers land into a path that is already tested rather than being analysed ad hoc:

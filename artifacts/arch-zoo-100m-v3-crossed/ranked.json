@@ -694,6 +694,7 @@
     }
   },
   "paired_contrasts": {},
+  "paired_level_splits": {},
   "compute_units": {
     "available": false,
     "spread": 0.3017828638354936,
@@ -701,6 +702,9 @@
   },
   "selection_caveat": "",
   "screened_at_shorter_lengths": 0,
+  "lengths_present": [
+    1200
+  ],
   "replication_decision": {
     "available": true,
     "branch": "replicates-and-resolves",

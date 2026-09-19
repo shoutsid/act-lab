@@ -91,7 +91,8 @@ Independently, as a replication, and then pooled for power:
 
 ```
 PYTHONPATH=src python scripts/arch_zoo_analyze.py \
-  --experiment-id arch-zoo-100m-v3-crossed-confirm --samples 200000 --write
+  --experiment-id arch-zoo-100m-v3-crossed-confirm \
+  --samples 200000 --replication-rule --write
 
 PYTHONPATH=src python scripts/arch_zoo_analyze.py \
   --experiment-id arch-zoo-100m-v3-crossed \

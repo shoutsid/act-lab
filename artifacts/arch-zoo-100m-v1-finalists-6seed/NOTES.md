@@ -174,9 +174,17 @@ watcher logs the full pre-registered analysis rather than writing it, because
 `--write` supersedes v1's committed `decision.md` and that is a deliberate step, not
 an unattended one. Verdict lands in `analysis_watcher.log`.
 
-Runbook, as run:
+Runbook, as run. The record in *this* directory is the arm's own three-block read,
+written by the sweep:
 
-```bash
+```
+PYTHONPATH=src python scripts/arch_zoo_analyze.py \
+  --experiment-id arch-zoo-100m-v1-finalists-6seed --write
+```
+
+And the pooled read, which is the arm's verdict and lands in v1's directory:
+
+```
 PYTHONPATH=src python scripts/arch_zoo_analyze.py \
   --experiment-id arch-zoo-100m-v1 \
   --also arch-zoo-100m-v1-finalists-6seed \

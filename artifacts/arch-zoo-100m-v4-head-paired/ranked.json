@@ -1769,6 +1769,9 @@
   },
   "selection_caveat": "",
   "screened_at_shorter_lengths": 0,
+  "lengths_present": [
+    1200
+  ],
   "head_pairing_decision": {
     "available": true,
     "branch": "heads-free-at-wide",

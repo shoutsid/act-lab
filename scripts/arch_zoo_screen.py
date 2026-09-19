@@ -1267,9 +1267,14 @@ def main() -> None:
 
     def write_reports(results: list[EvalResult]) -> None:
         """Emit ranked table, search cost and decision for whatever completed."""
-        outcome = best_available_summary(
-            results, sorted(set(screen_seeds + finalist_seeds))
-        )
+        # The seeds the record is read over come from the rows, not from the plan.
+        # A flat arm trains no screening stage at all, so `screen_seeds` can name
+        # seeds that were never run - and taking the union then writes a record whose
+        # `seeds` contradicts its own `seeds_per_architecture`, and therefore the
+        # rendered decision, which lists the rows. `arch_zoo_analyze.py` already
+        # derives them from the results, so this also makes the two writers agree on
+        # what the same arm was read over.
+        outcome = best_available_summary(results, sorted({row.seed for row in results}))
         # Promotion verdicts are part of the arm's reading, not just its log: which
         # cuts were decided by the data is what says whether the promotion was
         # selection or coin-flipping.

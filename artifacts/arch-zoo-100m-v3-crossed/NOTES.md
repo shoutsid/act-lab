@@ -89,8 +89,17 @@ inside the 10–20 cap.
 
 ```
 PYTHONPATH=src python scripts/arch_zoo_analyze.py \
-  --experiment-id arch-zoo-100m-v3-crossed --write
+  --experiment-id arch-zoo-100m-v3-crossed \
+  --also arch-zoo-100m-v3-crossed-confirm \
+  --samples 200000 --replication-rule --write
 ```
+
+`--also` pools this arm with `arch-zoo-100m-v3-crossed-confirm`, which is what the
+committed `decision.md` in this directory records: the confirmation re-ran the same
+byte-identical candidates on fresh seeds, so the two row sets pool to six seed blocks.
+`--replication-rule` renders the pre-registered branch. Without both, the command
+reproduces the three-seed record this arm closed on before its confirmation ran - the
+runbook below this line predates the rule, and the record does not.
 
 The axis table reports the associations; the confounding block reports what else
 moves with whichever axis leads. Because the crossed pair is orthogonal, a leading

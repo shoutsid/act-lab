@@ -56,8 +56,6 @@
     }
   ],
   "seeds": [
-    42,
-    43,
     45,
     46,
     47
@@ -312,12 +310,7 @@
   },
   "joint_structural_fit": {
     "available": false,
-    "reason": "predictors are rank-deficient at this sample size",
-    "genes": [
-      "hidden_size",
-      "depth",
-      "expert_width"
-    ],
+    "reason": "3 predictors cannot be identified from 3 architectures: standardised over n points a column spans only n-1 = 2 dimensions, so any fit over more than 2 of them is dependent by construction (attempted `hidden_size`, `depth`, `expert_width`)",
     "dropped": [
       {
         "gene": "attention_heads",
@@ -347,6 +340,5 @@
   "screened_at_shorter_lengths": 0,
   "lengths_present": [
     1200
-  ],
-  "promotions": []
+  ]
 }

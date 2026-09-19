@@ -252,6 +252,18 @@ and fails when the document and the artifacts disagree:
 PYTHONPATH=src python scripts/verify_record.py
 ```
 
+That check recomputes each claim from the **ledgers**, which is not the same thing as
+being able to re-render the record the claim is read from — an analyzer defect once
+left one arm's committed `decision.md` impossible to regenerate, and nothing noticed.
+So the records are checked the other way round too. Each arm's own `NOTES.md` runbook
+is parsed and *executed* against its ledgers in a scratch tree, and the result is
+diffed against what is committed, so an arm whose runbook does not reproduce its
+record is a failure rather than a discovery:
+
+```bash
+PYTHONPATH=src python scripts/check_record_freshness.py --strict-rank
+```
+
 The scan prints the launch command for the arm it matched, with every flag that
 decides the draw — the band included, because the driver's own default band draws a
 different set from the same seed (1.14× the curated budget against the matched

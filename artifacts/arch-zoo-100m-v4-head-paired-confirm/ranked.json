@@ -1192,5 +1192,8 @@
     "reason": "no shorter length to fit a slope"
   },
   "selection_caveat": "",
-  "screened_at_shorter_lengths": 0
+  "screened_at_shorter_lengths": 0,
+  "lengths_present": [
+    1200
+  ]
 }

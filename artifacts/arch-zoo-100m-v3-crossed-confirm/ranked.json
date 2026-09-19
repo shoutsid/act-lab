@@ -232,6 +232,10 @@
       46,
       47
     ],
+    "seeds_dropped": [],
+    "architectures_dropped": [],
+    "unfinished_seeds": [],
+    "unbalanced_seeds": [],
     "p": 1.4999925000374999e-05,
     "p_ranks": 1.4999925000374999e-05,
     "p_paired_t_reference": 0.025925575483389605,
@@ -579,6 +583,7 @@
     }
   },
   "paired_contrasts": {},
+  "paired_level_splits": {},
   "compute_units": {
     "available": false,
     "spread": 0.2977958420912423,
@@ -586,6 +591,9 @@
   },
   "selection_caveat": "",
   "screened_at_shorter_lengths": 0,
+  "lengths_present": [
+    1200
+  ],
   "replication_decision": {
     "available": true,
     "branch": "inconclusive",

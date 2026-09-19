@@ -232,6 +232,10 @@
       43,
       44
     ],
+    "seeds_dropped": [],
+    "architectures_dropped": [],
+    "unfinished_seeds": [],
+    "unbalanced_seeds": [],
     "p": 4.9999750001249995e-06,
     "p_ranks": 4.9999750001249995e-06,
     "p_paired_t_reference": 0.0001098704218776576,
@@ -579,6 +583,7 @@
     "reason": "fewer than two binary structural genes"
   },
   "paired_contrasts": {},
+  "paired_level_splits": {},
   "compute_units": {
     "available": true,
     "spread": 0.32438959181308746,
@@ -592,5 +597,9 @@
     "fraction_of_budget": 0.27086939565372636
   },
   "selection_caveat": "",
-  "screened_at_shorter_lengths": 8
+  "screened_at_shorter_lengths": 8,
+  "lengths_present": [
+    800,
+    400
+  ]
 }
