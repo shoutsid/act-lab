@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 
 from act.evolution.figures_data import summaries_dir
 
@@ -88,6 +89,36 @@ def _section_of(filename: str) -> str | None:
     payload = json.loads((summaries_dir() / filename).read_text())
     section = payload.get("report_section")
     return section if isinstance(section, str) else None
+
+
+#: ``--out DIR`` / ``--output FILE`` / ``--compare-out FILE`` in a documented command.
+OUTPUT_FLAG = re.compile(r"--[a-z-]*out[a-z-]*\s+(\S+)")
+
+
+def test_a_documented_output_path_does_not_shadow_a_committed_summary() -> None:
+    """A reproduce command must write the artifact it claims to reproduce.
+
+    Section 9.10's block wrote `factor-map-recheck.json` to the artifacts root
+    while the committed artifact is under `study-summaries/`, and `artifacts/*`
+    is gitignored - so running it as documented produced an untracked file and
+    left the committed one stale, with the reader believing they had reproduced
+    it. The section named the correct path eleven lines further down, which is
+    what makes this checkable rather than a matter of taste: a path that names a
+    committed summary has to *be* that summary's path.
+    """
+    committed = {path.name for path in summaries_dir().glob("*.json")}
+    assert committed, "no committed summaries - the check would be vacuous"
+    # The trailing parts, not the whole path: a documented target is written relative
+    # to the repository root and ``summaries_dir()`` is absolute.
+    inside = summaries_dir().parts[-2:]
+    for raw in OUTPUT_FLAG.findall(REPORT.read_text() + STATUS.read_text()):
+        target = Path(raw.strip("'\"`,"))
+        if target.name in committed:
+            assert target.parent.parts[-2:] == inside, (
+                f"{target} carries the name of a committed summary but is not "
+                f"written into {summaries_dir()} - the command would leave the "
+                "committed copy stale"
+            )
 
 
 def test_every_committed_summary_is_referenced() -> None:

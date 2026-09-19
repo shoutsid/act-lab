@@ -6556,7 +6556,8 @@ PYTHONPATH=src python scripts/factor_map_recheck.py --list
 PYTHONPATH=src OMP_NUM_THREADS=1 python scripts/factor_map_recheck.py \
   --study gate3-probe-loss-384 --shard 0 --shards 16 --out /tmp/recheck
 PYTHONPATH=src python scripts/factor_map_recheck.py \
-  --compare '/tmp/recheck/*.json' --compare-out artifacts/factor-map-recheck.json
+  --compare '/tmp/recheck/*.json' \
+  --compare-out artifacts/study-summaries/factor-map-recheck.json
 ```
 
 `--coupled` re-runs the historical shared-RNG path for a control comparison, so
