@@ -38,6 +38,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from act.search.architecture_eval import load_results  # noqa: E402
 from act.search.architecture_report import (  # noqa: E402
+    FINALIST_ORDER_FRESH_SEEDS,
+    FINALIST_ORDER_STEPS,
     crossed_contrast,
     paired_design_contrast,
     rank,
@@ -719,6 +721,102 @@ def check_head_paired_confirm(root: Path, audit: Audit) -> None:
     audit.check("§2c v4 pooled: spread in seed-noise units", 13.56, outcome["sigmas"], "§2c")
 
 
+def check_finalist_order(root: Path, audit: Audit) -> None:
+    """§9's open item, as the arm that closes it measures it.
+
+    ``arch-zoo-100m-v1`` closed on "NOT ESTABLISHED - this experiment cannot yet
+    tell": a 3-block exact test whose floor is 1/36, on finalists that were promoted
+    *on those same seeds*, so it is mildly anti-conservative in the winner's favour.
+    v1 named its own fix, and this arm is that fix and nothing else - no new
+    architectures, no new length, no retuned knob. The checks below split the way the
+    head-paired confirmation arm's do: the design integrity that has to hold at any
+    point mid-run, then the pooled six-block record once its nine rows are there.
+    """
+    parent_dir = root / "arch-zoo-100m-v1"
+    arm_dir = root / "arch-zoo-100m-v1-finalists-6seed"
+    if not arm_dir.is_dir():
+        return
+
+    parent_zoo = json.loads((parent_dir / "zoo_definition.json").read_text())
+    arm_zoo = json.loads((arm_dir / "zoo_definition.json").read_text())
+    parent_by_name = {c["name"]: c for c in parent_zoo["candidates"]}
+    arm_candidates = {c["name"]: c for c in arm_zoo["candidates"]}
+
+    # The finalists are read off v1's own ledgers rather than restated here, so this
+    # check cannot drift from the promotion it is claiming to extend.
+    parent_rows = arm_results(root, parent_dir.name)
+    finalists = sorted({row.name for row in parent_rows if row.steps == FINALIST_ORDER_STEPS})
+    audit.check(
+        "§9 finalists: the arm runs exactly v1's promoted finalists",
+        finalists,
+        sorted(arm_candidates),
+        "NOTES.md design",
+        f"{len(finalists)} architectures, the ones v1 promoted at {FINALIST_ORDER_STEPS} steps",
+    )
+    audit.check(
+        "§9 finalists: candidate genomes byte-identical to the record's",
+        True,
+        bool(arm_candidates)
+        and all(parent_by_name.get(name) == c for name, c in arm_candidates.items()),
+        "NOTES.md design integrity",
+        "the two zoo definitions differ in experiment_id alone, so pooling the arms "
+        "measures seeds and nothing else",
+    )
+
+    rows = arm_results(root, arm_dir.name)
+    fresh = set(FINALIST_ORDER_FRESH_SEEDS)
+    audit.check(
+        "§9 finalists: every ledger row is on a screening-free seed",
+        True,
+        all(row.seed in fresh for row in rows),
+        "NOTES.md",
+        "42-44 screened and promoted these finalists, so a fresh block is the point",
+    )
+    audit.check(
+        "§9 finalists: the plan is flat at the rule's declared length",
+        True,
+        all(row.steps == FINALIST_ORDER_STEPS for row in rows),
+        "NOTES.md",
+        f"{len(rows)} of 9 rows written so far",
+    )
+    audit.check(
+        "§9 finalists: the validation stream is the record's, not a re-split one",
+        True,
+        bool(rows) and all(row.val_source == parent_rows[0].val_source for row in rows),
+        "NOTES.md",
+        "val-tokens.npy is shorter than this schedule needs, so both arms hold the "
+        f"same 2M tokens out of the same stream: {parent_rows[0].val_source}",
+    )
+
+    # The arm is only poolable because a row without run_config.mixed_precision is
+    # fp32 by construction - the field arrived with autocast in 07fc36a and v1
+    # predates it. Reading that absence as "unknown" refused the pool this arm exists
+    # to make, which is how the guard came to be corrected; the check keeps the two
+    # arms at one precision rather than trusting that they are.
+    def _precisions(directory: Path) -> set[str]:
+        values: set[str] = set()
+        for ledger in sorted(directory.glob("*_seed*_results.jsonl")):
+            for line in ledger.read_text().splitlines():
+                if line.strip():
+                    row = json.loads(line)
+                    recorded = (row.get("run_config") or {}).get("mixed_precision")
+                    values.add(str(recorded) if recorded else "off")
+        return values
+
+    audit.check(
+        "§9 finalists: both arms' rows read as a single precision",
+        {"off"},
+        _precisions(parent_dir) | _precisions(arm_dir),
+        "NOTES.md",
+        "v1's rows carry no mixed_precision key at all (they predate 07fc36a) and are "
+        "fp32 by construction; the rule's two readings are only comparable if the "
+        "fresh blocks were trained the same way",
+    )
+
+    if len(rows) < 9:
+        return
+
+
 def check_replication_rule(root: Path, audit: Audit) -> None:
     """The pre-registered rule's branch, computed from the same outcome it renders from."""
     from act.search.architecture_report import best_available_summary
@@ -846,6 +944,7 @@ CHECKS: tuple[str, ...] = (
     "check_replication_rule",
     "check_head_paired",
     "check_head_paired_confirm",
+    "check_finalist_order",
 )
 
 
