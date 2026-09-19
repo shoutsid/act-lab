@@ -69,6 +69,30 @@ def test_depth_washes_out_when_the_test_cannot_separate_the_depths():
         assert rule["branch"] == "depth-washes-out", nats
 
 
+def test_the_threshold_is_exclusive_and_the_floor_refusal_is_inclusive():
+    """Both boundaries decide at exact equality, and both decide against the arm.
+
+    The declared rule is ``p < main_p``, so a p landing *on* 0.05 is not evidence of
+    a depth difference. The exact re-split test returns values on a discrete grid
+    (``2/1296`` here), so the threshold is a number it can actually return - not a
+    boundary the data is guaranteed to avoid - and reading it as significant would
+    report a direction from an undecidable result.
+
+    The floor refusal mirrors that: a floor *equal* to the threshold cannot produce
+    a p below it, so the design cannot reach any branch and the refusal applies at
+    equality too.
+    """
+    # p exactly at the threshold: not significant, so no direction is recommended.
+    rule = horizon_decision(_outcome(+0.03, HORIZON_RULE["main_p"], TWO_SEED_FLOOR))
+    assert rule["conditions"][0]["met"] is False
+    assert rule["branch"] == "depth-washes-out"
+
+    # floor exactly at the threshold: no branch is reachable, so the refusal holds.
+    rule = horizon_decision(_outcome(+0.004, 0.30, HORIZON_RULE["main_p"]))
+    assert rule["conditions"][0]["met"] is False
+    assert rule["branch"] == "open-floor-limited"
+
+
 def test_one_seed_cannot_reach_a_branch_however_the_contrast_falls():
     """2/36 = 0.056 sits above 0.05, so a single seed returns the refusal, not a verdict."""
     rule = horizon_decision(_outcome(+0.03, ONE_SEED_FLOOR, ONE_SEED_FLOOR))

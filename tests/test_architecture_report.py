@@ -20,6 +20,7 @@ import scipy.stats
 from act.search.architecture_eval import EvalResult, load_results
 from act.search.architecture_report import (
     HEAD_PAIRING_RULE,
+    REPLICATION_RULE,
     _compact,
     _spearman_exact_p,
     axis_association,
@@ -1905,6 +1906,35 @@ def test_head_rule_says_open_when_the_floor_is_above_the_threshold():
     assert not conditions["seed-blocked interaction p < 0.05"]
 
 
+def test_head_rule_requires_every_seed_contrast_to_agree():
+    """The sign clause gates both *resolved* branches, at a p that clears 0.05.
+
+    The clause is unreachable at the arm's declared seed counts, for the arithmetic
+    ``test_replication_rule_requires_every_seed_contrast_to_agree`` sets out: any
+    mixed-sign set of seed contrasts floors at 0.0625 at six seeds, above the
+    declared 0.05, so ``p < 0.05`` already implies agreement until the seed count
+    reaches seven. Both rules carry the same clause over the same test, so the twin
+    is pinned here rather than left to symmetry.
+
+    The contrasts and the p are set directly because the head-paired design has no
+    per-seed head effect to plant one through. The value is not invented: 0.03125 is
+    what the seven-seed design in the replication test returns, and the same
+    ``4/2^7`` is the smallest a mixed-sign set can report at seven seeds.
+    """
+    seeds = (*SIX, SIX[-1] + 1)
+    outcome = head_rule_outcome(level_dependent_head_design(seeds=seeds), seeds)
+    crossed = outcome["crossed_contrast"]
+    heads = crossed["main"]["attention_heads"]
+    heads["interaction_seed_contrasts"] = [-0.06] * 6 + [0.04]
+    heads["interaction_p_seed_blocked"] = 0.03125
+    rule = head_pairing_decision(outcome)
+    conditions = {row["condition"]: row["met"] for row in rule["conditions"]}
+    assert conditions["seed-blocked interaction p < 0.05"]
+    assert not conditions["every seed contrast the same sign"]
+    # Mixed signs cannot resolve an interaction, whatever the p says.
+    assert rule["branch"] not in {"heads-free-at-wide", "heads-not-at-wide"}
+
+
 def test_head_rule_closes_the_axis_when_the_seed_agreement_was_luck():
     outcome = head_rule_outcome(
         paired_design_results(head_effect=0.0, noise=0.05, seeds=SIX), SIX
@@ -2747,6 +2777,66 @@ def test_replication_rule_reads_mixed_seed_contrasts_as_absent():
     assert decision["conditions"][4]["met"] is False  # and the signs disagree
     # The main effects still have to hold, or the branch would mean something else.
     assert all(row["met"] for row in decision["conditions"][:3])
+
+
+def test_the_declared_replication_thresholds_are_the_ones_the_notes_transcribe():
+    """Held as data for the reason the module's comment gives: a threshold that
+    lives only in a document gets reapplied by eye once the numbers arrive."""
+    assert REPLICATION_RULE == {"main_p": 0.01, "ratio": 1.5, "interaction_p": 0.05}
+
+
+def test_replication_rule_requires_every_seed_contrast_to_agree():
+    """The sign clause decides between two published branches - above six seeds.
+
+    At the arm's six declared seeds the clause is unreachable, and this test says
+    so rather than leaving it assumed. The sign-flip test floors at 2/2^6 = 0.03125
+    there, but any contrast set that *mixes* signs bottoms out at 0.0625: the lone
+    dissenting seed always has its own sign flipped, which only makes the observed
+    sum larger, so at least four of the 64 sign vectors count and the smallest
+    reportable p is exactly 2 x the floor. Since 0.0625 > 0.05, ``p < 0.05`` already
+    implies agreement at six seeds and the clause can never be the deciding one.
+
+    Seven seeds is where it becomes load-bearing. Six contrasts at -0.06 and one at
+    +0.04 clear the declared threshold at p = 0.03125 while the signs disagree - the
+    *absent* branch, not the resolved one. Pinned at seven so the clause is
+    exercised rather than assumed, which is the only seed count that can exercise it.
+    """
+    seeds = (*SIX_SEEDS, SIX_SEEDS[-1] + 1)
+    design = crossed_with_interaction(
+        depth_effect=0.08,
+        hidden_effect=0.30,
+        interaction=lambda seed: 0.04 if seed == seeds[-1] else -0.06,
+        seeds=seeds,
+    )
+    outcome = replication_outcome(design, seeds)
+    crossed = outcome["crossed_contrast"]
+    anchor = crossed["main"][crossed["factor_a"]]
+    assert anchor["interaction_p_seed_blocked"] < REPLICATION_RULE["interaction_p"]
+    decision = replication_decision(outcome)
+    assert decision["conditions"][3]["met"] is True  # the p does clear the threshold
+    assert decision["conditions"][4]["met"] is False  # and the signs still disagree
+    assert all(row["met"] for row in decision["conditions"][:3])
+    assert decision["branch"] == "replicates-no-interaction"
+
+
+def test_the_interaction_threshold_is_exclusive():
+    """A p landing exactly on 0.05 is not a resolved interaction.
+
+    Both the re-split and the sign-flip test return values on a discrete grid, so
+    the declared threshold is one of the numbers they can return - it is not a
+    boundary the data has to avoid.
+    """
+    design = crossed_with_interaction(
+        depth_effect=0.08, hidden_effect=0.30, interaction=0.12, seeds=SIX_SEEDS
+    )
+    outcome = replication_outcome(design, SIX_SEEDS)
+    crossed = outcome["crossed_contrast"]
+    anchor = crossed["main"][crossed["factor_a"]]
+    anchor["interaction_p_seed_blocked"] = REPLICATION_RULE["interaction_p"]
+    decision = replication_decision(outcome)
+    assert decision["conditions"][3]["met"] is False
+    assert decision["conditions"][4]["met"] is True  # signs agree, so the p decides
+    assert decision["branch"] == "inconclusive"
 
 
 def test_replication_rule_calls_a_floor_bound_interaction_inconclusive():
