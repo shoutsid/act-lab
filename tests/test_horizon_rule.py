@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from act.search.architecture_report import HORIZON_RULE, horizon_decision
+from act.search.architecture_report import HORIZON_RULE, HORIZON_STEPS, horizon_decision
 
 
 def _outcome(
@@ -43,6 +43,9 @@ ONE_SEED_FLOOR = 2 / 36
 
 def test_the_declared_threshold_is_the_one_the_notes_transcribe():
     assert HORIZON_RULE == {"main_p": 0.05}
+    # The length is declared, not inferred: the pre-registration evaluates the rule
+    # "on the 12,000-step rows" and the anchor sits in the same directory.
+    assert HORIZON_STEPS == 12000
 
 
 def test_shallow_wins_persists_when_deep_minus_shallow_is_positive_and_significant():
@@ -84,15 +87,28 @@ def test_width_is_reported_as_a_secondary_and_does_not_gate_the_branch():
     assert "does not gate" in rule["conditions"][2]["condition"]
 
 
-def test_an_outcome_at_the_anchor_is_refused_while_the_long_length_has_rows():
-    """``best_available_summary`` falls back to a completed shorter length; the rule
-    must not read the 1200-step anchor as the horizon result."""
-    rule = horizon_decision(_outcome(+0.08, 0.0015, TWO_SEED_FLOOR, steps=1200))
-    assert rule["available"] is False
-    assert "1200 steps while 12000 has rows" in rule["reason"]
-    # A single-length design is at its own longest length.
-    rule = horizon_decision(_outcome(+0.08, 0.0015, TWO_SEED_FLOOR, steps=1200, lengths=(1200,)))
-    assert rule["branch"] == "shallow-persists"
+def test_the_anchor_cannot_be_read_as_the_horizon_result_even_alone():
+    """The hole this arm's first attempt fell through.
+
+    ``lengths_present`` only carries lengths that *have rows*, so an arm that lost
+    its 12,000-step runs but kept the anchor has 1200 as its longest length present
+    and would otherwise look like a design that only ever asked for 1200 - which,
+    with the depth effect positive and significant, reads as "shallow wins
+    persists at this horizon". The declared length is named, so nothing but an
+    explicit override reads the anchor.
+    """
+    anchor_only = _outcome(+0.08, 0.0015, TWO_SEED_FLOOR, steps=1200, lengths=(1200,))
+    rule = horizon_decision(anchor_only)
+    assert rule["available"] is False and rule["branch"] == "unavailable"
+    assert "declared on 12000" in rule["reason"]
+    assert "lengths with rows: [1200]" in rule["reason"]
+
+    # Reading a design that genuinely declares 1200 is possible, but has to be said.
+    assert horizon_decision(anchor_only, required_steps=1200)["branch"] == "shallow-persists"
+
+    # And the fallback case: the anchor reported while the horizon has rows too.
+    fell_back = horizon_decision(_outcome(+0.08, 0.0015, TWO_SEED_FLOOR, steps=1200))
+    assert fell_back["available"] is False
 
 
 def test_the_rule_reads_real_ledgers_and_refuses_one_seed():
@@ -108,10 +124,17 @@ def test_the_rule_reads_real_ledgers_and_refuses_one_seed():
     if not ledgers:
         pytest.skip("arch-zoo-100m-v3-crossed ledgers not present")
     results = with_structure(load_results(ledgers), directory / "zoo_definition.json")
-    three = horizon_decision(best_available_summary(results, [42, 43, 44], samples=2_000))
+    three_seeds = best_available_summary(results, [42, 43, 44], samples=2_000)
+    # Stated as a 1200-step design, which is what this arm is, the rule reaches a
+    # branch on real ledgers.
+    three = horizon_decision(three_seeds, required_steps=1200)
     assert three["branch"] == "shallow-persists" and three["steps"] == 1200
+    # Under the horizon arm's own declaration these same rows are the *anchor*, so
+    # the rule refuses instead of reporting a 1200-step branch as the horizon.
+    assert horizon_decision(three_seeds)["branch"] == "unavailable"
     one = horizon_decision(
-        best_available_summary([r for r in results if r.seed == 42], [42], samples=2_000)
+        best_available_summary([r for r in results if r.seed == 42], [42], samples=2_000),
+        required_steps=1200,
     )
     assert one["branch"] == "open-floor-limited"
     assert one["depth_floor"] == pytest.approx(2 / 36)
@@ -125,8 +148,9 @@ def test_a_design_without_depth_as_a_factor_is_refused():
             "main": {"hidden_size": {"nats": -0.16, "p": 5e-6}, "attention_heads": {"nats": -0.02, "p": 0.02}},
         },
     }
-    rule = horizon_decision(outcome)
+    rule = horizon_decision(outcome, required_steps=1200)
     assert rule["available"] is False and rule["branch"] == "unavailable"
+    assert "no crossed contrast with depth" in rule["reason"]
     assert horizon_decision({})["available"] is False
 
 

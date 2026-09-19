@@ -197,3 +197,14 @@ anchor is retrained rather than carried over, because a flat plan restarts its o
 seed's ledgers on relaunch and special-casing one length inside the arm would be a
 change to the design. Cost is ~4 GPU-hours at the first attempt's measured 17.2k
 tokens/s, against the 15 GPU-h horizon cap; the first attempt spent 0.5.
+
+A watcher runs alongside the driver (`scripts/run_horizon_analysis_when_kernel_exits.sh`,
+detached, logging to `analysis_watcher.log`): it waits for the driver to exit, then
+**refuses to write** unless all 32 rows exist (8 candidates x {1200, 12000} x seeds
+42/43), and only then runs the pre-registered command above with `--write`. The
+refusal is the second half of the same fix: this file's rule is declared on the
+12,000-step rows while the 1200-step anchor sits in the same directory, so `HORIZON_STEPS`
+now names the length instead of inferring "the longest length that has rows" - which
+on the first attempt's ledgers would have resolved to 1200 and reported the anchor as
+the horizon result. The rule returns `unavailable` at any other length, and the
+analysis refuses outright when the horizon rows are absent.

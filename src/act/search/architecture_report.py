@@ -2686,6 +2686,18 @@ HORIZON_RULE: dict[str, float] = {
     "main_p": 0.05,
 }
 
+#: The training length the horizon rule is declared on, named rather than inferred.
+#:
+#: The arm keeps a 1200-step same-precision anchor in the same directory as its
+#: 12,000-step rows, and ``best_available_summary`` reports the longest length that
+#: *has rows*. Those coincide only when the horizon ran. An arm that lost its
+#: 12,000-step runs but kept the anchor - which is what this arm's first attempt
+#: did, silently - leaves 1200 as the longest length present, so inferring the
+#: horizon from the ledgers would report the anchor as the horizon result. The
+#: length is therefore declared here, as the pre-registration declares it, and an
+#: outcome at any other length is refused rather than labelled.
+HORIZON_STEPS: int = 12000
+
 HORIZON_READINGS: dict[str, str] = {
     "shallow-persists": (
         "The depth sign is horizon-stable to this length: shallow still beats deep at "
@@ -2719,6 +2731,7 @@ def horizon_decision(
     outcome: dict,
     *,
     main_p: float = HORIZON_RULE["main_p"],
+    required_steps: int = HORIZON_STEPS,
 ) -> dict:
     """Apply the horizon arm's pre-registered rule to a crossed outcome.
 
@@ -2732,28 +2745,28 @@ def horizon_decision(
     ``open-floor-limited`` rather than a branch, for the reason the head-paired and
     crossed confirmation arms both learned: a rule whose threshold sits below the
     test's floor is not decidable by analysis, only by data.
+
+    ``required_steps`` is the declared length (see :data:`HORIZON_STEPS`): an
+    outcome at any other length returns ``unavailable``, so the 1200-step anchor
+    cannot be read as the horizon result however the ledgers came out.
     """
     crossed = outcome.get("crossed_contrast") or {}
     depth = (crossed.get("main") or {}).get("depth")
-    # The rule is declared on the arm's *longest* length. ``best_available_summary``
-    # falls back to a shorter completed length while the long one is still
-    # training, so an outcome computed at the anchor is refused rather than
-    # labelled - otherwise a partial arm would read the 1200-step anchor as the
-    # horizon result.
     lengths = [int(value) for value in (outcome.get("lengths_present") or [])]
-    longest = max(lengths) if lengths else None
-    at_longest = longest is None or outcome.get("steps") == longest
-    if not crossed.get("available") or depth is None or not at_longest:
+    if not crossed.get("available") or depth is None:
+        reason = crossed.get("reason") or "no crossed contrast with depth as a factor"
+    elif outcome.get("steps") != required_steps:
         reason = (
-            f"the outcome is at {outcome.get('steps')} steps while {longest} has rows; "
-            "the rule reads the longest length only"
-            if crossed.get("available") and depth is not None
-            else crossed.get("reason") or "no crossed contrast with depth as a factor"
+            f"the outcome is at {outcome.get('steps')} steps and the rule is declared "
+            f"on {required_steps}; lengths with rows: {lengths or 'none'}"
         )
+    else:
+        reason = None
+    if reason is not None:
         return {
             "available": False,
             "branch": "unavailable",
-            "label": "UNAVAILABLE - THE RULE NEEDS A CROSSED DESIGN WITH DEPTH AT THE LONGEST LENGTH",
+            "label": "UNAVAILABLE - THE RULE NEEDS A CROSSED DESIGN AT ITS DECLARED LENGTH",
             "reading": HORIZON_READINGS["unavailable"],
             "conditions": [],
             "reason": reason,
