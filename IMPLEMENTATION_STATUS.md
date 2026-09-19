@@ -1,5 +1,15 @@
 # ACT Implementation Status
 
+## The mixer benchmark's conclusions hold; three of its stated precisions did not (2026-09-19)
+
+| | |
+|---|---|
+| **What was found** | `artifacts/mixer-benchmark/FINDINGS.md` is tracked, and it is the document that rules the module-type axis out of the search space ("not on this hardware, in this implementation"). Its table and its argument check out: every `tok/s`, `s/step` and peak-memory figure matches `mixer_throughput.json` exactly, all four OOM layouts appear as OOM in the raw log, the `all_attention` control is a real `a/a/a/a/a/a/a/a` layout, and the conclusion - GDN at 4-7x the wall clock per layer, three of nine layouts unrunnable - survives every number as written. What did **not** hold were three stated precisions. |
+| **The three** | (a) "All nine layouts ... land within **0.03%** of each other on total parameters": the recorded totals are `100,725,504` / `100,762,368` / `100,799,232`, a 73,728 spread - **0.073%** of the mean, 0.051% at its furthest from it. (b) The `vs attention` column **truncated** two rows where it rounded the other two, showing 6.8x for ratios of 6.850 and 6.852 against 6.9x for 6.921 - three rows that read as different were the same to within 0.07. (c) "reproduces ... to within **1%** (4,793 vs 4,733 tok/s)": the two figures are **1.27%** apart. |
+| **What else the check found** | The four OOM layouts carry no `total_params` in either `mixer_throughput.json` or `bench.log`, so their totals in the table come from the block geometry rather than from a measurement - now stated. And the 4,733 in (c) is not recorded in that directory: the only throughput committed there for that shape is this benchmark's own 4,793, and the v0 zoo records **573** for `D8_H768_E8_A2`, 8x lower. The comparison can be checked arithmetically but not reproduced from the artifacts beside it. |
+| **Worth recording, not fixing** | The benchmark's own log warns on **every** pattern that there was "no token file given: using uniform random tokens. Losses on this stream measure initialization, not architecture" - and `FINDINGS.md` correctly reports no loss figure at all, and the table's conclusion rests only on throughput and memory. That is the same defect `SCREENING_AUDIT.md` refuted the v0 screening for, avoided here by not reporting the losses. Verified rather than assumed. |
+| **Fixed** | The three precisions are corrected to the values the data supports, each with the arithmetic shown, and the OOM-provenance and no-loss facts are stated where a reader will meet them. |
+
 ## A tracked screening analysis recommended stopping while its own audit refuted it (2026-09-19)
 
 | | |

@@ -11,25 +11,43 @@ clock per layer and exceeds the card's memory at 6 of 8 layers.
 
 Held fixed so the *only* variable is the sequence mixer: depth 8, hidden 768,
 8 experts, 2 active, expert width 768, batch 2, context 1024, fp32. All nine
-layouts are matched to the same block geometry and land within 0.03% of each
+layouts are matched to the same block geometry and land within **0.073%** of each
 other on total parameters (100.7–100.9M), so this is a mixer comparison, not a
-parameter comparison.
+parameter comparison. The recorded totals are `100,725,504` / `100,762,368` /
+`100,799,232` across the five layouts that ran - a 73,728 spread, 0.073% of the mean
+and 0.051% at its furthest from it. (This line said 0.03%, which those figures do not
+support.) The four layouts that OOMed carry no parameter count in
+`mixer_throughput.json` or `bench.log`, so their totals in the table below are from
+the block geometry rather than from a measurement.
+
+The benchmark ran on **uniform random tokens** - its own log warns on every pattern
+that "losses on this stream measure initialization, not architecture" - so no loss is
+reported above, and the `final_loss` values recorded in the JSON should not be read as
+architecture effects.
 
 | pattern | GDN layers | params | tok/s | s/step | vs attention | peak MB |
 |---|---|---|---|---|---|---|
 | `all_attention` | 0/8 | 100.7M | **4,793** | 0.427 | 1.0× | 3,498 |
 | `att_3to1` | 2/8 | 100.8M | 1,209 | 1.673 | **4.0×** | 5,048 |
-| `alternating` | 4/8 | 100.8M | 700 | 2.918 | **6.8×** | 6,605 |
-| `gdn_att_last` | 4/8 | 100.8M | 700 | 2.915 | **6.8×** | 6,597 |
+| `alternating` | 4/8 | 100.8M | 700 | 2.918 | **6.9×** | 6,605 |
+| `gdn_att_last` | 4/8 | 100.8M | 700 | 2.915 | **6.9×** | 6,597 |
 | `gdn_att_first` | 4/8 | 100.8M | 693 | 2.943 | **6.9×** | 6,606 |
 | `gdn_3to1` | 6/8 | 100.9M | — | — | **OOM** | > 8,192 |
 | `all_gdn` | 8/8 | 100.7M | — | — | **OOM** | > 8,192 |
 | `all_hybrid` | 8/8 | 100.9M | — | — | **OOM** | > 8,192 |
 | `hybrid_quarter` | 6/8 | 100.8M | — | — | **OOM** | > 8,192 |
 
+The `vs attention` column is rounded to one decimal, which puts three layouts on
+6.9x; their exact ratios are 6.85 (`alternating`), 6.85 (`gdn_att_last`) and 6.92
+(`gdn_att_first`).
+
 `all_attention` reproduces the independently measured `architecture_eval`
-throughput for the same shape to within 1% (4,793 vs 4,733 tok/s), so the harness
-is measuring what the training path measures.
+throughput for the same shape to within **1.3%** (4,793 vs 4,733 tok/s), so the harness
+is measuring what the training path measures. (This line said "within 1%"; the two
+figures are 1.27% apart. The 4,733 is not recorded in this directory - the only
+throughput for this shape committed here is this benchmark's own 4,793, and the v0 zoo
+records 573 for `D8_H768_E8_A2` - so the comparison can be checked arithmetically but
+cannot be reproduced from the artifacts beside it.)
 
 ## The memory cost is predictable, and was predicted before it was measured
 
