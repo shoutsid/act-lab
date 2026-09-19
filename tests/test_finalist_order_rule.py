@@ -201,6 +201,41 @@ def test_floor_limited_when_the_declared_threshold_sits_below_the_floor():
     assert rule["label"].startswith("OPEN")
 
 
+def test_every_boundary_in_the_rule_decides_at_exact_equality():
+    """All three thresholds are compared at exact equality, and each refuses.
+
+    Each is a value the enumeration returns exactly - the pooled test enumerates at
+    six blocks, so its p lands on ``1/7776``-spaced values and on the declared 0.05
+    itself whenever the design produces it - so none is a boundary the data is
+    guaranteed to avoid. Each is pinned because reading one generously asserts a
+    replicated ordering the design did not establish.
+    """
+    # (a) A pooled p sitting exactly on ``pooled_p`` is not established. The blocks
+    # disagree here, so the branch that follows is *coupled*, and the planting's p is
+    # above the floor, so the floor clause is not what decides it.
+    rows = plant([CONSISTENT] * 5 + [REVERSED])
+    _, pooled = decide(rows)
+    assert pooled["p"] > pooled["min_achievable_p"]
+    at = decide(rows, pooled_p=pooled["p"])[0]
+    assert at["branch"] == "still-not-established"
+
+    # (b) A fresh p sitting exactly on ``fresh_p`` does not clear it, so an
+    # established pooled ordering whose blocks all agree is *coupled*, not
+    # established - the difference between the arm's verdict and a qualifier on it.
+    rows = plant([CONSISTENT] * 6)
+    clear = decide(rows, pooled_p=0.05)[0]
+    assert clear["branch"] == "order-established"
+    at = decide(rows, pooled_p=0.05, fresh_p=clear["p_fresh"])[0]
+    assert at["branch"] == "order-coupled"
+
+    # (c) A pooled floor *equal* to the threshold still refuses: the floor cannot
+    # produce a smaller p, so no branch is reachable by more analysis.
+    rows = plant([CONSISTENT] * 6)
+    _, pooled = decide(rows)
+    at = decide(rows, pooled_p=pooled["min_achievable_p"])[0]
+    assert at["branch"] == "floor-limited"
+
+
 def test_unavailable_when_the_outcome_is_not_at_the_declared_length():
     """The HORIZON_STEPS lesson: the length is declared, never inferred.
 

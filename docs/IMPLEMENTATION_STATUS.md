@@ -1,5 +1,15 @@
 # ACT Implementation Status
 
+## The same boundary defect in the last two rules, found by enumerating instead of hand-picking (2026-09-19)
+
+| | |
+|---|---|
+| **What was found** | Rather than hand-picking edits, every comparison operator in `finalist_order_decision` and `set_comparison_decision` was swapped in turn against its dedicated test file: 18 mutants, 6 caught, 12 survived - and 6 of those 12 were inside the docstring tables (the filter skipped lines beginning with `"` but not `|`). **All six real survivors were exact-equality boundaries**, the same class as the two entries below. |
+| **The five that were real** | In the finalist-order rule: `established = p_all < pooled_p` and `fresh_clears = p_fresh < fresh_p` are strict, so a p sitting on the threshold does not establish a replicated ordering and the verdict falls to *coupled* rather than *established*; and `floor_limited = pooled_floor >= pooled_p` is inclusive, since a floor equal to the threshold cannot produce a smaller p and leaves no branch reachable. In the set comparison: `ratio_ok = abs(budget_ratio - 1.0) <= budget_deviation` - the only *inclusive* condition in the codebase, and correctly so, because parity is a band and only an exceedance is rejected - and `significant = p_value < p_threshold`. |
+| **The sixth survivor is an equivalent mutant, proven rather than assumed** | `branch = "manual-better" if difference < 0 else "random-better"` puts a pair whose means are exactly equal on the random side, and swapping `<` for `<=` changes nothing. That is not a missing test. The p-value is the share of permuted statistics at least as extreme as the observed one, and *every* permutation is at least as extreme as zero, so a tied pair reports **p = 1.0** and cannot clear any threshold a p-value can be compared against; the clause needs a threshold above 1.0 to be reachable at all. The invariant is now asserted (`difference_nats == 0.0` and `p == 1.0`) rather than reasoned about and filed, because a survivor being a hole or an equivalent mutant calls for opposite responses and the difference is checkable. This is the second equivalent mutant this vein has produced, after the sign clause below. |
+| **What was pinned** | Five boundaries, **5/5 caught** where all five lived beforehand. The tie clause is deliberately left unpinned, with the invariant that makes it unreachable pinned in its place. |
+| **Why the ratio boundary needed care** | The existing `test_boundary_budget_ratio_is_accepted` passes a ratio of `1.025`, which reads as the boundary but is not one: `abs(1.025 - 1.0)` is `0.02499999999999991`, strictly inside the declared `0.025`, so the check passes under `<=` and `<` alike and cannot see which the rule uses. That is exactly why the mutant survived. The new test takes the deviation from the ratio's own float difference, making the comparison exactly equal by construction, and says so. |
+
 ## The verdict's action named the wrong gene, and the test only checked that both genes were named (2026-09-19)
 
 | | |

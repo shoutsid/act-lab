@@ -152,6 +152,58 @@ def test_boundary_budget_ratio_is_accepted():
     assert decision["available"]
 
 
+def test_the_ratio_and_p_boundaries_decide_at_exact_equality():
+    """One boundary admits and one refuses, and both are compared at equality.
+
+    The budget condition is the only *inclusive* one in this rule: parity is a band,
+    so a ratio sitting exactly on the tolerance is inside it and only an exceedance
+    is rejected. The p condition is strict, so a p sitting exactly on the threshold
+    is not significant and the null branch reports the power context rather than a
+    direction - the rule must not name a winner on a p it did not clear.
+
+    The deviation is taken from the ratio's own float difference because the decimal
+    form cannot express the boundary: ``abs(1.025 - 1.0)`` is
+    ``0.02499999999999991``, strictly inside the declared ``0.025``, so the existing
+    1.025 check passes under ``<=`` and ``<`` alike and cannot see which one the rule
+    uses. Setting the deviation to that difference makes the comparison exactly equal
+    by construction, which is what pins the operator.
+    """
+    outcome, _, _ = synthetic_design(advantage=0.30)
+
+    ratio = 1.025
+    at_ratio = set_comparison_decision(
+        outcome, budget_ratio=ratio, budget_deviation=abs(ratio - 1.0)
+    )
+    assert at_ratio["available"]
+
+    base = set_comparison_decision(outcome, budget_ratio=1.0)
+    assert base["branch"] == "manual-better"
+    at_p = set_comparison_decision(outcome, budget_ratio=1.0, p_threshold=base["p"])
+    assert at_p["branch"] == "no-detectable-difference"
+
+
+def test_a_tied_pair_cannot_reach_the_sign_branch():
+    """The tie clause is unreachable, and this is the proof rather than a guess.
+
+    ``branch = "manual-better" if difference < 0 else "random-better"`` puts a pair
+    whose means are *exactly* equal on the random side. Swapping ``<`` for ``<=``
+    there changes nothing, and that is not a missing test: the p-value is the share
+    of permuted statistics at least as extreme as the observed one, and every
+    permutation is at least as extreme as zero, so a tied pair reports ``p = 1.0``
+    and cannot clear any threshold a p-value is compared against. The clause only
+    becomes reachable under a threshold above 1.0, which no p-value can exceed.
+
+    Recorded because the alternative readings of a survivor - a hole, or an
+    equivalent mutant - call for opposite responses, and the difference is
+    checkable. Pinning the invariant is what keeps it checkable rather than folklore.
+    """
+    outcome, _, _ = synthetic_design(advantage=0.0)
+    decision = set_comparison_decision(outcome, budget_ratio=1.0)
+    assert decision["difference_nats"] == 0.0
+    assert decision["p"] == 1.0
+    assert decision["branch"] == "no-detectable-difference"
+
+
 def test_best_statistic_is_reportable_but_secondary():
     """The winner form stays computable - a lead to price, never a branch: §9a
     measured the floor permutation to contain the winner effect at this size."""
