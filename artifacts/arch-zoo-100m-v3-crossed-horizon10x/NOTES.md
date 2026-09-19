@@ -149,9 +149,9 @@ Then extend `verify_record.py` with the measured rows, update §3/§9/§11 of
 
 ## Status
 
-**Pre-registered 2026-09-19; first attempt failed on a harness guard and was re-run
-after correcting it (2026-09-19).** Nothing above this section has changed since the
-first ledger row existed.
+**Pre-registered 2026-09-19; first attempt failed on a harness guard, was re-run after
+correcting it, and landed the same day on `shallow-wins persists` (all 2026-09-19).**
+Nothing above this section has changed since the first ledger row existed.
 
 ### First attempt: the horizon never ran
 
@@ -238,3 +238,60 @@ made mechanical before the ledgers landed rather than read by eye afterwards:
   distinction structural rather than a matter of remembering.
 - **Width and interaction** are already carried by the crossed contrast the rule
   reports as its secondary, at whatever length the rule read.
+
+### Landed: 4.83 h on Kaggle T4×2, and the branch the rule returns
+
+The re-run completed `complete=True` with **32/32 rows** (8 candidates × {1200, 12000}
+× seeds 42/43) — the grid the first attempt was missing entirely — in 4.83 h of wall
+clock, ~9.22 GPU-hours token-derived, inside the 15 GPU-h cap. The pre-registered rule
+lands on **shallow-wins persists**:
+
+| condition | value | met |
+|---|---|---|
+| depth main effect significant (exact re-split p < 0.05) | p = 0.003086 (floor 0.001543) | yes |
+| depth main effect > 0 (deep − shallow; shallow wins) | +0.0209 nats at 12,000 steps | yes |
+| secondary: width main effect < 0 (reported, not gating) | −0.0645 nats, p = 0.001543 (at floor) | yes |
+
+So the depth sign is horizon-stable to 10× and §2c's "spend at low depth" stands at
+this scale. Against this arm's own same-precision 1,200-step anchor the spread falls
+0.3085 → 0.1059 nats (2.91×, **1.38× per doubling** against §3's 1.65× — the rate
+**over-predicts** the decay, which is the safe direction for a budget that reads it)
+and seed std 0.0118 → 0.0056, leaving the effect at **18.88× its own seed noise** at
+12,000 steps: it does not wash out. The ordering is the qualified half — Spearman 0.90
+with the **winner changing** (`xlohi_D5_H896_E16_A2_W384` → `xlohi_D5_H896_E4_A4_W1536`),
+which is precisely why the arm's pre-registered rule rather than the screen decides the
+branch. The precision offset against the fp32 record at 1,200 steps is **−0.0030 nats**
+mean (−0.0257 to +0.0104), smaller than the depth effect it carries, which is the
+arm's own check on having chosen fp16. The interaction is −0.0090 nats with the
+seed-blocked test at its 2-seed floor of 0.5, so the two seeds can neither confirm nor
+exclude it, as the pre-registration said in advance.
+
+### The landing had to be verified, because the first one was not
+
+The driver imports the kernel's own `decision.md`/`ranked.json`/`search_cost.json`,
+which are whichever sweep finished last and are **not** this arm's record. The local
+re-analysis that *is* the record launched and was killed inside the 4 seconds it runs
+for, so `decision.md` was left **older than every ledger it claims to describe**
+(18:32:47 against 18:32:49) — the artifact-level proof that it was not derived from
+them — and the file it left in place was the kernel's single-seed "PROVISIONAL" write,
+under-reading a complete two-seed arm by half. Three things were closed rather than
+re-run by hand:
+
+- the post-run analysis runs **unbuffered** (`python3 -u`): a stdout redirect to a file
+  is block-buffered, so a kill inside that window loses the output *and* any traceback,
+  which is why the watcher log stopped mid-line with no record of the attempt;
+- the watcher **verifies the write** before reporting success — `decision.md` must be
+  newer than all 32 ledgers — so an analysis that exits 0 without writing, or a record
+  that predates its inputs, is a logged failure instead of a silent one;
+- `scripts/check_record_freshness.py` now fails any arm whose committed record was read
+  over a **seed set that no documented command reads**. That is the content-based form
+  of the same check (it survives a fresh clone, where mtimes do not) and it names the
+  cause before paying for a regeneration.
+
+To reproduce this directory's record by hand:
+
+```
+PYTHONPATH=src python scripts/arch_zoo_analyze.py --write --horizon-rule \
+  --experiment-id arch-zoo-100m-v3-crossed-horizon10x \
+  --offset-against arch-zoo-100m-v3-crossed --offset-steps 1200
+```

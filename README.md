@@ -170,18 +170,34 @@ the 2/2¹² floor) against +0.0084 at 512 (p = 0.37), interaction +0.0636 nats a
 ~0.055 nats *only* on a wide residual stream, and a search must mutate the two
 jointly — the second joint constraint on the space after depth × width.
 
-What none of that yet shows is whether it survives a realistic training horizon;
-the depth finding in particular is the one prior work predicts should reverse with
-training. That is the arm now running, pre-registered in
-`artifacts/arch-zoo-100m-v3-crossed-horizon10x/NOTES.md`: the crossed factorial at
-10× the training length, fp16 with a same-precision 1200-step anchor, on Kaggle
-T4×2 via `scripts/kaggle_queue.py --queue archzoo`. Its rule is **declared on the
-12,000-step rows and refuses any other length**, so the anchor cannot be read as the
-horizon result. That is not a hypothetical: the arm's first attempt trained none of
-its horizon runs and was reported complete, and the three defects that allowed it are
-closed — an admission bar that asked for twice the schedule, a sweep that exits 0
-after losing every run in a stage, and a driver that read process exit codes as
-completeness rather than reading the ledgers.
+That has now been measured, and the depth finding survives it. The crossed factorial
+re-ran on its **byte-identical** candidate set at 10× the training length — 12,000
+steps, two seeds, fp16 with a same-precision 1200-step anchor, on Kaggle T4×2, all
+pre-registered in `artifacts/arch-zoo-100m-v3-crossed-horizon10x/NOTES.md` — and its
+rule lands on **shallow-wins persists**: depth **+0.0209 nats, exact p = 0.003086**
+(floor 0.001543), with width −0.0645 at its own floor. So the lever prior work
+predicted would reverse with training does not: at a matched parameter budget,
+shallow still beats deep at the length a real budget occupies. Two qualifications
+come out of the same run and both matter to a search — the decay is **slower** than
+the 1.65×-per-doubling extracted over 400→1200 (1.38× here), so that rate
+over-predicts how fast an effect fades; and the **winner changes** across 10×, where
+the ranking holds at Spearman 0.90 while `W384` gives way to `W1536`. A screen
+promotes; it does not choose.
+
+Its rule is **declared on the 12,000-step rows and refuses any other length**, so the
+anchor cannot be read as the horizon result. That is not a hypothetical: the arm's
+first attempt trained none of its horizon runs and was reported complete, and the
+three defects that allowed it are closed — an admission bar that asked for twice the
+schedule, a sweep that exits 0 after losing every run in a stage, and a driver that
+read process exit codes as completeness rather than reading the ledgers. A fourth was
+closed on the landing itself. The post-run watcher was killed inside the 4-second
+analysis it launched, so the file left in place as the record was the *kernel-side*
+single-seed artifact the driver had imported — one that reported "run at least two
+seeds per architecture" about a complete two-seed arm — and nothing noticed, because
+a stdout redirect to a file is block-buffered and the watcher's log stopped mid-line.
+The analysis now runs unbuffered, its write is verified newer than the ledgers it
+claims to describe, and `check_record_freshness.py` fails any record whose seed set
+is not the one its own documented command reads.
 
 The other open question was v1's own, and it is now answered. That arm closed on "NOT
 ESTABLISHED — this experiment cannot yet tell": a 3-block exact test whose floor is
@@ -207,10 +223,12 @@ with the headline naming the blocks that established it rather than the pooled l
 alone.
 
 The effect's *size* depends on the training horizon, and that was measured rather
-than assumed: the spread decays 1.65× per doubling of training, replicating the
-earlier estimate on a controlled design — but seed noise decays with it, so the
-ordering is horizon-stable and the same architecture wins at 400, 800 and 1200
-steps.
+than assumed: over 400→1200 the spread decays 1.65× per doubling of training,
+replicating the earlier estimate on a controlled design — but seed noise decays
+with it, so detectability is horizon-stable and the same architecture wins at 400,
+800 and 1200 steps. The 10× horizon qualifies both halves of that: the decay is
+*slower* than 1.65× extrapolates (1.38× per doubling over 1200→12,000), and the
+winner does not come through the change even though the ranking survives it.
 
 What survives a *short* run is not just the ordering but the explanation: fitting
 the genes the factorial identified as a **fixed** model at 400 and at 1200 steps

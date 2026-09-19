@@ -65,14 +65,47 @@ if [ "$complete" != "true" ]; then
 fi
 
 log "ledgers complete (32 rows); running the pre-registered horizon analysis"
-PYTHONPATH=src .venv/bin/python3 scripts/arch_zoo_analyze.py \
+# `-u` is load-bearing, not cosmetic. The analysis takes ~4 seconds, and its output
+# is redirected to a file, so Python block-buffers stdout: a kill inside that window
+# loses every line including any traceback, and the log ends mid-line with no record
+# that anything was attempted. That is exactly how this watcher failed the first time
+# it ran - the process was torn down mid-analysis, `decision.md` stayed the kernel-side
+# single-seed artifact the driver had imported, and the only trace was a log that
+# stopped after the line above. Unbuffered, the run leaves its own trace.
+PYTHONPATH=src .venv/bin/python3 -u scripts/arch_zoo_analyze.py \
     --experiment-id "$EXP" --write --horizon-rule \
     --offset-against "$REFERENCE" --offset-steps 1200 \
     >> "$LOG" 2>&1
 status=$?
 log "horizon analysis exit=$status"
 
+# Exit status alone is not the landing. A 0 says the process finished; it says
+# nothing about whether it wrote, and the failure that matters here is a record that
+# was never written at all - leaving the driver's imported kernel-side artifact in
+# place, which for this arm is a single-seed analysis of a two-seed design. The write
+# is verified directly: the record must be newer than every ledger it claims to
+# describe. Written after the fact, so it cannot pass on a record that predates them.
+NEWEST=""
+for seed in $SEEDS; do
+    for length in $LENGTHS; do
+        f="$DIR/flat${length}_seed${seed}_results.jsonl"
+        if [ -z "$NEWEST" ] || [ "$f" -nt "$NEWEST" ]; then NEWEST="$f"; fi
+    done
+done
+
+if [ ! -f "$DIR/decision.md" ]; then
+    log "FAILED: no decision.md after the analysis; the record in place is whatever the"
+    log "        driver imported from the kernel (for this arm: a single-seed analysis of"
+    log "        a two-seed design). Re-run the command above by hand."
+    exit 4
+elif [ ! "$DIR/decision.md" -nt "$NEWEST" ]; then
+    log "FAILED: decision.md is older than $NEWEST, so it was not written from the"
+    log "        ledgers that landed - the analysis did not complete. Re-run by hand."
+    exit 4
+fi
+
 if [ "$status" = "0" ]; then
+    log "verified: decision.md is newer than all 32 ledgers, so it was written from them"
     log "done - read $DIR/decision.md for the branch and the length it was read at"
 else
     log "analysis failed; the ledgers are complete, so re-run the command by hand"

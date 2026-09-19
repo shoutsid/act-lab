@@ -569,10 +569,53 @@ was measured against, so it fired on variance decay and would have read that as
 signal decay. `spread_by_length` now reports the seed-noise units alongside the
 spread for exactly this reason.
 
+**The decay, measured again at 10× the horizon.**
+
+The rate above is fitted over 400→1200 steps. `arch-zoo-100m-v3-crossed-horizon10x`
+re-ran the crossed factorial's **byte-identical** candidate set at **12,000 steps on
+two seeds, fp16**, with a same-precision 1200-step anchor in the same directory so
+the decay is measured inside one precision. 32 runs, 9.22 GPU-hours, Kaggle T4×2:
+
+| steps | spread | seed std | spread in seed-noise units | best |
+|---|---|---|---|---|
+| 1200 (fp16 anchor) | 0.3085 | 0.0118 | 26.16 | `xlohi_D5_H896_E16_A2_W384` |
+| 12000 | 0.1059 | 0.0056 | 18.88 | `xlohi_D5_H896_E4_A4_W1536` |
+
+**The decay is real at 10×, and slower than the rate above extrapolates.** 2.91× over
+1200→12000 is **1.38× per doubling**, against the 1.65× fitted over 400→1200 and the
+5.3× that rate would predict across these 3.32 doublings. So extending §3's rate an
+order of magnitude **over-predicts** how fast an effect fades, which is the safe
+direction for anyone sizing a budget from it. The pre-registered point predictions are
+mixed by comparison: they put depth at +0.016 and width at −0.036 nats, and the
+measurement lands depth at **+0.0209** — the sign and size as predicted — while width
+decays materially *less* than predicted (−0.0645).
+
+**Seed noise falls with it, and the effect stays far above the noise:** 26.16 → 18.88
+seed-noise units, still ~19× at 10× the horizon. So the reading this section already
+reached holds at this length unchanged — what shrinks is the variance of the loss
+estimate, not the detectability of the architecture effect.
+
+**The ordering is where 10× differs from 3×.** Spearman between the candidates'
+1200-step and 12,000-step means is **0.90**, but the **winner changes**: `W384` leads at
+1200 and `W1536` at 12,000. Over 400→1200 this section could say the winner was
+identical at every length on every seed; at 10× that is false. The screen still ranks,
+so promoting a *subset* from a short run remains sound, and the screen's winner must
+not be carried as the winner — which is the pre-registered reason this arm's own rule,
+and not the screen, decides the depth branch (§9).
+
+The measured fp16 offset against the fp32 record at 1200 steps is **−0.0030 nats**
+mean per candidate (−0.0257 to +0.0104), smaller than the depth effect it carries, so
+reading fp16 rows as evidence about architecture is licensed by measurement rather
+than by assumption.
+
 The consequences that constrain every future claim:
 
-- **Effect sizes are horizon-dependent; orderings are not.** Quote every effect
-  size with its training length (0.55 nats at 400, 0.25 at 1200 for this set).
+- **Effect sizes are horizon-dependent; rank order is not — but the winner is.**
+  Quote every effect size with its training length (0.55 nats at 400, 0.25 at 1200,
+  0.11 at 12,000 for these sets). The ranking correlation survives 10× (Spearman
+  0.90), and the *identity of the best candidate* does not: `W384` leads at 1200 and
+  `W1536` at 12,000. A screen is therefore a filter, not a chooser, however good its
+  correlation.
 - **Successive halving overstates the effect it is hunting** — v1's screening
   stage measured a spread 3.7× larger than the one that survived. Unchanged by
   the above; it is a statement about the *proxy*, not the horizon.
@@ -582,6 +625,10 @@ The consequences that constrain every future claim:
   ranks the set at Spearman 0.95 against 1200 steps with the winner intact, so
   screening at 400 is a legitimate way to spend §16's information-per-GPU-hour
   budget — provided the *spread* it reports is never quoted as the effect size.
+  The 10× check bounds how far that licence extends: the ranking holds at 0.90 to
+  12,000 steps, and the winner changes, so screening **eliminates** at every range
+  this phase validated and **chooses** at none of them. Finalists still have to be
+  confirmed at the horizon the search actually trains for.
 - **It is not only the ordering that survives the screen — the *explanation*
   does.** Fitting the genes the crossed factorial identified (`hidden_size`,
   `depth`) as a **fixed** model at each length, on the same eight candidates
@@ -841,11 +888,19 @@ the axis is one kernel away from being searchable rather than one refactor away.
 Differences are **established at a matched budget**, and both questions that gated
 *how much* it is worth have been measured rather than deferred:
 
-1. **Horizon — measured, and it does not block the search.** ~3.6 GPU-hours.
-The decay is real and replicates v1 (2.22× over 400→1200, 1.65× per doubling,
-against v1's pairwise 1.59× and 1.44×) *and* the noise decays with it, so detectability and
-ordering are horizon-stable over 3× training. Reading: the effect is a lever, and
-every effect size must be quoted with its training length. Full record in §3.
+1. **Horizon — measured at 3× and at 10×, and it does not block the search.**
+~3.6 GPU-hours, then ~9.2 more on a cap of its own. The decay is real and replicates
+v1 (2.22× over 400→1200, 1.65× per doubling, against v1's pairwise 1.59× and 1.44×)
+*and* the noise decays with it, so detectability is horizon-stable. At **10× the
+horizon** — the crossed factorial's byte-identical candidate set at 12,000 steps on
+two seeds — the pre-registered rule lands on **shallow-wins persists**: depth
+**+0.0209 nats, exact p = 0.003086** (floor 0.001543) and width −0.0645 nats at its
+own floor, so the depth recommendation survives the length prior work predicted would
+reverse it. Two qualifications come with it: the decay is *slower* than §3's rate
+extrapolates (1.38× per doubling against 1.65×), and the **winner changes over 10×**
+even though the ranking holds at Spearman 0.90 — a screen promotes, it does not
+choose. Reading: the effect is a lever, every effect size must be quoted with its
+training length, and the depth sign is now horizon-stable to 10×. Full record in §3.
 
 2. **Attribution — measured, replicated, with its last confound now closed.** ~10.0
 GPU-hours for the crossed arm, its confirmation and the head-paired arm.
@@ -935,6 +990,20 @@ Running or done, and the reason each was worth the hours:
   *ordering* is not evidence to build on; the effect size is quoted at 1200 steps as
   always, and the search's direction comes from §2c's designed factorial, which
   never rested on a ranking.
+- **Does the depth attribution survive 10× the training?** — **done**, 32 runs,
+  9.22 GPU-hours, as `arch-zoo-100m-v3-crossed-horizon10x`, on Kaggle T4×2 under its
+own pre-registered 15 GPU-hour cap. The one reading most likely to be an
+early-training artefact: at convergence prior work favours deep-narrow at fixed
+parameters, while the crossed arm found shallow beating deep by +0.08 nats at 1200
+steps. Byte-identical candidate set, flat at 1200 and 12,000 steps, two seeds, fp16
+with a same-precision anchor so the decay needs no cross-precision comparison, and a
+four-outcome rule declared before the first row existed. It lands on **shallow-wins
+persists** (depth +0.0209 nats, p = 0.003086; width −0.0645 at floor), so §2c's
+"spend at low depth" stands at this scale — the lever list does not need amending.
+The arm's own two qualifications are in §3: the decay is slower than §3's rate
+extrapolates, and the winner changes across 10× even though the ranking holds. The
+consequence for the search is that dismissing the depth axis was wrong *and* that
+the horizon at which a finalist is confirmed is load-bearing rather than a formality.
 - **The §11 random-vs-manual comparison** (~a v1-scale sweep), which §9a shows is
   now unblocked *and* de-confounded.
 
@@ -1158,8 +1227,23 @@ overrun of ~3.6 declared in that arm's pre-registration before its first run** �
 because the interaction was undecidable from data already paid for (a 0.25 floor
 against a 0.05 threshold, §2c) and carrying it into the search program as an unknown
 owed either a free lever or a wasted axis. It decided the lever (§2c), and the phase
-is closed at that figure: the horizon arm that follows runs under its own
+is closed at that figure: the horizon arm that followed ran under its own
 pre-registered budget on Kaggle hardware, not against this cap.
+
+**The horizon phase, on its own cap.** `arch-zoo-100m-v3-crossed-horizon10x` ran
+after this phase closed, under a **separate 15 GPU-hour cap pre-registered in its own
+NOTES** so that it could not extend the overrun by drift:
+
+| arm | runs | GPU-hours | cap |
+|---|---|---|---|
+| horizon arm, crossed factorial at 12,000 steps × 2 seeds | 32 | 9.22 | 15 (its own) |
+
+At 4.83 h of wall clock on Kaggle T4×2 — two sweeps in parallel, one seed each — it is
+the largest single arm here and the only one on remote hardware. It is deliberately
+**not** summed into the 23.632 above: that is the closed phase's own total against its
+own 10–20 cap, and adding them would invent a figure neither declaration authorised.
+The 9.22 is token-derived (the sum of both sweeps' per-run times) against 4.83 h of
+one two-card session, which is the same 2× the rest of this table's unit carries.
 
 The rest is a budget decision rather than an analysis one, and the phase's own
 numbers price it: the §11 comparison needs *both* arms flat and budget-matched —
@@ -1199,11 +1283,14 @@ provided its spread is never quoted as the effect size (§4).
 - **The GDN mixer is not Qwen3-Next's block** (shared key/value dimension, no
   short convolution) and nothing here speaks to the 3:1 schedule's optimality. It
   is benchmarked as one layout among nine, next to its inverse as a control.
-- **Losses here are ~2.7–4.2 nats**, far from convergence. At 1200 steps
-  (2.4M tokens) these models are heavily undertrained. The decay in §3 is the
-  clearest evidence that short-horizon comparisons measure early optimisation
+- **Losses here are ~1.6–4.2 nats**, far from convergence. At 1200 steps (2.4M
+  tokens) these models are heavily undertrained; the horizon arm trains 12,000 steps
+  (24.6M tokens) and reaches 1.62–1.72, which is the closest this project has come to
+a trained model and is still an order of magnitude from converged. The decay in §3
+  is the clearest evidence that short-horizon comparisons measure early optimisation
   dynamics as much as architecture — but note that the decay is in *variance*, so
-  what is horizon-limited is the effect *size* and not the *ordering*.
+  what is horizon-limited is the effect *size*, and the *ordering* is only stable in
+  rank rather than in which candidate wins (§3).
 - **The attribution is one trade, not two independent levers.** Expert width is
   the shock absorber for any hidden-size change at fixed depth, so §2c's
   "residual-stream width matters" and "expert capacity does not" are two readings
@@ -1229,8 +1316,11 @@ provided its spread is never quoted as the effect size (§4).
   horizon arm made on a floor-bound statistic. A pre-registered rule whose
   threshold is below the test's floor is not decidable by more analysis, only by
   more data.
-- **The decay rate is measured over 400→1200 steps only.** 1.65× per doubling
-  fits these three points; nothing here shows it holds at 10× the horizon, which
-  is the regime a real training budget occupies. The *ordering* stability is the
-  part that would have to be re-checked at scale, and a 400-step-to-full-horizon
-  check is the cheap version of that.
+- **The decay rate is measured at two horizons, and they disagree in the safe
+  direction.** 1.65× per doubling fits 400→1200; the measured rate over 1200→12,000
+  is **1.38×**, so extending §3's rate an order of magnitude **over-predicts** the
+  decay. Read it as an upper bound on how fast effects fade, not a law: two points
+  fix a rate and not a curve, so the shape past 12,000 steps is still unmeasured.
+  What the 10× check did settle is the ordering: rank correlation survives (Spearman
+  0.90) while the **winner changes**, so a screen promotes a subset and never names
+  the winner across a horizon change.

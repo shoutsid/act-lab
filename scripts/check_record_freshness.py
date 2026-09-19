@@ -196,6 +196,50 @@ def committed_seeds(arm: Path) -> set[int]:
     return {int(seed) for seed in recorded}
 
 
+def record_read_the_wrong_rows(
+    root: Path, arm: Path, candidates: list[list[str]]
+) -> str | None:
+    """Whether the committed record was read over the rows its runbook reads.
+
+    A *byte* comparison catches a record derived from the wrong rows too, but only
+    after paying for a full regeneration, and it reports the symptom ("does not
+    reproduce") rather than the cause. This reads only the ledgers, so it is cheap
+    enough to run first, and it names what actually went wrong.
+
+    The defect it exists for is not hypothetical. ``arch-zoo-100m-v3-crossed-horizon10x``
+    landed all 32 of its rows, but its post-run watcher was killed inside the 4-second
+    analysis it launched, so ``decision.md`` stayed the *kernel-side* artifact the
+    driver had imported - an analysis the arm's own NOTES warns is "whichever sweep
+    finished last and is **not** the record". That file reported a single seed and
+    "run at least two seeds per architecture before deciding", i.e. it under-read a
+    complete two-seed arm, and the only trace was a watcher log that stopped mid-line.
+
+    Read against the seeds the *documented* command would glob, the two disagree: the
+    record says one seed, the runbook reads two. That is the check.
+
+    Equality, not containment, and against each candidate separately: a record may
+    legitimately cover *fewer* rows than the directory holds (an arm's own directory
+    can keep its standalone and its pooled write side by side - the v1 record pools
+    six seeds while its own ledgers hold three), which is why the comparison is per
+    command rather than against the union.
+    """
+    wanted = committed_seeds(arm)
+    if not wanted:
+        # A record predating the field records no seeds, so there is nothing to
+        # hold it to. Byte comparison still applies.
+        return None
+    readable = [expected_seeds(root, argv) for argv in candidates]
+    if any(seeds == wanted for seeds in readable):
+        return None
+    return (
+        f"the committed record was read over seeds {sorted(wanted)}, but no documented "
+        f"command for this arm reads those - it reads "
+        f"{sorted(set().union(*readable)) if readable else []}. The record is from a "
+        "different row set than the runbook describes; re-run the documented command "
+        "with --write, and check the post-run log actually finished"
+    )
+
+
 def ordered_candidates(candidates: list[list[str]], root: Path, arm: Path) -> list[list[str]]:
     """Candidates that can reproduce the committed record first, then the rest.
 
@@ -281,6 +325,18 @@ def check_arm(repo: Path, root: Path, arm: Path, *, strict_rank: bool) -> ArmRes
             False,
             "no self-targeting command in NOTES.md",
             failures=[f"{arm.name}: NOTES.md documents no command for this arm"],
+        )
+
+    # Cheap, and it reports the cause rather than the symptom: a record derived from
+    # a different row set than the runbook reads is worth naming before the analysis
+    # is re-run.
+    mismatch = record_read_the_wrong_rows(root, arm, candidates)
+    if mismatch:
+        return ArmResult(
+            arm.name,
+            False,
+            "record is from the wrong row set",
+            failures=[f"{arm.name}: {mismatch}"],
         )
 
     fresh = root / arm.name

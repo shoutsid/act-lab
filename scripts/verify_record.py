@@ -44,8 +44,11 @@ from act.search.architecture_report import (  # noqa: E402
     blocked_permutation_test,
     crossed_contrast,
     finalist_order_decision,
+    horizon_decision,
     paired_design_contrast,
+    precision_offset,
     rank,
+    rank_stability,
     replication_decision,
     search_cost,
     spread_by_length,
@@ -1010,6 +1013,148 @@ def _powers_in_parallel(
         return dict(pool.map(_power_for, jobs))
 
 
+def check_horizon_10x(root: Path, audit: Audit) -> None:
+    """Does the crossed attribution survive 10x the training?
+
+    The arm re-trains the crossed factorial's *byte-identical* candidate set at 12,000
+    steps instead of 1,200 on two seeds, so this is the one place in the record where
+    an effect is measured at a length a real training budget would occupy. It is read
+    by ``horizon_decision``, and every number below is recomputed from its own ledgers
+    rather than quoted from the decision it produced.
+
+    The preconditions come first: the rule is declared on the 12,000-step rows while a
+    1,200-step anchor sits in the same directory, so an arm that lost its horizon and
+    kept its anchor would otherwise have every claim below silently re-read at the
+    wrong length - which is what the arm's own first attempt did.
+    """
+    results = arm_results(root, "arch-zoo-100m-v3-crossed-horizon10x")
+    audit.check("horizon: runs (8 candidates x 2 lengths x 2 seeds)", 32, len(results), "arm ledgers")
+    audit.check("horizon: seeds", [42, 43], sorted({r.seed for r in results}), "arm ledgers")
+    audit.check("horizon: lengths", [1200, 12000], sorted({r.steps for r in results}), "arm ledgers")
+
+    by_length = spread_by_length(results)
+    documented = {
+        1200: (0.3085, 0.0118, 26.16),
+        12000: (0.1059, 0.0056, 18.88),
+    }
+    for steps, (spread, std, sigmas) in documented.items():
+        row = by_length[str(steps)]
+        audit.check(f"§3 horizon {steps}: spread", spread, row["spread"], "decision.md")
+        audit.check(f"§3 horizon {steps}: seed std", std, row["within_seed_std"], "decision.md")
+        audit.check(f"§3 horizon {steps}: spread in noise units", sigmas, row["sigmas"], "decision.md")
+
+    # §3's decay is fitted over 400->1200. This is the same quantity at 10x the
+    # horizon, and the reading is that it decays *slower* than §3 extrapolates - so
+    # the extrapolation is an over-estimate of how fast an effect fades, which is the
+    # direction that matters for anyone sizing a budget from it.
+    decay = by_length["decay"]
+    audit.check("§3 horizon: spread shrink 1200->12000", 2.91, decay["spread_shrink"], "decision.md")
+    audit.check("§3 horizon: spread shrink per doubling", 1.38, decay["per_doubling"], "decision.md")
+    audit.check(
+        "§3 horizon: decays slower than §3's 1.65 per doubling",
+        True,
+        decay["per_doubling"] < 1.65,
+        "§3",
+        "the 1200-step decay rate extrapolates to more decay than 10x training shows",
+    )
+    # The phase-relevant reading is not the spread in nats but its size against seed
+    # noise: at 1200 steps this arm's spread is 26x its own seed std and at 12,000 it
+    # is still 18.9x, so the architecture effect does not fade into noise.
+    audit.check(
+        "§3 horizon: still far above seed noise, so it does not wash out",
+        True,
+        decay["sigmas_at_last"] > 5.0,
+        "decision.md",
+        f"{decay['sigmas_at_first']:.2f} -> {decay['sigmas_at_last']:.2f} seed-noise units",
+    )
+
+    seeds = sorted({r.seed for r in results})
+    decision = horizon_decision(best_available_summary(results, seeds))
+    audit.check("§2c horizon: the rule reaches a branch", True, bool(decision.get("available")), "HORIZON_RULE")
+    audit.check("§2c horizon: branch", "shallow-persists", decision.get("branch"), "HORIZON_RULE")
+
+    contrast = crossed_contrast(results, 12000, seeds=seeds)
+    depth = contrast["main"]["depth"]
+    width = contrast["main"]["hidden_size"]
+    audit.check("§2c horizon: depth main effect", 0.0209, depth["nats"], "decision.md")
+    audit.check("§2c horizon: depth p (exact over 1296 assignments)", 0.003086, depth["p"], "decision.md")
+    audit.check(
+        "§2c horizon: depth keeps its sign (shallow still wins)",
+        True,
+        depth["nats"] > 0,
+        "decision.md",
+        "the finding the arm exists to test",
+    )
+    audit.check("§2c horizon: hidden_size main effect", -0.0645, width["nats"], "decision.md")
+    audit.check("§2c horizon: hidden_size p (at the 1296-assignment floor)", 0.001543, width["p"], "decision.md")
+    audit.check("§2c horizon: hidden_size at the design floor", True, width["at_floor"], "decision.md")
+    audit.check("§2c horizon: interaction size", -0.0090, depth["interaction_nats"], "decision.md")
+    audit.check(
+        "§2c horizon: interaction at its 2-seed floor",
+        0.5,
+        depth["interaction_p_seed_blocked"],
+        "decision.md",
+        "2 / 2^2, so two seeds can neither confirm nor exclude it",
+    )
+    audit.check(
+        "§2c horizon: every seed agrees on the interaction sign",
+        True,
+        len({value > 0 for value in depth["interaction_seed_contrasts"]}) == 1,
+        "decision.md",
+    )
+
+    ordering = rank_stability(results)[0]
+    # The record states this to two places ("0.90"), so the tolerance absorbs that
+    # rounding - half a unit in the last place, 0.006 against 0.9 - rather than
+    # pretend the documented value carries a fourth significant figure.
+    audit.check(
+        "§3 horizon: Spearman 1200->12000",
+        0.90,
+        ordering["spearman"],
+        "decision.md",
+        tolerance=0.006,
+    )
+    audit.check(
+        "§3 horizon: the winner is NOT preserved across 10x",
+        False,
+        bool(ordering["winner_preserved"]),
+        "decision.md",
+        f"{ordering['best_at_from']} -> {ordering['best_at_to']}",
+    )
+
+    # The precision offset is what licenses reading fp16 rows as evidence about
+    # architecture at all, so it is checked against the size of the effect it carries
+    # rather than only against its own value.
+    offset = precision_offset(
+        results,
+        arm_results(root, "arch-zoo-100m-v3-crossed"),
+        steps=1200,
+        reference_label="arch-zoo-100m-v3-crossed",
+    )
+    audit.check("§3 horizon: fp16 vs fp32 offset, mean", -0.0030, offset["mean_delta"], "decision.md")
+    audit.check(
+        "§3 horizon: the offset is smaller than the effect it carries",
+        True,
+        abs(offset["mean_delta"]) < abs(depth["nats"]),
+        "decision.md",
+        "otherwise fp16 would be measuring its own arithmetic",
+    )
+
+    # A phase of its own: the arm's NOTES opens a horizon phase with its own cap, on
+    # Kaggle rather than the local card, so this is deliberately *not* folded into
+    # §10's closed 23.632 total - the overrun it did not extend.
+    cost = search_cost(results, 8)
+    audit.check("horizon phase: runs", 32, cost["runs_completed"], "arm NOTES")
+    audit.check("horizon phase: GPU-hours", 9.22, cost["wall_clock_hours"], "arm NOTES")
+    audit.check(
+        "horizon phase: inside its own 15 GPU-h cap",
+        True,
+        cost["wall_clock_hours"] < 15.0,
+        "arm NOTES",
+        "a separate cap, so it does not extend §10's overrun by drift",
+    )
+
+
 #: The audit's checks in record order. Each is a pure function of the artifacts root
 #: that appends to the audit it is handed, so they can run in separate processes and
 #: have their claims concatenated in this order - the output is identical to running
@@ -1026,6 +1171,7 @@ CHECKS: tuple[str, ...] = (
     "check_head_paired",
     "check_head_paired_confirm",
     "check_finalist_order",
+    "check_horizon_10x",
 )
 
 

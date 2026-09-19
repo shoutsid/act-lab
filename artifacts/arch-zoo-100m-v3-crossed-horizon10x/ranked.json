@@ -1,0 +1,788 @@
+{
+  "available": true,
+  "steps": 12000,
+  "ranked": [
+    {
+      "name": "xlohi_D5_H896_E4_A4_W1536",
+      "mean_val_loss": 1.6157556362450123,
+      "runs": 2
+    },
+    {
+      "name": "xlohi_D5_H896_E16_A2_W384",
+      "mean_val_loss": 1.6416110433638096,
+      "runs": 2
+    },
+    {
+      "name": "xhihi_D14_H896_E4_A2_W288",
+      "mean_val_loss": 1.6502770371735096,
+      "runs": 2
+    },
+    {
+      "name": "xhihi_D14_H896_E8_A6_W128",
+      "mean_val_loss": 1.6579220294952393,
+      "runs": 2
+    },
+    {
+      "name": "xlolo_D5_H512_E16_A6_W832",
+      "mean_val_loss": 1.694105289876461,
+      "runs": 2
+    },
+    {
+      "name": "xlolo_D5_H512_E12_A2_W1152",
+      "mean_val_loss": 1.7013665437698364,
+      "runs": 2
+    },
+    {
+      "name": "xhilo_D14_H512_E16_A2_W256",
+      "mean_val_loss": 1.7066766917705536,
+      "runs": 2
+    },
+    {
+      "name": "xhilo_D14_H512_E4_A4_W1024",
+      "mean_val_loss": 1.721610203385353,
+      "runs": 2
+    }
+  ],
+  "best": "xlohi_D5_H896_E4_A4_W1536",
+  "best_mean_val_loss": 1.6157556362450123,
+  "best_runs": 2,
+  "architecture_spread": 0.1058545671403408,
+  "within_seed_std": 0.005606122883461583,
+  "sigmas": 18.881956271885954,
+  "multi_seed": true,
+  "paired_vs_best": [
+    {
+      "candidate": "xlohi_D5_H896_E16_A2_W384",
+      "mean_delta_vs_best": 0.025855407118797302,
+      "paired_seeds": [
+        42,
+        43
+      ],
+      "delta_per_seed": [
+        0.02474725991487503,
+        0.026963554322719574
+      ]
+    },
+    {
+      "candidate": "xhihi_D14_H896_E4_A2_W288",
+      "mean_delta_vs_best": 0.034521400928497314,
+      "paired_seeds": [
+        42,
+        43
+      ],
+      "delta_per_seed": [
+        0.03139065206050873,
+        0.0376521497964859
+      ]
+    },
+    {
+      "candidate": "xhihi_D14_H896_E8_A6_W128",
+      "mean_delta_vs_best": 0.042166393250226974,
+      "paired_seeds": [
+        42,
+        43
+      ],
+      "delta_per_seed": [
+        0.05018506199121475,
+        0.0341477245092392
+      ]
+    },
+    {
+      "candidate": "xlolo_D5_H512_E16_A6_W832",
+      "mean_delta_vs_best": 0.07834965363144875,
+      "paired_seeds": [
+        42,
+        43
+      ],
+      "delta_per_seed": [
+        0.07557946443557739,
+        0.0811198428273201
+      ]
+    },
+    {
+      "candidate": "xlolo_D5_H512_E12_A2_W1152",
+      "mean_delta_vs_best": 0.08561090752482414,
+      "paired_seeds": [
+        42,
+        43
+      ],
+      "delta_per_seed": [
+        0.08735373616218567,
+        0.08386807888746262
+      ]
+    },
+    {
+      "candidate": "xhilo_D14_H512_E16_A2_W256",
+      "mean_delta_vs_best": 0.0909210555255413,
+      "paired_seeds": [
+        42,
+        43
+      ],
+      "delta_per_seed": [
+        0.08428536355495453,
+        0.09755674749612808
+      ]
+    },
+    {
+      "candidate": "xhilo_D14_H512_E4_A4_W1024",
+      "mean_delta_vs_best": 0.1058545671403408,
+      "paired_seeds": [
+        42,
+        43
+      ],
+      "delta_per_seed": [
+        0.10636326670646667,
+        0.10534586757421494
+      ]
+    }
+  ],
+  "seeds": [
+    42,
+    43
+  ],
+  "seeds_per_architecture": {
+    "xlolo_D5_H512_E12_A2_W1152": [
+      42,
+      43
+    ],
+    "xlolo_D5_H512_E16_A6_W832": [
+      42,
+      43
+    ],
+    "xlohi_D5_H896_E16_A2_W384": [
+      42,
+      43
+    ],
+    "xlohi_D5_H896_E4_A4_W1536": [
+      42,
+      43
+    ],
+    "xhilo_D14_H512_E16_A2_W256": [
+      42,
+      43
+    ],
+    "xhilo_D14_H512_E4_A4_W1024": [
+      42,
+      43
+    ],
+    "xhihi_D14_H896_E4_A2_W288": [
+      42,
+      43
+    ],
+    "xhihi_D14_H896_E8_A6_W128": [
+      42,
+      43
+    ]
+  },
+  "anova": {
+    "available": true,
+    "test": "one-way ANOVA (unpaired)",
+    "architectures": 8,
+    "seeds_per_architecture": [
+      2
+    ],
+    "ss_between": 0.01949896753641772,
+    "ss_within": 0.00042311417016335784,
+    "df_between": 7,
+    "df_within": 8,
+    "f": 52.66789887639741,
+    "p": 4.573418210813034e-06
+  },
+  "blocked_test": {
+    "available": true,
+    "test": "blocked permutation (monte-carlo)",
+    "method": "monte-carlo",
+    "architectures": 8,
+    "blocks": 2,
+    "names": [
+      "xlohi_D5_H896_E4_A4_W1536",
+      "xlohi_D5_H896_E16_A2_W384",
+      "xhihi_D14_H896_E4_A2_W288",
+      "xhihi_D14_H896_E8_A6_W128",
+      "xlolo_D5_H512_E16_A6_W832",
+      "xlolo_D5_H512_E12_A2_W1152",
+      "xhilo_D14_H512_E16_A2_W256",
+      "xhilo_D14_H512_E4_A4_W1024"
+    ],
+    "seeds": [
+      42,
+      43
+    ],
+    "seeds_dropped": [],
+    "architectures_dropped": [],
+    "unfinished_seeds": [],
+    "unbalanced_seeds": [],
+    "p": 0.00024999875000624995,
+    "p_ranks": 0.000559997200014,
+    "p_paired_t_reference": 0.003059345645305761,
+    "statistic": 0.019498967536417715,
+    "exact": false,
+    "assignments": 1625702400,
+    "rank_assignments": 1625702400,
+    "min_achievable_p": 2.48015873015873e-05,
+    "p_resolution": 4.9999750001249995e-06,
+    "orderings": [
+      [
+        "xlohi_D5_H896_E4_A4_W1536",
+        "xlohi_D5_H896_E16_A2_W384",
+        "xhihi_D14_H896_E4_A2_W288",
+        "xhihi_D14_H896_E8_A6_W128",
+        "xlolo_D5_H512_E16_A6_W832",
+        "xhilo_D14_H512_E16_A2_W256",
+        "xlolo_D5_H512_E12_A2_W1152",
+        "xhilo_D14_H512_E4_A4_W1024"
+      ],
+      [
+        "xlohi_D5_H896_E4_A4_W1536",
+        "xlohi_D5_H896_E16_A2_W384",
+        "xhihi_D14_H896_E8_A6_W128",
+        "xhihi_D14_H896_E4_A2_W288",
+        "xlolo_D5_H512_E16_A6_W832",
+        "xlolo_D5_H512_E12_A2_W1152",
+        "xhilo_D14_H512_E16_A2_W256",
+        "xhilo_D14_H512_E4_A4_W1024"
+      ]
+    ]
+  },
+  "rank_stability": [
+    {
+      "from_steps": 1200,
+      "to_steps": 12000,
+      "architectures": 8,
+      "spearman": 0.9047619047619048,
+      "best_at_from": "xlohi_D5_H896_E16_A2_W384",
+      "best_at_to": "xlohi_D5_H896_E4_A4_W1536",
+      "winner_preserved": false,
+      "gap_at_from": 0.308471642434597,
+      "gap_at_to": 0.1058545671403408
+    }
+  ],
+  "spread_by_length": {
+    "1200": {
+      "architectures": 8,
+      "spread": 0.308471642434597,
+      "within_seed_std": 0.01179307938878589,
+      "sigmas": 26.157005500015927,
+      "best": "xlohi_D5_H896_E16_A2_W384"
+    },
+    "12000": {
+      "architectures": 8,
+      "spread": 0.1058545671403408,
+      "within_seed_std": 0.005606122883461582,
+      "sigmas": 18.881956271885954,
+      "best": "xlohi_D5_H896_E4_A4_W1536"
+    },
+    "decay": {
+      "from_steps": 1200,
+      "to_steps": 12000,
+      "doublings": 3.321928094887362,
+      "spread_shrink": 2.914108014117414,
+      "per_doubling": 1.37984445405894,
+      "sigmas_at_first": 26.157005500015927,
+      "sigmas_at_last": 18.881956271885954,
+      "best_at_every_length": false
+    }
+  },
+  "structural_signal_by_length": {
+    "1200": {
+      "available": true,
+      "reason": null,
+      "architectures": 8,
+      "r_squared": 0.950367528132136,
+      "p_model": 0.005699715014249288,
+      "genes": [
+        {
+          "gene": "hidden_size",
+          "beta": -0.8936489073432742,
+          "p": 0.01959902004899755
+        },
+        {
+          "gene": "depth",
+          "beta": 0.3732367173901104,
+          "p": 0.3969801509924504
+        },
+        {
+          "gene": "expert_count",
+          "beta": 0.029451628869965045,
+          "p": 0.9480025998700065
+        }
+      ],
+      "dropped": [
+        {
+          "gene": "attention_heads",
+          "duplicate_of": "hidden_size",
+          "spearman": 0.9999999999999998
+        }
+      ]
+    },
+    "12000": {
+      "available": true,
+      "reason": null,
+      "architectures": 8,
+      "r_squared": 0.9472333421493946,
+      "p_model": 0.013349332533373332,
+      "genes": [
+        {
+          "gene": "hidden_size",
+          "beta": -0.9007642261568373,
+          "p": 0.01929903504824759
+        },
+        {
+          "gene": "depth",
+          "beta": 0.3232532644804948,
+          "p": 0.4656767161641918
+        },
+        {
+          "gene": "expert_count",
+          "beta": 0.06280861412406055,
+          "p": 0.8978551072446378
+        }
+      ],
+      "dropped": [
+        {
+          "gene": "attention_heads",
+          "duplicate_of": "hidden_size",
+          "spearman": 0.9999999999999998
+        }
+      ]
+    },
+    "agreement": {
+      "leading_genes": [
+        "hidden_size",
+        "hidden_size"
+      ],
+      "same_leading_gene": true,
+      "same_leading_sign": true
+    }
+  },
+  "axis_association": {
+    "available": true,
+    "steps": 12000,
+    "architectures": 8,
+    "axes": [
+      {
+        "axis": "total parameters",
+        "held": false,
+        "spearman": -0.5714285714285715,
+        "p": 0.151140873015873,
+        "p_exact": true,
+        "p_t_approximation": 0.13895995716070672,
+        "min": 77638144.0,
+        "max": 81275264.0,
+        "spread_ratio": 1.046847075581817
+      },
+      {
+        "axis": "active parameters",
+        "held": false,
+        "spearman": -0.30952380952380953,
+        "p": 0.4618055555555556,
+        "p_exact": true,
+        "p_t_approximation": 0.4556448907375822,
+        "min": 21270016.0,
+        "max": 78474368.0,
+        "spread_ratio": 3.6894362467804442
+      },
+      {
+        "axis": "active / total parameters",
+        "held": false,
+        "spearman": -0.22754898976351917,
+        "p": 0.5961805555555556,
+        "p_exact": true,
+        "p_t_approximation": 0.5878445645010818,
+        "min": 0.26503894910777515,
+        "max": 1.0,
+        "spread_ratio": 3.773030354090942
+      },
+      {
+        "axis": "contracted FLOPs/token",
+        "held": false,
+        "spearman": -0.07142857142857144,
+        "p": 0.8819940476190476,
+        "p_exact": true,
+        "p_t_approximation": 0.8665262706759088,
+        "min": 159077376.0,
+        "max": 584290560.0,
+        "spread_ratio": 3.672995963926385
+      },
+      {
+        "axis": "dense-runtime FLOPs/token",
+        "held": false,
+        "spearman": 0.0,
+        "p": 1.0,
+        "p_exact": true,
+        "p_t_approximation": 1.0,
+        "min": 497304576.0,
+        "max": 641792256.0,
+        "spread_ratio": 1.2905416257420483
+      },
+      {
+        "axis": "measured throughput",
+        "held": false,
+        "spearman": 0.0,
+        "p": 1.0,
+        "p_exact": true,
+        "p_t_approximation": 1.0,
+        "min": 9765.206033430723,
+        "max": 17092.092016644594,
+        "spread_ratio": 1.7503053144122738
+      },
+      {
+        "axis": "depth",
+        "held": false,
+        "spearman": 0.4364357804719848,
+        "p": 0.2,
+        "p_exact": true,
+        "p_t_approximation": 0.27965829090465766,
+        "min": 5.0,
+        "max": 14.0,
+        "spread_ratio": 2.8
+      },
+      {
+        "axis": "hidden size",
+        "held": false,
+        "spearman": -0.8728715609439696,
+        "p": 0.07142857142857142,
+        "p_exact": true,
+        "p_t_approximation": 0.004659214943993925,
+        "min": 512.0,
+        "max": 896.0,
+        "spread_ratio": 1.75
+      },
+      {
+        "axis": "attention heads",
+        "held": false,
+        "spearman": -0.8728715609439696,
+        "p": 0.07142857142857142,
+        "p_exact": true,
+        "p_t_approximation": 0.004659214943993925,
+        "min": 8.0,
+        "max": 14.0,
+        "spread_ratio": 1.75
+      },
+      {
+        "axis": "expert count",
+        "held": false,
+        "spearman": 0.1501878522965277,
+        "p": 0.6455357142857143,
+        "p_exact": true,
+        "p_t_approximation": 0.7226037415169878,
+        "min": 4.0,
+        "max": 16.0,
+        "spread_ratio": 4.0
+      },
+      {
+        "axis": "active experts",
+        "held": false,
+        "spearman": 0.0,
+        "p": 0.8809523809523809,
+        "p_exact": true,
+        "p_t_approximation": 1.0,
+        "min": 2.0,
+        "max": 6.0,
+        "spread_ratio": 3.0
+      },
+      {
+        "axis": "expert width",
+        "held": false,
+        "spearman": -0.09523809523809526,
+        "p": 0.8401289682539682,
+        "p_exact": true,
+        "p_t_approximation": 0.8225054302036114,
+        "min": 128.0,
+        "max": 1536.0,
+        "spread_ratio": 12.0
+      }
+    ],
+    "collinearity": {
+      "available": true,
+      "leading": "hidden size",
+      "leading_spearman": -0.8728715609439696,
+      "entangled": [
+        {
+          "axis": "attention heads",
+          "spearman": 0.9999999999999998
+        }
+      ],
+      "threshold": 0.7,
+      "spread_axes": 12,
+      "structural_axes_unrecorded": [],
+      "caveat": "Among 12 spread axes, `hidden size` tracks loss most strongly, but it moves with `attention heads` (+1.00) at |rho| >= 0.7, so this set cannot separate them."
+    },
+    "multiple_comparisons": "12 axes tested uncorrected; treat any single marginal p-value as a hypothesis, not a result. Exact p-values are enumerated over n! arrangements and are not comparable to a chi-square test."
+  },
+  "joint_structural_fit": {
+    "available": true,
+    "steps": 12000,
+    "architectures": 8,
+    "genes": [
+      {
+        "gene": "hidden_size",
+        "beta": -0.9007642261568373,
+        "p": 0.01929903504824759,
+        "min": 512.0,
+        "max": 896.0
+      },
+      {
+        "gene": "depth",
+        "beta": 0.3232532644804948,
+        "p": 0.4656767161641918,
+        "min": 5.0,
+        "max": 14.0
+      },
+      {
+        "gene": "expert_count",
+        "beta": 0.06280861412406055,
+        "p": 0.8978551072446378,
+        "min": 4.0,
+        "max": 16.0
+      }
+    ],
+    "r_squared": 0.9472333421493946,
+    "p_model": 0.013349332533373332,
+    "entangled": [],
+    "dropped": [
+      {
+        "gene": "attention_heads",
+        "duplicate_of": "hidden_size",
+        "spearman": 0.9999999999999998
+      }
+    ],
+    "samples": 20000,
+    "caveat": "Coefficients are standardised and each p-value is two-sided against a permutation null, but predictors are collinear by construction here, so a coefficient surviving the model does not mean the underlying lever is identified. Use a designed set to separate them."
+  },
+  "crossed_contrast": {
+    "available": true,
+    "steps": 12000,
+    "factor_a": "depth",
+    "factor_b": "hidden_size",
+    "seeds": [
+      42,
+      43
+    ],
+    "seeds_dropped": [],
+    "levels": {
+      "depth": [
+        5,
+        14
+      ],
+      "hidden_size": [
+        512,
+        896
+      ]
+    },
+    "cells": {
+      "depth=5|hidden_size=512": {
+        "runs": 4,
+        "mean_val_loss": 1.6977359168231487
+      },
+      "depth=5|hidden_size=896": {
+        "runs": 4,
+        "mean_val_loss": 1.628683339804411
+      },
+      "depth=14|hidden_size=512": {
+        "runs": 4,
+        "mean_val_loss": 1.7141434475779533
+      },
+      "depth=14|hidden_size=896": {
+        "runs": 4,
+        "mean_val_loss": 1.6540995333343744
+      }
+    },
+    "main": {
+      "depth": {
+        "nats": 0.020911862142384052,
+        "p": 0.0030864197530864196,
+        "min_achievable_p": 0.0015432098765432098,
+        "method": "exact",
+        "assignments": 1296,
+        "at_floor": false,
+        "by_other_level": {
+          "512": {
+            "nats": 0.01640753075480461,
+            "blocks": 2
+          },
+          "896": {
+            "nats": 0.025416193529963493,
+            "blocks": 2
+          }
+        },
+        "interaction_nats": -0.009008662775158882,
+        "interaction_p": 0.5972222222222222,
+        "interaction_p_seed_blocked": 0.5,
+        "interaction_p_seed_blocked_floor": 0.5,
+        "interaction_p_paired_t": 0.3514023752056254,
+        "interaction_seed_contrasts": [
+          -0.014556512236595154,
+          -0.0034608133137226105
+        ]
+      },
+      "hidden_size": {
+        "nats": -0.06454824563115835,
+        "p": 0.0015432098765432098,
+        "min_achievable_p": 0.0015432098765432098,
+        "method": "exact",
+        "assignments": 1296,
+        "at_floor": true,
+        "by_other_level": {
+          "5": {
+            "nats": -0.06905257701873779,
+            "blocks": 2
+          },
+          "14": {
+            "nats": -0.06004391424357891,
+            "blocks": 2
+          }
+        },
+        "interaction_nats": -0.009008662775158882,
+        "interaction_p": 0.8040123456790124,
+        "interaction_p_seed_blocked": 0.5,
+        "interaction_p_seed_blocked_floor": 0.5,
+        "interaction_p_paired_t": 0.3514023752056254,
+        "interaction_seed_contrasts": [
+          -0.014556512236595154,
+          -0.0034608133137226105
+        ]
+      }
+    }
+  },
+  "paired_contrasts": {},
+  "paired_level_splits": {},
+  "compute_units": {
+    "available": true,
+    "spread": 0.1058545671403408,
+    "slope_per_step": 0.00011105974295383525,
+    "fitted_between": [
+      1200,
+      12000
+    ],
+    "slope_pairs": 16,
+    "equivalent_steps": 953.131749857749,
+    "fraction_of_budget": 0.07942764582147908
+  },
+  "selection_caveat": "",
+  "screened_at_shorter_lengths": 8,
+  "lengths_present": [
+    12000,
+    1200
+  ],
+  "horizon_decision": {
+    "available": true,
+    "branch": "shallow-persists",
+    "label": "SHALLOW-WINS PERSISTS AT THIS HORIZON",
+    "reading": "The depth sign is horizon-stable to this length: shallow still beats deep at matched total parameters, so the record's 'spend at low depth' stands at this scale - quoted with its training length, as every effect size must be.",
+    "conditions": [
+      {
+        "condition": "depth main effect significant (exact re-split p < 0.05)",
+        "value": "p=0.003086 (floor 0.001543)",
+        "met": true
+      },
+      {
+        "condition": "depth main effect > 0 (deep - shallow; shallow wins)",
+        "value": "+0.0209 nats at 12000 steps",
+        "met": true
+      },
+      {
+        "condition": "secondary: width main effect < 0 (reported, does not gate)",
+        "value": "-0.0645 nats, p=0.001543",
+        "met": true
+      }
+    ],
+    "steps": 12000,
+    "depth_nats": 0.020911862142384052,
+    "depth_p": 0.0030864197530864196,
+    "depth_floor": 0.0015432098765432098,
+    "seeds_dropped": []
+  },
+  "precision_offset": {
+    "available": true,
+    "steps": 1200,
+    "reference": "arch-zoo-100m-v3-crossed",
+    "architectures": 8,
+    "pairs": [
+      {
+        "name": "xhilo_D14_H512_E16_A2_W256",
+        "seeds": [
+          42,
+          43
+        ],
+        "primary": 3.0505727007985115,
+        "reference": 3.0763093009591103,
+        "delta": -0.025736600160598755
+      },
+      {
+        "name": "xlohi_D5_H896_E16_A2_W384",
+        "seeds": [
+          42,
+          43
+        ],
+        "primary": 2.7421010583639145,
+        "reference": 2.7490989416837692,
+        "delta": -0.006997883319854736
+      },
+      {
+        "name": "xhihi_D14_H896_E4_A2_W288",
+        "seeds": [
+          42,
+          43
+        ],
+        "primary": 2.805557981133461,
+        "reference": 2.811409965157509,
+        "delta": -0.0058519840240478516
+      },
+      {
+        "name": "xlolo_D5_H512_E16_A6_W832",
+        "seeds": [
+          42,
+          43
+        ],
+        "primary": 2.916410744190216,
+        "reference": 2.921534962952137,
+        "delta": -0.005124218761920929
+      },
+      {
+        "name": "xhihi_D14_H896_E8_A6_W128",
+        "seeds": [
+          42,
+          43
+        ],
+        "primary": 2.7882192507386208,
+        "reference": 2.790707916021347,
+        "delta": -0.002488665282726288
+      },
+      {
+        "name": "xlohi_D5_H896_E4_A4_W1536",
+        "seeds": [
+          42,
+          43
+        ],
+        "primary": 2.771770477294922,
+        "reference": 2.7676799967885017,
+        "delta": 0.0040904805064201355
+      },
+      {
+        "name": "xhilo_D14_H512_E4_A4_W1024",
+        "seeds": [
+          42,
+          43
+        ],
+        "primary": 3.0020929500460625,
+        "reference": 2.994297221302986,
+        "delta": 0.0077957287430763245
+      },
+      {
+        "name": "xlolo_D5_H512_E12_A2_W1152",
+        "seeds": [
+          42,
+          43
+        ],
+        "primary": 2.9081611037254333,
+        "reference": 2.897795744240284,
+        "delta": 0.010365359485149384
+      }
+    ],
+    "mean_delta": -0.0029934728518128395,
+    "min_delta": -0.025736600160598755,
+    "max_delta": 0.010365359485149384,
+    "dropped_architectures": []
+  }
+}
