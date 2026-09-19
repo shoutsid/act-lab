@@ -19,6 +19,15 @@
 # condition land in the log; writing v1's decision.md is a deliberate step taken
 # once the branch has been read, because it supersedes a committed artifact.
 #
+# Which makes the analysis's stdout the *only* record this arm produces, and makes
+# `python3 -u` load-bearing rather than tidy. A redirected stdout is block-buffered,
+# so a kill inside the analysis discards every line of it - measured in this repo:
+# the same print into the same redirection leaves 0 bytes when killed and 20 bytes
+# under -u, while stderr survives either way. That asymmetry is visible in these very
+# logs: this watcher's own kept the full traceback of the analyzer defect it caught
+# (a traceback goes to stderr), where the horizon arm's kept nothing at all, because
+# its run was killed before stdout flushed and it had no traceback to fall back on.
+#
 #   launch detached:  setsid bash scripts/run_finalist_analysis_when_sweep_exits.sh &
 set -u
 
@@ -72,7 +81,7 @@ if [ "$complete" != "true" ]; then
 fi
 
 log "ledgers complete; running the pre-registered analysis (pooled, no --write)"
-PYTHONPATH=src .venv/bin/python3 scripts/arch_zoo_analyze.py \
+PYTHONPATH=src .venv/bin/python3 -u scripts/arch_zoo_analyze.py \
     --experiment-id "$PARENT" \
     --also "$EXP" \
     --finalist-order-rule \

@@ -280,13 +280,16 @@ re-run by hand:
 - the post-run analysis runs **unbuffered** (`python3 -u`): a stdout redirect to a file
   is block-buffered, so a kill inside that window loses the output *and* any traceback,
   which is why the watcher log stopped mid-line with no record of the attempt;
-- the watcher **verifies the write** before reporting success — `decision.md` must be
-  newer than all 32 ledgers — so an analysis that exits 0 without writing, or a record
-  that predates its inputs, is a logged failure instead of a silent one;
-- `scripts/check_record_freshness.py` now fails any arm whose committed record was read
-  over a **seed set that no documented command reads**. That is the content-based form
-  of the same check (it survives a fresh clone, where mtimes do not) and it names the
-  cause before paying for a regeneration.
+- the watcher **no longer reports on an exit status alone** — which says the process
+  finished, not that it wrote. It re-renders `decision.md` from this directory's own
+  documented command and requires it back byte-identical, via the repository's own
+  `scripts/check_record_freshness.py --only`. That is strictly stronger than a
+  timestamp comparison (it proves the record *is* what the runbook produces over the
+  ledgers on disk) and it names the cause when it fails;
+- `scripts/check_record_freshness.py` itself now fails any arm whose committed record
+  was read over a **seed set that no documented command reads**. That is the
+  content-based form of the same check (it survives a fresh clone, where mtimes do
+  not) and it names the cause before paying for a regeneration;
 
 To reproduce this directory's record by hand:
 

@@ -81,32 +81,24 @@ log "horizon analysis exit=$status"
 
 # Exit status alone is not the landing. A 0 says the process finished; it says
 # nothing about whether it wrote, and the failure that matters here is a record that
-# was never written at all - leaving the driver's imported kernel-side artifact in
-# place, which for this arm is a single-seed analysis of a two-seed design. The write
-# is verified directly: the record must be newer than every ledger it claims to
-# describe. Written after the fact, so it cannot pass on a record that predates them.
-NEWEST=""
-for seed in $SEEDS; do
-    for length in $LENGTHS; do
-        f="$DIR/flat${length}_seed${seed}_results.jsonl"
-        if [ -z "$NEWEST" ] || [ "$f" -nt "$NEWEST" ]; then NEWEST="$f"; fi
-    done
-done
-
-if [ ! -f "$DIR/decision.md" ]; then
-    log "FAILED: no decision.md after the analysis; the record in place is whatever the"
-    log "        driver imported from the kernel (for this arm: a single-seed analysis of"
-    log "        a two-seed design). Re-run the command above by hand."
-    exit 4
-elif [ ! "$DIR/decision.md" -nt "$NEWEST" ]; then
-    log "FAILED: decision.md is older than $NEWEST, so it was not written from the"
-    log "        ledgers that landed - the analysis did not complete. Re-run by hand."
-    exit 4
-fi
-
-if [ "$status" = "0" ]; then
-    log "verified: decision.md is newer than all 32 ledgers, so it was written from them"
-    log "done - read $DIR/decision.md for the branch and the length it was read at"
+# was never written - leaving the driver's imported kernel-side artifact in place,
+# which for this arm is a *single-seed* analysis of a two-seed design. So the landing
+# is confirmed the strong way instead: the record is re-rendered from this directory's
+# own documented command and must come back byte-identical, by the same check the test
+# suite runs. That subsumes a timestamp comparison and it names the cause - a record
+# read over a seed set its runbook does not read is reported as exactly that, with
+# both sets printed - and it cannot pass on a record that predates the ledgers it
+# claims to describe. The check is non-destructive: it regenerates into a scratch tree.
+log "verifying the landing: decision.md must reproduce from the runbook in NOTES.md"
+if PYTHONPATH=src .venv/bin/python3 -u scripts/check_record_freshness.py \
+        --only "$EXP" >> "$LOG" 2>&1; then
+    log "verified: decision.md reproduces from the documented command (analysis exit=$status)"
 else
-    log "analysis failed; the ledgers are complete, so re-run the command by hand"
+    log "FAILED: decision.md does not reproduce from NOTES.md (analysis exit=$status)."
+    log "        Nothing is a record until it does. The file in place may be the driver's"
+    log "        imported kernel-side artifact rather than this arm's analysis - re-run the"
+    log "        documented command by hand and read the check's output above."
+    exit 4
 fi
+
+log "done - read $DIR/decision.md for the branch and the length it was read at"

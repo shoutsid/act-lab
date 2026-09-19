@@ -195,9 +195,12 @@ analysis it launched, so the file left in place as the record was the *kernel-si
 single-seed artifact the driver had imported — one that reported "run at least two
 seeds per architecture" about a complete two-seed arm — and nothing noticed, because
 a stdout redirect to a file is block-buffered and the watcher's log stopped mid-line.
-The analysis now runs unbuffered, its write is verified newer than the ledgers it
-claims to describe, and `check_record_freshness.py` fails any record whose seed set
-is not the one its own documented command reads.
+The analysis now runs unbuffered, and the watcher no longer reports on an exit status
+alone: it **re-renders the record from the arm's own documented command and requires it
+to come back identical**, which is the same check the test suite runs and which names
+the cause when it fails. `check_record_freshness.py` itself now fails any arm whose
+committed record was read over a seed set no documented command reads — the
+content-based form, which survives a fresh clone where mtimes do not.
 
 The other open question was v1's own, and it is now answered. That arm closed on "NOT
 ESTABLISHED — this experiment cannot yet tell": a 3-block exact test whose floor is
