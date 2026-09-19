@@ -2486,27 +2486,51 @@ def verdict(outcome: dict) -> tuple[str, str]:
         shown = (
             f"p<={resolution:.2g}" if floored else f"p={p_value:.4g}"
         )
+        # Both closing instructions below ask for the same follow-up: re-run the
+        # finalists on seeds never used in screening. Once that has actually been
+        # done - which is what the finalist-order rule's presence in the outcome
+        # means - repeating it sends the next reader to buy compute that is already
+        # inside this outcome. The rule's own section carries what the re-run found,
+        # so the instruction points there instead.
+        confirmed = bool(
+            (outcome.get("finalist_order_decision") or {}).get("available")
+        )
         return (
             f"ARCHITECTURE EFFECT ESTABLISHED - spread {spread:.4f} nats, {test_name} "
             f"{shown}{size}.",
-            "Proceed to evolutionary architecture search (arch-evo-100m-v1), and "
-            "confirm the finalists on seeds never used in screening first so the "
-            "selection coupling is removed."
+            "Proceed to evolutionary architecture search (arch-evo-100m-v1)"
+            + (
+                ", the finalists having already been confirmed on seeds never used "
+                "in screening (see the finalist-order rule below)."
+                if confirmed
+                else ", and confirm the finalists on seeds never used in screening "
+                "first so the selection coupling is removed."
+            )
             + attribution
             + horizon,
         )
+    confirmed = bool((outcome.get("finalist_order_decision") or {}).get("available"))
     return (
         f"NOT ESTABLISHED - spread {spread:.4f} nats is above the materiality floor "
         f"but {test_name} gives p={p_value:.4g}, so it is not separable from "
         f"initialization noise at {blocked.get('blocks', 'these')} seeds{size}. "
         "This is not evidence that architecture does not matter; it is evidence "
         "that this experiment cannot yet tell.",
-        "Do not build the full evolutionary search. Resolve the effect size first: "
-        "re-run the finalists on seeds never used in screening, which removes the "
-        "selection coupling and raises power, and test a matched-budget structural "
-        "design so any spread is attributable to one axis. Note that widening with "
-        "module-type genes is not an option here - measured at 100M/context 1024, "
-        "GDN costs 4-7x attention and exceeds an 8 GB card at 6 of 8 layers.",
+        "Do not build the full evolutionary search. "
+        + (
+            "The finalists have been re-run on seeds never used in screening and the "
+            "finalist-order rule below reports what that bought. Test a "
+            "matched-budget structural design so any spread is attributable to one "
+            "axis. "
+            if confirmed
+            else "Resolve the effect size first: re-run the finalists on seeds never "
+            "used in screening, which removes the selection coupling and raises "
+            "power, and test a matched-budget structural design so any spread is "
+            "attributable to one axis. "
+        )
+        + "Note that widening with module-type genes is not an option here - "
+        "measured at 100M/context 1024, GDN costs 4-7x attention and exceeds an 8 GB "
+        "card at 6 of 8 layers.",
     )
 
 
@@ -4231,6 +4255,10 @@ def write_decision(path: Path, outcome: dict) -> None:
         (
             "horizon_decision",
             "Pre-registered rule: does the depth sign survive the horizon?",
+        ),
+        (
+            "finalist_order_decision",
+            "Pre-registered rule: was v1's finalist ordering underpowered?",
         ),
     ):
         rule = outcome.get(key) or {}

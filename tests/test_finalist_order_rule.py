@@ -19,8 +19,11 @@ from act.search.architecture_report import (
     FINALIST_ORDER_FRESH_SEEDS,
     FINALIST_ORDER_RULE,
     FINALIST_ORDER_STEPS,
+    best_available_summary,
     blocked_permutation_test,
     finalist_order_decision,
+    verdict,
+    write_decision,
 )
 
 SEEDS = (42, 43, 44, 45, 46, 47)
@@ -254,6 +257,86 @@ def test_every_declared_branch_has_a_reading_and_a_label():
         assert branch in FINALIST_ORDER_READINGS
         assert FINALIST_ORDER_READINGS[branch]
     assert "unavailable" in FINALIST_ORDER_READINGS
+
+
+#: A planting with a material spread but an ordering that does not reproduce, which
+#: is the shape v1's own ledgers have: the three architectures separate by 0.025 nats
+#: on the mean - above the materiality floor, so the verdict is the *statistical*
+#: one rather than NO MATERIAL SIGNAL - while the top of the per-seed ordering
+#: changes twice in six blocks. The arm therefore closes on NOT ESTABLISHED even
+#: after the re-run, and the action text is what has to change in that case.
+WEAKLY_SEPARATED = [
+    ("b", "a", "c"),
+    ("a", "c", "b"),
+    ("b", "c", "a"),
+    ("c", "b", "a"),
+    ("a", "b", "c"),
+    ("a", "b", "c"),
+]
+
+
+def _outcome(rows: list[EvalResult]) -> dict:
+    return best_available_summary(rows, list(SEEDS), samples=2_000)
+
+
+def test_decision_renders_the_finalist_rule_and_its_two_readings(tmp_path):
+    """The branch is the arm's deliverable, so it has to reach decision.md."""
+    rows = plant([CONSISTENT] * 6)
+    outcome = _outcome(rows)
+    outcome["finalist_order_decision"] = finalist_order_decision(outcome, rows)
+    path = tmp_path / "decision.md"
+    write_decision(path, outcome)
+    text = path.read_text()
+    assert "Pre-registered rule: was v1's finalist ordering underpowered?" in text
+    assert "**ORDER ESTABLISHED" in text
+    assert "| Condition | Value | Met |" in text
+    # Both readings are named in the conditions, so a reader can see that the
+    # screening-free blocks were consulted rather than take the pooled p on trust.
+    assert "screening-free blocks [45, 46, 47]" in text
+    assert "all 6 blocks" in text
+
+
+def test_the_standing_instruction_survives_until_the_follow_up_is_read(tmp_path):
+    """Without the rule in the outcome, both clues stay as they always were."""
+    rows = plant([CONSISTENT] * 6)
+    path = tmp_path / "decision.md"
+    write_decision(path, _outcome(rows))
+    text = path.read_text()
+    assert "confirm the finalists on seeds never used in screening first" in text
+    assert "already been confirmed" not in text
+    assert "finalist-order rule below" not in text
+    assert "Pre-registered rule: was v1's finalist ordering" not in text
+
+
+def test_the_not_established_instruction_stops_asking_for_what_was_done(tmp_path):
+    """v1's own case: the re-run was bought and it changed nothing.
+
+    The closing instruction used to tell every reader to re-run the finalists on
+    seeds never used in screening - which is the arm that produced this very
+    outcome. Repeating it sends the next reader to buy compute that is already in
+    the file, so once the rule is in the outcome the action reports what it bought
+    instead of asking for it again.
+    """
+    rows = plant(WEAKLY_SEPARATED)
+    outcome = _outcome(rows)
+    assert outcome["architecture_spread"] > 0.01
+    assert verdict(outcome)[0].startswith("NOT ESTABLISHED")
+
+    before = tmp_path / "before.md"
+    write_decision(before, outcome)
+    assert "Resolve the effect size first: re-run the finalists" in before.read_text()
+
+    outcome["finalist_order_decision"] = finalist_order_decision(outcome, rows)
+    assert outcome["finalist_order_decision"]["branch"] == "still-not-established"
+    after = tmp_path / "after.md"
+    write_decision(after, outcome)
+    text = after.read_text()
+    assert "The finalists have been re-run on seeds never used in screening" in text
+    assert "Resolve the effect size first" not in text
+    assert "**STILL NOT ESTABLISHED" in text
+    # The rest of the standing instruction is still the right advice, so it stays.
+    assert "matched-budget structural design" in text
+    assert "GDN costs 4-7x attention" in text
 
 
 def test_the_fresh_reading_is_worth_running_and_two_seeds_would_not_be():
