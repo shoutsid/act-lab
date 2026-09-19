@@ -293,7 +293,65 @@ def test_a_missing_token_file_is_not_a_verdict(tmp_path, capsys):
     )
     assert checks == []
     assert all(check["available"] is None for check in checks)
-    assert "no token file to check" in capsys.readouterr().out
+    assert "no readable token file to check" in capsys.readouterr().out
+
+
+def test_an_impossible_budget_refuses_with_a_reason_not_a_traceback(tmp_path, monkeypatch):
+    """A budget no candidate can meet used to reach matching_report and die in
+    ``min()`` on an empty sequence, which reads as a broken script rather than as an
+    impossible one."""
+    from arch_zoo_screen import main
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "arch_zoo_screen.py",
+            "--experiment-id", "empty",
+            "--design", "families",
+            "--candidates", "2",
+            "--target-params", "2000000",
+            "--artifacts-root", str(tmp_path),
+        ],
+    )
+    with pytest.raises(SystemExit) as refusal:
+        main()
+    message = str(refusal.value)
+    assert "returned no architecture" in message
+    assert "nothing to screen" in message
+    assert "Raise --target-params" in message
+
+
+def test_a_sweep_that_lost_runs_refuses_to_report_success():
+    """The signal whose absence let a 0-for-16 arm be read as complete.
+
+    ``evaluate_batch`` catches a per-candidate exception and keeps going, so the
+    sweep is the only place that knows what it asked for. It has to say so in its
+    exit status, or the failures are sixteen lines in a log and nothing else - which
+    is what the horizon arm's first attempt produced.
+    """
+    from arch_zoo_screen import refuse_if_runs_failed
+
+    # A whole sweep: nothing to report, and the exit status stays 0.
+    refuse_if_runs_failed([])
+
+    with pytest.raises(SystemExit) as refusal:
+        refuse_if_runs_failed(
+            [
+                {"label": "flat 12000", "steps": 12000, "seed": 42, "requested": 8, "trained": 0},
+                {"label": "flat 12000", "steps": 12000, "seed": 43, "requested": 8, "trained": 0},
+            ]
+        )
+    message = str(refusal.value)
+    assert "2 stage run(s) did not train every candidate" in message
+    assert "flat 12000 seed 42: 0 of 8" in message
+    # A one-candidate OOM is reported the same way, because the design has 8.
+    with pytest.raises(SystemExit) as partial:
+        refuse_if_runs_failed(
+            [{"label": "flat 1200", "steps": 1200, "seed": 42, "requested": 8, "trained": 7}]
+        )
+    assert "7 of 8" in str(partial.value)
+    assert "do not analyse this arm as if it were whole" in str(partial.value)
 
 
 def test_the_matching_report_states_the_budget_the_arm_will_train():

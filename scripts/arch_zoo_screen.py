@@ -315,6 +315,38 @@ def warn_if_gpu_shared(competing: "list[int]") -> bool:
     return True
 
 
+#: Runs a stage asked for and did not get. ``evaluate_batch`` catches a per-candidate
+#: exception so that one OOM does not kill a sweep, which means a stage can lose
+#: candidates and still produce a table - and the sweep is the only place that knows
+#: what it asked for. Collected across every stage rather than raised where it
+#: happens, so all the data that can still be trained is trained and written first;
+#: acted on at exit, which is where a caller reads success from.
+untrained_runs: list[dict] = []
+
+
+def refuse_if_runs_failed(runs: list[dict]) -> None:
+    """Exit non-zero when a stage did not train every candidate it asked for.
+
+    This is the signal whose absence let the horizon arm's first attempt train none
+    of its 12,000-step runs, exit 0, and be read as complete by its driver: the
+    failures were sixteen identical lines in a kernel log and nothing in the exit
+    status. The ledgers are written either way, so refusing here discards no
+    evidence - it only stops a partial sweep from reporting success.
+    """
+    if not runs:
+        return
+    shown = ", ".join(
+        f"{row['label']} seed {row['seed']}: {row['trained']} of {row['requested']}"
+        for row in runs[:6]
+    )
+    raise SystemExit(
+        f"{len(runs)} stage run(s) did not train every candidate ({shown}"
+        f"{', ...' if len(runs) > 6 else ''}). The ledgers hold what did complete; "
+        "read the FAILED lines above for the cause, and do not analyse this arm as "
+        "if it were whole."
+    )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Architecture zoo screening")
     parser.add_argument("--experiment-id", default="arch-zoo-100m-v1")
@@ -715,16 +747,22 @@ def print_plan_cost(cost: dict) -> None:
 def _token_file_count(path: str | None) -> int | None:
     """Length of a token stream on disk, read from its header, or ``None``.
 
-    ``None`` for a missing or unset path, which is not a verdict: an empty
-    ``--data-path`` selects the harness's synthetic smoke stream, and a check that
-    failed there would refuse the smoke runs the harness documents.
+    ``None`` means "no readable token stream to check against", which is not a
+    verdict. An empty ``--data-path`` selects the harness's synthetic smoke stream,
+    which the harness documents and a refusal would forbid; and a path that exists
+    but is not a token stream (a text file, a truncated ``.npy``) has to reach the
+    per-candidate load, which reports what is actually wrong with it. The check's own
+    failure is never the arm's failure.
     """
     if not path:
         return None
     candidate = Path(path)
     if not candidate.is_file():
         return None
-    return int(np.load(candidate, mmap_mode="r").shape[0])
+    try:
+        return int(np.load(candidate, mmap_mode="r").shape[0])
+    except (OSError, ValueError):
+        return None
 
 
 def stream_feasibility(args: argparse.Namespace, stages: list[dict]) -> list[dict]:
@@ -771,7 +809,7 @@ def print_stream_feasibility(checks: list[dict]) -> list[dict]:
         if available is None:
             print(
                 f"  {check['label']}: needs {check['required'] / 1e6:.1f}M tokens "
-                "(no token file to check against)"
+                "(no readable token file to check against)"
             )
             continue
         print(
@@ -987,6 +1025,18 @@ def main() -> None:
         zoo = [candidate for candidate in zoo if candidate.name in keep]
         print(f"\n--only: restricted to {len(zoo)} of the zoo's architectures")
 
+    if not zoo:
+        # A budget no candidate can meet used to reach matching_report and die in
+        # min() on an empty sequence, which reads as a broken script rather than as
+        # an impossible one.
+        raise SystemExit(
+            f"the {args.design} design returned no architecture at target "
+            f"{target:,.0f} params (+/-{band:.0%}, match tolerance "
+            f"{args.match_tolerance:.0%}) with context {args.context_size}: nothing "
+            "to screen. Raise --target-params, or widen --tolerance / "
+            "--match-tolerance."
+        )
+
     print_zoo_summary(zoo)
 
     distances = compute_distance_matrix(zoo)
@@ -1198,6 +1248,21 @@ def main() -> None:
             )
             produced += batch
             spent_tokens += run.train_tokens * len(batch)
+            if len(batch) < len(candidates):
+                print(
+                    f"  WARNING: {len(candidates) - len(batch)} of "
+                    f"{len(candidates)} candidates did not train at {steps} steps on "
+                    f"seed {seed}"
+                )
+                untrained_runs.append(
+                    {
+                        "label": label,
+                        "steps": steps,
+                        "seed": seed,
+                        "requested": len(candidates),
+                        "trained": len(batch),
+                    }
+                )
         return produced
 
     def write_reports(results: list[EvalResult]) -> None:
@@ -1350,3 +1415,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    # After the reports, so a partial arm is still written and readable: the refusal
+    # is about the exit status, not about withholding evidence.
+    refuse_if_runs_failed(untrained_runs)
