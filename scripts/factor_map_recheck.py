@@ -84,29 +84,43 @@ RECONSTRUCTION: dict[str, dict[str, object]] = {
 }
 
 
+#: What a summary has to record to be recheckable: the run to reproduce
+#: (``config``, ``seeds``) *and* the published verdict to compare the re-run against
+#: (``gate_min_wins``, ``adaptive_wins``, ``gate_passed``).
+#:
+#: The second half is load-bearing rather than decorative. Requiring only a config and
+#: a seed block was a proxy for "is a factor-map gate study" while those were the only
+#: summaries that had one; the directory has since accumulated depth, portability,
+#: probe-scoring and clone studies that carry both and record a *different* verdict
+#: schema. The filter silently grew to admit 46 of them, and ``--list`` then raised
+#: ``KeyError: 'gate_passed'`` instead of printing the set it documents.
+RECHECK_FIELDS = ("config", "seeds", "gate_min_wins", "adaptive_wins", "gate_passed")
+
+
 def published_summaries() -> dict[str, dict]:
-    """Committed study summaries that carry a config and a seed block.
+    """Committed study summaries this script can actually recheck.
 
     The directory also holds this script's own comparison artifact (a list of
     per-study rows, not a study) and the analysis-only probe-validity record,
     so anything that is not a single study object is skipped rather than
-    mistaken for one.
+    mistaken for one - and so is a study summary that records no gate verdict,
+    because there is then nothing for a re-run to agree or disagree with.
     """
     summaries: dict[str, dict] = {}
     for path in sorted(SUMMARIES.glob("*.json")):
         data = json.loads(path.read_text())
         if not isinstance(data, dict):
             continue
-        if data.get("config") and data.get("seeds"):
+        if all(field in data for field in RECHECK_FIELDS):
             summaries[path.stem] = data
     return summaries
 
 
 def recheck_set() -> dict[str, dict]:
-    """Studies this script re-runs.
+    """Studies this script re-runs: the factor map, as ``--list`` prints it.
 
-    Everything with a recorded config and seed block, including the legacy
-    study, whose pre-``adaptive_policy`` config is completed from
+    Every study whose summary records both the run and its verdict, including the
+    legacy study, whose pre-``adaptive_policy`` config is completed from
     ``RECONSTRUCTION`` rather than defaulted.
     """
     return published_summaries()

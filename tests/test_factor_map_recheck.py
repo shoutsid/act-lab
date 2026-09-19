@@ -91,6 +91,57 @@ def test_recheck_set_covers_the_reconstructible_studies() -> None:
     assert "factor-map-recheck" not in recheck.published_summaries()
 
 
+def test_the_recheck_set_is_defined_by_the_verdict_it_compares(capsys) -> None:
+    """The set is the factor map, and membership is decided by what a summary records.
+
+    "Has a config and a seed block" was a proxy for "is a gate study" while those were
+    the only summaries carrying one. The directory has since filled with depth,
+    portability, probe-scoring and clone studies that have both but record a different
+    verdict schema, so the set grew from ten to fifty-six while ``--list`` - which reads
+    ``gate_passed`` off every member - raised ``KeyError`` instead of printing the set
+    its own documentation describes. A runnable study is not a comparable one.
+    """
+    available = recheck.recheck_set()
+    assert set(available) == {
+        "gate3-cadence-384",
+        "gate3-cheap-probe-380",
+        "gate3-horizon-384",
+        "gate3-late-placement-380",
+        "gate3-legacy-signal-384",
+        "gate3-narrow-384",
+        "gate3-probe-loss-384",
+        "gate3-rich-384",
+        "gate3-variance-384",
+        "guided-upper-bound-96",
+    }
+    # The crash site: every member carries what the printer and the comparison read.
+    for name, data in available.items():
+        missing = [field for field in recheck.RECHECK_FIELDS if field not in data]
+        assert not missing, f"{name} is in the recheck set without {missing}"
+    recheck._print_list()
+    printed = capsys.readouterr().out
+    assert "recheck set: 10 study(ies)" in printed
+    for name in available:
+        assert name in printed
+
+
+def test_a_study_without_a_verdict_is_not_in_the_set(tmp_path, monkeypatch) -> None:
+    """Keeping a runnable study out of the set is what stops the drift recurring."""
+    import json
+
+    monkeypatch.setattr(recheck, "SUMMARIES", tmp_path)
+    comparable = _published(seeds=[1, 2, 3], wins=3)
+    (tmp_path / "comparable.json").write_text(json.dumps(comparable))
+    # A study *result*: a config and a seed block, but no gate verdict to compare.
+    (tmp_path / "verdictless.json").write_text(
+        json.dumps({"config": {"steps": 48}, "seeds": [1, 2, 3], "report_section": "5.1"})
+    )
+    # A panel rather than a single study, which is skipped for its own reason.
+    (tmp_path / "panel.json").write_text(json.dumps([{"study": "x"}]))
+
+    assert set(recheck.recheck_set()) == {"comparable"}
+
+
 def test_build_config_changes_only_the_rng_regime() -> None:
     published = {
         "config": {

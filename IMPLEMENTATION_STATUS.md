@@ -2426,8 +2426,13 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   `artifacts/study-summaries/decoupled/probe-validity-analysis.json`) -
   section 9.11.
 - `PYTHONPATH=src python scripts/factor_map_recheck.py --list` -> prints the
-  recheck set (8 probe-loss gate studies + the guided bound) and the one
-  excluded study; `--study NAME --shard i --shards n --out DIR` re-runs a
+  recheck set (the nine gate studies, the legacy signal one reconstructed rather
+  than excluded, plus the guided bound). Membership is decided by whether a
+  summary records a gate verdict, not by having a config and a seed block: the
+  depth, portability and probe-scoring studies carry both and record a different
+  schema, so the `config and seeds` test grew the set from ten to fifty-six and
+  `--list` raised `KeyError: 'gate_passed'` instead of printing it;
+  `--study NAME --shard i --shards n --out DIR` re-runs a
   shard's slice with the published config and only `independent_arm_rng`
   changed, and `--compare '<DIR>/*.json'>` applies the declared label-agreement
   rule and can write  the result artifact, plus `--summaries DIR` to emit the corrected study
@@ -2435,8 +2440,8 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   that does not recompute cannot reach a figure). Ran as declared: 144 shards,
   ~6 min wall, `artifacts/study-summaries/factor-map-recheck.json` and
   `artifacts/study-summaries/decoupled/` (section 9.11). Unit-pinned in
-  `tests/test_factor_map_recheck.py` (recheck set and
-  exclusion, only-the-RNG-changes reconstruction, shard merge order, label
+  `tests/test_factor_map_recheck.py` (recheck set
+  membership, only-the-RNG-changes reconstruction, shard merge order, label
   agreement and flip detection, threshold recomputation from n, and incomplete
   seed sets never reporting agreement).
 - `PYTHONPATH=src python scripts/v0_verdict.py --dataset-root <root>` -> computes
