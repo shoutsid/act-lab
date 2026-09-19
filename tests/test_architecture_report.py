@@ -22,6 +22,7 @@ from act.search.architecture_report import (
     HEAD_PAIRING_RULE,
     MATERIALITY_FLOOR_NATS,
     REPLICATION_RULE,
+    _blocked_permutation_p,
     _compact,
     _spearman_exact_p,
     axis_association,
@@ -1309,6 +1310,47 @@ def test_verdict_equality_boundaries_all_decide_against_the_claim():
     action = verdict(outcome)[1]
     assert "attributes it to `depth`" in action
     assert "`hidden_size`" not in action.split("attributes it to")[1].split(";")[0]
+
+
+def test_the_p_value_helpers_guard_their_own_boundaries():
+    """Four boundaries inside the two functions every quoted p-value passes through.
+
+    These are read once and quoted everywhere, so a boundary taken generously here
+    is taken generously in each of the phase's claims. Each is pinned where it
+    decides rather than where it is convenient to assert.
+    """
+    matrix = [[1.0, 2.0, 3.0]] * 3  # (3!)^3 = 216 assignments
+
+    def first(totals):
+        return totals[0]
+
+    # A cap *equal* to the enumeration still enumerates. The documented contract is
+    # "when the enumeration exceeds ``cap`` this samples", and the method this
+    # returns is what the record's "exact" claims rest on.
+    assert _blocked_permutation_p(matrix, first, cap=216) == (1.0, 216, "exact")
+    assert _blocked_permutation_p(matrix, first, cap=215)[2] == "monte-carlo"
+
+    # Zero draws cannot produce a p-value. The ``(r + 1) / (n + 1)`` correction
+    # would report a confident 1.0 from no evidence at all, so the helper refuses.
+    assert _blocked_permutation_p(matrix, first, cap=1, samples=0) == (
+        None,
+        216,
+        "unavailable",
+    )
+
+    # One pair has no variance to estimate. The guard keeps the ``n - 1`` division
+    # out of reach and reports no t, rather than a t with zero degrees of freedom.
+    single = paired_contrast_test([(1.0, 0.9)])
+    assert single["available"] and single["pairs"] == 1
+    assert single["p_paired_t"] is None
+
+    # An exact tie is not evidence against sign agreement. Counting it as negative
+    # would report a unanimous set as inconsistent, which is the opposite reading.
+    tied = paired_contrast_test([(1.0, 1.0), (0.8, 1.0)])
+    assert tied["differences"][0] == 0.0
+    assert tied["differences"][1] > 0
+    assert tied["negative"] == 0
+    assert tied["sign_consistent"] is True
 
 
 def test_verdict_omits_attribution_without_a_crossing():

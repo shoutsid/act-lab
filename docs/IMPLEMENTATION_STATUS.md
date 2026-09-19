@@ -1,5 +1,14 @@
 # ACT Implementation Status
 
+## The p-value helpers' guards, and what a surviving mutant actually means (2026-09-19)
+
+| | |
+|---|---|
+| **What was found** | A 22-mutant sweep over `_blocked_permutation_p`, `blocked_permutation_test` and `paired_contrast_test` - the functions every p-value quoted anywhere in this phase passes through - left 10 alive. Four were real guards, now pinned. (a) `assignments <= cap` still **enumerates**: the contract is "when the enumeration exceeds cap this samples", so a cap equal to the count leaves the reported method as `exact`, which is what the record's exact claims rest on. (b) `samples <= 0` returns `unavailable` rather than letting the `(r + 1) / (n + 1)` correction report a confident p=1.0 from **no draws at all**. (c) `len(differences) > 1` keeps the `n - 1` division out of reach for a single pair, so a one-pair contrast reports no t rather than a t with zero degrees of freedom. (d) `d < 0` means an exact tie is not counted as evidence *against* sign agreement, which would report a unanimous contrast set as inconsistent - the opposite reading. |
+| **What the other six are** | Not gaps, and the distinction is worth recording because a bare "survived" reads like a hole. One is **provably** equivalent: `resolutions <= 1_000_000` can never see equality, because `resolutions` is `2 ** len(differences)` and so always a power of two, while 1,000,000 sits strictly between 2^19 and 2^20 - checked rather than argued, `<=` and `<` are the same function there. The other five differ only on an exact float equality or a specific RNG draw: the three `>= observed - 1e-12` comparisons differ from `>` only when a statistic lands exactly on `observed - 1e-12`, a value the ledger sums can produce only by coincidence and which the epsilon exists to bracket; and the Monte-Carlo coin flip `generator.random() < 0.5` differs from `<=` only on a draw of exactly 0.5, which the Mersenne Twister can make (one value in 2^53) but no seeded test does. |
+| **Verified** | **4/4 real guards caught** where all four lived beforehand, and the six unreachable ones re-run and confirmed to survive - which is the evidence for that characterisation rather than an assertion about it. This is the third and fourth equivalent mutant this vein has produced, after the sign clause and the tie branch. |
+| **Where the vein ends** | All five decision rules, `verdict` and its attribution, and now the p-value primitives have been swept. Every real survivor across the four sweeps was the same defect class: a threshold or guard compared at **exact equality** with no test asserting which way it decides. That is the durable finding, not any individual fix. |
+
 ## The same boundary defect in the last two rules, found by enumerating instead of hand-picking (2026-09-19)
 
 | | |
