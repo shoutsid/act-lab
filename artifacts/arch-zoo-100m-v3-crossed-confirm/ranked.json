@@ -599,7 +599,34 @@
     "branch": "inconclusive",
     "label": "INCONCLUSIVE - the interaction is still open",
     "reading": "The main effects replicate but the interaction is still open. Before buying more seeds, note whether the threshold was reachable at all: if the seed-blocked test's floor is above the declared 0.05, the arm could not have resolved it however consistent the seed contrasts were, and that is a statement about the design's size rather than about the world.",
-    "note": "The seed-blocked test's floor at 3 seeds is 0.25, which is above the declared 0.05 - so this arm could not have resolved the interaction however consistent the seed contrasts were. More seeds raise the floor's denominator; nothing else does.",
+    "note": "The seed-blocked test's floor at 3 seeds is 0.25, which is above the declared 0.05 - so this arm could not have resolved the interaction however consistent the seed contrasts were. More seeds raise the floor's denominator; nothing else does. **The branch is reading-dependent**: on the same rows, with only the loss field substituted, the rule lands on `ATTRIBUTION FAILS TO REPLICATE` under `mean_train_loss`. Its condition `\\|hidden\\| >= 1.5 x \\|depth\\|` stops holding (0.2265 vs 0.1879 nats). The design, the seeds and the declared thresholds are unchanged, so the branch to quote is the pre-registered one - held-out validation loss - and the reading that moves it is named here rather than left to a reader who tries the other.",
+    "reading_stability": {
+      "readings": {
+        "final_train_loss": {
+          "available": true,
+          "branch": "inconclusive",
+          "label": "INCONCLUSIVE - the interaction is still open",
+          "loss": "training loss at the end of training",
+          "flipped": []
+        },
+        "mean_train_loss": {
+          "available": true,
+          "branch": "fails-to-replicate",
+          "label": "ATTRIBUTION FAILS TO REPLICATE",
+          "loss": "mean training loss over the trajectory",
+          "flipped": [
+            {
+              "condition": "\\|hidden\\| >= 1.5 x \\|depth\\|",
+              "value": "0.2265 vs 0.1879 nats",
+              "met": false
+            }
+          ]
+        }
+      },
+      "moved": [
+        "mean_train_loss"
+      ]
+    },
     "thresholds": {
       "main_p": 0.01,
       "ratio": 1.5,

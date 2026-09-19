@@ -142,6 +142,16 @@ depends on the width — so a search has to mutate the two **jointly**, not one 
 time. How a branch like that is decided is pre-registered, and evaluated by
 `--replication-rule` rather than by eye.
 
+That branch is also re-read on the other losses the same ledgers carry, and it is the
+clearest case for doing so: held-out loss and final training loss both land on
+*replicates*, and the trajectory average lands on *fails to replicate* — because
+`|hidden| ≥ 1.5 × |depth|` narrows from 2.24× to 1.24× while both main effects keep
+their signs at the design's floor and the interaction stays at its. The clause that
+moves is a **magnitude ratio**, which is a statement about end-of-training sizes, so
+the honest reading is that the ratio is loss-dependent rather than the attribution.
+The fresh three-seed arm narrows its own ratio the same way (1.21×) and the same
+check is run on the phase's other two pre-registered branches.
+
 That `p = 4.3e-05` is worth reading carefully, and the decision record now labels
 it: with 46,656 re-splittings the exact test cannot report less than 2/46,656, so
 the main effects sit on the *procedure's* floor. The p says the observed

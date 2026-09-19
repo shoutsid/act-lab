@@ -215,3 +215,36 @@ Decision record: `decision.md` in this directory, which renders the crossed
 factorial alongside the marginal associations — the marginal table alone shows
 depth and hidden size with similar-looking ρ and cannot separate them, which is
 exactly why the factorial section exists.
+
+## The one clause of this attribution that moves when the loss changes
+
+The pre-registered rule is a threshold comparison, and the quantity under the
+threshold is a loss, so the record now re-reads the rule over the other losses the
+same rows carry — same rows, same seeds, same declared thresholds, only the loss
+field substituted. Held-out loss and final training loss both land on *replicates,
+interaction resolves*. The trajectory average (`mean_train_loss`) lands on
+**attribution fails to replicate**, and the interesting part is *which* condition
+did it:
+
+| condition | held-out | trajectory average |
+|---|---|---|
+| `hidden_size` significant, negative | −0.1843, p = 5e-06 | −0.2255, p = 5e-06 |
+| `depth` significant, positive | +0.0824, p = 5e-06 | +0.1814, p = 5e-06 |
+| `\|hidden\| ≥ 1.5 × \|depth\|` | 0.1843 vs 0.0824 → **holds** | 0.2255 vs 0.1814 → **1.24×, fails** |
+| seed-blocked interaction p < 0.05 | 0.03125 (floor) | 0.03125 (floor) |
+| every seed contrast the same sign | all six agree | all six agree |
+
+So nothing about the attribution moved: both main effects keep their signs and sit at
+the design's Monte-Carlo floor, and the interaction stays at its 2/2⁶ floor with every
+seed contrast agreeing. What moved is the *magnitude ratio*, which is a statement
+about end-of-training sizes — and the trajectory average weights the early phase, where
+depth's penalty is evidently larger, more heavily (depth grows by 2.20×, width by
+1.22×). The clause is a fair thing to have declared; reading it off a loss it was not
+declared on is not.
+
+This is not a six-seed accident: the fresh three-seed arm
+(`../arch-zoo-100m-v3-crossed-confirm/`), which shares no seeds with this one, narrows
+its ratio from 0.1851 vs 0.0865 to 0.2265 vs 0.1879 — **1.21×** against the same
+declared 1.5 — and lands on the same alternate branch. Two independent seed sets reaching
+the same reading means the effect is a property of the loss, which is why the honest
+sentence is that the *ratio* is reading-dependent rather than the attribution.

@@ -670,6 +670,26 @@
     "branch": "shallow-persists",
     "label": "SHALLOW-WINS PERSISTS AT THIS HORIZON",
     "reading": "The depth sign is horizon-stable to this length: shallow still beats deep at matched total parameters, so the record's 'spend at low depth' stands at this scale - quoted with its training length, as every effect size must be.",
+    "note": "The branch does not depend on which loss it is read on: re-reading the same rule over `final_train_loss`, `mean_train_loss` lands on the same branch, with only the loss field substituted.",
+    "reading_stability": {
+      "readings": {
+        "final_train_loss": {
+          "available": true,
+          "branch": "shallow-persists",
+          "label": "SHALLOW-WINS PERSISTS AT THIS HORIZON",
+          "loss": "training loss at the end of training",
+          "flipped": []
+        },
+        "mean_train_loss": {
+          "available": true,
+          "branch": "shallow-persists",
+          "label": "SHALLOW-WINS PERSISTS AT THIS HORIZON",
+          "loss": "mean training loss over the trajectory",
+          "flipped": []
+        }
+      },
+      "moved": []
+    },
     "conditions": [
       {
         "condition": "depth main effect significant (exact re-split p < 0.05)",

@@ -1,5 +1,18 @@
 # ACT Implementation Status
 
+## Every pre-registered branch now names the loss it was read on, and one of them moves (2026-09-19)
+
+| | |
+|---|---|
+| **What was done** | The reading check built for the head-pairing rule was generalized to all four pre-registered rules (`replication_decision`, `horizon_decision`, `head_pairing_decision`, `finalist_order_decision`) through one shared path, so the four cannot describe the same check in four different ways. Each names the outcome blocks it actually reads, because rebuilding a block a rule never looks at costs the record's 200,000 draws and cannot change its branch. |
+| **The finding it turned up** | The crossed arm's pre-registered replication rule — the branch that says §2c's attribution replicates — lands on **ATTRIBUTION FAILS TO REPLICATE** when read on the trajectory-averaged loss. Nothing about the attribution moved: both main effects keep their signs and sit at the design's Monte-Carlo floor, and the interaction stays at its 2/2⁶ floor with all six seed contrasts agreeing. Only `|hidden| ≥ 1.5 × |depth|` stops holding — 0.2255 against 0.1814, a ratio of **1.24× against the declared 1.5**. |
+| **Why the condition matters, not just the label** | Both facts share one label and are different claims. The ratio is a statement about end-of-training magnitudes, and the trajectory average weights the early phase — where depth's penalty is evidently larger — more heavily (depth grows 2.20×, width 1.22×). So the readings record the condition that moved, and the record's clause names it, rather than reporting that the attribution failed. |
+| **Not a six-seed accident** | The fresh three-seed confirmation arm, which shares no seeds with the pooled set, narrows its own ratio 0.1851 vs 0.0865 → 0.2265 vs 0.1879 (**1.21×**) and lands on the same alternate branch. Two independent seed sets reaching the same reading is what makes it a property of the loss. |
+| **The two branches that do not move** | The horizon arm's depth-sign headline is stable on all three readings with no condition moving, and the finalist-order branch is stable while its *second* condition flips (the screening-free blocks clear 0.05 at 1/36 on the trajectory average and not on the like-for-like pair) — the case a label-only check would have called settled. |
+| **Cost** | Marginal and opt-in: 0.01 s for the horizon rule, 0.16 s for finalist-order, 2.7 s for replication and 3.5 s for head-pairing, each against the analysis it belongs to. Unconditional rather than gated on a margin looking thin, because a silent skip is indistinguishable from a branch that held. |
+| **Verified** | Four tests and eight claims. Two records regenerated from their own documented commands (`arch-zoo-100m-v3-crossed`, `arch-zoo-100m-v3-crossed-confirm`); `check_record_freshness.py` catches a hand-edited reading table. Four new mutants caught, including a rule re-entering its own reading check, which was an infinite recursion until the shared path passed `reading_check=False`. **204 → 212 claims.** |
+| **Result** | **1166 tests pass · 212/212 claims agree · 9/9 records reproduce.** |
+
 ## The record's own branch label now carries the loss it was read on (2026-09-19)
 
 | | |

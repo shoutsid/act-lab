@@ -493,6 +493,32 @@
     "branch": "order-coupled",
     "label": "ORDER COUPLED - THE POOLED SIGNIFICANCE IS THE SCREENING SEEDS",
     "reading": "The pooled test clears the threshold, but the seed blocks do not agree on which architecture comes first. The significance then rests on agreement among blocks that disagree about the top - either because the screening seed that selected the finalists favour their own winner (the anti-conservative coupling v1's caveat named), or because the uncoupled seeds overturn it. Neither is a replicated ordering, so no ranking is recommended however the pooled p reads.",
+    "note": "The branch does not depend on which loss it is read on: re-reading the same rule over `final_train_loss`, `mean_train_loss` lands on the same branch, with only the loss field substituted.",
+    "reading_stability": {
+      "readings": {
+        "final_train_loss": {
+          "available": true,
+          "branch": "order-coupled",
+          "label": "ORDER COUPLED - THE POOLED SIGNIFICANCE IS THE SCREENING SEEDS",
+          "loss": "training loss at the end of training",
+          "flipped": []
+        },
+        "mean_train_loss": {
+          "available": true,
+          "branch": "order-coupled",
+          "label": "ORDER COUPLED - THE POOLED SIGNIFICANCE IS THE SCREENING SEEDS",
+          "loss": "mean training loss over the trajectory",
+          "flipped": [
+            {
+              "condition": "screening-free blocks [45, 46, 47] alone: p < 0.05 (no selection coupling)",
+              "value": "p=0.02778 (floor 0.02778)",
+              "met": true
+            }
+          ]
+        }
+      },
+      "moved": []
+    },
     "conditions": [
       {
         "condition": "all 6 blocks: p < 0.05 (v1's 3-block test raised power on the screening seeds)",

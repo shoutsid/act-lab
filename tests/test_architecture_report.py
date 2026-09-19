@@ -3568,6 +3568,121 @@ def test_head_pairing_readings_do_not_move_on_a_constant_loss_offset():
     assert "does not depend on which loss" in rule["note"]
 
 
+def _pooled_arms(*names: str):
+    """Every arm's rows pooled, or a skip when the artifacts are absent.
+
+    Same contract as ``_head_pair_pooled``: the record-level tests below read the
+    committed ledgers, so the assertions are about real numbers while the *skips* keep
+    a source-only checkout runnable.
+    """
+    rows = []
+    for name in names:
+        directory = Path("artifacts") / name
+        ledgers = sorted(directory.glob("*_seed*_results.jsonl"))
+        if not ledgers:
+            pytest.skip(f"{name} ledgers not present")
+        rows += with_structure(load_results(ledgers), directory / "zoo_definition.json")
+    return rows, sorted({row.seed for row in rows})
+
+
+def test_recorded_replication_record_names_the_ratio_clause_as_what_moves():
+    """The phase's central attribution branch moves, and by a ratio rather than a test.
+
+    This is the strongest case for the reading check in the phase: re-read on the
+    trajectory average, the pre-registered replication rule lands on
+    ``ATTRIBUTION FAILS TO REPLICATE``. The mechanism is what a reader needs - both main
+    effects stay significant with the same signs and the interaction stays at its floor,
+    and only ``|hidden| >= 1.5 x |depth|`` stops holding - so the record has to say
+    which condition moved, not merely that the label did.
+    """
+    rows, seeds = _pooled_arms("arch-zoo-100m-v3-crossed", "arch-zoo-100m-v3-crossed-confirm")
+    rule = replication_decision(
+        best_available_summary(rows, seeds, samples=_DRAWS), rows, samples=_DRAWS
+    )
+
+    assert rule["label"] == "REPLICATES, INTERACTION RESOLVES"
+    stability = rule["reading_stability"]
+    assert stability["moved"] == ["mean_train_loss"], stability["moved"]
+    assert stability["readings"]["final_train_loss"]["branch"] == rule["branch"]
+
+    moved = stability["readings"]["mean_train_loss"]
+    assert moved["branch"] == "fails-to-replicate"
+    # Exactly one condition moved, and it is the magnitude ratio rather than any of the
+    # three significance or sign clauses - which is the difference between "the
+    # attribution failed" and "the attribution is unchanged, read on a loss it was
+    # never declared on".
+    assert len(moved["flipped"]) == 1
+    assert "1.5" in moved["flipped"][0]["condition"]
+    assert not moved["flipped"][0]["met"]
+    assert "0.2255" in moved["flipped"][0]["value"]
+    assert "stops holding" in rule["note"]
+    assert "1.5" in rule["note"]
+
+
+def test_recorded_horizon_record_reports_a_branch_that_does_not_move():
+    """Phase's headline branch, re-read on both alternates, is stable on all three.
+
+    Pinned because it is the other half of the check: a reading field that only ever
+    reported movement would be reporting the check rather than the result.
+    """
+    rows, seeds = _pooled_arms("arch-zoo-100m-v3-crossed-horizon10x")
+    rule = horizon_decision(
+        best_available_summary(rows, seeds, samples=_DRAWS), rows, samples=_DRAWS
+    )
+
+    assert rule["label"] == "SHALLOW-WINS PERSISTS AT THIS HORIZON"
+    stability = rule["reading_stability"]
+    assert stability["moved"] == []
+    assert {r["branch"] for r in stability["readings"].values()} == {"shallow-persists"}
+    assert all(not r["flipped"] for r in stability["readings"].values())
+    assert "does not depend on which loss" in rule["note"]
+
+
+def test_recorded_finalist_order_branch_is_stable_while_a_clause_flips():
+    """The distinction the ``flipped`` list exists for: same branch, different clause.
+
+    The pooled six-block rule holds on all three readings, so a check that reported only
+    labels would call this stable and stop. Its *second* condition does move - the
+    screening-free blocks clear 0.05 at 1/36 on the trajectory average and not on the
+    like-for-like pair - and that clause is the one explaining why the pooled
+    significance is trustworthy, so it is recorded rather than lost.
+    """
+    rows, seeds = _pooled_arms("arch-zoo-100m-v1", "arch-zoo-100m-v1-finalists-6seed")
+    rule = finalist_order_decision(
+        best_available_summary(rows, seeds, samples=_DRAWS), rows, samples=_DRAWS
+    )
+
+    assert rule["branch"] == "order-coupled"
+    stability = rule["reading_stability"]
+    assert stability["moved"] == []
+    assert stability["readings"]["final_train_loss"]["flipped"] == []
+    flipped = stability["readings"]["mean_train_loss"]["flipped"]
+    assert len(flipped) == 1
+    assert "screening-free blocks" in flipped[0]["condition"]
+    assert flipped[0]["met"], "the clause moved the other way"
+    # Stable branch, so the note says so rather than naming a reading that moved.
+    assert "does not depend on which loss" in rule["note"]
+
+
+def test_reading_check_can_be_turned_off_so_a_rule_cannot_read_forever():
+    """``rule_reading_stability`` calls rules with the check disabled, and that is why.
+
+    The finalist-order rule takes the rows and re-reads itself from them, so a re-read
+    that ran the check again would recurse without bound - which is what happened before
+    this flag existed. The flag is public because it is the load-bearing part of the
+    shared path, not an implementation detail of it.
+    """
+    rows, seeds = _pooled_arms("arch-zoo-100m-v1", "arch-zoo-100m-v1-finalists-6seed")
+    outcome = best_available_summary(rows, seeds, samples=_DRAWS)
+
+    assert finalist_order_decision(outcome, rows, samples=_DRAWS)[
+        "reading_stability"
+    ] is not None
+    assert finalist_order_decision(
+        outcome, rows, samples=_DRAWS, reading_check=False
+    )["reading_stability"] is None
+
+
 def test_recorded_level_pricing_survives_every_loss_reading():
     """What the search program actually spends on does not depend on the loss reading.
 

@@ -710,7 +710,34 @@
     "branch": "replicates-and-resolves",
     "label": "REPLICATES, INTERACTION RESOLVES",
     "reading": "The attribution replicates on seeds never used to design or screen anything, and the depth penalty is level-dependent. A search must mutate depth and width *jointly*: a mutation that is good at one width is not good at the other, so the space is not separable in these two genes and the search has to cover their joint space.",
-    "note": null,
+    "note": "**The branch is reading-dependent**: on the same rows, with only the loss field substituted, the rule lands on `ATTRIBUTION FAILS TO REPLICATE` under `mean_train_loss`. Its condition `\\|hidden\\| >= 1.5 x \\|depth\\|` stops holding (0.2255 vs 0.1814 nats). The design, the seeds and the declared thresholds are unchanged, so the branch to quote is the pre-registered one - held-out validation loss - and the reading that moves it is named here rather than left to a reader who tries the other.",
+    "reading_stability": {
+      "readings": {
+        "final_train_loss": {
+          "available": true,
+          "branch": "replicates-and-resolves",
+          "label": "REPLICATES, INTERACTION RESOLVES",
+          "loss": "training loss at the end of training",
+          "flipped": []
+        },
+        "mean_train_loss": {
+          "available": true,
+          "branch": "fails-to-replicate",
+          "label": "ATTRIBUTION FAILS TO REPLICATE",
+          "loss": "mean training loss over the trajectory",
+          "flipped": [
+            {
+              "condition": "\\|hidden\\| >= 1.5 x \\|depth\\|",
+              "value": "0.2255 vs 0.1814 nats",
+              "met": false
+            }
+          ]
+        }
+      },
+      "moved": [
+        "mean_train_loss"
+      ]
+    },
     "thresholds": {
       "main_p": 0.01,
       "ratio": 1.5,

@@ -283,8 +283,11 @@ def main() -> None:
     )
     if args.replication_rule:
         # Computed from the same outcome the decision renders, so the branch and
-        # the evidence it was read from cannot drift apart.
-        outcome["replication_decision"] = replication_decision(outcome)
+        # the evidence it was read from cannot drift apart. The rows go with it so the
+        # record can name the loss the branch was read on, like every other rule below.
+        outcome["replication_decision"] = replication_decision(
+            outcome, results, samples=args.samples
+        )
     if args.head_rule:
         # Handed the pooled rows as well as the outcome, like the finalist-order rule:
         # the branch is a threshold on a loss, so the record re-reads it over the
@@ -294,12 +297,16 @@ def main() -> None:
             outcome, results, samples=args.samples
         )
     if args.horizon_rule:
-        outcome["horizon_decision"] = horizon_decision(outcome)
+        outcome["horizon_decision"] = horizon_decision(
+            outcome, results, samples=args.samples
+        )
     if args.finalist_order_rule:
         # Handed the pooled rows as well as the outcome: the rule's second reading is
         # the same test over a seed subset, and selecting it from the same row set
         # keeps both readings on one set of ledgers.
-        outcome["finalist_order_decision"] = finalist_order_decision(outcome, results)
+        outcome["finalist_order_decision"] = finalist_order_decision(
+            outcome, results, samples=args.samples
+        )
     if args.offset_against:
         # Loaded beside the primary rather than pooled into it: the whole point of
         # the quantity is that the two experiments were measured differently, so

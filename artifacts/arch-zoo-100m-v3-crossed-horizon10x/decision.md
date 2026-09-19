@@ -154,6 +154,18 @@ The depth sign is horizon-stable to this length: shallow still beats deep at mat
 | depth main effect > 0 (deep - shallow; shallow wins) | +0.0209 nats at 12000 steps | yes |
 | secondary: width main effect < 0 (reported, does not gate) | -0.0645 nats, p=0.001543 | yes |
 
+The branch does not depend on which loss it is read on: re-reading the same rule over `final_train_loss`, `mean_train_loss` lands on the same branch, with only the loss field substituted.
+
+The branch is a threshold on a loss, so it was re-read on the other losses these ledgers carry - the same rows with only the loss field substituted, which is a second reading of one design rather than a second experiment:
+
+| Loss read | Branch |
+|---|---|
+| `validation_loss` - held-out validation loss (the registered reading) | SHALLOW-WINS PERSISTS AT THIS HORIZON |
+| `final_train_loss` - training loss at the end of training | SHALLOW-WINS PERSISTS AT THIS HORIZON |
+| `mean_train_loss` - mean training loss over the trajectory | SHALLOW-WINS PERSISTS AT THIS HORIZON |
+
+Only the loss field changed; the design, the seeds and the declared thresholds did not.
+
 ## Seed-matched contrast against the best architecture
 
 | Candidate | Mean delta | Paired seeds |

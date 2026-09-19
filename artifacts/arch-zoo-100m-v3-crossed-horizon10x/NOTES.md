@@ -311,6 +311,17 @@ re-run by hand:
   content-based form of the same check (it survives a fresh clone, where mtimes do
   not) and it names the cause before paying for a regeneration;
 
+## The branch does not move when the loss does
+
+The pre-registered rule is a threshold on a loss, so its record now re-reads the rule
+over the other losses these ledgers carry — same rows, only the loss field substituted.
+The phase's headline survives all three: held-out loss, final training loss and the
+trajectory average each land on **shallow-wins persists**, with no condition moving. That
+is worth stating rather than assuming, because the arm next to this one in the phase
+(`../arch-zoo-100m-v3-crossed/`) has a branch that *does* move on the same check, and
+the one before that (`../arch-zoo-100m-v4-head-paired/`) moves too. Depth's sign is not
+a loss-reading artifact.
+
 To reproduce this directory's record by hand:
 
 ```

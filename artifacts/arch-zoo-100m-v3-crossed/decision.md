@@ -116,6 +116,18 @@ The attribution replicates on seeds never used to design or screen anything, and
 | seed-blocked interaction p < 0.05 | p=0.03125 (floor 0.03125) | yes |
 | every seed contrast the same sign | +0.0819, +0.0840, +0.0443, +0.0970, +0.0691, +0.1200 | yes |
 
+**The branch is reading-dependent**: on the same rows, with only the loss field substituted, the rule lands on `ATTRIBUTION FAILS TO REPLICATE` under `mean_train_loss`. Its condition `\|hidden\| >= 1.5 x \|depth\|` stops holding (0.2255 vs 0.1814 nats). The design, the seeds and the declared thresholds are unchanged, so the branch to quote is the pre-registered one - held-out validation loss - and the reading that moves it is named here rather than left to a reader who tries the other.
+
+The branch is a threshold on a loss, so it was re-read on the other losses these ledgers carry - the same rows with only the loss field substituted, which is a second reading of one design rather than a second experiment:
+
+| Loss read | Branch |
+|---|---|
+| `validation_loss` - held-out validation loss (the registered reading) | REPLICATES, INTERACTION RESOLVES |
+| `final_train_loss` - training loss at the end of training | REPLICATES, INTERACTION RESOLVES |
+| `mean_train_loss` - mean training loss over the trajectory | **ATTRIBUTION FAILS TO REPLICATE** |
+
+Only the loss field changed; the design, the seeds and the declared thresholds did not.
+
 ## Seed-matched contrast against the best architecture
 
 | Candidate | Mean delta | Paired seeds |

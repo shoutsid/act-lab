@@ -354,6 +354,25 @@ three-seed arm and on any five-seed subset — the verdict the arm's own arithme
 predicts, since five seeds floor the test at 2/2⁵ = 0.0625, above the declared
 0.05, and six at 0.031.
 
+**That branch is also reading-dependent, and the condition that moves is the magnitude
+ratio rather than any test.** Re-read on the other losses the same ledgers carry, held-out
+loss and final training loss both land on *replicates, interaction resolves*, and the
+trajectory average lands on **attribution fails to replicate**. The mechanism is worth
+naming, because the failure branch's wording covers three different things: on
+`mean_train_loss` both main effects stay significant with the same signs at the design's
+floor (−0.2255 width, +0.1814 depth), the seed-blocked interaction stays at its 2/2⁶
+floor with every seed contrast agreeing — and only `|hidden| ≥ 1.5 × |depth|` stops
+holding, at 0.2255 against 0.1814, a ratio of 1.24 against the declared 1.5. So nothing
+about the *attribution* moved; what moved is how large depth's penalty looks relative to
+width's when the loss is averaged over the trajectory rather than read at the end.
+
+That matters because the ratio is a statement about end-of-training magnitudes, and the
+trajectory average weights the early phase — where depth's penalty is evidently larger —
+more heavily (depth +0.0824 → +0.1814, a factor of 2.20, against width's 1.22). It is
+recorded as a sensitivity rather than a second answer, and it is a caution about reading
+magnitude ratios off a loss the ratio was not declared on, not about the width finding:
+the arm's `decision.md` states it beside the branch, with the condition named.
+
 **Still not separable, and the reason is the budget rather than the search:**
 expert width is the shock absorber for any hidden-size change at fixed depth, so
 "wider residual stream" and "less expert capacity" remain two readings of one

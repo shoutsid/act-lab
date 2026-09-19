@@ -75,6 +75,18 @@ The pooled test clears the threshold, but the seed blocks do not agree on which 
 | screening-free blocks [45, 46, 47] alone: p < 0.05 (no selection coupling) | p=0.1111 (floor 0.02778) | NO |
 | every block ranks the same architecture first (both readings, so the top replicates on uncoupled seeds) | 2 different winners across 6 of 6 blocks | NO |
 
+The branch does not depend on which loss it is read on: re-reading the same rule over `final_train_loss`, `mean_train_loss` lands on the same branch, with only the loss field substituted.
+
+The branch is a threshold on a loss, so it was re-read on the other losses these ledgers carry - the same rows with only the loss field substituted, which is a second reading of one design rather than a second experiment:
+
+| Loss read | Branch |
+|---|---|
+| `validation_loss` - held-out validation loss (the registered reading) | ORDER COUPLED - THE POOLED SIGNIFICANCE IS THE SCREENING SEEDS |
+| `final_train_loss` - training loss at the end of training | ORDER COUPLED - THE POOLED SIGNIFICANCE IS THE SCREENING SEEDS |
+| `mean_train_loss` - mean training loss over the trajectory | ORDER COUPLED - THE POOLED SIGNIFICANCE IS THE SCREENING SEEDS |
+
+Only the loss field changed; the design, the seeds and the declared thresholds did not.
+
 ## Seed-matched contrast against the best architecture
 
 | Candidate | Mean delta | Paired seeds |

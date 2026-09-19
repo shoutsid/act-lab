@@ -377,6 +377,37 @@ def check_attribution(root: Path, audit: Audit, *, quick: bool) -> None:
         "§2c",
     )
 
+    # The ratio clause's loss dependence is checked on the fresh three-seed arm as well
+    # as the pool, because the confirmation shares no seeds with the original and
+    # reaching the same conclusion independently is what makes it a property of the loss
+    # rather than of those six runs. The ratio narrows on both - 1.24x pooled, 1.21x
+    # fresh, against the declared 1.5 - which is the mechanism, not a coincidence.
+    fresh_decision = replication_decision(
+        best_available_summary(
+            arm_results(root, "arch-zoo-100m-v3-crossed-confirm"),
+            sorted({r.seed for r in arm_results(root, "arch-zoo-100m-v3-crossed-confirm")}),
+            samples=20_000,
+        ),
+        arm_results(root, "arch-zoo-100m-v3-crossed-confirm"),
+        samples=20_000,
+    )
+    fresh_stability = fresh_decision["reading_stability"] or {}
+    fresh_flipped = (
+        (fresh_stability.get("readings") or {}).get("mean_train_loss", {}).get("flipped")
+        or []
+    )
+    audit.check(
+        "§2c replication: the same clause moves on the fresh three seeds alone",
+        True,
+        len(fresh_flipped) == 1 and "1.5" in fresh_flipped[0]["condition"],
+        "§2c",
+        (
+            f"the ratio reads {fresh_flipped[0]['value']} here against 0.2255 vs 0.1814 pooled"
+            if fresh_flipped
+            else "nothing moved on the fresh arm"
+        ),
+    )
+
 
 def check_structure_and_budget(root: Path, audit: Audit, *, quick: bool) -> None:
     """README's structural claims, and §11's budget-matched draw."""
@@ -980,6 +1011,9 @@ def check_finalist_order(root: Path, audit: Audit) -> None:
                 "blocked_test": blocked_permutation_test(on_loss, FINALIST_ORDER_STEPS),
             },
             on_loss,
+            # This loop derives the branch under a loss this test chose; the rule's own
+            # reading field is checked once, below, rather than re-derived per branch.
+            reading_check=False,
         )
         audit.check(
             f"§9 finalists: the branch holds on {label}",
@@ -1010,7 +1044,9 @@ def check_finalist_order(root: Path, audit: Audit) -> None:
     rendered = best_available_summary(
         pooled_rows, sorted({row.seed for row in pooled_rows}), samples=2_000
     )
-    rendered["finalist_order_decision"] = finalist_order_decision(rendered, pooled_rows)
+    rendered["finalist_order_decision"] = finalist_order_decision(
+        rendered, pooled_rows, reading_check=False
+    )
     headline, action = verdict(rendered)
     audit.check(
         "§9 finalists: the headline names which blocks established the effect",
@@ -1032,6 +1068,37 @@ def check_finalist_order(root: Path, audit: Audit) -> None:
         "v1 decision.md",
     )
 
+    # Stable branch, moving clause - the distinction the reading field's ``flipped`` list
+    # exists for, and the reason a label-only check would have called this arm settled.
+    ruled = finalist_order_decision(
+        best_available_summary(pooled_rows, sorted({row.seed for row in pooled_rows}), samples=20_000),
+        pooled_rows,
+        samples=20_000,
+    )
+    stability = ruled["reading_stability"] or {}
+    audit.check(
+        "§9 finalists: the branch is the same on every loss reading",
+        [],
+        stability.get("moved"),
+        "v1 decision.md",
+    )
+    flipped = (
+        (stability.get("readings") or {}).get("mean_train_loss", {}).get("flipped") or []
+    )
+    audit.check(
+        "§9 finalists: the screening-free clause is the one that moves",
+        True,
+        len(flipped) == 1
+        and "screening-free blocks" in flipped[0]["condition"]
+        and flipped[0]["met"],
+        "v1 decision.md",
+        (
+            f"{flipped[0]['condition']}: {flipped[0]['value']}"
+            if flipped
+            else "nothing moved"
+        ),
+    )
+
 
 def check_replication_rule(root: Path, audit: Audit) -> None:
     """The pre-registered rule's branch, computed from the same outcome it renders from."""
@@ -1045,6 +1112,42 @@ def check_replication_rule(root: Path, audit: Audit) -> None:
         "REPLICATES, INTERACTION RESOLVES",
         rule["label"],
         "§2c",
+    )
+
+    # The phase's central attribution, re-read on the other losses the same rows carry.
+    # The branch moves on the trajectory average, and the *condition* that moves is the
+    # magnitude ratio rather than any test - so the record names it, because "the
+    # attribution failed" and "the attribution is unchanged, read on a loss the ratio was
+    # never declared on" are the same label and very different claims.
+    ruled = replication_decision(outcome, pooled, samples=20_000)
+    stability = ruled["reading_stability"] or {}
+    audit.check(
+        "§2c: the record names the loss reading that moves the branch",
+        ["mean_train_loss"],
+        stability.get("moved"),
+        "§2c",
+        "the same rule, same rows, only the loss field substituted",
+    )
+    flipped = (
+        (stability.get("readings") or {}).get("mean_train_loss", {}).get("flipped") or []
+    )
+    audit.check(
+        "§2c: the condition that moves is the magnitude ratio, not a test",
+        1,
+        len(flipped),
+        "§2c",
+        (
+            f"{flipped[0]['condition']} stops holding ({flipped[0]['value']})"
+            if flipped
+            else "nothing moved"
+        ),
+    )
+    audit.check(
+        "§2c: the ratio is the clause that moves, at 1.24x the declared 1.5",
+        True,
+        bool(flipped) and "1.5" in flipped[0]["condition"] and "0.2255" in flipped[0]["value"],
+        "§2c",
+        "both main effects stay significant with the same signs, at the design floor",
     )
     audit.check(
         "§2c: the rule's own seed-sign condition is met",
@@ -1204,6 +1307,26 @@ def check_horizon_10x(root: Path, audit: Audit) -> None:
     decision = horizon_decision(best_available_summary(results, seeds))
     audit.check("§2c horizon: the rule reaches a branch", True, bool(decision.get("available")), "HORIZON_RULE")
     audit.check("§2c horizon: branch", "shallow-persists", decision.get("branch"), "HORIZON_RULE")
+
+    # The phase's headline branch, re-read on the other two losses the same rows carry.
+    # It holds on all three with no condition moving, which is the other half of the
+    # reading check: a field that only ever reported movement would be reporting the
+    # check rather than the result.
+    ruled = horizon_decision(best_available_summary(results, seeds), results)
+    stability = ruled["reading_stability"] or {}
+    audit.check(
+        "§2c horizon: the branch is the same on every loss reading",
+        [],
+        stability.get("moved"),
+        "decision.md",
+        "held-out loss, final training loss and the trajectory average all agree",
+    )
+    audit.check(
+        "§2c horizon: no condition moves under any of them",
+        True,
+        all(not reading["flipped"] for reading in (stability.get("readings") or {}).values()),
+        "decision.md",
+    )
 
     contrast = crossed_contrast(results, 12000, seeds=seeds)
     depth = contrast["main"]["depth"]

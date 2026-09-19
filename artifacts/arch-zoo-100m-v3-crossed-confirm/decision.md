@@ -116,7 +116,17 @@ The main effects replicate but the interaction is still open. Before buying more
 | seed-blocked interaction p < 0.05 | p=0.25 (floor 0.25) | NO |
 | every seed contrast the same sign | +0.0970, +0.0691, +0.1200 | yes |
 
-The seed-blocked test's floor at 3 seeds is 0.25, which is above the declared 0.05 - so this arm could not have resolved the interaction however consistent the seed contrasts were. More seeds raise the floor's denominator; nothing else does.
+The seed-blocked test's floor at 3 seeds is 0.25, which is above the declared 0.05 - so this arm could not have resolved the interaction however consistent the seed contrasts were. More seeds raise the floor's denominator; nothing else does. **The branch is reading-dependent**: on the same rows, with only the loss field substituted, the rule lands on `ATTRIBUTION FAILS TO REPLICATE` under `mean_train_loss`. Its condition `\|hidden\| >= 1.5 x \|depth\|` stops holding (0.2265 vs 0.1879 nats). The design, the seeds and the declared thresholds are unchanged, so the branch to quote is the pre-registered one - held-out validation loss - and the reading that moves it is named here rather than left to a reader who tries the other.
+
+The branch is a threshold on a loss, so it was re-read on the other losses these ledgers carry - the same rows with only the loss field substituted, which is a second reading of one design rather than a second experiment:
+
+| Loss read | Branch |
+|---|---|
+| `validation_loss` - held-out validation loss (the registered reading) | INCONCLUSIVE - the interaction is still open |
+| `final_train_loss` - training loss at the end of training | INCONCLUSIVE - the interaction is still open |
+| `mean_train_loss` - mean training loss over the trajectory | **ATTRIBUTION FAILS TO REPLICATE** |
+
+Only the loss field changed; the design, the seeds and the declared thresholds did not.
 
 ## Seed-matched contrast against the best architecture
 

@@ -33,7 +33,7 @@ import math
 from dataclasses import replace
 from itertools import combinations, permutations, product
 import random
-from typing import Sequence
+from typing import Callable, Sequence
 from pathlib import Path
 
 import scipy.stats
@@ -2649,7 +2649,10 @@ REPLICATION_READINGS: dict[str, str] = {
 
 def replication_decision(
     outcome: dict,
+    results: list[EvalResult] | None = None,
     *,
+    samples: int = 200_000,
+    reading_check: bool = True,
     main_p: float = REPLICATION_RULE["main_p"],
     ratio: float = REPLICATION_RULE["ratio"],
     interaction_p: float = REPLICATION_RULE["interaction_p"],
@@ -2804,12 +2807,37 @@ def replication_decision(
                 "these agree."
             )
 
+    # The branch is a threshold comparison on a loss, so when the caller supplies the
+    # rows the rule re-reads itself over the other losses those ledgers carry and says
+    # which one it was read on. Unconditional rather than gated on the margin looking
+    # thin: a check that skips itself silently is indistinguishable from a branch that
+    # held, which is the failure this whole field exists to prevent.
+    reading_stability = None
+    if reading_check and results:
+        readings = rule_reading_stability(
+            replication_decision,
+            outcome,
+            results,
+            blocks=RULE_READING_BLOCKS["replication"],
+            samples=samples,
+        )
+        reading_stability = {
+            "readings": readings,
+            "moved": [
+                field
+                for field, reading in readings.items()
+                if reading["available"] and reading["branch"] != branch
+            ],
+        }
+        note = _reading_stability_clause(note, reading_stability)
+
     return {
         "available": True,
         "branch": branch,
         "label": label,
         "reading": REPLICATION_READINGS[branch],
         "note": note,
+        "reading_stability": reading_stability,
         "thresholds": {
             "main_p": main_p,
             "ratio": ratio,
@@ -2895,7 +2923,10 @@ HORIZON_READINGS: dict[str, str] = {
 
 def horizon_decision(
     outcome: dict,
+    results: list[EvalResult] | None = None,
     *,
+    samples: int = 200_000,
+    reading_check: bool = True,
     main_p: float = HORIZON_RULE["main_p"],
     required_steps: int = HORIZON_STEPS,
 ) -> dict:
@@ -2984,11 +3015,38 @@ def horizon_decision(
         "depth-washes-out": "DEPTH WASHES OUT - NO DIRECTION AT THIS HORIZON",
         "open-floor-limited": "OPEN - THE EXACT FLOOR IS ABOVE THE DECLARED THRESHOLD",
     }[branch]
+    # Same reading check as the other pre-registered rules, and the more important one
+    # here: this branch is the phase's headline, and its threshold sits on a 16-row
+    # crossed contrast at the longest training length, which is where the two losses are
+    # furthest apart. No note is claimed beyond it, so it is built here rather than
+    # appended to one.
+    reading_stability = None
+    note = None
+    if reading_check and results:
+        readings = rule_reading_stability(
+            horizon_decision,
+            outcome,
+            results,
+            blocks=RULE_READING_BLOCKS["horizon"],
+            samples=samples,
+        )
+        reading_stability = {
+            "readings": readings,
+            "moved": [
+                field
+                for field, reading in readings.items()
+                if reading["available"] and reading["branch"] != branch
+            ],
+        }
+        note = _reading_stability_clause(note, reading_stability)
+
     return {
         "available": True,
         "branch": branch,
         "label": label,
         "reading": HORIZON_READINGS[branch],
+        "note": note,
+        "reading_stability": reading_stability,
         "conditions": conditions,
         "steps": outcome.get("steps"),
         "depth_nats": nats,
@@ -3065,8 +3123,10 @@ FINALIST_ORDER_READINGS: dict[str, str] = {
 
 def finalist_order_decision(
     outcome: dict,
-    results: list[EvalResult],
+    results: list[EvalResult] | None = None,
     *,
+    samples: int = 200_000,
+    reading_check: bool = True,
     steps: int = FINALIST_ORDER_STEPS,
     fresh_seeds: tuple[int, ...] = FINALIST_ORDER_FRESH_SEEDS,
     pooled_p: float = FINALIST_ORDER_RULE["pooled_p"],
@@ -3201,11 +3261,40 @@ def finalist_order_decision(
         "still-not-established": "STILL NOT ESTABLISHED - NO ORDERING AT 6 BLOCKS",
         "floor-limited": "OPEN - THE EXACT FLOOR IS ABOVE THE DECLARED THRESHOLD",
     }[branch]
+
+    # This rule already takes the rows - it selects the screening-free blocks out of
+    # them - so an alternate reading has to carry the substituted rows, which the
+    # shared path does. It reads the seed-matched test rather than a crossed contrast,
+    # so that is the one block rebuilt.
+    reading_stability = None
+    if reading_check and results:
+        readings = rule_reading_stability(
+            finalist_order_decision,
+            outcome,
+            results,
+            blocks=RULE_READING_BLOCKS["finalist-order"],
+            samples=samples,
+        )
+        reading_stability = {
+            "readings": readings,
+            "moved": [
+                field
+                for field, reading in readings.items()
+                if reading["available"] and reading["branch"] != branch
+            ],
+        }
+
     return {
         "available": True,
         "branch": branch,
         "label": label,
         "reading": FINALIST_ORDER_READINGS[branch],
+        "note": (
+            _reading_stability_clause(None, reading_stability)
+            if reading_stability
+            else None
+        ),
+        "reading_stability": reading_stability,
         "conditions": conditions,
         "steps": outcome.get("steps"),
         "p_all": p_all,
@@ -3424,69 +3513,151 @@ HEAD_PAIRING_READINGS: dict[str, str] = {
 }
 
 
-#: The loss fields this rule's branch is re-read on. Both are the same rows with a
-#: different loss substituted, so only the loss changes - the design, seeds and
-#: thresholds are untouched and the readings stay comparable. `final_train_loss` is
-#: the like-for-like partner (loss at the end of training, so a difference measures
+#: The loss fields every pre-registered branch is re-read on. Both are the same rows
+#: with a different loss substituted, so only the loss changes - the design, seeds and
+#: thresholds are untouched and the readings stay comparable. `final_train_loss` is the
+#: like-for-like partner (loss at the end of training, so a difference measures
 #: generalisation); `mean_train_loss` averages the whole trajectory, so it moves with
 #: descent speed rather than fit and is the reading most likely to disagree. Named
 #: here, in the module, so the set cannot be widened after a result without that edit
 #: being visible.
-HEAD_PAIRING_ALTERNATE_LOSSES: tuple[str, ...] = (
+LOSS_READING_FIELDS: tuple[str, ...] = (
     "final_train_loss",
     "mean_train_loss",
 )
 
-#: What each loss field measures, so the reading table renders "loss at the end of
-#: training" rather than making a reader know the schema. The primary reading is
-#: named here too, because the table it appears in has to be readable on its own.
-HEAD_PAIRING_LOSS_LABELS: dict[str, str] = {
+#: What each loss field measures, so a reading table renders "loss at the end of
+#: training" rather than making a reader know the schema. The primary reading is named
+#: here too, because the table it appears in has to be readable on its own.
+LOSS_FIELD_LABELS: dict[str, str] = {
     "validation_loss": "held-out validation loss (the registered reading)",
     "final_train_loss": "training loss at the end of training",
     "mean_train_loss": "mean training loss over the trajectory",
 }
 
 
-def head_pairing_readings(
+#: The outcome blocks a rule's alternate readings have to be rebuilt from. Each rule
+#: names the ones it reads, because rebuilding the rest costs real time at the
+#: record's 200,000 draws and a reading computed from a block the rule never looks at
+#: cannot change its branch. Written here rather than inline so a rule's needs are
+#: visible in one place.
+RULE_READING_BLOCKS: dict[str, tuple[str, ...]] = {
+    "head-pairing": ("crossed_contrast", "paired_contrasts", "paired_level_splits"),
+    "replication": ("crossed_contrast",),
+    "horizon": ("crossed_contrast",),
+    "finalist-order": ("blocked_test",),
+}
+
+
+def rule_reading_stability(
+    rule_fn: Callable[..., dict],
     outcome: dict,
     results: list[EvalResult],
     *,
+    blocks: Sequence[str] = RULE_READING_BLOCKS["replication"],
     samples: int = 200_000,
-    fields: Sequence[str] = HEAD_PAIRING_ALTERNATE_LOSSES,
+    fields: Sequence[str] = LOSS_READING_FIELDS,
 ) -> dict[str, dict]:
-    """Re-read this rule's branch on the other losses the same ledgers carry.
+    """Re-read a pre-registered branch on the other losses the same ledgers carry.
 
-    The branch is a threshold comparison, and the quantity under the threshold is a
-    loss. Substituting a different loss on the *same rows* is therefore a reading of
-    the same design rather than a second experiment, and it is the cheapest available
-    check on whether the recorded branch is a property of the architectures or of the
-    loss field a reader happened to pick.
+    Every rule in this module branches on a threshold comparison, and the quantity
+    under the threshold is a loss. Substituting a different loss on the *same rows* is
+    therefore a reading of the same design rather than a second experiment, and it is
+    the cheapest available check on whether a recorded branch is a property of the
+    architectures or of the loss field a reader happened to pick.
 
-    Applied by rebuilding the outcome's three evidence blocks over the substituted
-    loss and calling ``head_pairing_decision`` again, so the alternate reading runs
-    the *same* branch logic as the recorded one and the two cannot drift apart. The
-    design, the seeds and the declared thresholds are untouched.
+    Applied by rebuilding the outcome's evidence blocks over the substituted loss and
+    calling ``rule_fn`` again, so an alternate reading runs the *same* branch logic as
+    the recorded one and the two cannot drift apart: a change to a rule moves its own
+    readings with it. The design, the seeds and the declared thresholds are untouched.
+
+    Shared by all four rules rather than written once per rule, because the check is
+    the same and four spellings of it would eventually disagree - including about
+    which loss is the like-for-like partner.
+
+    The rule is called with ``reading_check=False``, which every rule accepts: without
+    it a rule that takes the rows would re-enter this function and read forever. The
+    rows still go with the call, because the finalist-order rule selects its
+    screening-free blocks out of them and would otherwise report ``unavailable`` on
+    every alternate reading.
     """
     steps = outcome.get("steps")
+    baseline = rule_fn(outcome, results, reading_check=False)
+    baseline_met = {
+        row["condition"]: row["met"] for row in baseline.get("conditions") or []
+    }
     readings: dict[str, dict] = {}
     for field in fields:
         swapped = [
             replace(entry, validation_loss=getattr(entry, field)) for entry in results
         ]
         alternate = dict(outcome)
-        alternate["crossed_contrast"] = crossed_contrast(
-            swapped, steps, samples=samples, seeds=outcome.get("seeds")
-        )
-        alternate["paired_contrasts"] = _paired_contrasts_at(swapped, steps)
-        alternate["paired_level_splits"] = _paired_level_splits_at(swapped, steps)
-        rule = head_pairing_decision(alternate)
+        if "crossed_contrast" in blocks:
+            alternate["crossed_contrast"] = crossed_contrast(
+                swapped, steps, samples=samples, seeds=outcome.get("seeds")
+            )
+        if "paired_contrasts" in blocks:
+            alternate["paired_contrasts"] = _paired_contrasts_at(swapped, steps)
+        if "paired_level_splits" in blocks:
+            alternate["paired_level_splits"] = _paired_level_splits_at(swapped, steps)
+        if "blocked_test" in blocks:
+            alternate["blocked_test"] = blocked_permutation_test(
+                swapped, steps, samples=samples
+            )
+        rule = rule_fn(alternate, swapped, reading_check=False)
+        # Which condition moved is the part a reader can act on: a branch that turns on
+        # a significance test and one that turns on a magnitude ratio are the same
+        # label and very different claims if you are deciding what to believe.
+        flipped = [
+            {"condition": row["condition"], "value": row["value"], "met": row["met"]}
+            for row in rule.get("conditions") or []
+            if baseline_met.get(row["condition"]) != row["met"]
+        ]
         readings[field] = {
             "available": bool(rule.get("available")),
             "branch": rule.get("branch"),
             "label": rule.get("label"),
-            "loss": HEAD_PAIRING_LOSS_LABELS.get(field, field),
+            "loss": LOSS_FIELD_LABELS.get(field, field),
+            "flipped": flipped,
         }
     return readings
+
+
+def _reading_stability_clause(note: str | None, stability: dict) -> str:
+    """The sentence that names the reading a branch was checked against.
+
+    Shared rather than written per rule, so the four branches cannot describe the same
+    check in four different ways - and a rule added later inherits the wording instead
+    of paraphrasing it, which is how "read on the same rows" turns into "read on a
+    second experiment" a year later.
+    """
+    moved = stability["moved"]
+    if moved:
+        parts = []
+        for field in moved:
+            reading = stability["readings"][field]
+            detail = "".join(
+                f" Its condition `{row['condition']}` "
+                + ("now holds" if row["met"] else "stops holding")
+                + f" ({row['value']})."
+                for row in reading.get("flipped") or []
+            )
+            parts.append(f"`{reading['label']}` under `{field}`.{detail}")
+        return (note + " " if note else "") + (
+            "**The branch is reading-dependent**: on the same rows, with only the "
+            "loss field substituted, the rule lands on "
+            + " ".join(parts)
+            + " The design, the seeds and the declared thresholds are unchanged, so "
+            "the branch to quote is the pre-registered one - held-out validation "
+            "loss - and the reading that moves it is named here rather than left to "
+            "a reader who tries the other."
+        )
+    return (note + " " if note else "") + (
+        "The branch does not depend on which loss it is read on: re-reading the "
+        "same rule over "
+        + ", ".join(f"`{field}`" for field in stability["readings"])
+        + " lands on the same branch, with only the loss field substituted."
+    )
 
 
 def head_pairing_decision(
@@ -3494,6 +3665,7 @@ def head_pairing_decision(
     results: list[EvalResult] | None = None,
     *,
     samples: int = 200_000,
+    reading_check: bool = True,
     main_p: float = HEAD_PAIRING_RULE["main_p"],
     interaction_p: float = HEAD_PAIRING_RULE["interaction_p"],
 ) -> dict:
@@ -3731,36 +3903,23 @@ def head_pairing_decision(
     # assumption this check exists to test, and a silent skip would be indistinguishable
     # from a branch that held.
     reading_stability = None
-    if results:
-        readings = head_pairing_readings(outcome, results, samples=samples)
-        moved = [
-            (field, reading)
-            for field, reading in readings.items()
-            if reading["available"] and reading["branch"] != branch
-        ]
+    if reading_check and results:
+        readings = rule_reading_stability(
+            head_pairing_decision,
+            outcome,
+            results,
+            blocks=RULE_READING_BLOCKS["head-pairing"],
+            samples=samples,
+        )
         reading_stability = {
             "readings": readings,
-            "moved": [field for field, _ in moved],
+            "moved": [
+                field
+                for field, reading in readings.items()
+                if reading["available"] and reading["branch"] != branch
+            ],
         }
-        if moved:
-            note = (note + " " if note else "") + (
-                "**The branch is reading-dependent**: on the same rows, with only the "
-                "loss field substituted, the rule lands on "
-                + "; ".join(
-                    f"`{reading['label']}` under `{field}`" for field, reading in moved
-                )
-                + ". The design, the seeds and the declared thresholds are unchanged, "
-                "so the branch to quote is the pre-registered one - held-out "
-                "validation loss - and the reading that moves it is named here rather "
-                "than left to a reader who tries the other."
-            )
-        else:
-            note = (note + " " if note else "") + (
-                "The branch does not depend on which loss it is read on: re-reading "
-                "the same rule over "
-                + ", ".join(f"`{field}`" for field in readings)
-                + " lands on the same branch, with only the loss field substituted."
-            )
+        note = _reading_stability_clause(note, reading_stability)
 
     return {
         "available": True,
@@ -4535,7 +4694,7 @@ def write_decision(path: Path, outcome: dict) -> None:
                 "",
                 "| Loss read | Branch |",
                 "|---|---|",
-                f"| `validation_loss` - {HEAD_PAIRING_LOSS_LABELS['validation_loss']} "
+                f"| `validation_loss` - {LOSS_FIELD_LABELS['validation_loss']} "
                 f"| {rule['label']} |",
             ]
             for field, reading in stability["readings"].items():
