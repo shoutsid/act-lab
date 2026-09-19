@@ -1568,12 +1568,39 @@ def joint_structural_fit(
     response = _zscore(losses)
     beta, r2 = _ols(response, columns)
     if beta is None or r2 is None:
-        return {
-            "available": False,
-            "reason": "predictors are rank-deficient at this sample size",
-            "genes": [item[0] for item in chosen],
-            "dropped": dropped,
-        }
+        # Two causes, and only one of them is about the losses. Standardising puts
+        # every column in the (n-1)-dimensional subspace orthogonal to the
+        # constant, so a fit over k predictors on n architectures is *always*
+        # dependent once k > n - 1. That case is not rare here: `common` in
+        # ``structural_signal_by_length`` shrinks to whatever ran at every length,
+        # which for a screening sweep is only its promoted finalists - three of
+        # them - so a 3-predictor fit on that set fails however the losses fall.
+        # Saying which case this is keeps the refusal readable as a fact about the
+        # design rather than a surprise about the data.
+        #
+        # No `genes` key goes on this path. Callers read `fit["genes"]` as
+        # coefficient rows; an unavailable fit has no coefficients, and putting the
+        # attempted *names* in that slot is what made every reader of the summary -
+        # the decision renderer, the console table, and
+        # ``structural_signal_by_length`` itself - raise
+        # ``TypeError: string indices must be integers`` instead of reporting the
+        # refusal. The attempted names travel in the reason instead.
+        attempted = ", ".join(f"`{item[0]}`" for item in chosen)
+        identifiable = len(names) - 1
+        if len(columns) > identifiable:
+            reason = (
+                f"{len(columns)} predictors cannot be identified from "
+                f"{len(names)} architectures: standardised over n points a column "
+                f"spans only n-1 = {identifiable} dimensions, so any fit over more "
+                f"than {identifiable} of them is dependent by construction "
+                f"(attempted {attempted})"
+            )
+        else:
+            reason = (
+                f"predictors are collinear at this sample size (attempted "
+                f"{attempted})"
+            )
+        return {"available": False, "reason": reason, "dropped": dropped}
 
     rng = random.Random(seed)
     generator_null_betas = [[] for _ in chosen]
@@ -1747,10 +1774,19 @@ def structural_signal_by_length(
             "architectures": fit.get("architectures", len(common)),
             "r_squared": fit.get("r_squared"),
             "p_model": fit.get("p_model"),
-            "genes": [
-                {"gene": row["gene"], "beta": row["beta"], "p": row["p"]}
-                for row in fit.get("genes", [])
-            ],
+            # Coefficient rows exist only on an available fit, so the table is
+            # read off one and renders empty otherwise. Reading them
+            # unconditionally is what took the whole report down with a
+            # `TypeError` when a length's common set was too small to fit - the
+            # refusal is a supported outcome here, not an error.
+            "genes": (
+                [
+                    {"gene": row["gene"], "beta": row["beta"], "p": row["p"]}
+                    for row in (fit.get("genes") or [])
+                ]
+                if fit.get("available")
+                else []
+            ),
             "dropped": fit.get("dropped", []),
         }
     if genes:
@@ -2492,24 +2528,53 @@ def verdict(outcome: dict) -> tuple[str, str]:
         # means - repeating it sends the next reader to buy compute that is already
         # inside this outcome. The rule's own section carries what the re-run found,
         # so the instruction points there instead.
-        confirmed = bool(
-            (outcome.get("finalist_order_decision") or {}).get("available")
+        #
+        # The rule's *presence* says the follow-up was bought; only its *branch* says
+        # what it bought. Reading one as the other is the over-claim this arm exists
+        # to rule out, and for this arm the two came apart: the pooled test clears
+        # the threshold while the seeds that saw no screening disagree about the top,
+        # which is the screening-seed coupling v1's own caveat named. Calling that
+        # "confirmed" off the pooled p would hand the next phase a ranking the design
+        # never established. The headline carries the same qualification, because a
+        # reader who stops at the first line must not be left with a claim the
+        # section below it contradicts.
+        order_rule = outcome.get("finalist_order_decision") or {}
+        branch = order_rule.get("branch") if order_rule.get("available") else None
+        headline = (
+            f"ARCHITECTURE EFFECT ESTABLISHED - spread {spread:.4f} nats, "
+            f"{test_name} {shown}{size}."
         )
+        if branch == "order-coupled":
+            headline = (
+                "ARCHITECTURE EFFECT ESTABLISHED ON THE POOLED BLOCKS, NOT ON THE "
+                f"SCREENING-FREE ONES - spread {spread:.4f} nats, {test_name} "
+                f"{shown}{size}. The pre-registered rule below reads that "
+                "significance as the screening seeds."
+            )
         return (
-            f"ARCHITECTURE EFFECT ESTABLISHED - spread {spread:.4f} nats, {test_name} "
-            f"{shown}{size}.",
+            headline,
             "Proceed to evolutionary architecture search (arch-evo-100m-v1)"
             + (
                 ", the finalists having already been confirmed on seeds never used "
                 "in screening (see the finalist-order rule below)."
-                if confirmed
+                if branch == "order-established"
+                else ", carrying the effect size but not a ranking: the finalists' "
+                "ordering did not replicate on the seeds that took no part in "
+                "screening, so the pooled significance is the blocks that did (see "
+                "the finalist-order rule below)."
+                if branch == "order-coupled"
                 else ", and confirm the finalists on seeds never used in screening "
                 "first so the selection coupling is removed."
             )
             + attribution
             + horizon,
         )
-    confirmed = bool((outcome.get("finalist_order_decision") or {}).get("available"))
+    # Here the rule's presence is all that matters: whether or not the ordering
+    # replicated, the re-run *was* bought, so the instruction must not buy it again.
+    # The branch is reported by the rule's own section either way.
+    rule_available = bool(
+        (outcome.get("finalist_order_decision") or {}).get("available")
+    )
     return (
         f"NOT ESTABLISHED - spread {spread:.4f} nats is above the materiality floor "
         f"but {test_name} gives p={p_value:.4g}, so it is not separable from "
@@ -2522,7 +2587,7 @@ def verdict(outcome: dict) -> tuple[str, str]:
             "finalist-order rule below reports what that bought. Test a "
             "matched-budget structural design so any spread is attributable to one "
             "axis. "
-            if confirmed
+            if rule_available
             else "Resolve the effect size first: re-run the finalists on seeds never "
             "used in screening, which removes the selection coupling and raises "
             "power, and test a matched-budget structural design so any spread is "
@@ -3619,6 +3684,45 @@ def head_pairing_decision(
     }
 
 
+#: The remedy the selection caveat closes with, verbatim, so the confirmation's
+#: outcome can replace it without the two spellings drifting apart.
+CONFIRM_REMEDY = "Confirming on seeds never used in screening removes it."
+
+
+def _caveat_after_the_confirmation(caveat: str, order_rule: dict) -> str:
+    """Point the selection caveat at the confirmation, once it has been read.
+
+    The caveat closes with an *instruction* - confirm on seeds never used in
+    screening - and the finalist-order rule's presence in the outcome means that has
+    already been bought. Leaving the instruction in sends the next reader to pay for
+    compute that is in the file, and it also leaves the caveat reading as though the
+    test were merely soft, when the confirmation has since said which way it fell.
+    Only the remedy clause is replaced: the diagnosis above it is what the caveat is
+    for, and it stays true either way.
+    """
+    if not caveat or not order_rule.get("available"):
+        return caveat
+    remedy = {
+        "order-established": (
+            "Confirming on seeds never used in screening removed it: the ordering "
+            "replicates on the uncoupled blocks."
+        ),
+        "order-coupled": (
+            "Confirming on seeds never used in screening has since been run, and the "
+            "ordering did not replicate there (see the pre-registered rule below), so "
+            "the significance above rests on the coupled blocks this caveat warns "
+            "about rather than on a property of the architectures."
+        ),
+        "still-not-established": (
+            "Confirming on seeds never used in screening has since been run and found "
+            "no ordering at six blocks (see the pre-registered rule below)."
+        ),
+    }.get(order_rule.get("branch"))
+    if remedy is None:
+        return caveat
+    return caveat.replace(CONFIRM_REMEDY, remedy)
+
+
 def write_decision(path: Path, outcome: dict) -> None:
     """Record whether an architectural signal exists, and the resulting next step."""
     headline, action = verdict(outcome)
@@ -3696,7 +3800,14 @@ def write_decision(path: Path, outcome: dict) -> None:
                 f"fitted over {units['fitted_between']}"
             )
         if outcome.get("selection_caveat"):
-            lines += ["", f"Caveat: {outcome['selection_caveat']}"]
+            lines += [
+                "",
+                "Caveat: "
+                + _caveat_after_the_confirmation(
+                    outcome["selection_caveat"],
+                    outcome.get("finalist_order_decision") or {},
+                ),
+            ]
         lines.append("")
 
     by_length = outcome.get("spread_by_length") or {}

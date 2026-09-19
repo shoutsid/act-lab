@@ -40,12 +40,16 @@ from act.search.architecture_eval import load_results  # noqa: E402
 from act.search.architecture_report import (  # noqa: E402
     FINALIST_ORDER_FRESH_SEEDS,
     FINALIST_ORDER_STEPS,
+    best_available_summary,
+    blocked_permutation_test,
     crossed_contrast,
+    finalist_order_decision,
     paired_design_contrast,
     rank,
     replication_decision,
     search_cost,
     spread_by_length,
+    verdict,
     with_structure,
 )
 from arch_zoo_screen import (  # noqa: E402
@@ -815,6 +819,83 @@ def check_finalist_order(root: Path, audit: Audit) -> None:
 
     if len(rows) < 9:
         return
+
+    # --- the measured record -------------------------------------------------
+    # Recomputed with the same functions the decision renders from, so the branch
+    # below cannot be transcribed by hand: the documented value is the one the
+    # arm's decision.md carries. The six-block enumeration is exact (6^6 = 46,656
+    # under the cap), so these are reproducible rather than sampled.
+    pooled_rows = parent_rows + rows
+    pooled_test = blocked_permutation_test(pooled_rows, FINALIST_ORDER_STEPS)
+    outcome = {
+        "steps": FINALIST_ORDER_STEPS,
+        "lengths_present": [FINALIST_ORDER_STEPS],
+        "blocked_test": pooled_test,
+    }
+    rule = finalist_order_decision(outcome, pooled_rows)
+    audit.check(
+        "§9 finalists: the pre-registered branch",
+        "order-coupled",
+        rule["branch"],
+        "v1 decision.md",
+        "the pooled test clears the threshold while the screening-free blocks "
+        "neither separate the finalists nor agree on a winner, so the significance "
+        "is the blocks that selected them",
+    )
+    audit.check("§9 finalists: pooled six-block p", 0.001286, rule["p_all"], "v1 decision.md")
+    audit.check(
+        "§9 finalists: pooled six-block floor", 0.0001286, rule["pooled_floor"],
+        "v1 decision.md", "1/7776, against v1's 1/36",
+    )
+    audit.check("§9 finalists: screening-free p", 0.1111, rule["p_fresh"], "v1 decision.md")
+    audit.check(
+        "§9 finalists: screening-free floor", 0.02778, rule["fresh_floor"],
+        "v1 decision.md", "1/36 over the three uncoupled blocks",
+    )
+    audit.check(
+        "§9 finalists: condition results, in the declared order",
+        [True, False, False],
+        [row["met"] for row in rule["conditions"]],
+        "v1 decision.md",
+        "pooled clears, screening-free does not, and the top does not replicate",
+    )
+    audit.check(
+        "§9 finalists: architectures finishing first somewhere in the six blocks",
+        2,
+        len(set(rule["block_tops"])),
+        "v1 decision.md",
+        f"block tops: {sorted(set(rule['block_tops']))}",
+    )
+
+    # The verdict must not read the rule's *presence* as its *result*. It did: the
+    # pooled p - the very number the rule reads as the screening seeds - produced
+    # "the finalists having already been confirmed on seeds never used in
+    # screening" at the top of the artifact, directly above a section saying no
+    # ranking is recommended. These three claims are what keep that from returning.
+    rendered = best_available_summary(
+        pooled_rows, sorted({row.seed for row in pooled_rows}), samples=2_000
+    )
+    rendered["finalist_order_decision"] = finalist_order_decision(rendered, pooled_rows)
+    headline, action = verdict(rendered)
+    audit.check(
+        "§9 finalists: the headline names which blocks established the effect",
+        True,
+        "SCREENING-FREE" in headline,
+        "v1 decision.md headline",
+        "the pooled label alone would repeat the over-claim the arm exists to rule out",
+    )
+    audit.check(
+        "§9 finalists: the action does not claim a confirmed ordering",
+        True,
+        "already been confirmed" not in action,
+        "v1 decision.md",
+    )
+    audit.check(
+        "§9 finalists: the action carries no ranking into the next phase",
+        True,
+        "not a ranking" in action,
+        "v1 decision.md",
+    )
 
 
 def check_replication_rule(root: Path, audit: Audit) -> None:

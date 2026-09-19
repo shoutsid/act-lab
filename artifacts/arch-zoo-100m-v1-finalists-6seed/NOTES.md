@@ -106,10 +106,64 @@ both gaps. Nothing in this document is adjusted after the rows land.
 
 ## Status
 
-Pre-registered; sweep running on the local GTX 1070 (idle, so it runs beside the
-Kaggle horizon arm rather than competing with it). Nothing here re-tunes a protocol
-knob, and this arm does not touch any recorded number of v1 — it is read *alongside*
-v1 by `arch_zoo_analyze.py --also`, and only after its 9 rows exist.
+**Done, and read.** Sweep completed: 9 runs, 22.1M tokens, **1.236 GPU-hours** on the
+local GTX 1070 (idle, so it ran beside the Kaggle horizon kernel rather than
+competing with it). All three fresh ledgers hold 3 rows. Nothing here re-tuned a
+protocol knob, and the arm does not touch any recorded number of v1 — it is read
+*alongside* v1 by `arch_zoo_analyze.py --also`.
+
+The pre-registered rule returns **`order-coupled`**:
+
+| reading | p | floor | met |
+|---|---|---|---|
+| all 6 blocks | 0.001286 | 1/7776 | yes |
+| screening-free blocks 45–47 alone | 0.1111 | 1/36 | NO |
+| the same architecture first in every block | 2 different winners across 6 of 6 blocks | — | NO |
+
+So the pooled significance **is** the blocks that selected the finalists. Nothing was
+replicated, no ranking is recommended, and none is carried into the search. The branch
+is written into v1's `decision.md` by `--write` — v1's directory is where a pooled
+record belongs, following the `v3-crossed` / `v4-head-paired` convention — and its
+headline now reads *"ARCHITECTURE EFFECT ESTABLISHED ON THE POOLED BLOCKS, NOT ON THE
+SCREENING-FREE ONES"* rather than the unqualified label.
+
+The `decision.md` in *this* directory is the sweep's own three-block read, written
+before the pool existed. It is the intermediate artifact, and its closing instruction
+is the generic standalone one — which is how the project's other confirmation arms
+read too (`v3-crossed-confirm` still asks for the confirmation it *is*). The arm's
+verdict is the pooled record in v1's directory.
+
+The arm's own three-block reading (3 architectures × 3 fresh seeds, spread 0.0463
+nats) is the same p=0.1111 the rule's screening-free condition reports. That is an
+underpowered **negative**, not agreement: the fresh design's floor is 1/36, below the
+threshold, so it could have separated the finalists and did not.
+
+### Two defects found on the way — same class, neither about this arm's numbers
+
+1. **The report could not be produced at all.** `joint_structural_fit` emits `genes`
+   as coefficient rows on its success path but as bare gene *names* on its
+   rank-deficient path, and `structural_signal_by_length` reads that slot as rows, so
+   the summary raised `TypeError: string indices must be integers` *before* the rule
+   was ever evaluated. v1's own analysis crashed the same way — **the committed record
+   could no longer be regenerated.** It is not a corner case: `common` is the set that
+   ran at *every* length, which for a screening sweep is its promoted finalists (three
+   here), and standardised columns span only n−1 = 2 dimensions, so a 3-predictor fit
+   on 3 architectures is dependent by construction. Fixed by giving `genes` one shape
+   and naming the constraint in the refusal's `reason`; the consumer now reads
+   coefficient rows only from an available fit. Pinned by a synthetic saturated case
+   *and* against v1's real ledgers.
+2. **The verdict read the rule's presence as its result.** `verdict()` treated "the
+   finalist-order rule is in the outcome" as "the ordering was confirmed", so the
+   pooled p — the very number the rule reads as the screening seeds — produced
+   *"the finalists having already been confirmed on seeds never used in screening"*
+   at the top of the artifact, directly above a section saying no ranking is
+   recommended. The headline and the action now both follow the branch. The same class
+   of stale instruction was closed in the selection caveat, whose closing sentence was
+   an instruction to run exactly this arm.
+
+`verify_record.py` gained 11 measured claims for this arm — the branch, both
+p-values, both floors, the three condition results, the block-top count, and that the
+headline and action do not over-claim. **142/142 agree.**
 
 The run is watched by `scripts/run_finalist_analysis_when_sweep_exits.sh`, which
 waits for the sweep and refuses to analyse unless all three fresh-seed ledgers hold
@@ -120,14 +174,11 @@ watcher logs the full pre-registered analysis rather than writing it, because
 `--write` supersedes v1's committed `decision.md` and that is a deliberate step, not
 an unattended one. Verdict lands in `analysis_watcher.log`.
 
-Runbook, when the sweep exits:
+Runbook, as run:
 
 ```bash
 PYTHONPATH=src python scripts/arch_zoo_analyze.py \
   --experiment-id arch-zoo-100m-v1 \
   --also arch-zoo-100m-v1-finalists-6seed \
-  --finalist-order-rule
+  --finalist-order-rule --write
 ```
-
-Add `--write` to supersede v1's own `decision.md` once the branch above has been
-read; `verdict()` then drops its stale instruction to run exactly this arm.

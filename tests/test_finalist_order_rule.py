@@ -339,6 +339,92 @@ def test_the_not_established_instruction_stops_asking_for_what_was_done(tmp_path
     assert "GDN costs 4-7x attention" in text
 
 
+def test_the_established_verdict_does_not_read_a_coupled_branch_as_confirmed(tmp_path):
+    """Buying the follow-up is not the ordering having replicated.
+
+    This is the arm's actual outcome. ``verdict()`` took the finalist-order rule's
+    mere presence in the outcome as its *result*, so a pooled p - the very number
+    the rule reads as the screening seeds - produced "the finalists having already
+    been confirmed on seeds never used in screening". That sentence is what an
+    auditor carries away, and the rule's own section underneath it says no ranking
+    is recommended. Both the headline and the action now follow the branch.
+    """
+    rows = plant([CONSISTENT] * 3 + [REVERSED] * 3)
+    outcome = best_available_summary(rows, list(SEEDS), samples=2_000)
+    outcome["finalist_order_decision"] = finalist_order_decision(outcome, rows)
+    assert outcome["finalist_order_decision"]["branch"] == "order-coupled"
+
+    headline, action = verdict(outcome)
+    # The pooled test did clear the threshold, so the effect label stands - but it
+    # says on which blocks, because the screening-free ones did not.
+    assert headline.startswith("ARCHITECTURE EFFECT ESTABLISHED ON THE POOLED BLOCKS")
+    assert "SCREENING-FREE" in headline
+    assert "already been confirmed" not in action
+    assert "carrying the effect size but not a ranking" in action
+
+    path = tmp_path / "decision.md"
+    write_decision(path, outcome)
+    text = path.read_text()
+    assert "already been confirmed" not in text
+    assert "SCREENING-FREE" in text
+    assert "**ORDER COUPLED" in text
+
+    # The confirming branch keeps its original wording: only the coupled case moved,
+    # so nothing that already reported a replicated ordering was reworded.
+    established_rows = plant([CONSISTENT] * 6)
+    established = best_available_summary(established_rows, list(SEEDS), samples=2_000)
+    established["finalist_order_decision"] = finalist_order_decision(
+        established, established_rows
+    )
+    assert established["finalist_order_decision"]["branch"] == "order-established"
+    assert "already been confirmed" in verdict(established)[1]
+    assert "ARCHITECTURE EFFECT ESTABLISHED - spread" in verdict(established)[0]
+
+
+def test_the_selection_caveat_stops_asking_for_the_confirmation_it_has(tmp_path):
+    """The caveat's closing sentence is an instruction, and it has been carried out.
+
+    v1's Evidence section ends by telling the reader to confirm on seeds never used
+    in screening. Left verbatim in the pooled record that sends the next reader to
+    buy the nine runs which produced it - and it keeps the caveat reading as though
+    the test were merely soft, when the confirmation has since said the pooled
+    significance *is* the coupling the caveat warns about. Only the remedy goes: the
+    diagnosis above it stays true either way.
+    """
+    from act.search.architecture_report import (
+        CONFIRM_REMEDY,
+        _caveat_after_the_confirmation,
+    )
+
+    diagnosis = (
+        "13 architectures were screened at shorter lengths than these 3, and "
+        "promotion used those runs, so this test is mildly anti-conservative. "
+    )
+    caveat = diagnosis + CONFIRM_REMEDY
+    rows = plant([CONSISTENT] * 3 + [REVERSED] * 3)
+    rule, _ = decide(rows)
+    assert rule["branch"] == "order-coupled"
+
+    resolved = _caveat_after_the_confirmation(caveat, rule)
+    assert CONFIRM_REMEDY not in resolved
+    assert "did not replicate" in resolved
+    assert diagnosis in resolved
+
+    # An arm that has not run the confirmation still has to be told to.
+    assert _caveat_after_the_confirmation(caveat, {}) == caveat
+
+    # And the replacement reaches the artifact, which is the whole point: the record
+    # is what an auditor reads, not the function.
+    outcome = best_available_summary(rows, list(SEEDS), samples=2_000)
+    outcome["selection_caveat"] = caveat
+    outcome["finalist_order_decision"] = finalist_order_decision(outcome, rows)
+    path = tmp_path / "decision.md"
+    write_decision(path, outcome)
+    text = path.read_text()
+    assert CONFIRM_REMEDY not in text
+    assert "did not replicate" in text
+
+
 def test_the_fresh_reading_is_worth_running_and_two_seeds_would_not_be():
     """Three fresh blocks bind at 1/36, below the threshold; two would bind at 1/6.
 

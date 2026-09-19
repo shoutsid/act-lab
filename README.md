@@ -150,21 +150,28 @@ closed — an admission bar that asked for twice the schedule, a sweep that exit
 after losing every run in a stage, and a driver that read process exit codes as
 completeness rather than reading the ledgers.
 
-The other open question is v1's own, and it is now an arm rather than a caveat. That
-arm closed on "NOT ESTABLISHED — this experiment cannot yet tell": a 3-block exact
-test whose floor is 1/36, run on finalists that were promoted *on those same seeds*,
-so it is mildly anti-conservative in the winner's favour. Its own next step was to
-re-run those finalists on seeds never used in screening, and
-`artifacts/arch-zoo-100m-v1-finalists-6seed/NOTES.md` pre-registers exactly that —
+The other open question was v1's own, and it is now answered. That arm closed on "NOT
+ESTABLISHED — this experiment cannot yet tell": a 3-block exact test whose floor is
+1/36, run on finalists that were promoted *on those same seeds*, so it is mildly
+anti-conservative in the winner's favour. Its own next step was to re-run those
+finalists on seeds never used in screening, and
+`artifacts/arch-zoo-100m-v1-finalists-6seed/NOTES.md` pre-registered exactly that —
 the three finalists, byte-identical genomes, flat at 1200 steps on fresh seeds, read
 *pooled* with v1 so the exact test moves to six blocks and a floor of 1/7776. Its
-rule reads that test twice and gates the positive branch on **both**: the pooled
-reading raises power, but a pooled test still contains the selection it is meant to
-check, so the three screening-free blocks have to name the same architecture first
-or the branch reports the ordering as coupled to the seeds that picked it. It runs
-on the idle local card in fp32 — Kaggle's ~3× advantage is an fp16 advantage, and
-fp16 is ruled out precisely here, because the gaps to resolve (0.017–0.023 nats) are
-the size of the fp16 differential this phase measured (≤0.018).
+rule reads that test twice and gates the positive branch on **both**, because a
+pooled test still contains the selection it is meant to check. The arm ran on the
+idle local card in fp32 — Kaggle's ~3× advantage is an fp16 advantage, and fp16 is
+ruled out precisely here, because the gaps to resolve (0.017–0.023 nats) are the size
+of the fp16 differential this phase measured (≤0.018).
+
+It landed on **order coupled**: the pooled test clears at p=0.001286 (floor 1/7776),
+but the screening-free blocks alone neither clear the threshold (p=0.1111, floor
+1/36) nor agree on a winner. The significance is therefore the blocks that selected
+the finalists, so v1's *ordering* is not evidence to build on and **no ranking is
+carried into the search** — the direction comes from the crossed factorial, which
+never rested on one. The reading sits in v1's `decision.md` beside v1's own numbers,
+with the headline naming the blocks that established it rather than the pooled label
+alone.
 
 The effect's *size* depends on the training horizon, and that was measured rather
 than assumed: the spread decays 1.65× per doubling of training, replicating the

@@ -2351,6 +2351,104 @@ def test_recorded_structural_signal_is_present_at_a_third_of_the_cost():
     assert abs(shortest["r_squared"] - longest["r_squared"]) < 0.06
 
 
+#: Three architectures, with the three varied genes in pairwise *different*
+#: rank orders that are neither equal nor reversed (rho = 0.5 at worst). The
+#: duplicate rule drops a pair at |rho| = 1, and two predictors would fit - badly
+#: saturated, but they would fit - so the layouts have to keep all three.
+SATURATED_LAYOUTS = [
+    ("sat-a", 2.80, 6, 1024, 512),
+    ("sat-b", 2.78, 8, 768, 256),
+    ("sat-c", 2.84, 10, 896, 1024),
+]
+
+
+def saturated_set() -> list[EvalResult]:
+    return [
+        designed(
+            name,
+            loss,
+            seed=seed,
+            steps=steps,
+            depth=depth,
+            hidden_size=hidden,
+            expert_width=width,
+        )
+        for steps in (400, 1200)
+        for name, loss, depth, hidden, width in SATURATED_LAYOUTS
+        for seed in (42, 43, 44)
+    ]
+
+
+def test_joint_fit_refuses_on_a_set_as_small_as_its_model_instead_of_raising():
+    """A refusal is a supported outcome here, and it has to travel as data.
+
+    Standardising puts every column in the (n-1)-dimensional subspace orthogonal
+    to the constant, so k predictors on n architectures are *always* dependent
+    once k > n - 1. That is the normal case for a real ledger rather than a
+    corner: ``structural_signal_by_length`` restricts to the architectures that
+    ran at every length, and for a screening sweep that is only its promoted
+    finalists - three of them, which is exactly what v1 leaves behind.
+
+    The refusal used to carry the attempted gene *names* in the ``genes`` slot
+    every reader indexes as coefficient rows, so the whole report died with
+    ``TypeError: string indices must be integers`` rather than reporting that it
+    could not fit. Pinned at both layers, because either one alone would let the
+    other regress to a crash.
+    """
+    results = saturated_set()
+
+    # Layer 1: the producer. No coefficient rows on a refusal, and a reason that
+    # says which constraint bound instead of blaming the data for a fact about
+    # the design.
+    fit = joint_structural_fit([row for row in results if row.steps == 1200], 1200)
+    assert fit["available"] is False
+    assert "genes" not in fit
+    assert "3 architectures" in fit["reason"], fit["reason"]
+
+    # Layer 2: the consumer. The table renders empty and the summary still builds.
+    signal = structural_signal_by_length(results)
+    for length in ("400", "1200"):
+        assert signal[length]["available"] is False, length
+        assert signal[length]["genes"] == [], length
+        assert "3 architectures" in signal[length]["reason"], length
+    assert best_available_summary(results, [42, 43, 44], samples=200)["available"]
+
+
+def test_recorded_v1_summary_still_builds_despite_a_saturated_common_set():
+    """The record has to stay re-derivable from the ledgers that produced it.
+
+    v1's common set - the architectures that ran at *every* length - is its three
+    promoted finalists, because screening is successive halving. So the joint
+    structural fit refuses at every length of a real, committed arm, and the
+    refusal must not take the report with it: every reader of the summary raised
+    ``TypeError`` until the refusal stopped borrowing the coefficient-row slot.
+
+    Pinned against the real ledgers rather than a fixture, because the defect is
+    precisely that the committed record could no longer be regenerated - the
+    synthetic case above would not have caught a regression that needed v1's
+    actual gene set to reach the refusal.
+    """
+    directory = Path("artifacts/arch-zoo-100m-v1")
+    ledgers = sorted(directory.glob("*_seed*_results.jsonl"))
+    if not ledgers:
+        pytest.skip("arch-zoo-100m-v1 ledgers not present")
+    results = with_structure(load_results(ledgers), directory / "zoo_definition.json")
+
+    signal = structural_signal_by_length(results)
+    lengths = [key for key in signal if key != "agreement"]
+    assert lengths == ["400", "800", "1200"], lengths
+    for length in lengths:
+        assert signal[length]["available"] is False, length
+        assert signal[length]["genes"] == [], length
+
+    summary = best_available_summary(results, [42, 43, 44], samples=200)
+    assert summary["available"]
+    assert summary["steps"] == 1200
+    # The refusal is recorded on the summary, not thrown: an audit has to be able
+    # to read *why* an axis is absent from a committed arm.
+    assert summary["joint_structural_fit"]["available"] is False
+
+
 # --- procedure floors on the crossed contrasts -----------------------------
 
 

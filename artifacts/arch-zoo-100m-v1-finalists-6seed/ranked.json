@@ -1,0 +1,352 @@
+{
+  "available": true,
+  "steps": 1200,
+  "ranked": [
+    {
+      "name": "narrow_experts_D8_H896_E12_A4_W256",
+      "mean_val_loss": 2.754451408982277,
+      "runs": 3
+    },
+    {
+      "name": "shallow_wide_D6_H896_E8_A2_W896",
+      "mean_val_loss": 2.758204941948255,
+      "runs": 3
+    },
+    {
+      "name": "narrow_experts_D10_H768_E12_A4_W288",
+      "mean_val_loss": 2.8007317980130515,
+      "runs": 3
+    }
+  ],
+  "best": "narrow_experts_D8_H896_E12_A4_W256",
+  "best_mean_val_loss": 2.754451408982277,
+  "best_runs": 3,
+  "architecture_spread": 0.04628038903077458,
+  "within_seed_std": 0.008203349276835217,
+  "sigmas": 5.641645560729942,
+  "multi_seed": true,
+  "paired_vs_best": [
+    {
+      "candidate": "shallow_wide_D6_H896_E8_A2_W896",
+      "mean_delta_vs_best": 0.003753532965977987,
+      "paired_seeds": [
+        45,
+        46,
+        47
+      ],
+      "delta_per_seed": [
+        0.011791959404945374,
+        0.012715458869934082,
+        -0.013246819376945496
+      ]
+    },
+    {
+      "candidate": "narrow_experts_D10_H768_E12_A4_W288",
+      "mean_delta_vs_best": 0.04628038903077444,
+      "paired_seeds": [
+        45,
+        46,
+        47
+      ],
+      "delta_per_seed": [
+        0.04938112199306488,
+        0.05478310585021973,
+        0.034676939249038696
+      ]
+    }
+  ],
+  "seeds": [
+    42,
+    43,
+    45,
+    46,
+    47
+  ],
+  "seeds_per_architecture": {
+    "narrow_experts_D10_H768_E12_A4_W288": [
+      45,
+      46,
+      47
+    ],
+    "narrow_experts_D8_H896_E12_A4_W256": [
+      45,
+      46,
+      47
+    ],
+    "shallow_wide_D6_H896_E8_A2_W896": [
+      45,
+      46,
+      47
+    ]
+  },
+  "anova": {
+    "available": true,
+    "test": "one-way ANOVA (unpaired)",
+    "architectures": 3,
+    "seeds_per_architecture": [
+      3
+    ],
+    "ss_between": 0.003964496905322439,
+    "ss_within": 0.0005213997524296705,
+    "df_between": 2,
+    "df_within": 6,
+    "f": 22.810694981240104,
+    "p": 0.001570235054538807
+  },
+  "blocked_test": {
+    "available": true,
+    "test": "blocked permutation (exact)",
+    "method": "exact",
+    "architectures": 3,
+    "blocks": 3,
+    "names": [
+      "narrow_experts_D8_H896_E12_A4_W256",
+      "shallow_wide_D6_H896_E8_A2_W896",
+      "narrow_experts_D10_H768_E12_A4_W288"
+    ],
+    "seeds": [
+      45,
+      46,
+      47
+    ],
+    "seeds_dropped": [],
+    "architectures_dropped": [],
+    "unfinished_seeds": [],
+    "unbalanced_seeds": [],
+    "p": 0.1111111111111111,
+    "p_ranks": 0.19444444444444445,
+    "p_paired_t_reference": 0.016436273362329206,
+    "statistic": 0.003964496905322425,
+    "exact": true,
+    "assignments": 216,
+    "rank_assignments": 216,
+    "min_achievable_p": 0.027777777777777776,
+    "p_resolution": 0.004629629629629629,
+    "orderings": [
+      [
+        "narrow_experts_D8_H896_E12_A4_W256",
+        "shallow_wide_D6_H896_E8_A2_W896",
+        "narrow_experts_D10_H768_E12_A4_W288"
+      ],
+      [
+        "narrow_experts_D8_H896_E12_A4_W256",
+        "shallow_wide_D6_H896_E8_A2_W896",
+        "narrow_experts_D10_H768_E12_A4_W288"
+      ],
+      [
+        "shallow_wide_D6_H896_E8_A2_W896",
+        "narrow_experts_D8_H896_E12_A4_W256",
+        "narrow_experts_D10_H768_E12_A4_W288"
+      ]
+    ]
+  },
+  "rank_stability": [],
+  "spread_by_length": {
+    "1200": {
+      "architectures": 3,
+      "spread": 0.04628038903077458,
+      "within_seed_std": 0.008203349276835217,
+      "sigmas": 5.641645560729942,
+      "best": "narrow_experts_D8_H896_E12_A4_W256"
+    }
+  },
+  "structural_signal_by_length": {},
+  "axis_association": {
+    "available": true,
+    "steps": 1200,
+    "architectures": 3,
+    "axes": [
+      {
+        "axis": "total parameters",
+        "held": false,
+        "spearman": 0.5,
+        "p": 1.0,
+        "p_exact": true,
+        "p_t_approximation": 0.6666666666666666,
+        "min": 77171584.0,
+        "max": 103732608.0,
+        "spread_ratio": 1.344181402315132
+      },
+      {
+        "axis": "active parameters",
+        "held": false,
+        "spearman": -0.5,
+        "p": 1.0,
+        "p_exact": true,
+        "p_t_approximation": 0.6666666666666666,
+        "min": 45929856.0,
+        "max": 47811456.0,
+        "spread_ratio": 1.0409668168783286
+      },
+      {
+        "axis": "active / total parameters",
+        "held": false,
+        "spearman": -0.5,
+        "p": 1.0,
+        "p_exact": true,
+        "p_t_approximation": 0.6666666666666666,
+        "min": 0.44277163069109376,
+        "max": 0.6195474230514693,
+        "spread_ratio": 1.3992482356750309
+      },
+      {
+        "axis": "contracted FLOPs/token",
+        "held": false,
+        "spearman": 0.5,
+        "p": 1.0,
+        "p_exact": true,
+        "p_t_approximation": 0.6666666666666666,
+        "min": 341639424.0,
+        "max": 380496384.0,
+        "spread_ratio": 1.1137367565635516
+      },
+      {
+        "axis": "dense-runtime FLOPs/token",
+        "held": false,
+        "spearman": 0.5,
+        "p": 1.0,
+        "p_exact": true,
+        "p_t_approximation": 0.6666666666666666,
+        "min": 551109888.0,
+        "max": 688455936.0,
+        "spread_ratio": 1.2492171724561763
+      },
+      {
+        "axis": "measured throughput",
+        "held": false,
+        "spearman": -1.0,
+        "p": 0.3333333333333333,
+        "p_exact": true,
+        "p_t_approximation": 0.0,
+        "min": 4630.748610674507,
+        "max": 5273.441765483932,
+        "spread_ratio": 1.1387881763497005
+      },
+      {
+        "axis": "depth",
+        "held": false,
+        "spearman": 0.5,
+        "p": 1.0,
+        "p_exact": true,
+        "p_t_approximation": 0.6666666666666666,
+        "min": 6.0,
+        "max": 10.0,
+        "spread_ratio": 1.6666666666666667
+      },
+      {
+        "axis": "hidden size",
+        "held": false,
+        "spearman": -0.8660254037844387,
+        "p": 0.6666666666666666,
+        "p_exact": true,
+        "p_t_approximation": 0.33333333333333326,
+        "min": 768.0,
+        "max": 896.0,
+        "spread_ratio": 1.1666666666666667
+      },
+      {
+        "axis": "attention heads",
+        "held": false,
+        "spearman": -0.8660254037844387,
+        "p": 0.6666666666666666,
+        "p_exact": true,
+        "p_t_approximation": 0.33333333333333326,
+        "min": 12.0,
+        "max": 14.0,
+        "spread_ratio": 1.1666666666666667
+      },
+      {
+        "axis": "expert count",
+        "held": false,
+        "spearman": 0.0,
+        "p": 1.0,
+        "p_exact": true,
+        "p_t_approximation": 1.0,
+        "min": 8.0,
+        "max": 12.0,
+        "spread_ratio": 1.5
+      },
+      {
+        "axis": "active experts",
+        "held": false,
+        "spearman": 0.0,
+        "p": 1.0,
+        "p_exact": true,
+        "p_t_approximation": 1.0,
+        "min": 2.0,
+        "max": 4.0,
+        "spread_ratio": 2.0
+      },
+      {
+        "axis": "expert width",
+        "held": false,
+        "spearman": 0.5,
+        "p": 1.0,
+        "p_exact": true,
+        "p_t_approximation": 0.6666666666666666,
+        "min": 256.0,
+        "max": 896.0,
+        "spread_ratio": 3.5
+      }
+    ],
+    "collinearity": {
+      "available": true,
+      "leading": "measured throughput",
+      "leading_spearman": -1.0,
+      "entangled": [
+        {
+          "axis": "hidden size",
+          "spearman": 0.8660254037844387
+        },
+        {
+          "axis": "attention heads",
+          "spearman": 0.8660254037844387
+        }
+      ],
+      "threshold": 0.7,
+      "spread_axes": 12,
+      "structural_axes_unrecorded": [],
+      "caveat": "Among 12 spread axes, `measured throughput` tracks loss most strongly, but it moves with `hidden size` (+0.87), `attention heads` (+0.87) at |rho| >= 0.7, so this set cannot separate them."
+    },
+    "multiple_comparisons": "12 axes tested uncorrected; treat any single marginal p-value as a hypothesis, not a result. Exact p-values are enumerated over n! arrangements and are not comparable to a chi-square test."
+  },
+  "joint_structural_fit": {
+    "available": false,
+    "reason": "predictors are rank-deficient at this sample size",
+    "genes": [
+      "hidden_size",
+      "depth",
+      "expert_width"
+    ],
+    "dropped": [
+      {
+        "gene": "attention_heads",
+        "duplicate_of": "hidden_size",
+        "spearman": 1.0
+      }
+    ]
+  },
+  "crossed_contrast": {
+    "available": false,
+    "reason": "no crossed pair populates all four cells with balanced arms on every seed",
+    "seeds": [
+      45,
+      46,
+      47
+    ],
+    "seeds_dropped": []
+  },
+  "paired_contrasts": {},
+  "paired_level_splits": {},
+  "compute_units": {
+    "available": false,
+    "spread": 0.04628038903077458,
+    "reason": "no shorter length to fit a slope"
+  },
+  "selection_caveat": "",
+  "screened_at_shorter_lengths": 0,
+  "lengths_present": [
+    1200
+  ],
+  "promotions": []
+}

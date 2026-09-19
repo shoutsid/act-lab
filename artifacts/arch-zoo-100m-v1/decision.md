@@ -1,35 +1,39 @@
 # Architecture Zoo Decision
 
-**NOT ESTABLISHED - spread 0.0404 nats is above the materiality floor but blocked permutation (exact) gives p=0.139, so it is not separable from initialization noise at 3 seeds, worth 68 training steps (5.6% of the 1200-step budget). This is not evidence that architecture does not matter; it is evidence that this experiment cannot yet tell.**
+**ARCHITECTURE EFFECT ESTABLISHED ON THE POOLED BLOCKS, NOT ON THE SCREENING-FREE ONES - spread 0.0434 nats, blocked permutation (exact) p=0.001286, worth 72 training steps (6.0% of the 1200-step budget). The pre-registered rule below reads that significance as the screening seeds.**
 
-Next step: Do not build the full evolutionary search. Resolve the effect size first: re-run the finalists on seeds never used in screening, which removes the selection coupling and raises power, and test a matched-budget structural design so any spread is attributable to one axis. Note that widening with module-type genes is not an option here - measured at 100M/context 1024, GDN costs 4-7x attention and exceeds an 8 GB card at 6 of 8 layers.
+Next step: Proceed to evolutionary architecture search (arch-evo-100m-v1), carrying the effect size but not a ranking: the finalists' ordering did not replicate on the seeds that took no part in screening, so the pooled significance is the blocks that did (see the finalist-order rule below).
 
 ## Ranked at 1200 steps (mean held-out validation loss)
 
 | Rank | Architecture | Mean val loss | Runs |
 |---|---|---|---|
-| 1 | `narrow_experts_D8_H896_E12_A4_W256` | 2.7492 | 3 |
-| 2 | `shallow_wide_D6_H896_E8_A2_W896` | 2.7724 | 3 |
-| 3 | `narrow_experts_D10_H768_E12_A4_W288` | 2.7896 | 3 |
+| 1 | `narrow_experts_D8_H896_E12_A4_W256` | 2.7518 | 6 |
+| 2 | `shallow_wide_D6_H896_E8_A2_W896` | 2.7653 | 6 |
+| 3 | `narrow_experts_D10_H768_E12_A4_W288` | 2.7952 | 6 |
 
 ## Evidence
 
-- Architecture spread (best to worst): 0.0404 nats
-- Mean within-architecture seed std: 0.0179 nats (descriptive; a range over architectures is not a test statistic)
-- Spread in seed-noise units: 2.26
-- Seed-matched test (blocked permutation (exact)): p=0.1389 over 3 blocks x 3 architectures; design floor 0.02778, procedure resolution 0.00463
-- Unpaired one-way ANOVA (unpaired): F=2.84 on (2, 6) df, p=0.1353
-- Effect size: 0.0404 nats = 68 training steps (5.6% of budget), fitted over [800, 1200]
+- Architecture spread (best to worst): 0.0434 nats
+- Mean within-architecture seed std: 0.0146 nats (descriptive; a range over architectures is not a test statistic)
+- Spread in seed-noise units: 2.97
+- Seed-matched test (blocked permutation (exact)): p=0.001286 over 6 blocks x 3 architectures; design floor 0.0001286, procedure resolution 2.143e-05
+- Unpaired one-way ANOVA (unpaired): F=12.11 on (2, 15) df, p=0.0007
+- Effect size: 0.0434 nats = 72 training steps (6.0% of budget), fitted over [800, 1200]
 
-Caveat: 13 architectures were screened at shorter lengths than these 3, and promotion used those runs, so this test is mildly anti-conservative. Confirming on seeds never used in screening removes it.
+Caveat: 13 architectures were screened at shorter lengths than these 3, and promotion used those runs, so this test is mildly anti-conservative. Confirming on seeds never used in screening has since been run, and the ordering did not replicate there (see the pre-registered rule below), so the significance above rests on the coupled blocks this caveat warns about rather than on a property of the architectures.
 
 ## Spread against training length (common architecture set)
 
-| Steps | Architectures | Spread | Best |
-|---|---|---|---|
-| 400 | 3 | 0.1500 | `shallow_wide_D6_H896_E8_A2_W896` |
-| 800 | 3 | 0.0584 | `narrow_experts_D8_H896_E12_A4_W256` |
-| 1200 | 3 | 0.0404 | `narrow_experts_D8_H896_E12_A4_W256` |
+| Steps | Architectures | Spread | Seed std | Spread in seed-noise units | Best |
+|---|---|---|---|---|---|
+| 400 | 3 | 0.1500 | 0.0291 | 5.16 | `shallow_wide_D6_H896_E8_A2_W896` |
+| 800 | 3 | 0.0584 | 0.0228 | 2.56 | `narrow_experts_D8_H896_E12_A4_W256` |
+| 1200 | 3 | 0.0434 | 0.0146 | 2.97 | `narrow_experts_D8_H896_E12_A4_W256` |
+
+Spread falls 3.46x over 400 -> 1200 steps (2.19x per doubling of training). Seed noise falls with it (5.16 -> 2.97 in seed-noise units), so the effect does not wash out relative to noise at these lengths.
+
+The same architecture is best at every length: **NO**.
 
 ## Screening validity: does a short run rank like a long one?
 
@@ -59,12 +63,24 @@ Caveat: 13 architectures were screened at shorter lengths than these 3, and prom
 
 **Confounding structure.** Among 12 spread axes, `measured throughput` tracks loss most strongly, but it moves with `hidden size` (+0.87), `attention heads` (+0.87) at |rho| >= 0.7, so this set cannot separate them.
 
+## Pre-registered rule: was v1's finalist ordering underpowered?
+
+**ORDER COUPLED - THE POOLED SIGNIFICANCE IS THE SCREENING SEEDS**
+
+The pooled test clears the threshold, but the seed blocks do not agree on which architecture comes first. The significance then rests on agreement among blocks that disagree about the top - either because the screening seed that selected the finalists favour their own winner (the anti-conservative coupling v1's caveat named), or because the uncoupled seeds overturn it. Neither is a replicated ordering, so no ranking is recommended however the pooled p reads.
+
+| Condition | Value | Met |
+|---|---|---|
+| all 6 blocks: p < 0.05 (v1's 3-block test raised power on the screening seeds) | p=0.001286 (floor 0.0001286) | yes |
+| screening-free blocks [45, 46, 47] alone: p < 0.05 (no selection coupling) | p=0.1111 (floor 0.02778) | NO |
+| every block ranks the same architecture first (both readings, so the top replicates on uncoupled seeds) | 2 different winners across 6 of 6 blocks | NO |
+
 ## Seed-matched contrast against the best architecture
 
 | Candidate | Mean delta | Paired seeds |
 |---|---|---|
-| `shallow_wide_D6_H896_E8_A2_W896` | +0.0232 | [42, 43, 44] |
-| `narrow_experts_D10_H768_E12_A4_W288` | +0.0404 | [42, 43, 44] |
+| `shallow_wide_D6_H896_E8_A2_W896` | +0.0135 | [42, 43, 44, 45, 46, 47] |
+| `narrow_experts_D10_H768_E12_A4_W288` | +0.0434 | [42, 43, 44, 45, 46, 47] |
 
 ## Seeds per architecture
 
@@ -73,17 +89,26 @@ Caveat: 13 architectures were screened at shorter lengths than these 3, and prom
   "narrow_experts_D10_H768_E12_A4_W288": [
     42,
     43,
-    44
+    44,
+    45,
+    46,
+    47
   ],
   "narrow_experts_D8_H896_E12_A4_W256": [
     42,
     43,
-    44
+    44,
+    45,
+    46,
+    47
   ],
   "shallow_wide_D6_H896_E8_A2_W896": [
     42,
     43,
-    44
+    44,
+    45,
+    46,
+    47
   ]
 }
 ```

@@ -4,77 +4,101 @@
   "ranked": [
     {
       "name": "narrow_experts_D8_H896_E12_A4_W256",
-      "mean_val_loss": 2.7491616904735565,
-      "runs": 3
+      "mean_val_loss": 2.7518065497279167,
+      "runs": 6
     },
     {
       "name": "shallow_wide_D6_H896_E8_A2_W896",
-      "mean_val_loss": 2.772396981716156,
-      "runs": 3
+      "mean_val_loss": 2.7653009618322053,
+      "runs": 6
     },
     {
       "name": "narrow_experts_D10_H768_E12_A4_W288",
-      "mean_val_loss": 2.7895880242188773,
-      "runs": 3
+      "mean_val_loss": 2.7951599111159644,
+      "runs": 6
     }
   ],
   "best": "narrow_experts_D8_H896_E12_A4_W256",
-  "best_mean_val_loss": 2.7491616904735565,
-  "best_runs": 3,
-  "architecture_spread": 0.040426333745320786,
-  "within_seed_std": 0.017865805587421364,
-  "sigmas": 2.2627769874414976,
+  "best_mean_val_loss": 2.7518065497279167,
+  "best_runs": 6,
+  "architecture_spread": 0.043353361388047684,
+  "within_seed_std": 0.014575721624397457,
+  "sigmas": 2.974354375393737,
   "multi_seed": true,
   "paired_vs_best": [
     {
       "candidate": "shallow_wide_D6_H896_E8_A2_W896",
-      "mean_delta_vs_best": 0.023235291242599487,
+      "mean_delta_vs_best": 0.013494412104288736,
       "paired_seeds": [
         42,
         43,
-        44
+        44,
+        45,
+        46,
+        47
       ],
       "delta_per_seed": [
         0.030493438243865967,
         0.04577355086803436,
-        -0.006561115384101868
+        -0.006561115384101868,
+        0.011791959404945374,
+        0.012715458869934082,
+        -0.013246819376945496
       ]
     },
     {
       "candidate": "narrow_experts_D10_H768_E12_A4_W288",
-      "mean_delta_vs_best": 0.04042633374532064,
+      "mean_delta_vs_best": 0.04335336138804754,
       "paired_seeds": [
         42,
         43,
-        44
+        44,
+        45,
+        46,
+        47
       ],
       "delta_per_seed": [
         0.0565069317817688,
         0.050710663199424744,
-        0.014061406254768372
+        0.014061406254768372,
+        0.04938112199306488,
+        0.05478310585021973,
+        0.034676939249038696
       ]
     }
   ],
   "seeds": [
     42,
     43,
-    44
+    44,
+    45,
+    46,
+    47
   ],
   "seeds_per_architecture": {
     "narrow_experts_D10_H768_E12_A4_W288": [
       42,
       43,
-      44
+      44,
+      45,
+      46,
+      47
     ],
     "narrow_experts_D8_H896_E12_A4_W256": [
       42,
       43,
-      44
+      44,
+      45,
+      46,
+      47
     ],
     "shallow_wide_D6_H896_E8_A2_W896": [
       42,
       43,
-      44
+      44,
+      45,
+      46,
+      47
     ]
   },
   "anova": {
@@ -82,21 +106,21 @@
     "test": "one-way ANOVA (unpaired)",
     "architectures": 3,
     "seeds_per_architecture": [
-      3
+      6
     ],
-    "ss_between": 0.002469699161546853,
-    "ss_within": 0.0026057258849185123,
+    "ss_between": 0.005906339908026264,
+    "ss_within": 0.0036574938509245465,
     "df_between": 2,
-    "df_within": 6,
-    "f": 2.8433909827288915,
-    "p": 0.1353221614704823
+    "df_within": 15,
+    "f": 12.111448744882887,
+    "p": 0.0007398384466063698
   },
   "blocked_test": {
     "available": true,
     "test": "blocked permutation (exact)",
     "method": "exact",
     "architectures": 3,
-    "blocks": 3,
+    "blocks": 6,
     "names": [
       "narrow_experts_D8_H896_E12_A4_W256",
       "shallow_wide_D6_H896_E8_A2_W896",
@@ -105,18 +129,40 @@
     "seeds": [
       42,
       43,
-      44
+      44,
+      45,
+      46,
+      47
     ],
-    "p": 0.1388888888888889,
-    "p_ranks": 0.19444444444444445,
-    "p_paired_t_reference": 0.093188418664503,
-    "statistic": 0.002469699161546836,
+    "seeds_dropped": [],
+    "architectures_dropped": [],
+    "unfinished_seeds": [],
+    "unbalanced_seeds": [],
+    "p": 0.001286008230452675,
+    "p_ranks": 0.005529835390946502,
+    "p_paired_t_reference": 0.0012710427188003417,
+    "statistic": 0.005906339908026211,
     "exact": true,
-    "assignments": 216,
-    "rank_assignments": 216,
-    "min_achievable_p": 0.027777777777777776,
-    "p_resolution": 0.004629629629629629,
+    "assignments": 46656,
+    "rank_assignments": 46656,
+    "min_achievable_p": 0.0001286008230452675,
+    "p_resolution": 2.143347050754458e-05,
     "orderings": [
+      [
+        "narrow_experts_D8_H896_E12_A4_W256",
+        "shallow_wide_D6_H896_E8_A2_W896",
+        "narrow_experts_D10_H768_E12_A4_W288"
+      ],
+      [
+        "narrow_experts_D8_H896_E12_A4_W256",
+        "shallow_wide_D6_H896_E8_A2_W896",
+        "narrow_experts_D10_H768_E12_A4_W288"
+      ],
+      [
+        "shallow_wide_D6_H896_E8_A2_W896",
+        "narrow_experts_D8_H896_E12_A4_W256",
+        "narrow_experts_D10_H768_E12_A4_W288"
+      ],
       [
         "narrow_experts_D8_H896_E12_A4_W256",
         "shallow_wide_D6_H896_E8_A2_W896",
@@ -155,24 +201,87 @@
       "best_at_to": "narrow_experts_D8_H896_E12_A4_W256",
       "winner_preserved": true,
       "gap_at_from": 0.05838768184185028,
-      "gap_at_to": 0.040426333745320786
+      "gap_at_to": 0.043353361388047684
     }
   ],
   "spread_by_length": {
     "400": {
       "architectures": 3,
       "spread": 0.15004155039787292,
+      "within_seed_std": 0.02907448363410861,
+      "sigmas": 5.160592094638348,
       "best": "shallow_wide_D6_H896_E8_A2_W896"
     },
     "800": {
       "architectures": 3,
       "spread": 0.05838768184185028,
+      "within_seed_std": 0.02284699525092182,
+      "sigmas": 2.55559565713546,
       "best": "narrow_experts_D8_H896_E12_A4_W256"
     },
     "1200": {
       "architectures": 3,
-      "spread": 0.040426333745320786,
+      "spread": 0.043353361388047684,
+      "within_seed_std": 0.014575721624397457,
+      "sigmas": 2.974354375393737,
       "best": "narrow_experts_D8_H896_E12_A4_W256"
+    },
+    "decay": {
+      "from_steps": 400,
+      "to_steps": 1200,
+      "doublings": 1.584962500721156,
+      "spread_shrink": 3.4608977388138276,
+      "per_doubling": 2.1887201489705395,
+      "sigmas_at_first": 5.160592094638348,
+      "sigmas_at_last": 2.974354375393737,
+      "best_at_every_length": false
+    }
+  },
+  "structural_signal_by_length": {
+    "400": {
+      "available": false,
+      "reason": "3 predictors cannot be identified from 3 architectures: standardised over n points a column spans only n-1 = 2 dimensions, so any fit over more than 2 of them is dependent by construction (attempted `depth`, `hidden_size`, `expert_count`)",
+      "architectures": 3,
+      "r_squared": null,
+      "p_model": null,
+      "genes": [],
+      "dropped": [
+        {
+          "gene": "attention_heads",
+          "duplicate_of": "hidden_size",
+          "spearman": 1.0
+        }
+      ]
+    },
+    "800": {
+      "available": false,
+      "reason": "3 predictors cannot be identified from 3 architectures: standardised over n points a column spans only n-1 = 2 dimensions, so any fit over more than 2 of them is dependent by construction (attempted `hidden_size`, `depth`, `expert_width`)",
+      "architectures": 3,
+      "r_squared": null,
+      "p_model": null,
+      "genes": [],
+      "dropped": [
+        {
+          "gene": "attention_heads",
+          "duplicate_of": "hidden_size",
+          "spearman": 1.0
+        }
+      ]
+    },
+    "1200": {
+      "available": false,
+      "reason": "3 predictors cannot be identified from 3 architectures: standardised over n points a column spans only n-1 = 2 dimensions, so any fit over more than 2 of them is dependent by construction (attempted `hidden_size`, `depth`, `expert_width`)",
+      "architectures": 3,
+      "r_squared": null,
+      "p_model": null,
+      "genes": [],
+      "dropped": [
+        {
+          "gene": "attention_heads",
+          "duplicate_of": "hidden_size",
+          "spearman": 1.0
+        }
+      ]
     }
   },
   "axis_association": {
@@ -329,22 +438,149 @@
       ],
       "threshold": 0.7,
       "spread_axes": 12,
+      "structural_axes_unrecorded": [],
       "caveat": "Among 12 spread axes, `measured throughput` tracks loss most strongly, but it moves with `hidden size` (+0.87), `attention heads` (+0.87) at |rho| >= 0.7, so this set cannot separate them."
     },
     "multiple_comparisons": "12 axes tested uncorrected; treat any single marginal p-value as a hypothesis, not a result. Exact p-values are enumerated over n! arrangements and are not comparable to a chi-square test."
   },
+  "joint_structural_fit": {
+    "available": false,
+    "reason": "3 predictors cannot be identified from 3 architectures: standardised over n points a column spans only n-1 = 2 dimensions, so any fit over more than 2 of them is dependent by construction (attempted `hidden_size`, `depth`, `expert_width`)",
+    "dropped": [
+      {
+        "gene": "attention_heads",
+        "duplicate_of": "hidden_size",
+        "spearman": 1.0
+      }
+    ]
+  },
+  "crossed_contrast": {
+    "available": false,
+    "reason": "no crossed pair populates all four cells with balanced arms on every seed",
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47
+    ],
+    "seeds_dropped": []
+  },
+  "paired_contrasts": {},
+  "paired_level_splits": {},
   "compute_units": {
     "available": true,
-    "spread": 0.040426333745320786,
+    "spread": 0.043353361388047684,
     "slope_per_step": 0.000598873191823562,
     "fitted_between": [
       800,
       1200
     ],
     "slope_pairs": 6,
-    "equivalent_steps": 67.50399633388675,
-    "fraction_of_budget": 0.05625333027823896
+    "equivalent_steps": 72.39155463953428,
+    "fraction_of_budget": 0.06032629553294523
   },
   "selection_caveat": "13 architectures were screened at shorter lengths than these 3, and promotion used those runs, so this test is mildly anti-conservative. Confirming on seeds never used in screening removes it.",
-  "screened_at_shorter_lengths": 13
+  "screened_at_shorter_lengths": 13,
+  "lengths_present": [
+    1200,
+    800,
+    400
+  ],
+  "finalist_order_decision": {
+    "available": true,
+    "branch": "order-coupled",
+    "label": "ORDER COUPLED - THE POOLED SIGNIFICANCE IS THE SCREENING SEEDS",
+    "reading": "The pooled test clears the threshold, but the seed blocks do not agree on which architecture comes first. The significance then rests on agreement among blocks that disagree about the top - either because the screening seed that selected the finalists favour their own winner (the anti-conservative coupling v1's caveat named), or because the uncoupled seeds overturn it. Neither is a replicated ordering, so no ranking is recommended however the pooled p reads.",
+    "conditions": [
+      {
+        "condition": "all 6 blocks: p < 0.05 (v1's 3-block test raised power on the screening seeds)",
+        "value": "p=0.001286 (floor 0.0001286)",
+        "met": true
+      },
+      {
+        "condition": "screening-free blocks [45, 46, 47] alone: p < 0.05 (no selection coupling)",
+        "value": "p=0.1111 (floor 0.02778)",
+        "met": false
+      },
+      {
+        "condition": "every block ranks the same architecture first (both readings, so the top replicates on uncoupled seeds)",
+        "value": "2 different winners across 6 of 6 blocks",
+        "met": false
+      }
+    ],
+    "steps": 1200,
+    "p_all": 0.001286008230452675,
+    "p_fresh": 0.1111111111111111,
+    "blocks_all": 6,
+    "blocks_fresh": 3,
+    "pooled_winner": "narrow_experts_D8_H896_E12_A4_W256",
+    "fresh_winner": "narrow_experts_D8_H896_E12_A4_W256",
+    "block_tops": [
+      "narrow_experts_D8_H896_E12_A4_W256",
+      "narrow_experts_D8_H896_E12_A4_W256",
+      "shallow_wide_D6_H896_E8_A2_W896",
+      "narrow_experts_D8_H896_E12_A4_W256",
+      "narrow_experts_D8_H896_E12_A4_W256",
+      "shallow_wide_D6_H896_E8_A2_W896"
+    ],
+    "all_blocks_agree": false,
+    "pooled_floor": 0.0001286008230452675,
+    "fresh_floor": 0.027777777777777776,
+    "pooled_orderings": [
+      [
+        "narrow_experts_D8_H896_E12_A4_W256",
+        "shallow_wide_D6_H896_E8_A2_W896",
+        "narrow_experts_D10_H768_E12_A4_W288"
+      ],
+      [
+        "narrow_experts_D8_H896_E12_A4_W256",
+        "shallow_wide_D6_H896_E8_A2_W896",
+        "narrow_experts_D10_H768_E12_A4_W288"
+      ],
+      [
+        "shallow_wide_D6_H896_E8_A2_W896",
+        "narrow_experts_D8_H896_E12_A4_W256",
+        "narrow_experts_D10_H768_E12_A4_W288"
+      ],
+      [
+        "narrow_experts_D8_H896_E12_A4_W256",
+        "shallow_wide_D6_H896_E8_A2_W896",
+        "narrow_experts_D10_H768_E12_A4_W288"
+      ],
+      [
+        "narrow_experts_D8_H896_E12_A4_W256",
+        "shallow_wide_D6_H896_E8_A2_W896",
+        "narrow_experts_D10_H768_E12_A4_W288"
+      ],
+      [
+        "shallow_wide_D6_H896_E8_A2_W896",
+        "narrow_experts_D8_H896_E12_A4_W256",
+        "narrow_experts_D10_H768_E12_A4_W288"
+      ]
+    ],
+    "fresh_orderings": [
+      [
+        "narrow_experts_D8_H896_E12_A4_W256",
+        "shallow_wide_D6_H896_E8_A2_W896",
+        "narrow_experts_D10_H768_E12_A4_W288"
+      ],
+      [
+        "narrow_experts_D8_H896_E12_A4_W256",
+        "shallow_wide_D6_H896_E8_A2_W896",
+        "narrow_experts_D10_H768_E12_A4_W288"
+      ],
+      [
+        "shallow_wide_D6_H896_E8_A2_W896",
+        "narrow_experts_D8_H896_E12_A4_W256",
+        "narrow_experts_D10_H768_E12_A4_W288"
+      ]
+    ],
+    "fresh_seeds": [
+      45,
+      46,
+      47
+    ]
+  }
 }

@@ -918,11 +918,23 @@ Running or done, and the reason each was worth the hours:
   floor) against +0.0084 at H=512 (p = 0.37). Consequence for the search:
   `attention_heads` and `hidden_size` are **not** separable either and must be
   mutated jointly, with the head gene spent only at wide widths (§2c).
-- **More seeds on v1's finalists** (~1.3 GPU-hours). No longer needed to decide
-  whether the effect exists, and the attribution question it was meant to serve is
-  answered better by the crossed factorial. Still the cheapest check that v1's
-  finalist ordering was underpowered rather than wrong; fresh seeds with `--also`
-  raise it to 6 seeds and lower its power floor from 1/36 to 1/7776.
+- **More seeds on v1's finalists** — **done**, 9 runs, 1.236 GPU-hours, as
+  `arch-zoo-100m-v1-finalists-6seed`. Fresh seeds 45–47, the candidate set verified
+  byte-identical to v1's stage 3, and deliberately **fp32**: v1's rows predate
+  `mixed_precision`, the pooled test needs one precision, and the measured fp16
+  differential (0.018 nats) is the size of the gaps to be resolved (0.0232 and
+  0.0172). It therefore ran on the idle local card in parallel with the horizon
+  kernel rather than on Kaggle, whose ~3× throughput advantage is an *fp16*
+  advantage and only ~1.25× at fp32. Pooled to six seeded blocks it lands on
+  **order coupled**: the pooled exact test clears at p=0.001286 (floor 1/7776) while
+  the screening-free blocks alone neither clear the threshold (p=0.1111, floor 1/36)
+  nor agree on a winner — two different architectures finish first across the six
+  blocks. The pooled significance **is** the blocks that selected the finalists, the
+  anti-conservative coupling v1's caveat named, so **no ranking is carried into the
+  search** and v1's `Next step` no longer points at this arm. Consequence: v1's
+  *ordering* is not evidence to build on; the effect size is quoted at 1200 steps as
+  always, and the search's direction comes from §2c's designed factorial, which
+  never rested on a ranking.
 - **The §11 random-vs-manual comparison** (~a v1-scale sweep), which §9a shows is
   now unblocked *and* de-confounded.
 
