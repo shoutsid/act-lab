@@ -106,11 +106,21 @@ both gaps. Nothing in this document is adjusted after the rows land.
 
 ## Status
 
-Pre-registered; sweep launched. Nothing here re-tunes a protocol knob, and this arm
-does not touch any recorded number of v1 — it is read *alongside* v1 by
-`arch_zoo_analyze.py --also`, and only after its 9 rows exist.
+Pre-registered; sweep running on the local GTX 1070 (idle, so it runs beside the
+Kaggle horizon arm rather than competing with it). Nothing here re-tunes a protocol
+knob, and this arm does not touch any recorded number of v1 — it is read *alongside*
+v1 by `arch_zoo_analyze.py --also`, and only after its 9 rows exist.
 
-Runbook when the sweeps exit:
+The run is watched by `scripts/run_finalist_analysis_when_sweep_exits.sh`, which
+waits for the sweep and refuses to analyse unless all three fresh-seed ledgers hold
+3 rows *and* v1's three screening ledgers are present — a partial arm is detectable
+because the sweep writes a ledger row per completed run, which is exactly how the
+horizon arm's first attempt was found to be 0-for-16 while reporting success. The
+watcher logs the full pre-registered analysis rather than writing it, because
+`--write` supersedes v1's committed `decision.md` and that is a deliberate step, not
+an unattended one. Verdict lands in `analysis_watcher.log`.
+
+Runbook, when the sweep exits:
 
 ```bash
 PYTHONPATH=src python scripts/arch_zoo_analyze.py \
@@ -118,3 +128,6 @@ PYTHONPATH=src python scripts/arch_zoo_analyze.py \
   --also arch-zoo-100m-v1-finalists-6seed \
   --finalist-order-rule
 ```
+
+Add `--write` to supersede v1's own `decision.md` once the branch above has been
+read; `verdict()` then drops its stale instruction to run exactly this arm.
