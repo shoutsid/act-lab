@@ -46,11 +46,15 @@ DATA_PATH = str(Path(__file__).resolve().parent.parent / "artifacts" / "real-lm"
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "artifacts" / "capacity-sweep"
 
 # Arms: (name, V0SessionConfig overrides)
+#
+# Deliberately no `arms` entry. The session trains exactly the arm the row reports,
+# derived from ARM_MODE below, because the pair each row used to run meant training one
+# arm whose result was then discarded - see the note above ARM_MODE.
 ARM_CONFIGS = {
-    "null": dict(arms=("null",)),
-    "random": dict(arms=("random", "adaptive"), probe_selection="random"),
-    "adaptive": dict(arms=("random", "adaptive"), probe_selection="argmin"),
-    "anti": dict(arms=("random", "adaptive"), probe_selection="argmax"),
+    "null": dict(),
+    "random": dict(probe_selection="random"),
+    "adaptive": dict(probe_selection="argmin"),
+    "anti": dict(probe_selection="argmax"),
 }
 
 
@@ -80,7 +84,18 @@ def make_config(
     is_null = arm_name == "null"
     return V0SessionConfig(
         seed=seed,
-        arms=arm_overrides.get("arms", ("null",)),
+        # The session trains the arm this row reports and nothing else. Every
+        # probe-selection row used to run the pair `("random", "adaptive")` so that
+        # `probe_selection` - which governs only the adaptive arm - could tell the rows
+        # apart, and the arm without that selection was then thrown away: 7 trainings
+        # per (scale, seed) where 4 are reported.
+        #
+        # Dropping the pair is safe as well as cheaper. The arms are independent, each
+        # trained in its own subprocess from the same config and seed, and measured at
+        # the dev shape (120 steps, seed 42, argmin) the same adaptive arm gives a
+        # **bit-identical** validation loss - 9.031953811645508 - with and without its
+        # pair, in 22.5s against 43.8s.
+        arms=(ARM_MODE[arm_name],),
         device="auto",
         vocab_size=scale_kwargs["vocab_size"],
         context_size=scale_kwargs["context_size"],
@@ -118,9 +133,13 @@ def make_config(
 # never read. The recorded arm is now selected by name rather than by position, and a
 # mode the session did not return is an error rather than a silently wrong row.
 #
-# The plain random arm is still trained inside the adaptive and anti sessions and the
-# sweep discards its result - 2x the compute for those rows. That is a study-design
-# question rather than this defect, so it is left as it is.
+# That arm is no longer trained as part of a pair. Every probe-selection row used to
+# run `("random", "adaptive")` and keep one, so the other was trained and discarded -
+# 2x the compute for the adaptive and anti rows, and one more discarded adaptive arm
+# inside the random row. Each session now asks for the single arm its row reports, and
+# ARM_MODE is what the config is built from rather than a separate lookup, so a row
+# cannot report an arm the session was not asked for. The sweep trains 4 arms per
+# (scale, seed) instead of 7.
 ARM_MODE = {
     "null": "null",
     "random": "random",

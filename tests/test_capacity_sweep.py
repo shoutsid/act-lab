@@ -156,11 +156,11 @@ def test_the_reset_covers_the_directory_the_runs_actually_write(tmp_path, monkey
 def test_each_sweep_arm_records_the_arm_it_configures(tmp_path, monkeypatch):
     """The defect: ``adaptive`` and ``anti`` recorded the random arm.
 
-    Every probe-selection arm is configured as ``("random", "adaptive")``, so
-    ``result.arms[0]`` is the plain random-churn arm for all of them and the
-    ``probe_selection`` that distinguishes them governs ``arms[1]``. The sweep's own
-    scratch output showed the signature - ``random``, ``adaptive`` and ``anti``
-    bit-identical at every scale.
+    Every probe-selection arm *was* configured as ``("random", "adaptive")``, so
+    ``result.arms[0]`` was the plain random-churn arm for all of them, while the
+    ``probe_selection`` that distinguishes them governs ``arms[1]`` - which is why the
+    row is selected by name. The sweep's own scratch output showed the signature -
+    ``random``, ``adaptive`` and ``anti`` bit-identical at every scale.
     """
     _patch_reset(monkeypatch, [])
     _patch_session(monkeypatch, [])
@@ -181,6 +181,36 @@ def test_each_sweep_arm_records_the_arm_it_configures(tmp_path, monkeypatch):
         "adaptive": _MODE_LOSS["adaptive"],
         "anti": _MODE_LOSS["adaptive"],
     }
+
+
+def test_each_run_asks_the_session_for_only_the_arm_it_reports() -> None:
+    """The paired session trained an arm the sweep then discarded.
+
+    Every probe-selection row used to run ``("random", "adaptive")`` so that
+    ``probe_selection`` - which governs only the adaptive arm - could tell the three
+    rows apart, and the arm without that selection was kept only to be thrown away: 7
+    trainings per (scale, seed) where 4 are reported.
+
+    Dropping the pair is safe, not merely cheaper. The arms are independent - each is
+    trained in its own subprocess from the same config and seed - and measured at the
+    dev shape the same adaptive arm gives a **bit-identical** validation loss
+    (9.031953811645508) with and without its pair, in 22.5s against 43.8s.
+
+    This pins the *config* rather than the saving, because the saving follows from the
+    config and a pair that re-grew there would be invisible in every result file.
+    """
+    configs = {
+        arm_name: capacity_sweep.make_config(
+            "20M", capacity_sweep.SCALES["20M"], 42, arm_name, overrides, steps=1
+        )
+        for arm_name, overrides in capacity_sweep.ARM_CONFIGS.items()
+    }
+    for arm_name, config in configs.items():
+        assert config.arms == (capacity_sweep.ARM_MODE[arm_name],), (
+            f"{arm_name} must train only the arm it reports"
+        )
+    # One training per reported row. The pair made seven trainings across these four.
+    assert sum(len(config.arms) for config in configs.values()) == len(configs) == 4
 
 
 def test_the_arm_mode_map_covers_every_configured_arm() -> None:
