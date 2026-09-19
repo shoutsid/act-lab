@@ -170,6 +170,17 @@ the 2/2¹² floor) against +0.0084 at 512 (p = 0.37), interaction +0.0636 nats a
 ~0.055 nats *only* on a wide residual stream, and a search must mutate the two
 jointly — the second joint constraint on the space after depth × width.
 
+That pricing rests on the level split rather than on the pooled head contrast, and
+deliberately: the pooled contrast clears the rule's own declared threshold by only
+**1.15×** (p = 0.0115 against 0.01) and its significance moves with which loss is
+read — the parent arm is non-significant held-out and significant on final training
+loss, its confirmation the reverse — while the level split holds on **every** loss
+reading, with all 12 wide-level units favouring more heads at the exact floor and the
+narrow level non-significant throughout. Read on a trajectory-averaged loss the
+six-seed branch itself changes. The width clause is solid on all three readings
+(−0.156 / −0.155 / −0.185, each at the design's floor), so the recommendation does not
+depend on the reading; the head contrast's null does.
+
 That has now been measured, and the depth finding survives it. The crossed factorial
 re-ran on its **byte-identical** candidate set at 10× the training length — 12,000
 steps, two seeds, fp16 with a same-precision 1200-step anchor, on Kaggle T4×2, all

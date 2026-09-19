@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## The head-paired arm's negative headline is the one place the split check moves a decision (2026-09-19)
+
+| | |
+|---|---|
+| **What was found** | The head-paired arms are the phase's only *negative* headline - "head count is free" - and they are the only arms where **no test or claim read the ledgers under a training-loss reading at all**. Run the same check the other three arms carry and the picture changes: the parent arm's head contrast is non-significant held-out (paired p = 0.140, factorial p = 0.122) and **significant on final training loss (0.044)**, while its confirmation is the reverse (0.047 held-out, 0.159 on train loss). The four numbers straddle 0.05 in both directions. |
+| **The pooled contrast is thin, and now named** | The six-seed pooled head contrast is **p = 0.0115 against `HEAD_PAIRING_RULE`'s declared 0.01** - a margin of **1.15×**, about six steps of that contrast's own 1/4096 sampling resolution. The record discussed this contrast as one whose threshold is cleared; the margin is what keeps the "uniform head effect" branch out, so it is a deciding number and is now checked. |
+| **The branch holds on the like-for-like pair and reverses on a third reading** | Held-out loss and final training loss are both loss at the end of training, so they are the like-for-like pair: the rule lands on **HEAD EFFECT IS REAL AT WIDE WIDTH**, five conditions of five, on both. On `mean_train_loss` - which averages the whole trajectory, so it moves with convergence speed rather than fit - one of the six per-seed interaction contrasts is **−0.0050**, the seed-blocked interaction leaves its 2/2⁶ floor for 0.0625, and the rule reports **INTERACTION ABSENT - THE THREE-SEED AGREEMENT WAS SEED LUCK** instead. |
+| **What does not move, and it is what the plan spends on** | Under all three readings the width contrast is negative and at the design's floor (−0.1617 / −0.1549 / −0.1865) and the H=896 level effect is negative with **all 12 units favouring more heads at the exact 2/2¹² floor** (−0.0553 / −0.0582 / −0.0344), while H=512 stays non-significant. So the recommendation rests on the level split, which replicates, not on the pooled contrast, which does not - and the arm's headline should be read with the margin named rather than as a null. |
+| **Verified** | Four tests and seven claims. The branch-stability test fails when the rule's declared `main_p` is loosened or its label changed; the margin test fails on the loosened threshold; and flipping one of the 12 wide units moves the split from 12/0 at the floor to 11/1 at p = 0.052, which the pricing test catches. The new claims run at 20,000 draws rather than the record's 200,000 - verified to return each branch unchanged, and 4× cheaper - which took the four tests from 27s to 7.5s. **188 -> 195 claims.** |
+| **Result** | **1156 tests pass · 195/195 claims agree · 9/9 records reproduce.** |
+
 ## The horizon arm carried the phase's headline and none of the arm's robustness checks (2026-09-19)
 
 | | |

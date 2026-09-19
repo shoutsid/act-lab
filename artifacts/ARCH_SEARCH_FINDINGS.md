@@ -434,6 +434,25 @@ stands as written and the confound is resolved *in its favour*: the phase's
 recommendation — spend budget on the residual stream — is unchanged, and "add heads,
 which costs nothing" is not an alternative to it.
 
+**The head clause of that branch is the one place in the phase where the holdout-split
+check moves a decision, so it is worth stating rather than smoothing over.** The width
+clause is solid on every loss reading (−0.1562 held-out, −0.1555 on final training loss,
+−0.1846 on mean training loss, all at the design's floor). The head clause is not: on
+held-out loss the head contrast is non-significant (paired p = 0.140, factorial
+p = 0.122) and the branch is taken, but read instead on **final training loss** the same
+contrast is **significant at 0.044** (paired 0.04395, factorial 0.04381) and the
+branch's non-significance condition no longer holds. Read on the trajectory average
+(`mean_train_loss`, which moves with how fast an architecture descends rather than with
+how well it fits) it is non-significant again at 0.630.
+
+That dependence is informative rather than fatal. An effect that is present on training
+loss and absent on held-out loss is an effect that did not generalise — which is the
+reading that leaves the recommendation intact, so this arm's own numbers argue *for*
+not privileging head count. What it does rule out is quoting the head contrast as a null:
+the honest sentence is that it is **small (~0.02 nats, a third of the width effect at
+most) and reading-dependent in significance**, which is why what the search program
+spends on is the level split below and not this contrast's p-value.
+
 Two things the arm adds to the width finding rather than merely repeating it:
 
 - **The width effect replicates on a different design at tighter matching.** −0.1562
@@ -491,6 +510,29 @@ now the second joint constraint on the search space (with `depth × hidden_size`
 above), and both were found the same way: a three-seed arm whose contrasts all
 agreed but whose calibrated test was floored above the declared threshold, decided
 by the seeds that lowered the floor and by nothing else.
+
+**The branch survives the loss readings; the pooled contrast it is *read* against is
+thin, and one reading reverses the branch.** Held-out loss and final training loss are
+the like-for-like pair — both are loss at the end of training — and the rule lands on
+the same branch on both, five conditions of five, with width at floor in each read. The
+fragile quantity is the pooled head contrast: **p = 0.0115 against the rule's own
+declared 0.01**, a margin of 1.15× or about six steps of that contrast's 1/4096 sampling
+resolution, and the arm's two halves straddle the looser 0.05 that a reader would
+naturally apply from opposite sides — the parent is non-significant held-out and
+significant on final train loss, and its confirmation is the reverse. On a third reading
+the branch changes: `mean_train_loss` averages over the whole trajectory, and on it one
+of the six per-seed interaction contrasts is −0.0050 (the others +0.0306 to +0.0652),
+the seed-blocked interaction leaves its 2/2⁶ floor for 0.0625, and the rule reports
+**INTERACTION ABSENT — THE THREE-SEED AGREEMENT WAS SEED LUCK** instead.
+
+What does *not* move is what the search program spends on. Under all three readings the
+width contrast is negative and at the design's floor (−0.1617 / −0.1549 / −0.1865), and
+the H=896 level effect is negative with **all 12 units favouring more heads** at the
+exact 2/2¹² floor (−0.0553 / −0.0582 / −0.0344), while H=512 straddles zero and stays
+non-significant. So the pricing rests on the level split, which replicates on every
+reading, rather than on the pooled contrast, which does not — and the arm's headline
+should be read with that margin named instead of as a null. Every number in this
+paragraph is recomputed from the two arms' ledgers by `verify_record.py`.
 
 ## 3. The effect decays with training — but the decay is variance, not signal
 
@@ -877,7 +919,7 @@ the axis is one kernel away from being searchable rather than one refactor away.
 | The record itself, checked | `scripts/verify_record.py` recomputes **119 load-bearing numbers** from the ledgers — every §10 cost row, the §4 spread/noise table, §4a's decay and wrong winner, §2c's three-seed, six-seed and replication effects with their floors, the head-paired arm's paired and factorial contrasts and the branch its numeric conditions select, the confirmation arm's design-integrity claims (candidate set byte-identical to the parent's, fresh seeds, flat plan, the paired genes reachable through the structural join), §9a's budget match and its new size condition (the power figure is recomputed from the same population and noise, not read from the table), and the README headline's structural claims — and fails when the record and the artifacts disagree. Pinned by `tests/test_verify_record.py`, because three documented numbers were wrong after the test suite was green |
 | Capability probes on finalists (§19) | plumbed: `train_architecture(..., probes=...)` records per-probe loss/accuracy/token count in `EvalResult.capability`. Empty by default, and tested to stay empty, because probing every candidate would silently add a second selection objective. No probe *set* exists in this repository yet, so none is applied |
 | Seed-matched results | §20 implemented and used; exact blocked permutation test, extended with a crossed factorial (`crossed_contrast`) whose main effects are exact and whose interaction is reported against three nulls; the confirmation arm's four-outcome rule is evaluated by `replication_decision`/`--replication-rule` with the thresholds in `REPLICATION_RULE`, so a pooled branch is read mechanically rather than by eye |
-| Robustness checks on the headline claims | Held-out-loss effects re-run on training loss (v2, the crossed factorial and the horizon arm at 12,000 steps), so none is a holdout-split artifact; leave-one-out over candidates where the design allows it (v2's 8 distinct configurations, and the horizon arm's spread, whose worst drop leaves p = 0.0018) and an explicit *refusal* where it does not (the crossed and horizon arms' 2-per-cell design becomes unbalanced, which used to crash rather than report); the horizon arm's two-seed requirement is checked as *forced* rather than cautious, since a single seed's 2/36 floor sits above the 0.05 threshold; spread-not-worse and dropped-candidate guards; an **in-flight seed is dropped from the crossed and paired contrasts and named**, so a sweep analysed while its last seed is still training reports the contrast over the seeds that finished rather than reporting nothing — the drop is disclosed in the decision and the procedure floor moves with it, and only a seed short of the fullest one's row count is droppable, so an unbalanced-but-complete seed still refuses; a seed that stopped *between* pairs leaves nothing incomplete and is named by its pair count instead, because the unit count is the only place that shows and the floor printed beside the p moves with it; the seed-matched permutation test runs only over a complete rectangle, so the seeds and architectures it had to intersect away are named too — the block count beside its p is the survivors, not the design, and a dropped seed that wrote as many rows as any other is called a zoo defect rather than an unfinished sweep. All pinned by tests against the real ledgers |
+| Robustness checks on the headline claims | Held-out-loss effects re-run on training loss (v2, the crossed factorial and the horizon arm at 12,000 steps), so none is a holdout-split artifact; leave-one-out over candidates where the design allows it (v2's 8 distinct configurations, and the horizon arm's spread, whose worst drop leaves p = 0.0018) and an explicit *refusal* where it does not (the crossed and horizon arms' 2-per-cell design becomes unbalanced, which used to crash rather than report); the horizon arm's two-seed requirement is checked as *forced* rather than cautious, since a single seed's 2/36 floor sits above the 0.05 threshold; the head-paired arms' *negative* headline is put through the same check and is the one place a reading moves a conclusion — the branch holds on the like-for-like pair (held-out and final training loss) and reverses on a trajectory-averaged loss, while the level pricing the recommendation rests on holds on all three, at the exact floor with all 12 wide-level units on one side; spread-not-worse and dropped-candidate guards; an **in-flight seed is dropped from the crossed and paired contrasts and named**, so a sweep analysed while its last seed is still training reports the contrast over the seeds that finished rather than reporting nothing — the drop is disclosed in the decision and the procedure floor moves with it, and only a seed short of the fullest one's row count is droppable, so an unbalanced-but-complete seed still refuses; a seed that stopped *between* pairs leaves nothing incomplete and is named by its pair count instead, because the unit count is the only place that shows and the floor printed beside the p moves with it; the seed-matched permutation test runs only over a complete rectangle, so the seeds and architectures it had to intersect away are named too — the block count beside its p is the survivors, not the design, and a dropped seed that wrote as many rows as any other is called a zoo defect rather than an unfinished sweep. All pinned by tests against the real ledgers |
 | Procedure floors reported beside every p | `min_achievable_p` on the blocked permutation test, the crossed main effects (2/46,656 = 4.29e-05, both **at floor**), the seed-blocked interaction (2/2^seeds) and the paired contrast (2/2^12). Added after the horizon arm showed what a floor-bound statistic read as evidence costs: a p that is the most extreme its test can express is a statement about the design, not about the effect |
 | §11 random-vs-manual readiness | `RandomArchitectureSearch` baseline plus `scripts/space_typicality.py`, which checks whether the curated sets occupy a distinguishable region of the space before any equal-compute comparison is run. They do not (§9a), so the comparison is not circular — and the *budget* check is done too, which is the one condition a band does not buy: a band-matched 13-candidate draw carries a **median 1.12×** the curated set's total parameters (p10–p90 1.05–1.18×, range 1.00–1.25× over 200 draws, median 1.15× at a ±15% band), because the curated set sits at 86M against the nominal 100M — so a budget-matched sampler seed must be pre-registered (§9a). The *size* condition is now measured too, before the hours: `scripts/set_comparison_power.py` puts 80% power at a **0.30-nat set-mean advantage** for 13 candidates per set over 2 seeds (26 runs, ~1.20 GPU-hours), and shows the lever is candidates per set rather than seeds — 26 per set reaches 0.155 nats at 2.39 GPU-hours, while 2/3/4 seeds are indistinguishable. §11 as designed is therefore affordable but not decidable at the curated set's size, and its coverage form is invisible at any size measured (§9a) |
 | Decision on whether differences are real | `decision.md` per experiment — v1 NOT ESTABLISHED (power floor 1/36); v2 **ESTABLISHED** at p <= 5e-06 on 3 seeds (v1's figure was 0.00023 on 2); crossed **ESTABLISHED** at p <= 5e-06 with both main effects at the exact floor; the six-seed pooled record (crossed + confirmation) **ESTABLISHED** at p <= 5e-06 on 6 seeds, spread 0.3018 nats; head-paired **ESTABLISHED** as well (spread 0.2126 nats, p <= 5e-06) and its own question answered — the head contrast is non-significant at −0.0177 nats (p = 0.14) while the width contrast sits at the exact floor; each design's power floor and procedure resolution stated |
@@ -946,7 +988,11 @@ recommendation does not reverse. Full record in §2c.
    interaction at the six-seed floor, and heads are worth **−0.0553 nats at wide
    hidden sizes and nothing at narrow** — free parameters, so a search should spend
    the head gene *only* where the residual stream is wide, and mutate the two
-   jointly (§2c).
+   jointly (§2c). The pricing rests on that level split rather than on the pooled
+   head contrast, and deliberately: the pooled contrast clears the pooled rule's
+   declared threshold by only 1.15× (p = 0.0115 against 0.01) and its significance
+   is loss-reading-dependent, while the level split holds on every reading with all
+   12 wide-level units favouring more heads at the exact floor (§2c).
 
    The shape of the loop follows from §3 and §4 rather than from taste: a
    **screen at 400 steps, promote only on margins that clear the seed noise, and

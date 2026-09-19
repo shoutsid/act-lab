@@ -3351,6 +3351,165 @@ def test_recorded_horizon_attribution_needs_two_seeds_by_construction():
             ), (seed, axis)
 
 
+# The head-paired arm exists to price the head axis, and it is the one arm whose
+# *recorded* headline is a negative result. That makes the holdout-split check run
+# the other way: here it asks whether "head count is free" survives on training loss,
+# not whether a positive effect does. It does not survive cleanly, and the checks
+# below pin both the part that is stable and the part that is not.
+
+
+def _head_pair_pooled():
+    """The two head-paired arms' rows, pooled the way the six-seed rule reads them."""
+    root = Path("artifacts")
+    rows = []
+    for name in ("arch-zoo-100m-v4-head-paired", "arch-zoo-100m-v4-head-paired-confirm"):
+        directory = root / name
+        ledgers = sorted(directory.glob("*_seed*_results.jsonl"))
+        if not ledgers:
+            pytest.skip(f"{name} ledgers not present")
+        rows += with_structure(load_results(ledgers), directory / "zoo_definition.json")
+    return rows, sorted({row.seed for row in rows})
+
+
+def _on_loss(rows, field):
+    return (
+        rows
+        if field is None
+        else [replace(entry, validation_loss=getattr(entry, field)) for entry in rows]
+    )
+
+
+#: The rule reads signs and exact re-split statistics, not the sampled ones, so every
+#: call below runs at 20,000 draws instead of the record's 200,000 - 4x cheaper for
+#: the same label, which was confirmed by running each ruling at both.
+_DRAWS = 20_000
+
+
+def test_recorded_head_pairing_branch_holds_on_both_like_for_like_losses():
+    """The branch the arm's record states has to survive the loss the record could
+    equally have been read on.
+
+    Held-out loss and final training loss are the like-for-like pair: both are loss at
+    the end of training, so a difference between them measures generalisation rather
+    than convergence speed. The pre-registered rule lands on the same branch on both -
+    HEAD EFFECT IS REAL AT WIDE WIDTH, all five conditions, and the width attribution
+    it rests on is at floor on both - so the recorded branch is not an artifact of
+    which of the two a reader picks. The rule's declared thresholds are asserted here
+    too, because the pooled contrast below is read against one of them.
+    """
+    assert HEAD_PAIRING_RULE == {"main_p": 0.01, "interaction_p": 0.05}
+    rows, seeds = _head_pair_pooled()
+
+    for field in (None, "final_train_loss"):
+        outcome = best_available_summary(_on_loss(rows, field), seeds, samples=_DRAWS)
+        rule = head_pairing_decision(outcome)
+        assert rule["label"] == "HEAD EFFECT IS REAL AT WIDE WIDTH", field
+        assert len(rule["conditions"]) == 5, field
+        assert all(row["met"] for row in rule["conditions"]), field
+
+        crossed = crossed_contrast(_on_loss(rows, field), 1200, samples=_DRAWS)["main"]
+        width = crossed["hidden_size"]
+        assert width["nats"] < 0
+        assert width["at_floor"], field
+
+
+def test_recorded_head_pairing_pooled_contrast_sits_just_above_its_own_threshold():
+    """The margin the arm's branch does *not* have.
+
+    The pooled six-seed head contrast is p = 0.01155 against a declared 0.01 - a
+    margin of 1.15x, or about six steps of the contrast's own 1/4096 sampling
+    resolution. That is thin enough to be worth naming rather than rounding to "non-
+    significant at 0.05", especially because the arm's two halves fall on opposite
+    sides of that looser threshold: the parent is non-significant held-out and
+    significant on final train loss, and its confirmation is the reverse.
+    """
+    rows, seeds = _head_pair_pooled()
+    pooled = paired_design_contrast(rows, "attention_heads")
+
+    declared = HEAD_PAIRING_RULE["main_p"]
+    assert declared < pooled["p"] < 2 * declared, pooled["p"]
+    assert pooled["mean_difference"] == pytest.approx(-0.0234, abs=5e-4)
+
+    # Each half straddles the 0.05 a reader would apply, in opposite directions.
+    parent_rows = [row for row in rows if row.seed in (48, 49, 50)]
+    confirm_rows = [row for row in rows if row.seed in (51, 52, 53)]
+    readings = {}
+    for label, subset in (("parent", parent_rows), ("confirm", confirm_rows)):
+        held = paired_design_contrast(subset, "attention_heads")["p"]
+        train = paired_design_contrast(
+            _on_loss(subset, "final_train_loss"), "attention_heads"
+        )["p"]
+        readings[label] = (held, train)
+        assert (held <= 0.05) != (train <= 0.05), (label, held, train)
+    assert readings["parent"][0] > 0.05 > readings["parent"][1]
+    assert readings["confirm"][0] < 0.05 < readings["confirm"][1]
+
+
+def test_recorded_head_pairing_branch_reverses_on_a_trajectory_averaged_loss():
+    """The one reading that reverses the branch, recorded so it cannot be lost.
+
+    ``mean_train_loss`` is not like-for-like with held-out loss: it averages over the
+    whole trajectory, so it moves with how fast an architecture descends rather than
+    with how well it fits. On it, one of the six per-seed interaction contrasts is
+    -0.0050 (the rest are +0.0306 to +0.0652), the seed-blocked interaction p moves off
+    its 0.03125 floor to 0.0625, and the rule lands on INTERACTION ABSENT - THE
+    THREE-SEED AGREEMENT WAS SEED LUCK instead. This is recorded as a sensitivity
+    rather than as a second answer, and the contrast is thin enough (see the margin
+    test) that a reader should know which one reading falls on the other side.
+    """
+    rows, seeds = _head_pair_pooled()
+
+    held = crossed_contrast(rows, 1200, samples=_DRAWS)["main"]["attention_heads"]
+    assert held["interaction_p_seed_blocked"] == pytest.approx(2 / 2**6)
+    assert len(held["interaction_seed_contrasts"]) == 6
+    assert all(value > 0 for value in held["interaction_seed_contrasts"])
+
+    averaged = crossed_contrast(
+        _on_loss(rows, "mean_train_loss"), 1200, samples=_DRAWS
+    )["main"]["attention_heads"]
+    assert sum(1 for value in averaged["interaction_seed_contrasts"] if value < 0) == 1
+    assert averaged["interaction_p_seed_blocked"] == pytest.approx(4 / 2**6)
+    assert averaged["interaction_p_seed_blocked"] > HEAD_PAIRING_RULE["interaction_p"]
+
+    reversed_branch = head_pairing_decision(
+        best_available_summary(_on_loss(rows, "mean_train_loss"), seeds, samples=_DRAWS)
+    )
+    assert reversed_branch["label"] == (
+        "INTERACTION ABSENT - THE THREE-SEED AGREEMENT WAS SEED LUCK"
+    )
+
+
+def test_recorded_level_pricing_survives_every_loss_reading():
+    """What the search program actually spends on does not depend on the loss reading.
+
+    The recommendation is not "the pooled head contrast is null" but "head count is
+    worth ~-0.055 at wide residual widths and nothing at narrow", and that level split
+    holds on all three readings: at H=896 every one of the 12 units favours more heads
+    and the exact p sits at its 2/2^12 floor on each, while H=512 straddles zero and
+    stays non-significant. The width attribution does the same at the factorial's
+    floor. So the fragility above is confined to the pooled contrast and the branch
+    it labels, not to the pricing or to the lever the plan spends on.
+    """
+    rows, seeds = _head_pair_pooled()
+    assert len(rows) == 48  # 4 pairs x 6 seeds x 2 arms
+
+    for field in (None, "final_train_loss", "mean_train_loss"):
+        subset = _on_loss(rows, field)
+        levels = paired_level_split(subset, "attention_heads", "hidden_size")["levels"]
+
+        wide = levels["896"]
+        assert wide["mean_difference"] < 0, field
+        # All 12 units are on the same side, which is why the exact p is at its floor.
+        assert (wide["negative"], wide["positive"]) == (12, 0), field
+        assert wide["p"] == pytest.approx(2 / 2**12), field
+
+        narrow = levels["512"]
+        assert narrow["p"] > 0.05, field
+
+        width = crossed_contrast(subset, 1200, samples=_DRAWS)["main"]["hidden_size"]
+        assert width["nats"] < 0 and width["at_floor"], field
+
+
 # --- pre-specified joint models --------------------------------------------
 
 

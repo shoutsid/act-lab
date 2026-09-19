@@ -309,3 +309,23 @@ pre-registered, so the per-level numbers above are an observation to be confirme
 rather than the arm's answer. A subgroup picked post hoc at a floor-bound test is
 how a spread that was really variance decay got read as signal in §3 of the phase
 record.
+
+## The loss reading moves this arm's head clause, and leaves the width one alone
+
+The holdout-split check the other three arms carry was run on this arm too, and this
+is the one place in the phase where it moves a decision. Width is unaffected under
+every reading (−0.1562 held-out, −0.1555 on final training loss, −0.1846 on mean
+training loss, each at the design's floor). The head clause is not: held-out, the head
+contrast is non-significant (paired p = 0.140, factorial p = 0.122) and the
+pre-registered branch is taken; read on **final training loss** the same contrast is
+significant at **0.044** and the branch's non-significance condition no longer holds;
+read on the trajectory average (`mean_train_loss`, which tracks how fast an
+architecture descends rather than how well it fits) it is non-significant again at
+0.630.
+
+That is informative rather than fatal — an effect present on training loss and absent
+on held-out loss is an effect that did not generalise, which is the reading that argues
+*for* not privileging head count — but it does rule out quoting this contrast as a
+null. The honest sentence is that it is **small (~0.02 nats, at most a third of the
+width effect) and reading-dependent in significance**, which is why the recommendation
+rests on the level split rather than on this p-value.

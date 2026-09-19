@@ -39,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from act.search.architecture_eval import load_results  # noqa: E402
 from act.search.architecture_report import (  # noqa: E402
     FINALIST_ORDER_FRESH_SEEDS,
+    HEAD_PAIRING_RULE,
     FINALIST_ORDER_STEPS,
     best_available_summary,
     blocked_permutation_test,
@@ -728,6 +729,61 @@ def check_head_paired_confirm(root: Path, audit: Audit) -> None:
     audit.check("§2c v4 pooled: best architecture", "hd2_D10_H896_E16_A6_W128_Hd16", outcome["best"], "§2c")
     audit.check("§2c v4 pooled: spread", 0.2221, outcome["architecture_spread"], "§2c")
     audit.check("§2c v4 pooled: spread in seed-noise units", 13.56, outcome["sigmas"], "§2c")
+
+    # The robustness check v2's, the crossed arm's and the horizon arm's all carry, run
+    # here for the first time - and on this arm it runs the other way, because the arm's
+    # recorded headline is a *negative*: "head count is free". The like-for-like pair is
+    # held-out loss against final training loss, since both are loss at the end of
+    # training; `mean_train_loss` averages over the whole trajectory, so it moves with
+    # convergence speed and answers a different question. The rule reads signs and exact
+    # re-split statistics rather than the sampled ones, so the calls below run at 20,000
+    # draws - verified to return each branch unchanged from the record's 200,000, and
+    # 4x cheaper than paying the record's resolution to re-derive a label.
+    from act.search.architecture_report import paired_level_split
+
+    pooled_seeds = sorted({row.seed for row in pooled})
+    for field, label in (("final_train_loss", "final"), ("mean_train_loss", "mean")):
+        rows = [replace(entry, validation_loss=getattr(entry, field)) for entry in pooled]
+        crossed_reading = crossed_contrast(rows, 1200, samples=20_000)["main"]
+        hidden_reading = crossed_reading["hidden_size"]
+        level = paired_level_split(rows, "attention_heads", "hidden_size")["levels"]["896"]
+        audit.check(
+            f"§2c v4 pooled: width attribution holds on {label} train loss",
+            True,
+            hidden_reading["nats"] < 0 and hidden_reading["at_floor"],
+            "§2c",
+            f"{hidden_reading['nats']:+.4f} nats at floor - the lever the plan spends on",
+        )
+        audit.check(
+            f"§2c v4 pooled: H=896 head effect holds on {label} train loss",
+            12,
+            level["negative"],
+            "§2c",
+            f"{level['mean_difference']:+.4f} nats, every one of the 12 units favouring more heads",
+        )
+        reading = head_pairing_decision(
+            best_available_summary(rows, pooled_seeds, samples=20_000)
+        )
+        audit.check(
+            f"§2c v4 pooled: the rule's branch on {label} train loss",
+            "HEAD EFFECT IS REAL AT WIDE WIDTH"
+            if field == "final_train_loss"
+            else "INTERACTION ABSENT - THE THREE-SEED AGREEMENT WAS SEED LUCK",
+            reading["label"],
+            "§2c",
+            "stable on the like-for-like pair"
+            if field == "final_train_loss"
+            else "one per-seed interaction contrast flips sign here, which the record names",
+        )
+
+    audit.check(
+        "§2c v4 pooled: the head contrast sits inside 2x the rule's own threshold",
+        True,
+        HEAD_PAIRING_RULE["main_p"] < paired["p"] < 2 * HEAD_PAIRING_RULE["main_p"],
+        "§2c",
+        f"p = {paired['p']:.5f} against a declared {HEAD_PAIRING_RULE['main_p']}, a margin of "
+        f"{paired['p'] / HEAD_PAIRING_RULE['main_p']:.2f}x - not the 0.05 a reader applies",
+    )
 
 
 def check_finalist_order(root: Path, audit: Audit) -> None:

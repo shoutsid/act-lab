@@ -291,3 +291,25 @@ Rehearsed before the hours: both commands on a complete synthetic six-seed copy
 (relabelled parent rows, kept in /tmp and deleted — its branch firing was an
 artifact of the duplicated rows, so it validates the machinery and forecasts
 nothing).
+
+## The branch survives the like-for-like readings; the pooled contrast is thin
+
+The holdout-split check was run on the pooled six seeds. The rule lands on the same
+branch on both like-for-like readings — held-out loss and final training loss, both
+being loss at the end of training — with all five conditions met and width at floor in
+each. Under a third reading it does not: `mean_train_loss` averages over the whole
+trajectory, one of the six per-seed interaction contrasts is −0.0050 (the others
++0.0306 to +0.0652), the seed-blocked interaction leaves its 2/2⁶ floor for 0.0625, and
+the rule reports **INTERACTION ABSENT — THE THREE-SEED AGREEMENT WAS SEED LUCK**.
+
+What is thin is the pooled head contrast: **p = 0.0115 against the rule's declared
+0.01**, a margin of 1.15× or about six steps of that contrast's 1/4096 sampling
+resolution. The two halves straddle the looser 0.05 a reader would apply from opposite
+sides — the parent is non-significant held-out and significant on final training loss,
+this arm is the reverse — so the pooled p is not a stable summary of them.
+
+What does not move is the level split, which is what the recommendation rests on: at
+H=896 all 12 units favour more heads at the exact 2/2¹² floor under all three readings
+(−0.0553 / −0.0582 / −0.0344), while H=512 stays non-significant throughout. Every
+number here is recomputed from the two arms' ledgers by `scripts/verify_record.py`.
+
