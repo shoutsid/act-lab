@@ -2496,9 +2496,11 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   (88/128, p `1.3e-05`) that argmax (64/128) does not. See
   `RESEARCH_REPORT.md` section 9.
 - `PYTHONPATH=src python -m compileall -q src/act tests` -> passed.
-- `npm run typecheck` -> passed.
-- `npm run build` -> passed.
-- `npm test -- --run` -> 185 passed, 0 failures (fixed grok-pwa-plugin and preview test port mismatches).
+- The frontend checks that stood here (`npm run typecheck`, `npm run build`,
+  `npm test -- --run` -> 185 passed, including the grok-pwa-plugin and preview
+  test-port fixes) were dropped with the TypeScript console they exercised; it
+  was removed as unmaintained and representing none of the results. See the
+  removal record near the top of this document, and git history for the logs.
 - Python Experiment 0 mutation-budget test -> passed.
 - Python registry/CLI round trip -> passed.
 - Initial Gate 3 trial -> adaptive lost to random on seeds 1, 2, 3, and 42.
@@ -2512,7 +2514,8 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
 - Gate-study registry round trip -> the same CLI appends exactly one `gate_study` JSONL record.
 - Gate-study budget invariant -> study execution and registry records enforce equal random/adaptive
    mutation counts for every seed.
-- Browser ACT console and research invariants -> passed with no console errors in the latest checks.
+- Research invariants -> passed in the latest checks. (The browser console this
+  line also covered was removed with the frontend, so nothing checks it now.)
 - Fresh 16-seed Gate 3 study (`1,2,3,42,5,6,7,8,9,10,11,12,13,14,15,16`) -> 9/16 adaptive wins at
   48 steps, mean paired delta `-0.008127`, population standard deviation `0.162910`, and matched
   budgets; the scaling gate remains open.
@@ -2606,8 +2609,9 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   (requires matplotlib, not needed for the test suite).
 - Gate studies now fail fast with a clear error when the `random` baseline arm is
   missing from `--arms`.
-- Fixed: `injectGrokPwaHead` now prioritizes document title over site.json title for og:title.
-- Fixed: preview test port assertions updated to match PREVIEW_PORT=4174.
+- The two frontend fixes once recorded here (`injectGrokPwaHead` preferring the
+  document title for `og:title`, and preview test ports matching `PREVIEW_PORT`)
+  are spent: the code they patched was removed with the console.
 
 ## Environment Notes
 
