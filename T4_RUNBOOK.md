@@ -116,18 +116,33 @@ and the default budget of eight covers the two sessions the primary queue needs
 ```bash
 python scripts/kaggle_queue.py --queue session
 python scripts/kaggle_queue.py --queue control --max-sessions 8
+python scripts/kaggle_queue.py --queue null --max-sessions 8    # §2c do-nothing baseline
 python scripts/kaggle_queue.py --queue verdict          # after the three queues
 python scripts/kaggle_queue.py --queue preflight        # one-shot diagnostics
 python scripts/kaggle_queue.py --queue dtypeprobe       # fp32 vs fp16 rate (T4)
 python scripts/kaggle_queue.py --queue selfcheck        # session battery + arm placement (T4)
+python scripts/kaggle_queue.py --queue archzoo          # architecture-search horizon arm (one push)
 ```
 
-`preflight`, `dtypeprobe`, `selfcheck` and `verdict` are one-shot jobs rather
-than queues: they are pushed once and reported, with no re-push loop and no
-quota gate (the verdict runs on CPU and bills nothing; the other three are a
-few minutes of GPU each). All three run the mounted code
-dataset, so the driver publishes it if it lags the tree before pushing - a
-one-shot that ran older code would report on a run it did not measure. `--queue verdict` returns the registered
+`--queue` accepts eight values, and all eight are listed above: the three
+queues (`session`, `control`, `null`) and the five one-shot jobs. `null` is the
+§2c baseline that §1-2 describes the other two against, and `archzoo` is the
+architecture-search horizon arm, whose own `NOTES.md` pre-registers its rule.
+
+`preflight`, `dtypeprobe`, `selfcheck`, `verdict` and `archzoo` are one-shot jobs
+rather than queues: they are pushed once and reported, with no re-push loop and
+no quota gate (the verdict runs on CPU and bills nothing; the others are a few
+minutes of GPU each, except `archzoo`, which is hours). All of them run the
+mounted code dataset, so the driver publishes it if it lags the tree before
+pushing - a one-shot that ran older code would report on a run it did not
+measure.
+
+`archzoo` is the one one-shot whose *output* is imported before its status is
+checked, because a session that ended with an error after hours of training may
+still have kept its ledgers, and those rows cost GPU-hours to regenerate. It is
+also the one that reports **2** rather than 0 when the kernel exited cleanly but
+the arm did not complete: the arm's own check reads the requested
+(length, seed) grid off the ledgers, so a sweep that trained none of it says so. `--queue verdict` returns the registered
 section 4 decision as its exit code - **0 PASS, 1 FAIL, 2 PASS with
 qualification, 3 no verdict produced** - so the last step of the run is
 scriptable, and it prints the verdict artifact. The kernel itself always exits
