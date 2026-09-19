@@ -179,8 +179,9 @@ Two reporting defects let a 0-for-16 arm read as a success, both now fixed:
 process exit codes, and the screen exits 0 when every candidate in a stage fails; it
 now compares the requested (length, seed) grid against the ledgers. And the screen
 had no data-feasibility check, so a plan that could not be served was discovered
-inside the kernel rather than at launch; `--dry-run` now checks the stream's header
-per length and refuses.
+inside the kernel rather than at launch. The screen now reads the stream's header
+per length at launch and refuses before any training; `--dry-run` reports the same
+check without training, so the numbers can be read without the hours.
 
 ### What the failed attempt did produce: the fp16 anchor, at 1200 steps
 

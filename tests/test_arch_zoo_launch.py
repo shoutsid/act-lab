@@ -296,6 +296,67 @@ def test_a_missing_token_file_is_not_a_verdict(tmp_path, capsys):
     assert "no readable token file to check" in capsys.readouterr().out
 
 
+def test_a_short_stream_refuses_at_launch_rather_than_inside_a_run(tmp_path, monkeypatch):
+    """The wiring the header check exists for, and the one it did not have.
+
+    ``stream_feasibility`` returning a short length is only a fact; what saves the
+    quota is ``main`` acting on it before the first candidate is trained. The
+    horizon arm's first attempt had the fact printed nowhere and the refusal
+    nowhere: its sixteen 12,000-step runs each raised at data load inside the
+    kernel, and the sweep exited 0, so the arm read as complete. Both halves are
+    pinned here - the launch aborts, and no ledger exists to be read as a run.
+    """
+    import numpy as np
+
+    from arch_zoo_screen import main
+
+    stream = tmp_path / "tokens.npy"
+    np.save(stream, np.zeros(7_190, dtype=np.uint16))
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "arch_zoo_screen.py",
+            "--experiment-id",
+            "short-stream",
+            "--design",
+            "crossed",
+            "--cross-factors",
+            "depth,hidden_size",
+            "--cross-replicates",
+            "2",
+            "--match-target",
+            "78000000",
+            "--match-tolerance",
+            "0.05",
+            "--zoo-seed",
+            "42",
+            "--plan",
+            "flat",
+            "--flat-steps",
+            "12000",
+            "--finalist-seeds",
+            "42",
+            "--data-path",
+            str(stream),
+            "--artifacts-root",
+            str(tmp_path),
+        ],
+    )
+    with pytest.raises(SystemExit) as refusal:
+        main()
+    message = str(refusal.value)
+    assert "cannot serve this plan" in message
+    # Per length, with the numbers that make it checkable rather than an assertion.
+    assert "flat 12000 needs 26,600,000 tokens" in message
+    assert "stream holds 7,190" in message
+    assert "Lengthen --data-path" in message
+    assert "shorten the plan" in message
+    # The refusal is at launch: the arm was never trained, so there is no ledger
+    # for anything downstream to mistake for a run.
+    assert not list((tmp_path / "short-stream").glob("*_seed*_results.jsonl"))
+
+
 def test_an_impossible_budget_refuses_with_a_reason_not_a_traceback(tmp_path, monkeypatch):
     """A budget no candidate can meet used to reach matching_report and die in
     ``min()`` on an empty sequence, which reads as a broken script rather than as an
