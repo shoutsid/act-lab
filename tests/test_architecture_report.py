@@ -27,6 +27,7 @@ from act.search.architecture_report import (
     blocked_permutation_test,
     crossed_contrast,
     head_pairing_decision,
+    horizon_decision,
     joint_structural_fit,
     paired_contrast_test,
     paired_design_contrast,
@@ -1974,6 +1975,46 @@ def test_decision_renders_the_head_rule_and_the_level_split(tmp_path):
     assert "HEAD EFFECT IS REAL AT WIDE WIDTH" in text
     assert "hidden_size=896" in text
     assert "| Condition | Value | Met |" in text
+
+
+def test_decision_renders_the_horizon_rule_at_its_declared_length(tmp_path):
+    """The horizon arm's record artifact, pinned the way the head rule's is.
+
+    The branch *is* the arm's deliverable, so it has to reach decision.md with the
+    length it was read at - and the anchor-only case has to render as a refusal
+    rather than as a branch, because that is the case the first attempt produced.
+    """
+    design = [
+        replace(result, steps=12000)
+        for result in crossed_with_interaction(
+            depth_effect=+0.08, hidden_effect=-0.20, interaction=+0.06, seeds=(42, 43)
+        )
+    ]
+    outcome = best_available_summary(design, [42, 43], samples=2_000)
+    outcome["horizon_decision"] = horizon_decision(outcome)
+    path = tmp_path / "decision.md"
+    write_decision(path, outcome)
+    text = path.read_text()
+    assert "Pre-registered rule: does the depth sign survive the horizon?" in text
+    assert "**SHALLOW-WINS PERSISTS AT THIS HORIZON**" in text
+    assert "at 12000 steps" in text
+    assert "| Condition | Value | Met |" in text
+
+    # Read at the anchor instead, the same design renders the refusal and its
+    # reason, which is what says the horizon never ran.
+    anchor = [
+        replace(result, steps=1200)
+        for result in crossed_with_interaction(
+            depth_effect=+0.08, hidden_effect=-0.20, interaction=+0.06, seeds=(42, 43)
+        )
+    ]
+    anchor_outcome = best_available_summary(anchor, [42, 43], samples=2_000)
+    anchor_outcome["horizon_decision"] = horizon_decision(anchor_outcome)
+    anchor_path = tmp_path / "anchor.md"
+    write_decision(anchor_path, anchor_outcome)
+    anchor_text = anchor_path.read_text()
+    assert "**UNAVAILABLE" in anchor_text
+    assert "*Not applied: the outcome is at 1200 steps and the rule is declared on 12000" in anchor_text
 
 
 # --- joint structural fit --------------------------------------------------
