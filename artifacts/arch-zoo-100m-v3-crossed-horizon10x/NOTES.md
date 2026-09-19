@@ -208,3 +208,23 @@ now names the length instead of inferring "the longest length that has rows" - w
 on the first attempt's ledgers would have resolved to 1200 and reported the anchor as
 the horizon result. The rule returns `unavailable` at any other length, and the
 analysis refuses outright when the horizon rows are absent.
+
+### How the secondaries above are now read
+
+They were listed in the pre-registration without a mechanical reader, so they were
+made mechanical before the ledgers landed rather than read by eye afterwards:
+
+- **Ordering** and **decay** are computed from this arm's own two lengths by
+  `rank_stability` and `spread_by_length`, which the analyzer already reports. The
+  reference is the arm's own 1200-step fp16 anchor rather than the record's fp32
+  rows, which is strictly better here: the anchor's batch schedule is identical to
+  the record's, so the comparison is not confounded by a data difference, and it is
+  measured inside one precision.
+- **Precision offset** is `precision_offset`, reached with
+  `--offset-against arch-zoo-100m-v3-crossed --offset-steps 1200` and rendered into
+  `decision.md` as a per-candidate table. It reads the record's ledgers *beside*
+  this arm rather than pooling them - and pooling is now refused outright when two
+  directories recorded different precisions, which is the guard that makes the
+  distinction structural rather than a matter of remembering.
+- **Width and interaction** are already carried by the crossed contrast the rule
+  reports as its secondary, at whatever length the rule read.

@@ -27,6 +27,10 @@ DRIVER_PATTERN='kaggle_queue\.py --queue archzoo'
 SEEDS="42 43"
 LENGTHS="1200 12000"
 EXPECTED_ROWS=8
+# The fp32 record the arm's fp16 anchor is measured against, for the
+# pre-registered precision offset. Read *beside* the arm, never pooled with it:
+# the two were measured under different precisions, which is the quantity.
+REFERENCE=arch-zoo-100m-v3-crossed
 
 log() { echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
@@ -63,6 +67,7 @@ fi
 log "ledgers complete (32 rows); running the pre-registered horizon analysis"
 PYTHONPATH=src .venv/bin/python3 scripts/arch_zoo_analyze.py \
     --experiment-id "$EXP" --write --horizon-rule \
+    --offset-against "$REFERENCE" --offset-steps 1200 \
     >> "$LOG" 2>&1
 status=$?
 log "horizon analysis exit=$status"

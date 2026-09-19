@@ -952,6 +952,83 @@ def rank_stability(results: list[EvalResult]) -> list[dict]:
     return comparisons
 
 
+def precision_offset(
+    primary: list[EvalResult],
+    reference: list[EvalResult],
+    *,
+    steps: int = 1200,
+    reference_label: str = "reference",
+) -> dict:
+    """Per-candidate, seed-matched loss gap between two experiments at one length.
+
+    The horizon arm trains fp16 for speed on Turing tensor cores and reads against
+    an fp32 record, so it keeps a 1200-step fp16 *anchor* whose batch schedule is
+    identical to the record's 1200-step runs - same token stream, same 2M holdout,
+    therefore the same window count and the same seeded permutation. The
+    per-candidate gap between those two is the precision offset, and measuring it is
+    what lets the 12,000-step rows be read as evidence about architecture rather
+    than about autocast. Without it, "the effect decayed" and "fp16 moved the
+    losses" are the same observation.
+
+    Architecture is the unit and seed is the pairing, as everywhere else in this
+    module: only architectures present in both experiments on at least one shared
+    seed are joined, and the rest are named in ``dropped_architectures`` so a
+    candidate that could not be paired cannot read as one that joined at zero.
+    """
+    left = _losses_by_architecture(primary, steps)
+    right = _losses_by_architecture(reference, steps)
+    if not left or not right:
+        return {
+            "available": False,
+            "steps": steps,
+            "reference": reference_label,
+            "reason": (
+                f"no {steps}-step rows to join: {len(left)} architectures on this "
+                f"side, {len(right)} in {reference_label}"
+            ),
+        }
+    pairs: list[dict] = []
+    dropped = sorted(set(left) ^ set(right))
+    for name in sorted(set(left) & set(right)):
+        seeds = sorted(set(left[name]) & set(right[name]))
+        if not seeds:
+            dropped.append(name)
+            continue
+        here = sum(left[name][seed] for seed in seeds) / len(seeds)
+        there = sum(right[name][seed] for seed in seeds) / len(seeds)
+        pairs.append(
+            {
+                "name": name,
+                "seeds": seeds,
+                "primary": here,
+                "reference": there,
+                "delta": here - there,
+            }
+        )
+    if not pairs:
+        return {
+            "available": False,
+            "steps": steps,
+            "reference": reference_label,
+            "reason": (
+                "no architecture shares a seed across the two experiments, so nothing "
+                "is paired"
+            ),
+        }
+    deltas = [pair["delta"] for pair in pairs]
+    return {
+        "available": True,
+        "steps": steps,
+        "reference": reference_label,
+        "architectures": len(pairs),
+        "pairs": sorted(pairs, key=lambda pair: pair["delta"]),
+        "mean_delta": sum(deltas) / len(deltas),
+        "min_delta": min(deltas),
+        "max_delta": max(deltas),
+        "dropped_architectures": sorted(set(dropped)),
+    }
+
+
 def effect_in_compute_units(
     results: list[EvalResult], steps: int, *, vs_steps: int | None = None
 ) -> dict:
@@ -3413,6 +3490,42 @@ def write_decision(path: Path, outcome: dict) -> None:
                 f"**{'yes' if decay['best_at_every_length'] else 'NO'}**.",
                 "",
             ]
+
+    # The precision offset is a property of a *pair* of experiments, so neither
+    # arm's own decision file can carry it: it is rendered here only when a caller
+    # supplied the other experiment's ledgers.
+    offset = outcome.get("precision_offset") or {}
+    if offset:
+        lines += ["## Precision offset against another experiment's ledgers", ""]
+        if not offset.get("available"):
+            lines += [f"*Not computed: {offset.get('reason')}*", ""]
+        else:
+            lines += [
+                f"Per-candidate validation loss at {offset['steps']} steps, "
+                f"seed-matched, against `{offset['reference']}`: "
+                f"**{offset['mean_delta']:+.4f} nats** mean "
+                f"({offset['min_delta']:+.4f} to {offset['max_delta']:+.4f}) over "
+                f"{offset['architectures']} architectures. A gap this size is the "
+                "precision's own contribution to every loss above, not an "
+                "architecture effect.",
+                "",
+                "| Architecture | Seeds | This arm | Reference | Delta |",
+                "|---|---|---|---|---|",
+            ]
+            for pair in offset["pairs"]:
+                lines.append(
+                    f"| `{pair['name']}` | {pair['seeds']} | {pair['primary']:.4f} | "
+                    f"{pair['reference']:.4f} | {pair['delta']:+.4f} |"
+                )
+            lines.append("")
+            dropped = offset.get("dropped_architectures") or []
+            if dropped:
+                lines += [
+                    f"{len(dropped)} architecture(s) are not in both experiments and so "
+                    "are not joined: "
+                    + ", ".join(f"`{name}`" for name in dropped),
+                    "",
+                ]
 
     # Spread shrinking says the *size* of the effect falls. It does not say
     # whether the reason for it is still readable at the shorter length, which is

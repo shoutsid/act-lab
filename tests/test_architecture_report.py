@@ -32,6 +32,7 @@ from act.search.architecture_report import (
     paired_contrast_test,
     paired_design_contrast,
     paired_level_split,
+    precision_offset,
     replication_decision,
     _paired_contrasts_at,
     _paired_level_splits_at,
@@ -2015,6 +2016,91 @@ def test_decision_renders_the_horizon_rule_at_its_declared_length(tmp_path):
     anchor_text = anchor_path.read_text()
     assert "**UNAVAILABLE" in anchor_text
     assert "*Not applied: the outcome is at 1200 steps and the rule is declared on 12000" in anchor_text
+
+
+def _precision_rows(names, seeds, base, *, steps=1200, extra=0.0):
+    """One experiment's rows: a base loss per candidate, plus an optional gap."""
+    return [
+        result(name, base + 0.01 * index + extra, seed=seed, steps=steps)
+        for index, name in enumerate(names)
+        for seed in seeds
+    ]
+
+
+def test_precision_offset_recovers_a_planted_per_candidate_gap():
+    """The offset is what says an fp16 arm's losses moved because of autocast.
+
+    Planted as a known per-candidate constant, so the recovered mean is the answer
+    rather than the test's own assertion restated.
+    """
+    names = ("a", "b", "c", "d")
+    reference = _precision_rows(names, (42, 43), base=3.0)
+    primary = _precision_rows(names, (42, 43), base=3.0, extra=0.02)
+    offset = precision_offset(primary, reference, steps=1200, reference_label="record")
+    assert offset["available"] and offset["architectures"] == 4
+    assert offset["mean_delta"] == pytest.approx(0.02)
+    assert offset["min_delta"] == pytest.approx(0.02)
+    assert offset["max_delta"] == pytest.approx(0.02)
+    assert offset["reference"] == "record" and offset["steps"] == 1200
+    assert offset["dropped_architectures"] == []
+    # Architecture is the unit and seed the pairing: the per-candidate rows carry
+    # the shared seeds they were averaged over.
+    assert all(pair["seeds"] == [42, 43] for pair in offset["pairs"])
+
+
+def test_precision_offset_joins_only_what_both_experiments_ran():
+    """An unpaired architecture is named, never joined at zero."""
+    reference = _precision_rows(("a", "b", "c"), (42, 43), base=3.0)
+    primary = _precision_rows(("b", "c", "d"), (42, 43), base=3.1)
+    offset = precision_offset(primary, reference, steps=1200)
+    assert offset["available"] and offset["architectures"] == 2
+    assert offset["dropped_architectures"] == ["a", "d"]
+    assert {pair["name"] for pair in offset["pairs"]} == {"b", "c"}
+
+
+def test_precision_offset_refuses_a_length_one_side_never_trained():
+    reference = _precision_rows(("a", "b"), (42,), base=3.0)
+    primary = _precision_rows(("a", "b"), (42,), base=3.0, steps=12000)
+    offset = precision_offset(primary, reference, steps=1200)
+    assert offset["available"] is False
+    assert "no 1200-step rows to join" in offset["reason"]
+
+
+def test_precision_offset_refuses_when_nothing_shares_a_seed():
+    """Same architectures on different seeds is not a paired comparison."""
+    reference = _precision_rows(("a", "b"), (42, 43), base=3.0)
+    primary = _precision_rows(("a", "b"), (44, 45), base=3.0)
+    offset = precision_offset(primary, reference, steps=1200)
+    assert offset["available"] is False
+    assert "shares a seed" in offset["reason"]
+
+
+def test_decision_renders_the_precision_offset_and_its_unjoined_candidates(tmp_path):
+    """The rendered table names the other experiment and what could not be paired."""
+    reference = _precision_rows(("a", "b", "c"), (42, 43), base=3.0)
+    primary = _precision_rows(("a", "b", "d"), (42, 43), base=3.05)
+    outcome = {
+        # The decision's own availability is a separate flag from the offset's; this
+        # test is about the offset section, so the rest of the decision stays empty.
+        "available": False,
+        "precision_offset": precision_offset(
+            primary, reference, steps=1200, reference_label="record"
+        ),
+    }
+    path = tmp_path / "decision.md"
+    write_decision(path, outcome)
+    text = path.read_text()
+    assert "## Precision offset against another experiment's ledgers" in text
+    assert "against `record`" in text
+    assert "+0.0500 nats" in text
+    assert "| Architecture | Seeds | This arm | Reference | Delta |" in text
+    assert "not joined" in text and "`c`" in text and "`d`" in text
+
+    # Without the key there is no section, because the quantity belongs to a pair
+    # of experiments and neither arm's own decision file can carry it.
+    plain = tmp_path / "plain.md"
+    write_decision(plain, {"available": False})
+    assert "Precision offset" not in plain.read_text()
 
 
 # --- joint structural fit --------------------------------------------------

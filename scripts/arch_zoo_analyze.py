@@ -26,6 +26,7 @@ from act.search.architecture_report import (
     best_available_summary,
     head_pairing_decision,
     horizon_decision,
+    precision_offset,
     replication_decision,
     search_cost,
     with_structure,
@@ -48,6 +49,30 @@ def parse_args() -> argparse.Namespace:
             "and therefore the design's power floor, without the confirmation "
             "run overwriting this experiment's zoo definition and matching "
             "reports."
+        ),
+    )
+    parser.add_argument(
+        "--offset-against",
+        default="",
+        help=(
+            "experiment id whose ledgers are read *beside* this one (never pooled "
+            "with them) to measure this arm's precision offset: the per-candidate, "
+            "seed-matched loss gap at --offset-steps between this experiment and a "
+            "reference measured under a different precision. Two experiments at one "
+            "length with the same batch schedule differ by the precision and nothing "
+            "else, which is what lets an fp16 arm's longer-length rows be read as "
+            "evidence about architecture rather than about autocast."
+        ),
+    )
+    parser.add_argument(
+        "--offset-steps",
+        type=int,
+        default=1200,
+        help=(
+            "training length the precision offset is measured at. Defaults to 1200, "
+            "because that is the length a same-precision anchor is run at: fp16 "
+            "losses are not comparable to fp32 ones, so the comparison needs rows at "
+            "a length both experiments trained, and the anchor is the only one."
         ),
     )
     parser.add_argument(
@@ -238,6 +263,23 @@ def main() -> None:
         outcome["head_pairing_decision"] = head_pairing_decision(outcome)
     if args.horizon_rule:
         outcome["horizon_decision"] = horizon_decision(outcome)
+    if args.offset_against:
+        # Loaded beside the primary rather than pooled into it: the whole point of
+        # the quantity is that the two experiments were measured differently, so
+        # their losses must not be averaged together anywhere.
+        reference_dir = Path(args.artifacts_root) / args.offset_against
+        reference_ledgers = sorted(reference_dir.glob("*_seed*_results.jsonl"))
+        if not reference_ledgers:
+            raise SystemExit(
+                f"--offset-against {args.offset_against}: no result ledgers in "
+                f"{reference_dir} (looked for *_seed*_results.jsonl)"
+            )
+        outcome["precision_offset"] = precision_offset(
+            results,
+            load_results(reference_ledgers),
+            steps=args.offset_steps,
+            reference_label=args.offset_against,
+        )
     candidates = 0
     definition = directory / "zoo_definition.json"
     if definition.exists():
@@ -437,6 +479,30 @@ def main() -> None:
                 print(f"  {rule['note']}")
         else:
             print(f"  not applied: {rule.get('reason')}")
+
+    offset = outcome.get("precision_offset") or {}
+    if offset:
+        print(f"\nPrecision offset against {offset.get('reference')} at "
+              f"{offset.get('steps')} steps (seed-matched, never pooled):")
+        if not offset.get("available"):
+            print(f"  not computed: {offset.get('reason')}")
+        else:
+            print(
+                f"  mean {offset['mean_delta']:+.4f} nats over "
+                f"{offset['architectures']} architectures "
+                f"({offset['min_delta']:+.4f} to {offset['max_delta']:+.4f})"
+            )
+            for pair in offset["pairs"]:
+                print(
+                    f"    {pair['name']:<42} {pair['primary']:.4f} vs "
+                    f"{pair['reference']:.4f}  {pair['delta']:+.4f} "
+                    f"seeds {pair['seeds']}"
+                )
+            if offset.get("dropped_architectures"):
+                print(
+                    f"  not joined (absent from one side): "
+                    f"{offset['dropped_architectures']}"
+                )
 
     if args.write:
         if len(directories) > 1:
