@@ -55,18 +55,31 @@ def result(name: str, validation_loss: float, seed: int = 42) -> EvalResult:
     )
 
 
-def arm(root: Path, name: str, seeds: tuple[int, ...], names: tuple[str, ...]) -> Path:
-    """A minimal arm directory: a definition and one ledger per seed."""
+def arm(
+    root: Path,
+    name: str,
+    seeds: tuple[int, ...],
+    names: tuple[str, ...],
+    *,
+    precision: str | None = None,
+) -> Path:
+    """A minimal arm directory: a definition and one ledger per seed.
+
+    ``precision`` writes ``run_config.mixed_precision`` on every row, which is the
+    field pooling has to check before it merges two arms.
+    """
     directory = root / name
     directory.mkdir(parents=True)
     (directory / "zoo_definition.json").write_text(
         json.dumps({"candidates": [{"name": candidate} for candidate in names]})
     )
     for index, seed in enumerate(seeds):
-        rows = [
-            asdict(result(candidate, 3.5 + 0.05 * position, seed=seed))
-            for position, candidate in enumerate(names)
-        ]
+        rows = []
+        for position, candidate in enumerate(names):
+            row = asdict(result(candidate, 3.5 + 0.05 * position, seed=seed))
+            if precision is not None:
+                row["run_config"] = {"mixed_precision": precision}
+            rows.append(row)
         ledger = directory / f"flat1200_seed{seed}_results.jsonl"
         ledger.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
     return directory
@@ -130,6 +143,54 @@ def test_a_pooled_write_labels_its_cost_file_with_what_it_spans(tmp_path, monkey
     assert (primary / "decision.md").exists()
     assert "Pooled analysis" in cost["pooled_note"]
     assert "Cost by experiment" in capsys.readouterr().out
+
+
+def test_pooling_refuses_ledgers_measured_in_different_precisions(
+    tmp_path, monkeypatch, capsys
+):
+    """The horizon arm is fp16 and the record it reads against is fp32.
+
+    Pooling them would produce an effect size that is part precision offset, which
+    is the comparison the arm's own same-precision anchor exists to make
+    explicitly - and the reason ``RunConfig`` records precision with every row. The
+    refusal has to name the per-directory precision, or it reads as a bug.
+    """
+    arm(tmp_path, "record", (42, 43), ("a", "b", "c"), precision="off")
+    arm(tmp_path, "horizon", (42, 43), ("a", "b", "c"), precision="fp16")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "arch_zoo_analyze.py",
+            "--artifacts-root", str(tmp_path),
+            "--experiment-id", "record",
+            "--also", "horizon",
+            "--write",
+        ],
+    )
+    with pytest.raises(SystemExit) as refusal:
+        main()
+    message = str(refusal.value)
+    assert "different precisions" in message
+    assert "record off" in message and "horizon fp16" in message
+    assert "same-precision anchor" in message
+
+    # The same precision still pools, so the check is about the measurement rather
+    # than about pooling.
+    arm(tmp_path, "confirm", (44, 45), ("a", "b", "c"), precision="off")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "arch_zoo_analyze.py",
+            "--artifacts-root", str(tmp_path),
+            "--experiment-id", "record",
+            "--also", "confirm",
+            "--write",
+        ],
+    )
+    main()
+    assert "Pooling 2 experiment directories" in capsys.readouterr().out
 
 
 def test_a_single_arm_write_carries_no_pooling_fields(tmp_path, monkeypatch):

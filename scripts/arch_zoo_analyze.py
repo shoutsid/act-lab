@@ -138,6 +138,26 @@ def cost_by_experiment(
     return split
 
 
+def ledger_precisions(source: Path) -> set[str]:
+    """The autocast precisions one directory's ledgers recorded.
+
+    ``run_config.mixed_precision`` travels with every row for exactly the reason
+    this function exists: a loss measured under one precision is not comparable to
+    a loss measured under another. A row written before the field existed records
+    nothing, which is "unrecorded" rather than "the same as anything else".
+    """
+    values: set[str] = set()
+    for ledger in sorted(source.glob("*_seed*_results.jsonl")):
+        for line in ledger.read_text().splitlines():
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            values.add(
+                str((row.get("run_config") or {}).get("mixed_precision") or "unrecorded")
+            )
+    return values
+
+
 def main() -> None:
     args = parse_args()
     directory = Path(args.artifacts_root) / args.experiment_id
@@ -161,6 +181,25 @@ def main() -> None:
     if len(directories) > 1:
         print(f"Pooling {len(directories)} experiment directories: "
               + ", ".join(str(source) for source in directories))
+        # Pooling is only meaningful between ledgers measured the same way. The
+        # horizon arm is fp16 and the record it is compared against is fp32, so
+        # pooling them would produce an effect size that is part precision offset -
+        # which is the comparison the arm's own anchor exists to make explicitly,
+        # and the reason RunConfig records precision with every row.
+        precisions = {source.name: ledger_precisions(source) for source in directories}
+        measured = {value for values in precisions.values() for value in values}
+        if len(measured) > 1:
+            per_source = ", ".join(
+                f"{name} {'/'.join(sorted(values)) if values else 'no rows'}"
+                for name, values in sorted(precisions.items())
+            )
+            raise SystemExit(
+                "refusing to pool ledgers measured in different precisions: "
+                f"{per_source}. A loss measured in one precision is not comparable "
+                "to a loss measured in another, and the pooled effect size would be "
+                "part precision offset. Analyse each precision on its own, and "
+                "compare them on the arm's own same-precision anchor."
+            )
 
     # Structural genes live in the definition, not the ledgers, and every
     # structural axis is reported as "not recorded" without this join - which
