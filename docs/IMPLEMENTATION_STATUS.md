@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## The horizon arm carried the phase's headline and none of the arm's robustness checks (2026-09-19)
+
+| | |
+|---|---|
+| **What was found** | The crossed arm's attribution is backed by two checks - a re-run on training loss and a leave-one-out over candidates - and §2c states both and tests pin both. The horizon arm, whose depth-sign result at 12,000 steps is §9's first headline, had **neither**: no test read its ledgers for robustness, and §9's horizon item gave the branch and its two qualifications without saying whether either check had been run. Neither had. |
+| **The split check holds, and matters more at this length** | Re-running the identical factorial at 12,000 steps on `final_train_loss` keeps both main effects at the same signs and significant: depth **+0.0249** (p = 0.0077, against +0.0209 held-out) and width **−0.0667** at the same 1296-assignment floor. A longer schedule is where a divergence in how much each architecture overfits would widen, so this is the length where the check carries the most. |
+| **One check can be carried, the other cannot** | The *spread* survives leave-one-out over all 8 candidates (worst blocked p = **0.0018**, two orders below the 0.05 threshold). The *crossed attribution* cannot be checked that way and **refuses on all eight**: at 2 candidates per cell, removing one leaves 7 rows that cannot fill four cells balanced on both seeds, so the contrast returns unavailable rather than computing over a subset no design supports. A 3-replicate design would support it; v2's 8-distinct-configuration arm did. |
+| **And a check nobody had needed before shows two seeds is arithmetic** | The re-split test is two-sided, so the smallest p it can report is `2/assignments`. Two seeds give 1296 assignments and a floor of 0.001543; one seed has **36** and a floor of **2/36 = 0.0556 - above the 0.05 the rule reads against**. **No single seed can reach this branch at all**, which is why the stale one-seed record the landing left behind had no verdict to state rather than merely declining to state one. What *does* replicate per seed is the effect size (depth +0.0211/+0.0207, width −0.0618/−0.0673). |
+| **Verified** | Four tests against the real ledgers, each proven to bite: removing the balance enforcement catches the refusal; reporting the floor as `1/assignments` catches the two-seed check; reading the split check on the wrong loss catches the sign/size assertion; and a constructed failure where the spread rests on one candidate (the other 7 tied within each seed) drives the leave-one-out p to **1.0** and catches the threshold. Six claims added to the record check, all recomputed from the arm's ledgers. **182 -> 188 claims.** |
+| **Result** | **1152 tests pass · 188/188 claims agree · 9/9 records reproduce.** |
+
 ## The search loop's most expensive step had never been priced, because no arm had ever run it (2026-09-19)
 
 | | |

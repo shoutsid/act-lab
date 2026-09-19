@@ -3218,6 +3218,139 @@ def test_recorded_crossed_attribution_is_not_an_artifact_of_the_holdout_split():
         ), gene
 
 
+# The horizon arm re-trains the crossed factorial's candidate set at 12,000 steps.
+# Its attribution is the phase's headline, so it carries the same split check the
+# crossed arm's does - and the two checks the crossed arm reports as a documented
+# *refusal* have to be refusals here for the same reason, not silently skipped.
+
+
+def test_recorded_horizon_attribution_is_not_an_artifact_of_the_holdout_split():
+    """The horizon result has to survive the split check at the horizon, not just at
+    1,200 steps.
+
+    Architectures could differ in how much they overfit rather than in how well they
+    model, and a longer schedule is exactly where that divergence would widen, so the
+    check matters *more* here than at the crossed arm's length. Re-running the
+    identical factorial on training loss keeps both main effects at the same signs
+    and significant: depth +0.0249 (p = 0.0077, against +0.0209 held-out) and
+    hidden_size -0.0667 at the same 1296-assignment floor.
+    """
+    directory = Path("artifacts/arch-zoo-100m-v3-crossed-horizon10x")
+    ledgers = sorted(directory.glob("*_seed*_results.jsonl"))
+    if not ledgers:
+        pytest.skip("arch-zoo-100m-v3-crossed-horizon10x ledgers not present")
+    results = with_structure(load_results(ledgers), directory / "zoo_definition.json")
+
+    held_out = crossed_contrast(results, 12000, samples=20_000)["main"]
+    as_train = crossed_contrast(
+        [replace(entry, validation_loss=entry.final_train_loss) for entry in results],
+        12000,
+        samples=20_000,
+    )["main"]
+
+    for gene in ("depth", "hidden_size"):
+        assert as_train[gene]["p"] < 0.01, gene
+        # Same sign, comparable size: the effect is about the optimisation, not about
+        # where the validation tokens were cut.
+        assert (as_train[gene]["nats"] > 0) == (held_out[gene]["nats"] > 0), gene
+        assert as_train[gene]["nats"] == pytest.approx(
+            held_out[gene]["nats"], rel=0.35
+        ), gene
+
+
+def test_recorded_horizon_spread_survives_dropping_any_one_architecture():
+    """The horizon arm's headline is about the set, so it must not rest on one
+    architecture at 12,000 steps any more than it does at 1,200.
+
+    The crossed *attribution* cannot be checked this way (see the refusal test
+    below), but the spread it is read against can: dropping any one of the 8
+    candidates leaves 7 measured on both seeds, and the blocked test stays
+    significant at 12,000 - worst p = 0.0018, two orders below the 0.05 this
+    asserts.
+    """
+    directory = Path("artifacts/arch-zoo-100m-v3-crossed-horizon10x")
+    ledgers = sorted(directory.glob("*_seed*_results.jsonl"))
+    if not ledgers:
+        pytest.skip("arch-zoo-100m-v3-crossed-horizon10x ledgers not present")
+    results = with_structure(load_results(ledgers), directory / "zoo_definition.json")
+    names = sorted({r.name for r in results})
+    assert names
+
+    worst_p = 0.0
+    for dropped in names:
+        reduced = [r for r in results if r.name != dropped]
+        # 20k draws resolve to 5e-05, far below the 0.01 this asserts; the default
+        # 200k costs 8x here for no extra decision.
+        blocked = blocked_permutation_test(reduced, 12000, samples=20_000)
+        assert blocked["available"], f"dropping {dropped} left no testable design"
+        assert blocked["architectures"] == len(names) - 1
+        worst_p = max(worst_p, blocked["p"])
+    assert worst_p < 0.01, f"the horizon spread is fragile: worst leave-one-out p = {worst_p}"
+
+
+def test_recorded_horizon_attribution_cannot_be_checked_by_leave_one_out():
+    """The horizon arm inherits the crossed design's own limitation, and the record
+    has to say *refused* rather than nothing.
+
+    With exactly 2 candidates per cell the factorial is balanced, but removing one
+    leaves 7 rows that cannot fill four cells with equal replication on both seeds -
+    so the contrast refuses instead of computing over an unbalanced subset and
+    reporting a number no design supports. A 3-replicate design would support the
+    check; this one cannot, at either length.
+    """
+    directory = Path("artifacts/arch-zoo-100m-v3-crossed-horizon10x")
+    ledgers = sorted(directory.glob("*_seed*_results.jsonl"))
+    if not ledgers:
+        pytest.skip("arch-zoo-100m-v3-crossed-horizon10x ledgers not present")
+    results = with_structure(load_results(ledgers), directory / "zoo_definition.json")
+
+    assert crossed_contrast(results, 12000)["available"]
+
+    for dropped in sorted({r.name for r in results}):
+        reduced = [r for r in results if r.name != dropped]
+        crossed = crossed_contrast(reduced, 12000)
+        assert crossed["available"] is False, dropped
+        # The refusal has to name the cause, or it reads like a missing feature.
+        assert "balanced" in crossed["reason"], crossed["reason"]
+
+
+def test_recorded_horizon_attribution_needs_two_seeds_by_construction():
+    """Two seeds is forced by the arithmetic here, not a matter of caution.
+
+    The crossed re-split test is two-sided, so the smallest p it can report is
+    2/assignments: 1296 assignments on two seeds give a floor of 0.0015, but a single
+    seed has 36 and a floor of **0.0556 - above 0.05**. No single seed can reach
+    significance in this design at all, which is why the arm's stale single-seed
+    record could not have stated a verdict rather than merely declined to, and why
+    the effect sizes it measured per seed (depth +0.0211/+0.0207, hidden_size
+    -0.0618/-0.0673) replicate while its p-values cannot.
+    """
+    directory = Path("artifacts/arch-zoo-100m-v3-crossed-horizon10x")
+    ledgers = sorted(directory.glob("*_seed*_results.jsonl"))
+    if not ledgers:
+        pytest.skip("arch-zoo-100m-v3-crossed-horizon10x ledgers not present")
+    results = with_structure(load_results(ledgers), directory / "zoo_definition.json")
+
+    pooled = crossed_contrast(results, 12000)
+    gene = pooled["factor_a"]
+    assert pooled["main"][gene]["assignments"] == 1296
+    assert pooled["main"][gene]["min_achievable_p"] == pytest.approx(2 / 1296)
+
+    for seed in (42, 43):
+        single = crossed_contrast(results, 12000, seeds=[seed])
+        assert single["seeds"] == [seed]
+        floor = single["main"][gene]["min_achievable_p"]
+        assert single["main"][gene]["assignments"] == 36
+        assert floor == pytest.approx(2 / 36)
+        assert floor > 0.05, "a lone seed would be able to reach significance"
+        # What *does* replicate on one seed is the effect size - to within 5% of the
+        # pooled figure at 12,000 steps, which is the quantity the record reads.
+        for axis in ("depth", "hidden_size"):
+            assert single["main"][axis]["nats"] == pytest.approx(
+                pooled["main"][axis]["nats"], rel=0.10
+            ), (seed, axis)
+
+
 # --- pre-specified joint models --------------------------------------------
 
 

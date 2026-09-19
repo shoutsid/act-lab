@@ -266,6 +266,26 @@ arm's own check on having chosen fp16. The interaction is −0.0090 nats with th
 seed-blocked test at its 2-seed floor of 0.5, so the two seeds can neither confirm nor
 exclude it, as the pre-registration said in advance.
 
+**The branch's robustness was measured at this length, not inherited from 1,200.**
+Re-running the identical factorial on *training* loss keeps both main effects at the
+same signs and significant — depth **+0.0249** (p = 0.0077, against +0.0209 held-out)
+and width **−0.0667** at the same 1296-assignment floor — so the horizon attribution is
+not an artifact of where the validation tokens were cut. Dropping any one of the 8
+candidates leaves the spread significant (worst blocked p = **0.0018**). The *crossed
+attribution* itself cannot be checked that way and refuses rather than reporting a
+subset: at 2 candidates per cell, removing one unbalances the factorial, so it returns
+unavailable for all eight — a 3-replicate design would support the check, as v2's
+8-distinct-configuration arm did.
+
+**And two seeds is arithmetic rather than caution.** The re-split test is two-sided, so
+the smallest p it can report is `2/assignments`: 1296 assignments on both seeds give
+0.001543, but one seed has 36 and a floor of **2/36 = 0.0556** — above the 0.05 the rule
+reads against. **A single seed cannot reach this branch at all**, which is why the
+stale one-seed file the landing left behind had no verdict to state as well as no
+verdict to state it with. (What does replicate per seed is the effect *size*: depth
++0.0211/+0.0207 and width −0.0618/−0.0673.) All six checks are recomputed from these
+ledgers by `scripts/verify_record.py`.
+
 ### The landing had to be verified, because the first one was not
 
 The driver imports the kernel's own `decision.md`/`ranked.json`/`search_cost.json`,

@@ -31,7 +31,7 @@ import argparse
 import json
 import statistics
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -1103,6 +1103,73 @@ def check_horizon_10x(root: Path, audit: Audit) -> None:
         True,
         len({value > 0 for value in depth["interaction_seed_contrasts"]}) == 1,
         "decision.md",
+    )
+
+    # The robustness story the crossed arm states has to hold at 10x the horizon too,
+    # and the split check matters *more* here: a longer schedule is where a difference
+    # in how much each architecture overfits would widen. Both main effects keep their
+    # signs on training loss and stay significant, so the attribution is about the
+    # optimisation rather than about where the validation tokens were cut.
+    as_train = crossed_contrast(
+        [replace(entry, validation_loss=entry.final_train_loss) for entry in results],
+        12000,
+    )["main"]
+    for gene, held_out in (("depth", depth), ("hidden_size", width)):
+        audit.check(
+            f"§2c horizon: {gene} not a holdout-split artifact (training loss)",
+            True,
+            as_train[gene]["p"] < 0.01 and (as_train[gene]["nats"] > 0) == (held_out["nats"] > 0),
+            "decision.md",
+            f"on final train loss {as_train[gene]['nats']:+.4f} nats at p={as_train[gene]['p']:.4g}",
+        )
+
+    # One further check the horizon arm can carry and one it cannot, and the record
+    # states both: the spread is not one candidate's doing, while the crossed
+    # attribution is not checkable this way at 2 candidates per cell. The refusal is a
+    # supported outcome, so it is checked as one rather than left unmentioned.
+    names = sorted({entry.name for entry in results})
+    leave_one_out = [
+        [entry for entry in results if entry.name != dropped] for dropped in names
+    ]
+    worst = max(
+        blocked_permutation_test(reduced, 12000, samples=20_000)["p"]
+        for reduced in leave_one_out
+    )
+    audit.check(
+        "§2c horizon: spread survives dropping any one architecture",
+        True,
+        worst < 0.01,
+        "§8",
+        f"worst leave-one-out p={worst:.4g} over 20k draws, against the 0.05 threshold",
+    )
+    audit.check(
+        "§2c horizon: the crossed attribution refuses leave-one-out on every candidate",
+        len(names),
+        sum(
+            1
+            for reduced in leave_one_out
+            if not crossed_contrast(reduced, 12000)["available"]
+        ),
+        "decision.md",
+        "7 rows cannot fill four cells balanced on both seeds",
+    )
+
+    # Two seeds is arithmetic here rather than caution: the re-split test is
+    # two-sided, so one seed's 36 assignments floor its p at 2/36 = 0.0556 - above the
+    # 0.05 threshold. A single-seed record of this arm could not have stated a verdict.
+    single = crossed_contrast(results, 12000, seeds=[seeds[0]])
+    audit.check(
+        "§2c horizon: one seed's re-split assignments",
+        36,
+        single["main"]["depth"]["assignments"],
+        "HORIZON_RULE",
+    )
+    audit.check(
+        "§2c horizon: one seed's p floor is above the 0.05 threshold",
+        2 / 36,
+        single["main"]["depth"]["min_achievable_p"],
+        "HORIZON_RULE",
+        "so a single seed cannot reach significance in this design at all",
     )
 
     ordering = rank_stability(results)[0]

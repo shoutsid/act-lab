@@ -184,6 +184,18 @@ over-predicts how fast an effect fades; and the **winner changes** across 10×, 
 the ranking holds at Spearman 0.90 while `W384` gives way to `W1536`. A screen
 promotes; it does not choose.
 
+That branch's robustness was checked at the horizon rather than inherited from 1,200.
+Re-run on training loss both effects keep their signs and stay significant (depth
+**+0.0249**, width **−0.0667** at the same floor), so 10× the training does not make the
+attribution a holdout-split artifact; dropping any one of the 8 candidates still leaves
+the spread significant (worst p = **0.0018**); and the crossed attribution is one the
+design **cannot** leave-one-out — at 2 candidates per cell, removing one unbalances the
+factorial, so it refuses on all eight instead of reporting a subset. Two seeds is
+likewise forced rather than cautious: the re-split test is two-sided, so one seed's
+**2/36 = 0.0556** floor sits above the 0.05 it is read against — **no single seed can
+reach this branch at all**, which is why the stale single-seed file the landing left
+behind had no verdict to state rather than merely declining to state one.
+
 Its rule is **declared on the 12,000-step rows and refuses any other length**, so the
 anchor cannot be read as the horizon result. That is not a hypothetical: the arm's
 first attempt trained none of its horizon runs and was reported complete, and the
