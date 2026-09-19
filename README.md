@@ -78,6 +78,34 @@ The test requires interrupted training followed by checkpoint restore to match
 continuous training parameter-for-parameter. This is the baseline contract
 before adding a static MoE or topology mutation to the real training runtime.
 
+## Documentation
+
+The standing documents have distinct jobs, and it is worth knowing which one owns
+which question before reading any of them. The plan is **prescriptive**, the status
+log is **append-only**, the report is **narrative**, and a load-bearing number is
+owned by the artifact behind it rather than by any prose.
+
+| Document | What it is | Authoritative for |
+|---|---|---|
+| `complete_implementation_plan.md` | The plan of record, sections 0-105: research questions, hardware strategy, the model and search-space design, gates, deliverables. Prescriptive, so its section 7 repository layout is the intended one rather than the built one. Sections are cited across the project as "plan section N". | What the project set out to do |
+| `RESEARCH_REPORT.md` | The narrative report of results. Section 3 is the factor map, section 5 the pre-registered studies (each carrying its *Pre-registration* beside its *Outcome*), section 9 the substrate audit, section 10 the synthesis. | What was found, and how it reads |
+| `IMPLEMENTATION_STATUS.md` | The implementation tracker. Append-only and newest-first; each entry records what was found, what was fixed, and what finding it cost. Superseded entries stay as written. | What was done, and when |
+| `T4_RUNBOOK.md` | The operational runbook for Kaggle sessions: pre-flight checks, the session plan, the exact commands. | How to run a session |
+| `artifacts/ARCH_SEARCH_FINDINGS.md` | The architecture-search synthesis behind the section below: matched-budget identifiability, the crossed factorial, the confirmation arms. | The search evidence in detail |
+
+Per-arm material lives beside each arm under `artifacts/*/`:
+
+| File | What it is |
+|---|---|
+| `artifacts/*/NOTES.md` | The arm's runbook: its pre-registration and the command that reproduces its record. The runbook is *executed* by `scripts/check_record_freshness.py`, so one that no longer reproduces its record fails rather than being discovered. |
+| `artifacts/*/decision.md` | The arm's **generated** decision record, written by `scripts/arch_zoo_analyze.py --write`. Regenerate it; do not hand-edit it. |
+| `artifacts/*/analysis.md`, `artifacts/*/PERFORMANCE_NOTES.md`, `artifacts/*/SCREENING_AUDIT.md` | Per-arm and per-benchmark notes. Not machine-checked. |
+
+Where a number in the report or in this README is load-bearing, the ledger under
+the arm owns it: `scripts/verify_record.py` recomputes each claim from the rows and
+fails when the document and the artifacts disagree. The index above is itself
+checked - see `tests/test_doc_index.py`.
+
 ## Architecture search phase
 
 Random topology churn did not reliably improve real-text training, and the

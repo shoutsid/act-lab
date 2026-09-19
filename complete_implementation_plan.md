@@ -1,6 +1,6 @@
 # Adaptive Computational Topology
 ## Complete Research & Implementation Plan
-### Kaggle-Free Compute Edition — September 2026
+### Kaggle T4×2 primary, TPU v5e-8 secondary — September 2026
 
 ---
 
