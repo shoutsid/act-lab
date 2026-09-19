@@ -27,6 +27,7 @@ from arch_zoo_screen import (  # noqa: E402
     SCREEN_SEED_STD_NATS,
     comparison_noise_nats,
     seed_std_for_steps,
+    seed_std_measured_at_steps,
     promoted_names,
     promotion_margins,
     report_promotion,
@@ -407,3 +408,32 @@ def test_an_unmeasured_length_borrows_the_nearest_measured_std_below_it():
     # Shorter than anything measured: fall back to the noisiest measurement, not to a
     # guess about a length nobody has run.
     assert seed_std_for_steps(100) == pytest.approx(SCREEN_SEED_STD_NATS)
+
+
+def test_a_borrowed_length_is_named_beside_the_value_it_came_from():
+    """Borrowing downward protects a short stage; borrowing upward is the other half.
+
+    A confirmation longer than every measured length takes the longest measurement,
+    which *overstates* the noise at that stage. That is the safe direction - a larger
+    std means a larger promotion margin, so fewer candidates are promoted on noise -
+    but it is not free and it is not visible if the record prints the value alone: a
+    12,000-step cut would show 0.0148 as though it had been measured at 12,000.
+
+    The horizon arm measured what that costs. Its 12,000-step rows give a
+    per-architecture seed std of **0.0056** against the 0.0148 borrowed from 1,200, so
+    the borrowed figure is a **2.6x over-estimate** there and the promotion margin is
+    2.6x wider than the data requires - costing seeds, not buying safety. The value is
+    deliberately *not* substituted, because the two numbers are not the same
+    measurement: different candidate sets (crossed vs the matched v2 set), different
+    precision (fp16 vs fp32), and two seeds against three. The arm's own 1,200-step
+    anchor reads 0.0118 where this table reads 0.0148 at the same length, which is
+    how far apart the two designs' noise levels are.
+    """
+    # The horizon this phase measured, and the length its std is actually borrowed from.
+    assert seed_std_measured_at_steps(12000) == 1200
+    assert seed_std_for_steps(12000) == pytest.approx(SCREEN_SEED_STD_BY_STEPS[1200])
+    assert seed_std_for_steps(12000) / 0.0056 == pytest.approx(2.64, abs=0.01)
+    # A length in the table reports itself, so the annotation appears only where it is
+    # true and the table does not carry a caveat on every row.
+    for steps in SCREEN_SEED_STD_BY_STEPS:
+        assert seed_std_measured_at_steps(steps) == steps

@@ -633,6 +633,57 @@ def test_the_decision_carries_each_promotion_verdict_and_its_derivation(tmp_path
     assert "`c` (0.0060)" in text
 
 
+def test_a_borrowed_seed_std_names_the_length_it_was_measured_at(tmp_path):
+    """The std column states where its number came from when it is not this stage's.
+
+    The seed std is measured at a small set of lengths, and a stage at any other length
+    borrows the nearest measured one at or below it. Printing the value alone asserts a
+    provenance the record does not have: a 12,000-step confirmation would read as a
+    12,000-step measurement, when the figure comes from 1,200 and overstates that
+    stage's noise by 2.6x (the horizon arm measured 0.0056 there). Safe for the promote
+    decision, misleading as a citation.
+
+    A stage measured at its own length is left unannotated, so the note appears only
+    where it is true rather than on every row.
+    """
+    results = [
+        result(name, loss, seed=seed)
+        for name, loss in (("a", 3.50), ("b", 3.56))
+        for seed in (42, 43)
+    ]
+    outcome = best_available_summary(results, [42, 43])
+
+    def row(label: str, steps: int, std: float, measured_at: int) -> dict:
+        return {
+            "label": label,
+            "steps": steps,
+            "seeds": 2,
+            "std": std,
+            "std_measured_at_steps": measured_at,
+            "threshold": std,
+            "threshold_overridden": False,
+            "cut_margin": 0.06,
+            "resolvable": True,
+            "cut_pair": [{"name": "a", "loss": 3.50}, {"name": "b", "loss": 3.56}],
+            "borderline": [],
+        }
+
+    outcome["promotions"] = [
+        row("Confirm", 12000, 0.0148, 1200),
+        row("Screen", 400, 0.0286, 400),
+    ]
+    path = tmp_path / "decision.md"
+    write_decision(path, outcome)
+    text = path.read_text()
+
+    assert "0.0148 (measured at 1200)" in text
+    assert "0.0286 (measured at 400)" not in text, (
+        "a stage measured at its own length needs no provenance note"
+    )
+    # The caption must not claim every value was measured at the stage's own length.
+    assert "per-architecture seed std at that length" not in text
+
+
 def test_a_decision_without_promotion_reports_says_nothing_about_them(tmp_path):
     results = [
         result(name, loss, seed=seed)

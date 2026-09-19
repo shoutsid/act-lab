@@ -1,5 +1,15 @@
 # ACT Implementation Status
 
+## The promotion threshold silently borrows a shorter stage's noise, and the record claimed it was measured there (2026-09-19)
+
+| | |
+|---|---|
+| **What was found** | Now that the horizon is measured, the search program's confirmation length is known - and the promotion threshold at that length needed a seed std that the table of measured stds does not contain. `seed_std_for_steps` takes the nearest measured length *at or below* the stage, which is the conservative direction for a short screen and is the **opposite** of what a long confirmation gets: at 12,000 steps it reuses the 1,200-step 0.0148, which is a **2.64x over-estimate** against the 0.0056 this arm's own 12,000-step rows measured. Safe, and costly: the threshold is the std times `sqrt(2 / seeds)`, so the borrow buys extra seeds rather than extra safety, and nothing in the output said so. |
+| **The record asserted a provenance it did not have** | Worse than the number: the decision file's caption read "the measured per-architecture seed std **at that length**", and the table printed the std with no indication of which length it came from. A 12,000-step cut therefore read as a 12,000-step measurement. The std is now rendered with the length it was measured at whenever that is not the stage's own (`0.0148 (measured at 1200)`), and a stage measured at its own length stays unannotated so the note appears only where it is true. The new key is `std_measured_at_steps`, read from `seed_std_measured_at_steps` rather than inferred, so the two cannot drift. |
+| **The measured figure is deliberately not substituted** | 0.0056 is not the same measurement as 0.0148 and swapping it in would mix designs inside a table whose whole justification is that its numbers were measured the same way: a different candidate set (the crossed factorial against the matched v2 set), a different precision (fp16 against fp32), and two seeds against three. The arm's own 1,200-step anchor reads **0.0118** where that table reads 0.0148 at the same length - which is the direct measure of how unlike the two designs' noise levels are, and the reason the substitution was refused. |
+| **Verified** | Two claims added to the record check, so the factor is recomputed from the arm's own rows rather than from a printed decimal (**142 -> 175 claims** across the three stretches today): a 12,000-step threshold borrows the 1,200-step std, and that borrow over-estimates the measured noise by 2.64x. Three mutants caught - a table length no longer reporting itself, the annotation removed from the renderer, and the caption restored to its false claim. No committed record renders this table, so the renderer change produced no churn in the nine committed `decision.md` files. |
+| **Result** | **1147 tests pass · 175/175 claims agree · 9/9 records reproduce under `--strict-rank`.** |
+
 ## The horizon arm landed, and the file left as its record under-read it by half (2026-09-19)
 
 | | |

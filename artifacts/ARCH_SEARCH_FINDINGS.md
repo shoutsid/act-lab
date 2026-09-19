@@ -939,6 +939,22 @@ recommendation does not reverse. Full record in §2c.
    The obligation that does *not* relax: quote every effect size with its training
    length, because that is the one quantity the screen gets wrong by 3.7×.
 
+   A confirmation longer than 1,200 steps carries one measured caveat, and it is in
+   the safe direction. The promotion threshold needs a seed std *at the confirmation
+   length*, the table of measured stds ends at 1,200, and `seed_std_for_steps` takes
+   the nearest measured length at or below the stage. For the 12,000-step horizon this
+   phase measured, that borrow is a **2.6× over-estimate**: the arm's 12,000-step rows
+   give a per-architecture std of **0.0056 nats** against the borrowed 0.0148, so the
+   margin demanded is 2.6× wider than the data requires. It costs seeds, not
+   correctness — a wider margin promotes fewer candidates on noise — and the measured
+   figure is deliberately **not** substituted, because it is not the same measurement:
+   different candidate set (the crossed factorial against the matched v2 set),
+   different precision (fp16 against fp32), and two seeds against three. The arm's own
+   1,200-step anchor reads 0.0118 where that table reads 0.0148 at the same length,
+   which is how far apart the two designs' noise levels actually are. The std is now
+   printed with the length it was measured at whenever it is borrowed, so the
+   provenance travels with the number instead of being inferred from it.
+
 Running or done, and the reason each was worth the hours:
 
 - **The depth×width interaction** — **done**, 24 runs, 3.26 GPU-hours, as

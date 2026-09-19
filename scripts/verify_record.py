@@ -58,6 +58,8 @@ from act.search.architecture_report import (  # noqa: E402
 from arch_zoo_screen import (  # noqa: E402
     SCREEN_SEED_STD_BY_STEPS,
     comparison_noise_nats,
+    seed_std_for_steps,
+    seed_std_measured_at_steps,
 )
 from set_comparison_power import candidate_population, power_at  # noqa: E402
 from space_typicality import budget_matching_draw, set_total_params  # noqa: E402
@@ -1138,6 +1140,28 @@ def check_horizon_10x(root: Path, audit: Audit) -> None:
         abs(offset["mean_delta"]) < abs(depth["nats"]),
         "decision.md",
         "otherwise fp16 would be measuring its own arithmetic",
+    )
+
+    # The search program confirms finalists at the horizon it trains for, and this arm
+    # is where that horizon's noise was measured - so the promotion threshold a 12,000-
+    # step confirmation would use is checkable here. It borrows the 1,200-step std
+    # (the table of measured stds ends there), which over-estimates this arm's measured
+    # noise at that length by a factor the record quotes. The factor is computed from
+    # the arm's own rows rather than from a printed decimal, so the claim cannot drift
+    # away from the measurement it is about.
+    audit.check(
+        "§9 horizon: a 12,000-step threshold borrows the 1,200-step std",
+        1200,
+        seed_std_measured_at_steps(12000),
+        "§9",
+        "the measured-std table ends at 1,200 steps",
+    )
+    audit.check(
+        "§9 horizon: that borrow over-estimates the measured noise by",
+        2.64,
+        seed_std_for_steps(12000) / by_length["12000"]["within_seed_std"],
+        "§9",
+        "safe for a promotion decision, costly in seeds",
     )
 
     # A phase of its own: the arm's NOTES opens a horizon phase with its own cap, on

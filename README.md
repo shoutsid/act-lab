@@ -245,7 +245,11 @@ any others inside the noise. The threshold is derived, not pinned: it is the
 standard error of the difference between two screen means, `std * sqrt(2 / seeds)`,
 from the measured seed stds of the matched horizon set (0.0286 nats at 400 steps,
 0.0165 at 800, 0.0148 at 1200) — so a two-seed 400-step screen needs a 0.0286-nat
-margin, and `--screen-noise-nats` overrides it. `--plan screen` is that loop as a runnable plan — screen every candidate
+margin, and `--screen-noise-nats` overrides it. A stage at any other length borrows
+the nearest measured length at or below it, and the record names which one it came
+from: at the 12,000-step horizon this phase measured, that borrow is a 2.6×
+over-estimate (0.0148 against the measured 0.0056), which is safe for the promotion
+decision and would be misleading as a citation. `--plan screen` is that loop as a runnable plan — screen every candidate
 at `--stage1-steps`, confirm the survivors at `--stage3-steps` — and
 `--promote-ties` acts on the print: when the cut sits inside the noise it advances
 the whole borderline set, including the candidate the cut landed on, instead of

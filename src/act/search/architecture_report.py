@@ -4138,9 +4138,12 @@ def write_decision(path: Path, outcome: dict) -> None:
             "A screen ranks candidates but does not adjudicate a near tie, and the "
             "candidate a cut drops is never trained again. Each cut is tested against "
             "the standard error of the difference between two candidates' screen "
-            "means - the measured per-architecture seed std at that length times "
-            "`sqrt(2 / seeds)` - so a margin inside that threshold means the two runs "
-            "did not separate, whatever the ranking says.",
+            "means - the per-architecture seed std times `sqrt(2 / seeds)` - so a margin "
+            "inside that threshold means the two runs did not separate, whatever the "
+            "ranking says. That std is *measured* at a small set of lengths; a stage at "
+            "any other length uses the nearest measured one at or below it and names "
+            "that length in the table, because the borrowed value is an over-estimate "
+            "for a longer stage and a reader is entitled to know which was measured.",
             "",
             "| stage | steps | seeds | seed std | threshold | cut margin | verdict |",
             "|---|---|---|---|---|---|---|",
@@ -4149,9 +4152,18 @@ def write_decision(path: Path, outcome: dict) -> None:
             threshold = f"{row['threshold']:.4f}"
             if row.get("threshold_overridden"):
                 threshold += " (overridden)"
+            # Name the length the std was measured at whenever it is not this stage's
+            # own. A 12,000-step cut otherwise reads as a measurement taken at 12,000,
+            # when the value comes from 1,200 and is a 2.6x over-estimate at the horizon
+            # this phase has measured - safe for the promotion decision, misleading as
+            # a provenance.
+            std = f"{row['std']:.4f}"
+            measured_at = row.get("std_measured_at_steps")
+            if measured_at is not None and measured_at != row["steps"]:
+                std += f" (measured at {measured_at})"
             lines.append(
                 f"| {row['label']} | {row['steps']} | {row['seeds']} | "
-                f"{row['std']:.4f} | {threshold} | {row['cut_margin']:.4f} | "
+                f"{std} | {threshold} | {row['cut_margin']:.4f} | "
                 + ("decided by the data" if row["resolvable"] else "**not resolved**")
                 + " |"
             )

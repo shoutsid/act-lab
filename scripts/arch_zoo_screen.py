@@ -80,17 +80,40 @@ SCREEN_SEED_STD_BY_STEPS: dict[int, float] = {400: 0.0286, 800: 0.0165, 1200: 0.
 SCREEN_SEED_STD_NATS = SCREEN_SEED_STD_BY_STEPS[400]
 
 
+def seed_std_measured_at_steps(steps: int) -> int:
+    """The training length whose measurement :func:`seed_std_for_steps` returns.
+
+    Read this beside the std rather than inferring it from the value, because for any
+    stage longer than the longest measured length the two differ: a 12,000-step
+    confirmation reuses the 1,200-step number, so a record printing only the value
+    invites the reader to take a 1,200-step measurement for one taken at 12,000.
+
+    That is not hypothetical, and the size is known. The horizon arm's 12,000-step
+    rows measured a per-architecture seed std of **0.0056**, so the borrowed 0.0148 is
+    a **2.6x over-estimate** at that length. Borrowing is the safe direction - a larger
+    std means a larger promotion margin, so fewer candidates are promoted on noise -
+    but it is not free: the threshold is the std times ``sqrt(2 / seeds)``, so an
+    over-estimate buys extra seeds rather than extra safety.
+    """
+    if steps in SCREEN_SEED_STD_BY_STEPS:
+        return steps
+    below = [known for known in SCREEN_SEED_STD_BY_STEPS if known <= steps]
+    return max(below) if below else min(SCREEN_SEED_STD_BY_STEPS)
+
+
 def seed_std_for_steps(steps: int) -> float:
     """The measured seed std at a screening length, or the nearest measured one.
 
     An unmeasured length takes the nearest measured length *at or below* it, which is
     the conservative direction: the std falls with training, so borrowing a longer
     stage's smaller std would understate the noise at a shorter stage.
+
+    A long confirmation is not the mirror of a short screen, and the asymmetry is the
+    point: borrowing the longest measurement for a *longer* stage overstates the noise,
+    which is safe but conservative in a way the record should name rather than hide.
+    Call :func:`seed_std_measured_at_steps` to see which length a value came from.
     """
-    if steps in SCREEN_SEED_STD_BY_STEPS:
-        return SCREEN_SEED_STD_BY_STEPS[steps]
-    below = [known for known in SCREEN_SEED_STD_BY_STEPS if known <= steps]
-    return SCREEN_SEED_STD_BY_STEPS[max(below)] if below else SCREEN_SEED_STD_NATS
+    return SCREEN_SEED_STD_BY_STEPS[seed_std_measured_at_steps(steps)]
 
 
 def comparison_noise_nats(
@@ -1213,6 +1236,10 @@ def main() -> None:
                     "steps": steps,
                     "seeds": seeds,
                     "std": seed_std_for_steps(steps),
+                    # Which length that std was measured at. Equal to `steps` for every
+                    # length in the table; for a longer confirmation it names the
+                    # shorter stage the value was borrowed from.
+                    "std_measured_at_steps": seed_std_measured_at_steps(steps),
                     "threshold": noise,
                     "threshold_overridden": args.screen_noise_nats is not None,
                     "cut_margin": margins["cut_margin"],
