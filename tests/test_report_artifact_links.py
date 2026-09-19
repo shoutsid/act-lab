@@ -22,8 +22,8 @@ from act.evolution.figures_data import summaries_dir
 
 STUDY_ID = re.compile(r"study_[0-9a-f]{16}")
 ROOT = summaries_dir().parents[1]  # .../<repo>/artifacts/study-summaries
-REPORT = ROOT / "RESEARCH_REPORT.md"
-STATUS = ROOT / "IMPLEMENTATION_STATUS.md"
+REPORT = ROOT / "docs" / "RESEARCH_REPORT.md"
+STATUS = ROOT / "docs" / "IMPLEMENTATION_STATUS.md"
 
 
 def _records() -> dict[str, str]:

@@ -1,5 +1,15 @@
 # ACT Implementation Status
 
+## The standing documents moved to docs/, and the layout is now checked (2026-09-19)
+
+| | |
+|---|---|
+| **Why** | The repository root carried five documents of 705, 1,236, 2,700, 3,264 and 6,756 lines. A reader or an agent arriving at the root saw five walls and no statement of which was which, and nothing put them anywhere else. `docs/` now holds the four standing documents - the plan, the report, the status log and the runbook - while `artifacts/` keeps the per-arm and per-benchmark evidence beside the data it describes, which is where that belongs. `artifacts/ARCH_SEARCH_FINDINGS.md` deliberately stayed: it is the search phase's own synthesis, not a standing document. |
+| **How large they actually are, and whether that is a problem** | Measured from the history rather than guessed. `RESEARCH_REPORT.md`: 557 lines on 09-13, 1,967 on 09-14, 5,349 on 09-15, 6,755 on 09-16, 6,756 on 09-19. `IMPLEMENTATION_STATUS.md`: 210 on 09-12, 501, 1,007, 2,071, 2,578, 2,700 on 09-19. So the size is *accumulated research output*, not unbounded accretion over time: the report grew 3,382 lines in one day of active study and **one line in the three days since**. Both files grow when work lands and stop when it does not, which is the right behaviour for a results narrative and an append-only log. The forward risk is rate, not age - another 09-15 adds 3,400 lines to a file already at 6,756. |
+| **What had to change** | Only four places in the repository construct a path to these documents: `tests/test_doc_index.py`, `tests/test_report_artifact_links.py`, `tests/test_fused_vs_frozen_observation.py`, and `scripts/kaggle_queue.py`'s `CODE_PATHS` - the set bundled into the Kaggle code dataset, which now lists `docs` instead of the three filenames. Everything else that mentions them is prose or a docstring. The runbook flow is unaffected; `CODE_PATHS` is read at *publish* time, not on import, so the horizon arm currently running is untouched. |
+| **The convention this settles** | Documents are cited by **name**, not by path - roughly 45 files say "pre-registered in `RESEARCH_REPORT.md` section 5.30", and the plan is cited only as "plan section N". Those references stay readable and unedited, including in this append-only log; the README's Documentation table is what maps a name to its location, and it now says so explicitly. Anything that *reads* a file got a real path, which is the distinction that matters. |
+| **Pinned** | `tests/test_doc_index.py` enforces the layout instead of performing it once: no markdown may sit at the repository root except `README.md` and `AGENTS.md`, and every `docs/*.md` must be named in the README index. The guard was proven to fire by dropping a stray document at the root, which it named. |
+
 ## The mixer benchmark's conclusions hold; three of its stated precisions did not (2026-09-19)
 
 | | |

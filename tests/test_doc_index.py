@@ -23,15 +23,16 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+DOCS = ROOT / "docs"
 README = ROOT / "README.md"
-REPORT = ROOT / "RESEARCH_REPORT.md"
-PLAN = ROOT / "complete_implementation_plan.md"
+REPORT = DOCS / "RESEARCH_REPORT.md"
+PLAN = DOCS / "complete_implementation_plan.md"
+
+# Only the front door and agent guidance belong at the repository root; every document
+# a reader should find lives under ``docs/``.
+ROOT_STRAY_ALLOWED = {"README.md", "AGENTS.md"}
 
 INDEX_HEADING = "## Documentation"
-
-# Agent tooling rather than project documentation, and gitignored, so it is absent
-# from a fresh clone. Excluded by name so the check means the same thing either way.
-NOT_PROJECT_DOCS = {"AGENTS.md"}
 
 # Directories that hold vendored or cache markdown, never project documentation.
 SKIPPED_DIRS = {".git", ".venv", ".pytest_cache"}
@@ -79,21 +80,36 @@ def _project_docs() -> list[Path]:
     )
 
 
+def test_standing_documents_live_under_docs() -> None:
+    """The layout is the point - a document drifting back to the root is the scatter.
+
+    The root carried five documents of 700-6,700 lines each. They live under ``docs/``
+    now, and this is what keeps that true rather than a one-off tidy-up.
+    """
+    stray = sorted(
+        path.name
+        for path in ROOT.glob("*.md")
+        if path.name not in ROOT_STRAY_ALLOWED
+    )
+
+    assert stray == [], (
+        f"standing documents belong under docs/, not at the repository root: {stray}"
+    )
+
+
 def test_every_standing_document_is_indexed() -> None:
-    """A new root-level document cannot appear without being placed on the map."""
+    """A new document under ``docs/`` cannot appear without being placed on the map."""
 
     section = _index_section()
     unindexed = [
         path.name
-        for path in sorted(ROOT.glob("*.md"))
-        if path.name not in NOT_PROJECT_DOCS
-        and path.name != README.name
-        and f"`{path.name}`" not in section
+        for path in sorted(DOCS.glob("*.md"))
+        if f"`docs/{path.name}`" not in section
     ]
 
     assert unindexed == [], (
-        "standing documents at the repository root are not named in the README's "
-        f"Documentation section: {unindexed}"
+        "documents under docs/ are not named in the README's Documentation section: "
+        f"{unindexed}"
     )
 
 
@@ -160,10 +176,10 @@ def test_the_index_covers_the_documents_it_should() -> None:
     named = {name for name in BACKTICKED_MD.findall(section) if "*" not in name}
 
     for expected in (
-        "complete_implementation_plan.md",
-        "RESEARCH_REPORT.md",
-        "IMPLEMENTATION_STATUS.md",
-        "T4_RUNBOOK.md",
+        "docs/complete_implementation_plan.md",
+        "docs/RESEARCH_REPORT.md",
+        "docs/IMPLEMENTATION_STATUS.md",
+        "docs/T4_RUNBOOK.md",
     ):
         assert expected in named, f"{expected} is not in the Documentation index"
 

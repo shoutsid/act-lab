@@ -80,17 +80,22 @@ before adding a static MoE or topology mutation to the real training runtime.
 
 ## Documentation
 
-The standing documents have distinct jobs, and it is worth knowing which one owns
-which question before reading any of them. The plan is **prescriptive**, the status
-log is **append-only**, the report is **narrative**, and a load-bearing number is
-owned by the artifact behind it rather than by any prose.
+The standing documents live under `docs/` and have distinct jobs, and it is worth
+knowing which one owns which question before reading any of them. The plan is
+**prescriptive**, the status log is **append-only**, the report is **narrative**, and a
+load-bearing number is owned by the artifact behind it rather than by any prose.
+
+They are cited across the project by *name* rather than by path - a script docstring
+says "pre-registered in `RESEARCH_REPORT.md` section 5.30", and the plan is cited only
+as "plan section N" - so a reference tells you which document, and this table tells you
+where it is.
 
 | Document | What it is | Authoritative for |
 |---|---|---|
-| `complete_implementation_plan.md` | The plan of record, sections 0-105: research questions, hardware strategy, the model and search-space design, gates, deliverables. Prescriptive, so its section 7 repository layout is the intended one rather than the built one. Sections are cited across the project as "plan section N". | What the project set out to do |
-| `RESEARCH_REPORT.md` | The narrative report of results. Section 3 is the factor map, section 5 the pre-registered studies (each carrying its *Pre-registration* beside its *Outcome*), section 9 the substrate audit, section 10 the synthesis. | What was found, and how it reads |
-| `IMPLEMENTATION_STATUS.md` | The implementation tracker. Append-only and newest-first; each entry records what was found, what was fixed, and what finding it cost. Superseded entries stay as written. | What was done, and when |
-| `T4_RUNBOOK.md` | The operational runbook for Kaggle sessions: pre-flight checks, the session plan, the exact commands. | How to run a session |
+| `docs/complete_implementation_plan.md` | The plan of record, sections 0-105: research questions, hardware strategy, the model and search-space design, gates, deliverables. Prescriptive, so its section 7 repository layout is the intended one rather than the built one. Sections are cited across the project as "plan section N". | What the project set out to do |
+| `docs/RESEARCH_REPORT.md` | The narrative report of results. Section 3 is the factor map, section 5 the pre-registered studies (each carrying its *Pre-registration* beside its *Outcome*), section 9 the substrate audit, section 10 the synthesis. | What was found, and how it reads |
+| `docs/IMPLEMENTATION_STATUS.md` | The implementation tracker. Append-only and newest-first; each entry records what was found, what was fixed, and what finding it cost. Superseded entries stay as written. | What was done, and when |
+| `docs/T4_RUNBOOK.md` | The operational runbook for Kaggle sessions: pre-flight checks, the session plan, the exact commands. | How to run a session |
 | `artifacts/ARCH_SEARCH_FINDINGS.md` | The architecture-search synthesis behind the section below: matched-budget identifiability, the crossed factorial, the confirmation arms. | The search evidence in detail |
 
 Per-arm material lives beside each arm under `artifacts/*/`:

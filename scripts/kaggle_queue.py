@@ -150,9 +150,7 @@ MAIN_GUARD = 'if __name__ == "__main__":\n    raise SystemExit(main())\n'
 CODE_PATHS = (
     "pyproject.toml",
     "README.md",
-    "T4_RUNBOOK.md",
-    "IMPLEMENTATION_STATUS.md",
-    "RESEARCH_REPORT.md",
+    "docs",
     "src",
     "scripts",
     "tests",

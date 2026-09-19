@@ -98,7 +98,7 @@ def test_section_5_21_penalty_is_arm_generic() -> None:
 
 
 def test_section_5_21_is_still_labelled_unregistered() -> None:
-    report = (REPO_ROOT / "RESEARCH_REPORT.md").read_text()
+    report = (REPO_ROOT / "docs" / "RESEARCH_REPORT.md").read_text()
     match = re.search(r"^### 5\.21 (.*)$", report, re.M)
     assert match, "section 5.21 is missing from the report"
     assert "unregistered" in match.group(1).lower(), (
