@@ -419,7 +419,11 @@ class _MoEFeedForward(nn.Module):
     rows selected and gate-weighted - because at the development model's size
     eager per-expert dispatch is launch-bound rather than FLOP-bound. Measured on
     the development GPU (GTX 1070), ``DEV_V0_CONFIG`` at batch 8 x context 512:
-    51.8 ms/step eager vs 42.5 ms/step dense (79k -> 96k tokens/s, +18%). The
+    51.8 ms/step eager vs 42.5 ms/step dense (79k -> 96k tokens/s, +18%). Those two
+    rates are about 4x the dev shape's measured end-to-end throughput, so they are
+    not what a GPU-hour budget should be sized from - see
+    ``artifacts/arch-zoo/PERFORMANCE_NOTES.md`` for the measured figures and for the
+    three docstring rates it records as mutually inconsistent. The
     dense form does up to ``num_experts`` times the arithmetic in three large
     kernels; ``eager_forward`` keeps the dispatch formulation and is pinned
     equivalent to it by test.

@@ -18,6 +18,7 @@ owned by ``scripts/verify_record.py`` and the per-study pinning tests.
 
 from __future__ import annotations
 
+import fnmatch
 import re
 from pathlib import Path
 
@@ -36,6 +37,18 @@ NOT_PROJECT_DOCS = {"AGENTS.md"}
 SKIPPED_DIRS = {".git", ".venv", ".pytest_cache"}
 
 BACKTICKED_MD = re.compile(r"`([^`\n]+\.md)`")
+
+# The document kinds that live beside an arm or a benchmark. A new one of these
+# appearing under artifacts/ has to be placed on the map, because these are the files
+# a reader lands on by browsing rather than by being told where to look.
+PER_ARM_DOCS = {
+    "NOTES.md",
+    "decision.md",
+    "analysis.md",
+    "FINDINGS.md",
+    "PERFORMANCE_NOTES.md",
+    "SCREENING_AUDIT.md",
+}
 # `RESEARCH_REPORT.md` §5.47 / RESEARCH_REPORT.md §5.47
 REPORT_REF = re.compile(r"RESEARCH_REPORT\.md`?\s*§\s*([0-9]+(?:\.[0-9]+)*)")
 # plan §100 / plan section 100 / plan sections 39 and 104 (the trailing number is
@@ -85,19 +98,58 @@ def test_every_standing_document_is_indexed() -> None:
 
 
 def test_every_document_the_index_names_exists() -> None:
-    """The index cannot go stale by pointing at a document that was renamed away."""
+    """The index cannot go stale by pointing at a document that was renamed away.
 
-    missing = [
-        name
-        for name in sorted(set(BACKTICKED_MD.findall(_index_section())))
+    A name carrying a ``/`` is a path and must resolve from the repository root. A bare
+    filename is allowed to appear in prose without a directory - ``analysis.md`` names a
+    kind of document as much as a file - so it only has to exist somewhere in the
+    project rather than at the root. Either way the index cannot name a document that
+    is nowhere.
+    """
+    present = {path.name for path in _project_docs()}
+    missing = []
+    for name in sorted(set(BACKTICKED_MD.findall(_index_section()))):
         # `artifacts/*/NOTES.md` and friends are deliberately patterns, describing a
         # class of per-arm file rather than one path.
-        if "*" not in name and not (ROOT / name).exists()
-    ]
+        if "*" in name:
+            continue
+        if (ROOT / name).exists():
+            continue
+        if "/" not in name and name in present:
+            continue
+        missing.append(name)
 
     assert missing == [], (
         "the README's Documentation section names documents that do not exist: "
         f"{missing}"
+    )
+
+
+def test_every_per_arm_document_is_covered_by_a_pattern() -> None:
+    """The per-arm notes are indexed by pattern, so the patterns must cover them.
+
+    There is one set of these per arm, so the index names them as a class rather than
+    one by one - this is the check that the class is actually covered, including a
+    document added beside a new arm. Only the known kinds are required, so scratch
+    markdown of another name does not fail the suite.
+    """
+    section = _index_section()
+    tokens = BACKTICKED_MD.findall(section)
+    literal = {token for token in tokens if "*" not in token}
+    patterns = [token for token in tokens if "*" in token]
+
+    uncovered = []
+    for path in _project_docs():
+        rel = path.relative_to(ROOT).as_posix()
+        if not rel.startswith("artifacts/") or path.name not in PER_ARM_DOCS:
+            continue
+        if rel in literal or any(fnmatch.fnmatch(rel, pattern) for pattern in patterns):
+            continue
+        uncovered.append(rel)
+
+    assert uncovered == [], (
+        "these documents beside an arm are not covered by any pattern in the README's "
+        f"Documentation section: {sorted(uncovered)}"
     )
 
 

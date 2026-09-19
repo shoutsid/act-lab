@@ -1,5 +1,24 @@
 # Architecture Zoo — Screening Results
 
+> **Status: superseded.** The screens below and the decision they support are not
+> supported by the evidence in this directory. `SCREENING_AUDIT.md` records the five
+> defects, each independently sufficient to invalidate the comparison, and the reason
+> the synthetic table ranks initialization luck rather than architecture: its 11
+> candidates were trained on **uniform random tokens** at context 512, where every
+> recorded loss sits between 0.43% and 0.85% above the entropy floor
+> `ln(8192) = 9.0109` (the audit rounds that to "0.4% to 0.8%"). The brief asked for
+> context 1024/2048.
+>
+> The numbers below reproduce `zoo_results.json` exactly - all 11 losses, the 0.0376
+> range, the population std dev of 0.0102 and the floor. It is the *reading* of them
+> that does not survive. The two real-data losses (3.5865, 3.6657) have no artifact
+> behind them at all: that sweep wrote results only on completion and was
+> interrupted.
+>
+> Kept for historical reproducibility. The superseding experiment is
+> `arch-zoo-100m-v1`, and the audit's own summary is that the v0 results should not be
+> cited as a negative result about architecture.
+
 ## Experiment Setup
 
 - **Target**: 100M parameters (±30% tolerance)

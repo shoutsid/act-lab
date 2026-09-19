@@ -1,5 +1,15 @@
 # ACT Implementation Status
 
+## A tracked screening analysis recommended stopping while its own audit refuted it (2026-09-19)
+
+| | |
+|---|---|
+| **What was found** | `artifacts/arch-zoo/analysis.md` is tracked and reads as a live negative result: it reports a screening table, concludes "Should We Proceed with Evolutionary Search? **NO - not yet**", and recommends 10-15 GPU-hours of follow-up on the strength of it. Its sibling `SCREENING_AUDIT.md` - also tracked, and the file `ARCH_SEARCH_FINDINGS.md` sends a reader to - records five defects, each independently sufficient to invalidate the comparison, and states that "the v0 results should not be cited as a negative result about architecture". `analysis.md` itself carried no warning and nothing linked to it, so a reader arriving there first saw a decision with no hint it had been overturned. |
+| **The numbers were right; the conclusion was not** | Every figure in its synthetic table is faithful to `zoo_results.json`: all 11 losses match, the range is exactly 0.0376, and the std dev of 0.0102 is the *population* std dev (sample is 0.0107 - a convention, not an error). `SCREENING_AUDIT`'s own claims check out too: `D8_H768_E8_A2` (44.1M active) and `D10_H768_E6_A2` (53.5M active) are both recorded at exactly `201451008.0` flops/token, and `artifacts/arch-zoo-real/` does hold a `zoo_definition.json` and no results file. So this was not a stale-numbers problem. |
+| **Fixed** | `analysis.md` opens with a superseded header in the form its own audit established: the reason the synthetic table ranks initialization luck - uniform random tokens at context 512, every loss between **0.43% and 0.85%** above `ln(8192) = 9.0109` (the audit rounds that to "0.4% to 0.8%") - the brief's requirement of context 1024/2048, and the two real-data losses (3.5865, 3.6657) that have no artifact behind them at all because that sweep wrote results only on completion and was interrupted. |
+| **Also closed here** | The `96k tokens/s` in `_MoEFeedForward`'s docstring - the one figure of the four measured last entry that sits *above* the measurement and so can still under-provision a budget - now points at `PERFORMANCE_NOTES.md` for the measured rates. |
+| **Pinned** | `tests/test_doc_index.py` gained the check that the per-arm document kinds are actually covered by the index's patterns. It failed against the index as written moments earlier, naming `artifacts/mixer-benchmark/FINDINGS.md` - a real gap in the table. The existing "every document the index names exists" check was also made less brittle rather than merely satisfied: a bare filename in prose names a kind of document, so it need only exist somewhere in the project rather than at the repository root. |
+
 ## The throughput warning was stale in the other direction, and its arithmetic mattered (2026-09-19)
 
 | | |

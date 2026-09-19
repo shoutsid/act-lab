@@ -99,7 +99,7 @@ Per-arm material lives beside each arm under `artifacts/*/`:
 |---|---|
 | `artifacts/*/NOTES.md` | The arm's runbook: its pre-registration and the command that reproduces its record. The runbook is *executed* by `scripts/check_record_freshness.py`, so one that no longer reproduces its record fails rather than being discovered. |
 | `artifacts/*/decision.md` | The arm's **generated** decision record, written by `scripts/arch_zoo_analyze.py --write`. Regenerate it; do not hand-edit it. |
-| `artifacts/*/analysis.md`, `artifacts/*/PERFORMANCE_NOTES.md`, `artifacts/*/SCREENING_AUDIT.md` | Per-arm and per-benchmark notes. Not machine-checked. |
+| `artifacts/*/analysis.md`, `artifacts/*/FINDINGS.md`, `artifacts/*/PERFORMANCE_NOTES.md`, `artifacts/*/SCREENING_AUDIT.md` | Per-arm and per-benchmark notes. Not machine-checked. An `analysis.md` whose conclusion a sibling audit refuted says so at the top. |
 
 Where a number in the report or in this README is load-bearing, the ledger under
 the arm owns it: `scripts/verify_record.py` recomputes each claim from the rows and
