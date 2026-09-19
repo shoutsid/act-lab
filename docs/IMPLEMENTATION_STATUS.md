@@ -1,5 +1,17 @@
 # ACT Implementation Status
 
+## The search loop's most expensive step had never been priced, because no arm had ever run it (2026-09-19)
+
+| | |
+|---|---|
+| **What was found** | §10 prices the search program's loop at "~17 GPU-hours" - 100 candidates x 3 seeds screened at 400 steps plus 8 finalists x 3 seeds confirmed at **1,200** steps. §9 specifies the loop as confirming finalists **at the horizon the search actually trains for**, and that step had never been run by any arm, so it was never priced. The horizon arm now measures it at two lengths on one design, and the confirmation is the largest single term in the loop at any realistic horizon. |
+| **The measured step** | Both rows are from this arm's own cost file, not extrapolated: **0.0523 h/run at 1,200 steps** and **0.524 h/run at 12,000**, over 16 runs each. The ratio is **10.016x for 10x the steps**, so cost is linear in steps between two *measured* points - which is what licenses the local-card extrapolation (0.133 x 10 = 1.33 h/run) rather than assuming it, and is worth recording because a sublinear rate would have made the confirmation cheaper than this. |
+| **What the loop costs at each end** | Screening 100x3 at 400 steps is 13.80 GPU-h and confirming 8x3 at 1,200 is 3.19, giving the quoted 16.99. Confirming those 24 runs at the horizon instead costs **12.57 GPU-h on Kaggle T4 fp16 or 31.92 on this card** - so the loop is **17 GPU-h** with the confirmation at 1,200, **29.6** with it at the horizon on Kaggle, and **~49** on the local card. The confirmation is a bigger term than everything before it once the horizon is real. |
+| **The like-for-like caveat, now stated** | The "~40 GPU-hours for running all 100 at full length" that the 2.4x saving is measured against is also at 1,200 steps, and at a 12,000-step horizon that baseline is ~399 GPU-h. So the loop's saving is *larger* in ratio while costing far more in absolute terms - both of which a budget has to see, and neither of which a single "~17 GPU-hours" showed. |
+| **Why this also settles a platform question** | The horizon phase ran on Kaggle rather than the local card for reasons its own NOTES gave (fp16 on Turing tensor cores); this is the price of that choice at the step where it matters most, and it is **2.54x per run** on the term that dominates the loop. Recorded here because the justification was written as a throughput ratio and is really a statement about the loop's biggest cost. |
+| **Verified** | Seven claims added to the record check, all recomputed from the arm's cost file or from §10's own documented rates: both per-run costs, the linearity ratio, both platform confirmation totals, the loop total, and the platform ratio. **175 -> 182 claims.** |
+| **Result** | **1148 tests pass · 182/182 claims agree · 9/9 records reproduce.** |
+
 ## The capacity sweep trained a third of its arms in order to throw them away (2026-09-19)
 
 | | |

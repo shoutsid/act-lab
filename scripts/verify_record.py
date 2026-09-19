@@ -1178,6 +1178,52 @@ def check_horizon_10x(root: Path, audit: Audit) -> None:
         "a separate cap, so it does not extend §10's overrun by drift",
     )
 
+    # The search program's last step, priced. The loop §10 quotes confirms its
+    # finalists at 1,200 steps - the length this phase measured at - while §9
+    # specifies the horizon the search actually trains for, which no arm had ever run
+    # and so had never been priced. Both lengths here are measured on one design, and
+    # the per-run cost is linear in steps between them, which is what licenses the
+    # local extrapolation rather than assuming it.
+    stages = cost["by_stage"]
+    per_run_1200 = stages["1200"]["elapsed_hours"] / stages["1200"]["runs"]
+    per_run_12000 = stages["12000"]["elapsed_hours"] / stages["12000"]["runs"]
+    audit.check("§10 horizon: a 1,200-step run costs (Kaggle fp16)", 0.0523, per_run_1200, "arm ledgers")
+    audit.check("§10 horizon: a 12,000-step run costs (Kaggle fp16)", 0.524, per_run_12000, "arm ledgers")
+    audit.check(
+        "§10 horizon: cost is linear in steps over 1,200->12,000",
+        10.016,
+        per_run_12000 / per_run_1200,
+        "arm ledgers",
+        "10x the steps for 10.016x the time, which is what licenses the local extrapolation",
+    )
+    finalists = 8 * 3
+    local_per_run_12000 = 0.133 * 10
+    audit.check(
+        "§10 loop: confirming 8 finalists x 3 seeds at 12,000, Kaggle fp16",
+        12.57,
+        finalists * per_run_12000,
+        "§10",
+        "the step the loop's quoted 17 GPU-hours leaves out",
+    )
+    audit.check(
+        "§10 loop: the same confirmation on the local card (extrapolated)",
+        31.92,
+        finalists * local_per_run_12000,
+        "§10",
+    )
+    audit.check(
+        "§10 loop: screening plus a horizon confirmation, on Kaggle",
+        29.56,
+        100 * 3 * 0.046 + 8 * 3 * 0.133 + finalists * per_run_12000,
+        "§10",
+    )
+    audit.check(
+        "§10 loop: the platform ratio on the step that dominates it",
+        2.54,
+        local_per_run_12000 / per_run_12000,
+        "§10",
+    )
+
 
 #: The audit's checks in record order. Each is a pure function of the artifacts root
 #: that appends to the audit it is handed, so they can run in separate processes and

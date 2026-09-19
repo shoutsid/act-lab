@@ -934,10 +934,13 @@ recommendation does not reverse. Full record in §2c.
    **screen at 400 steps, promote only on margins that clear the seed noise, and
    confirm finalists at the horizon the search actually trains for.** Screening at
    400 costs 0.046 GPU-hours per run against 0.133 at 1200, and §3 shows it
-   recovers the explanation and not only the ordering, so for 100 candidates × 3
-   seeds the loop costs ~17 GPU-hours against ~40 for running everything long.
-   The obligation that does *not* relax: quote every effect size with its training
-   length, because that is the one quantity the screen gets wrong by 3.7×.
+   recovers the explanation and not only the ordering. Its *price*, though, is set
+   by its last step, and §10 now prices that: **17 GPU-hours while the confirmation
+   stays at 1,200, but 29.6 with it at a 12,000-step horizon on Kaggle and ~49 on
+   this card** — because at that length the confirmation alone costs more than every
+   step before it. The obligation that does *not* relax: quote every effect size with
+   its training length, because that is the one quantity the screen gets wrong by
+   3.7×.
 
    A confirmation longer than 1,200 steps carries one measured caveat, and it is in
    the safe direction. The promotion threshold needs a seed std *at the confirmation
@@ -1272,7 +1275,35 @@ Concretely, at the measured per-run costs (~0.046 GPU-hours for 400 steps, ~0.13
 for 1200) a `screen→confirm` search over 100 candidates × 3 seeds costs
 100×3×0.046 + 8×3×0.133 ≈ **17 GPU-hours** against **40** for running all 100 at
 full length — a 2.4× saving, and the screening half of it buys the same
-attribution §2c needed a designed factorial to get. The one thing it must not be
+attribution §2c needed a designed factorial to get.
+
+**That 17 GPU-hours confirms the finalists at 1,200 steps — the length this phase
+measured at — while §9 specifies the horizon the search actually trains for. The
+horizon arm prices that step, at both lengths and on one design:**
+
+| step | runs measured | h/run | 24 runs (8 finalists × 3 seeds) |
+|---|---|---|---|
+| 1,200 steps, Kaggle T4 fp16 | 16 | 0.0523 | 1.26 GPU-h |
+| 12,000 steps, Kaggle T4 fp16 | 16 | **0.524** | **12.57 GPU-h** |
+| 12,000 steps, local card fp32 (extrapolated ×10 from 0.133) | — | 1.33 | 31.92 GPU-h |
+
+The two Kaggle rows are both *measured*, and cost is linear in steps between them —
+10.016× the time for 10× the steps — which is what licenses the local extrapolation
+rather than merely assuming it; a sublinear rate would have made the confirmation
+cheaper than this. So the loop is **17 GPU-h with the confirmation at 1,200, 29.6
+GPU-h with it at the horizon on Kaggle, and ~49 GPU-h with it on this card**, and the
+confirmation is the largest single term in the latter two. It is also the strongest
+argument for the horizon phase having run on Kaggle: the same 24 confirmations cost
+**2.54× less per run** there, and it is the step where the platform choice matters
+most because it is the step that dominates.
+
+It is the same reason the baseline in the sentence above is quoted at 1,200 and not
+at the horizon. "All 100 at full length" is 100×3×0.133 ≈ 40 GPU-h at 1,200, so the
+two figures are like for like at the length the phase measured. At a 12,000-step
+horizon that baseline is ~399 GPU-h, and the loop's saving is *larger* in ratio while
+costing far more in absolute terms — both of which a budget has to see, and neither
+of which the single "~17 GPU-hours" figure showed. Nothing here is a defect in that
+figure; it is a step the phase had never run, and therefore never priced. The one thing it must not be
 asked to do is settle a near tie: promotion needs the margin to clear the seed
 noise, which at 400 steps is 0.0286 nats of per-architecture std and therefore a
 0.0286-nat margin for a two-seed screen (§4). Screening eliminates; it does not
