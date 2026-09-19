@@ -19,6 +19,8 @@ import scipy.stats
 
 from act.search.architecture_eval import EvalResult, load_results
 from act.search.architecture_report import (
+    FINALIST_ORDER_RULE,
+    FINALIST_ORDER_STEPS,
     HEAD_PAIRING_RULE,
     MATERIALITY_FLOOR_NATS,
     REPLICATION_RULE,
@@ -41,6 +43,7 @@ from act.search.architecture_report import (
     _paired_level_splits_at,
     effect_in_compute_units,
     effect_summary,
+    finalist_order_decision,
     rank,
     rank_stability,
     search_cost,
@@ -3508,6 +3511,91 @@ def test_recorded_level_pricing_survives_every_loss_reading():
 
         width = crossed_contrast(subset, 1200, samples=_DRAWS)["main"]["hidden_size"]
         assert width["nats"] < 0 and width["at_floor"], field
+
+
+# The finalist-order rule is what closed v1's "NOT ESTABLISHED", and it is read off a
+# pooled six-block set: v1's promoted finalists plus three seeds that took no part in
+# screening them. Its branch is stable under the loss readings, but one of the three
+# conditions it transcribes is not - and that clause is the one the record leans on to
+# explain why the pooled significance is trustworthy.
+
+
+def _finalist_pooled():
+    rows = []
+    for name in ("arch-zoo-100m-v1", "arch-zoo-100m-v1-finalists-6seed"):
+        directory = Path("artifacts") / name
+        ledgers = sorted(directory.glob("*_seed*_results.jsonl"))
+        if not ledgers:
+            pytest.skip(f"{name} ledgers not present")
+        rows += with_structure(load_results(ledgers), directory / "zoo_definition.json")
+    return rows
+
+
+def _finalist_rule(rows):
+    outcome = {
+        "steps": FINALIST_ORDER_STEPS,
+        "lengths_present": [FINALIST_ORDER_STEPS],
+        "blocked_test": blocked_permutation_test(rows, FINALIST_ORDER_STEPS),
+    }
+    return finalist_order_decision(outcome, rows)
+
+
+def test_recorded_finalist_order_branch_is_stable_on_every_loss_reading():
+    """The branch that closed §9's open item holds whichever loss it is read on.
+
+    The pooled six-block test clears the declared 0.05 on all three readings - 10/7776
+    held-out, 82/7776 on final training loss, 2/7776 on the trajectory average, against
+    a six-block floor of 1/7776 - and the branch stays ORDER-COUPLED, because the third
+    condition is what decides it: every block would have to rank the same architecture
+    first, and two different ones top the six blocks in every reading. So the thinness
+    of the final-training reading (82/7776 = 0.0106, the closest of the three to the
+    threshold) does not reach the decision.
+    """
+    assert FINALIST_ORDER_RULE == {"pooled_p": 0.05, "fresh_p": 0.05}
+    rows = _finalist_pooled()
+
+    for field, expected in (
+        (None, 10 / 7776),
+        ("final_train_loss", 82 / 7776),
+        ("mean_train_loss", 2 / 7776),
+    ):
+        rule = _finalist_rule(_on_loss(rows, field))
+        assert rule["branch"] == "order-coupled", field
+        assert rule["p_all"] == pytest.approx(expected, rel=1e-3), field
+        assert rule["p_all"] < FINALIST_ORDER_RULE["pooled_p"], field
+        assert rule["pooled_floor"] == pytest.approx(1 / 7776), field
+        assert rule["conditions"][2]["met"] is False, field
+
+
+def test_recorded_screening_free_blocks_separate_the_finalists_only_on_a_trajectory_loss():
+    """The clause the record explains the branch with is the reading-dependent one.
+
+    The second condition is "the screening-free blocks alone clear 0.05, so this is not
+    a selection artifact". Held-out it is 0.1111 and on final training loss 0.0556 -
+    both above the threshold, which is what licenses the record's claim that the
+    significance is the coupled blocks. On the trajectory average it is **1/36, the
+    three-block floor**: the uncoupled blocks do separate the finalists there, and at
+    the most extreme outcome three blocks can express. So `v1-finalists-6seed`'s own
+    "NOT ESTABLISHED" verdict holds on the like-for-like pair and is reading-dependent
+    beyond it, in the same direction the head-paired arm's negative moves.
+    """
+    rows = _finalist_pooled()
+
+    for field, expected in (
+        (None, 4 / 36),
+        ("final_train_loss", 2 / 36),
+        ("mean_train_loss", 1 / 36),
+    ):
+        assert _finalist_rule(_on_loss(rows, field))["p_fresh"] == pytest.approx(expected)
+
+    # It holds on the pair the split check is designed around, and only there.
+    for field in (None, "final_train_loss"):
+        rule = _finalist_rule(_on_loss(rows, field))
+        assert rule["p_fresh"] > FINALIST_ORDER_RULE["fresh_p"], field
+        assert rule["conditions"][1]["met"] is False, field
+    averaged = _finalist_rule(_on_loss(rows, "mean_train_loss"))
+    assert averaged["p_fresh"] == pytest.approx(1 / 36)
+    assert averaged["conditions"][1]["met"] is True
 
 
 # --- pre-specified joint models --------------------------------------------

@@ -928,6 +928,49 @@ def check_finalist_order(root: Path, audit: Audit) -> None:
         f"block tops: {sorted(set(rule['block_tops']))}",
     )
 
+    # The split check the rest of the record carries, on the rule that closed §9's open
+    # item - the branch has to survive the loss it is read on, or the instruction to
+    # carry the effect size but not the ranking does not. It does, on all three readings.
+    # One of the three conditions the rule transcribes does not, and that is exactly the
+    # clause the branch's explanation leans on: whether the screening-free blocks alone
+    # clear the threshold. Both facts are checked, because recording only the first
+    # would leave the reasoning behind the branch unguarded.
+    for field, label, expected_p_all, expected_p_fresh in (
+        ("final_train_loss", "final train loss", 82 / 7776, 2 / 36),
+        ("mean_train_loss", "the trajectory average", 2 / 7776, 1 / 36),
+    ):
+        on_loss = [
+            replace(entry, validation_loss=getattr(entry, field)) for entry in pooled_rows
+        ]
+        reading = finalist_order_decision(
+            {
+                "steps": FINALIST_ORDER_STEPS,
+                "lengths_present": [FINALIST_ORDER_STEPS],
+                "blocked_test": blocked_permutation_test(on_loss, FINALIST_ORDER_STEPS),
+            },
+            on_loss,
+        )
+        audit.check(
+            f"§9 finalists: the branch holds on {label}",
+            "order-coupled",
+            reading["branch"],
+            "v1 decision.md",
+            "the third condition decides it in every reading - two winners top the six blocks",
+        )
+        audit.check(
+            f"§9 finalists: pooled six-block p on {label}",
+            expected_p_all,
+            reading["p_all"],
+            "v1 decision.md",
+        )
+        audit.check(
+            f"§9 finalists: screening-free p on {label}",
+            expected_p_fresh,
+            reading["p_fresh"],
+            "v1 decision.md",
+            "above the declared 0.05 on the like-for-like pair, the three-block floor beyond it",
+        )
+
     # The verdict must not read the rule's *presence* as its *result*. It did: the
     # pooled p - the very number the rule reads as the screening seeds - produced
     # "the finalists having already been confirmed on seeds never used in

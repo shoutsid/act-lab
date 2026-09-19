@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## Every significance headline re-read on training loss: the two that move are both negatives (2026-09-19)
+
+| | |
+|---|---|
+| **What was done** | The head-paired audit left an obvious question - which *other* headline had never been re-read on the training loss - so all nine committed records were checked. Five arms now carry the split check (v2, crossed, horizon, head-paired, and this stretch's finalist-order rule); the audit filled in the four that did not. |
+| **The positives hold everywhere** | v2's and the crossed arm's attribution, the horizon arm's depth sign, and the two spread-only arms (`v2-horizon` at 3× and `v3-crossed-confirm`) all keep their signs and clear their thresholds on every reading. `v2-horizon`'s spread is p ≤ 5e-06 on both; the crossed confirmation's is 1.5e-05 held-out and 5e-06 on training loss. |
+| **Both readings-sensitive headlines are negatives** | `arch-zoo-100m-v1-finalists-6seed` is v1's "NOT ESTABLISHED — this experiment cannot yet tell": p = 0.1111 held-out, **0.0556** on final training loss (above the declared 0.05 by 11%), and **0.0278 = 1/36, the three-block floor**, on the trajectory average. So the verdict holds on the pair the check is designed around and is reading-dependent beyond it — the same shape as the head-paired arm's negative, in the same direction. |
+| **The pooled finalist-order branch is stable; its explanation is not** | The pooled six-block rule that closed §9's open item stays **order-coupled** on all three readings — 10/7776 held-out, 82/7776 on final training loss, 2/7776 on the trajectory average, against a 1/7776 floor — because the deciding condition is that two different architectures top the six blocks, which is true in every reading. Its *second* condition, "the screening-free blocks alone clear 0.05", is 4/36 and 2/36 on the like-for-like pair but **1/36, the floor**, on the trajectory average, so the clause explaining why the pooled significance is trustworthy is the part that moves. |
+| **Verified** | Two tests and six claims. Pointing the rule's declared `pooled_p` at 0.005 catches the branch-stability test, tightening `fresh_p` to 0.02 and repointing `FINALIST_ORDER_FRESH_SEEDS` at the coupled blocks both catch the screening-free test, and each captures the property the other does not. **195 -> 201 claims.** |
+| **Result** | **1158 tests pass · 201/201 claims agree · 9/9 records reproduce.** |
+
 ## The head-paired arm's negative headline is the one place the split check moves a decision (2026-09-19)
 
 | | |
