@@ -139,9 +139,16 @@ jointly — the second joint constraint on the space after depth × width.
 
 What none of that yet shows is whether it survives a realistic training horizon;
 the depth finding in particular is the one prior work predicts should reverse with
-training. That is the next arm, pre-registered in
+training. That is the arm now running, pre-registered in
 `artifacts/arch-zoo-100m-v3-crossed-horizon10x/NOTES.md`: the crossed factorial at
-10× the training length, run on Kaggle T4×2 via `scripts/kaggle_queue.py --queue archzoo`.
+10× the training length, fp16 with a same-precision 1200-step anchor, on Kaggle
+T4×2 via `scripts/kaggle_queue.py --queue archzoo`. Its rule is **declared on the
+12,000-step rows and refuses any other length**, so the anchor cannot be read as the
+horizon result. That is not a hypothetical: the arm's first attempt trained none of
+its horizon runs and was reported complete, and the three defects that allowed it are
+closed — an admission bar that asked for twice the schedule, a sweep that exits 0
+after losing every run in a stage, and a driver that read process exit codes as
+completeness rather than reading the ledgers.
 
 The effect's *size* depends on the training horizon, and that was measured rather
 than assumed: the spread decays 1.65× per doubling of training, replicating the
