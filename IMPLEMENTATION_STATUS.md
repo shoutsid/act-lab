@@ -1,5 +1,14 @@
 # ACT Implementation Status
 
+## The throughput warning was stale in the other direction, and its arithmetic mattered (2026-09-19)
+
+| | |
+|---|---|
+| **What was found** | Reading the tracked per-arm notes - the set the new README index marks as not machine-checked - surfaced `artifacts/arch-zoo/PERFORMANCE_NOTES.md`, which records a **75x spread** across the repository's own stated throughput for the dev shape (9.8k in the model docstring's table, 19.6k in its prose, 96k in `_MoEFeedForward`'s, 8.7k measured there) and warns that a budget drawn from 19.6k under-provisions by 2.2x and from 96k by 11x. Budgets in this phase are the binding constraint, so the warning was re-measured rather than cited: `PYTHONPATH=src python scripts/dev_cycle.py --steps 400 --tag verify-doc-throughput` in a fresh checkpoint namespace, on the current code, fp32, batch 8 x context 512, the real TinyStories stream. |
+| **The measurement** | **24,299 tokens/s end to end**, 134.9 s for 3,276,800 tokens across two arms (random 24,807, adaptive 24,386). That is **2.8x** the 8.7k the note reports for the same nominal shape and **1.24x** the 19.6k docstring figure. Recorded in the note as a re-measurement, not a refutation: the two are probably not the same measurement (the note records 617 MB peak where the model docstring records 0.90 GiB for that shape, and a 20-step benchmark need not be at steady state). |
+| **Why it changed the warning's arithmetic** | On the measured scale the four figures split in two directions. 8.7k, 9.8k and 19.6k all sit *below* 24.3k, so a budget drawn from any of them over-provisions - it wastes GPU-hours, which is the safe direction. The 96k in `_MoEFeedForward`'s docstring sits 4x *above* the measurement and is the only one still able to under-provision, which is the failure the note was written about. The first draft of this entry said all three flagged figures were below the measurement; that is wrong for the 96k and was corrected before committing. |
+| **Deliberately not changed** | `src/act/model/v0_moe.py`'s docstrings were left alone. Its wall-time claim is right - 2.8 minutes for a two-arm 400-step dev cycle against 2.25 minutes measured - and the only figure needing a caveat, the 96k, is already covered by the tracked note. No test pins any of these strings. |
+
 ## The capacity sweep's probe arms were recording the random arm, bit-identical at every scale (2026-09-19)
 
 | | |

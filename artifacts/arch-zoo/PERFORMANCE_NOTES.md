@@ -87,3 +87,36 @@ which means they cannot describe the same system - so the old numbers were taken
 under conditions the artifacts do not record (the v0 sweep ran between 23:06 and
 01:06, alongside a `capacity-sweep` written at 22:13-22:41). They should not be
 reused, and no conclusion in this phase depends on them.
+
+## Re-measured end to end, 2026-09-19: 24,299 tokens/s wall
+
+The tables above benchmark the model. A GPU-hour budget counts the tokens the
+*full session* moves, so the same shape was re-measured through that path:
+
+```bash
+PYTHONPATH=src python scripts/dev_cycle.py --steps 400 --tag verify-doc-throughput
+```
+
+```text
+dev cycle: 14,928,960 total / 7,556,160 active parameters, 1,638,400 tokens per arm
+arm            final       val  mutations      tok/s
+random        3.8938    3.8938          3     24,807
+adaptive      3.8739    3.8739          3     24,386
+wall 134.9s for 3,276,800 tokens across 2 arm(s) (24,299 tokens/s end to end)
+```
+
+fp32, batch 8 x context 512, the real TinyStories stream, 400 steps per arm, run in a
+fresh checkpoint namespace so nothing resumed.
+
+That is **2.8x** the 8.7k this file reports for the same nominal shape, and it is
+2.25 minutes for two arms where the dev-loop claim was 2.8 minutes. It should not be
+read as a refutation of the table above, because the two are probably not the same
+measurement: this file records 617 MB peak where the model docstring records 0.90 GiB
+for that shape, and a 20-step benchmark need not be at steady state. What is safe to
+say is narrower and more useful: a budget for the dev shape on this card should be
+computed from **~24.3k tokens/s end to end**. On that scale the docstring figures this
+file flags split in two directions - 9.8k and 19.6k sit *below* the measurement, so a
+budget drawn from them over-provisions and wastes GPU-hours, while the 96k in the
+`_MoEFeedForward` docstring sits 4x *above* it and is the one still able to
+under-provision, which is the failure this file was written about. The 8.7k here is
+below the measurement too, so it errs the safe way.
