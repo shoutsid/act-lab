@@ -18,7 +18,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from check_record_freshness import (  # noqa: E402
     commands_in,
     documented_commands,
+    option,
     ordered_candidates,
+    script_commands,
     source_names,
 )
 
@@ -117,6 +119,43 @@ def test_candidates_are_ordered_so_the_record_producing_one_goes_first(tmp_path)
     # And the other way round, from the same inputs: the record decides.
     (arm / "ranked.json").write_text('{"seeds": [42, 43, 45, 46]}')
     assert ordered_candidates([pooled, standalone], root, arm)[0] == pooled
+
+
+def test_every_watcher_command_is_documented_by_the_arm_it_writes():
+    """A watcher writes a record unattended, so its command belongs in the runbook.
+
+    This is how the horizon arm was caught: its watcher ran `--offset-against` - the
+    pre-registered precision-offset secondary - while its NOTES documented the same
+    command without it. The record the watcher would write could not then have been
+    reproduced from the documentation, and a reader following the runbook would never
+    have seen the secondary at all. Neither the fence parser nor a textual diff can
+    find that, because a watcher names its arm through `$EXP`.
+
+    The invariant is one-directional. A watcher may not run anything the runbook does
+    not document; the runbook may document more, because a person runs it by hand -
+    the finalist watcher deliberately logs instead of writing, and its runbook carries
+    the `--write` that produced the record.
+    """
+    root = Path(__file__).resolve().parent.parent
+    watchers = sorted((root / "scripts").glob("run_*_when_*.sh"))
+    assert watchers, "expected the post-run watchers"
+    for watcher in watchers:
+        commands = script_commands(watcher.read_text())
+        assert commands, f"{watcher.name} runs no analysis"
+        for argv in commands:
+            experiment = option(argv, "--experiment-id")
+            documented = documented_commands(
+                root / "artifacts" / experiment / "NOTES.md", experiment
+            )
+            assert documented, f"{watcher.name} analyses {experiment}, which documents no command"
+            # The documented invocation that shares the most with this one, so the
+            # message names exactly what is missing rather than the whole flag set.
+            best = max(documented, key=lambda entry: len(set(argv) & set(entry)))
+            missing = sorted(set(argv) - set(best))
+            assert not missing, (
+                f"{watcher.name} runs {missing} for {experiment}, which its runbook does "
+                "not document"
+            )
 
 
 def test_every_arm_with_a_record_documents_the_command_that_writes_it():

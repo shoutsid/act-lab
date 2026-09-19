@@ -132,8 +132,17 @@ overrun by drift.
 ```
 PYTHONPATH=src python scripts/kaggle_queue.py --queue archzoo      # push, wait, import
 PYTHONPATH=src python scripts/arch_zoo_analyze.py \
-  --experiment-id arch-zoo-100m-v3-crossed-horizon10x --write --horizon-rule
+  --experiment-id arch-zoo-100m-v3-crossed-horizon10x --write --horizon-rule \
+  --offset-against arch-zoo-100m-v3-crossed --offset-steps 1200
 ```
+
+`--offset-against` is the fifth secondary, mechanized: this arm's fp16 anchor at 1200
+steps is batch-identical to the record's fp32 rows, so the pair measures the precision
+offset directly, at the one length where the two arms share a design. It is read
+*beside* the record and never pooled with it - the two were measured under different
+precisions, and that difference is the quantity. This is exactly what
+`scripts/run_horizon_analysis_when_kernel_exits.sh` runs once all 32 rows exist, so it
+is also the command that reproduces `decision.md` in this directory.
 
 Then extend `verify_record.py` with the measured rows, update §3/§9/§11 of
 `ARCH_SEARCH_FINDINGS.md` and the README, and run the whole suite.

@@ -76,22 +76,65 @@ class ArmResult:
     failures: list[str] = field(default_factory=list)
 
 
-def commands_in(notes: str) -> list[list[str]]:
-    """Every analyzer invocation in a fenced block, as its option list.
+def _shell_variables(text: str) -> dict[str, str]:
+    """``NAME=value`` assignments, so a watcher's ``$EXP`` can be resolved.
 
-    Blocks are wrapped for width with trailing backslashes, so the continuations are
-    joined before the block is split into commands - otherwise every invocation in
-    this repository would parse as its first line alone.
+    A post-run watcher names its arm through a variable rather than literally, which
+    is why its command cannot be compared to a runbook without this.
+    """
+    return {
+        name: value.strip("\"'")
+        for name, value in re.findall(r"^([A-Z][A-Z0-9_]*)=([^\s#]+)", text, re.M)
+    }
+
+
+def _expand(token: str, values: dict[str, str]) -> str:
+    """Substitute ``$NAME`` and ``${NAME}`` from an already-parsed assignment table."""
+
+    def substitute(match: re.Match[str]) -> str:
+        name = match.group(1) or match.group(2)
+        return values.get(name, match.group(0))
+
+    return re.sub(r"\$\{([A-Za-z0-9_]+)\}|\$([A-Za-z0-9_]+)", substitute, token)
+
+
+def _extract(chunk: str, values: dict[str, str]) -> list[list[str]]:
+    """Every analyzer invocation in a chunk of text, as its option list.
+
+    Lines are wrapped for width with trailing backslashes, so continuations are joined
+    before the chunk is split into commands - otherwise every invocation in this
+    repository would parse as its first line alone. Redirections are cut, because
+    ``>> "$LOG" 2>&1`` is not an argument to the analyzer and leaving it in would put
+    ``>>`` into the flag set a comparison reads.
     """
     found: list[list[str]] = []
-    for block in BASH_FENCE.findall(notes):
-        for line in block.replace("\\\n", " ").splitlines():
-            if ANALYZER not in line:
-                continue
-            argv = shlex.split(line.split(ANALYZER, 1)[1])
-            if argv:
-                found.append(argv)
+    for line in chunk.replace("\\\n", " ").splitlines():
+        if ANALYZER not in line:
+            continue
+        command = re.split(r"\s+\d?>>?\s*", line)[0]
+        argv = shlex.split(command.split(ANALYZER, 1)[1])
+        if argv:
+            found.append([_expand(token, values) for token in argv])
     return found
+
+
+def commands_in(notes: str) -> list[list[str]]:
+    """Every analyzer invocation in a fenced block of markdown, as its option list."""
+    values = _shell_variables(notes)
+    found: list[list[str]] = []
+    for block in BASH_FENCE.findall(notes):
+        found.extend(_extract(block, values))
+    return found
+
+
+def script_commands(text: str) -> list[list[str]]:
+    """Every analyzer invocation in a shell script, with its variables resolved.
+
+    A watcher's command is a runbook in its own right - it is what writes a record
+    unattended - but it has no markdown fences and it names its arm through a
+    variable, so neither the fence parser nor a textual comparison can see it.
+    """
+    return _extract(text, _shell_variables(text))
 
 
 def option(argv: list[str], name: str) -> str | None:
