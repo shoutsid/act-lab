@@ -21,7 +21,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from act.search.architecture_eval import EvalResult  # noqa: E402
-from arch_zoo_analyze import cost_by_experiment, main  # noqa: E402
+from arch_zoo_analyze import cost_by_experiment, ledger_precisions, main  # noqa: E402
 
 STEPS = 400
 TOKENS = STEPS * 2 * 1024
@@ -191,6 +191,70 @@ def test_pooling_refuses_ledgers_measured_in_different_precisions(
     )
     main()
     assert "Pooling 2 experiment directories" in capsys.readouterr().out
+
+
+def test_a_row_that_predates_the_field_is_fp32_not_unknown(tmp_path):
+    """``mixed_precision`` arrived with autocast (07fc36a, 2026-09-18).
+
+    A row without it was trained by a harness that had no autocast to select, so it
+    *is* ``off`` - not an unknown that must be held apart from everything. Reading
+    the absence as "unrecorded" refused to pool the whole pre-07fc36a record with
+    every arm measured since, which is the reverse of what the guard is for.
+    """
+    pre_field = arm(tmp_path, "v1", (42, 43), ("a", "b"))
+    recorded = arm(tmp_path, "finalists", (45,), ("a", "b"), precision="off")
+    assert ledger_precisions(pre_field) == {"off"}
+    assert ledger_precisions(recorded) == {"off"}
+    assert ledger_precisions(pre_field) == ledger_precisions(recorded)
+
+
+def test_a_pre_field_arm_pools_with_an_off_arm(tmp_path, monkeypatch, capsys):
+    """The case the record's own next step needs: v1 plus its fresh-seed arm."""
+    primary = arm(tmp_path, "v1", (42, 43), ("a", "b", "c"))
+    arm(tmp_path, "finalists", (45,), ("a", "b", "c"), precision="off")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "arch_zoo_analyze.py",
+            "--artifacts-root", str(tmp_path),
+            "--experiment-id", "v1",
+            "--also", "finalists",
+            "--write",
+        ],
+    )
+    main()
+    assert "Pooling 2 experiment directories" in capsys.readouterr().out
+    cost = json.loads((primary / "search_cost.json").read_text())
+    assert cost["pooled_experiments"] == ["v1", "finalists"]
+    assert cost["runs_completed"] == 9
+
+
+def test_a_pre_field_arm_still_refuses_to_pool_with_fp16(tmp_path, monkeypatch):
+    """The relaxation is only about rows that could not have *been* fp16.
+
+    A pre-field arm is fp32 by construction, so pooling it with an fp16 arm is the
+    same incommensurable comparison the guard has always refused - and it must stay
+    refused, or the whole check becomes a formality.
+    """
+    arm(tmp_path, "v1", (42, 43), ("a", "b", "c"))
+    arm(tmp_path, "horizon", (42, 43), ("a", "b", "c"), precision="fp16")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "arch_zoo_analyze.py",
+            "--artifacts-root", str(tmp_path),
+            "--experiment-id", "v1",
+            "--also", "horizon",
+            "--write",
+        ],
+    )
+    with pytest.raises(SystemExit) as refusal:
+        main()
+    message = str(refusal.value)
+    assert "different precisions" in message
+    assert "v1 off" in message and "horizon fp16" in message
 
 
 def test_a_single_arm_write_carries_no_pooling_fields(tmp_path, monkeypatch):

@@ -2909,6 +2909,232 @@ def horizon_decision(
     }
 
 
+#: The finalists' pre-registered rule (``arch-zoo-100m-v1-finalists-6seed``),
+#: declared in that arm's ``NOTES.md`` before any of its rows exist.
+#:
+#: ``arch-zoo-100m-v1`` closed on "NOT ESTABLISHED - this experiment cannot yet
+#: tell". Its exact seed-matched test ran 3 blocks, whose floor is 1/36, and its own
+#: caveat says the three finalists were promoted *on those seeds*, so that test is
+#: mildly anti-conservative in the winner's favour. The rule below reads the same
+#: test twice - over all six blocks, where the floor falls to 1/7776, and over the
+#: three fresh blocks alone, which took no part in screening or promotion - and
+#: gates the positive branch on both. A pooled test on its own would raise power
+#: while re-admitting the very bias the arm exists to remove: the finalists were
+#: chosen because they looked good on the screening blocks, and that favours the
+#: winner there most.
+FINALIST_ORDER_RULE: dict[str, float] = {
+    "pooled_p": 0.05,
+    "fresh_p": 0.05,
+}
+
+#: The length the finalists' rule is declared on, named rather than inferred, for
+#: the reason :data:`HORIZON_STEPS` is: ``best_available_summary`` reports the
+#: longest length that *has rows*, so an arm that lost its declared length would
+#: otherwise be read at whatever length survived.
+FINALIST_ORDER_STEPS: int = 1200
+
+#: The seed blocks that took no part in screening or promotion. The positive branch
+#: requires these to agree with the pool, so they are part of the declared rule and
+#: not a reporting detail.
+FINALIST_ORDER_FRESH_SEEDS: tuple[int, ...] = (45, 46, 47)
+
+FINALIST_ORDER_READINGS: dict[str, str] = {
+    "order-established": (
+        "The finalist ordering survives both readings: it clears the declared "
+        "threshold over all six blocks and again on the three seeds that took no "
+        "part in screening, at the same first-ranked architecture. v1's 3-seed null "
+        "was an underpowered design rather than a description of the world, so the "
+        "ranking can be carried into the next phase - quoted at 1200 steps, as every "
+        "effect size here must be."
+    ),
+    "order-coupled": (
+        "The pooled test clears the threshold, but the seed blocks do not agree on "
+        "which architecture comes first. The significance then rests on agreement "
+        "among blocks that disagree about the top - either because the screening "
+        "seed that selected the finalists favour their own winner (the "
+        "anti-conservative coupling v1's caveat named), or because the uncoupled "
+        "seeds overturn it. Neither is a replicated ordering, so no ranking is "
+        "recommended however the pooled p reads."
+    ),
+    "still-not-established": (
+        "At six blocks the finalists remain inseparable, with a floor of 1/7776 "
+        "where v1's was 1/36. v1's 'cannot yet tell' is therefore upgraded rather "
+        "than repeated: at this design's power there is no detectable ordering among "
+        "the three, which is a stronger negative than the one it replaces."
+    ),
+    "floor-limited": (
+        "The exact test's floor is above the declared threshold, so this design "
+        "cannot reach a branch however the contrasts fall. More seeds decide it; "
+        "more analysis of these ledgers cannot."
+    ),
+    "unavailable": (
+        "The rule needs the same three architectures measured on the six declared "
+        "seed blocks at the rule's declared training length."
+    ),
+}
+
+
+def finalist_order_decision(
+    outcome: dict,
+    results: list[EvalResult],
+    *,
+    steps: int = FINALIST_ORDER_STEPS,
+    fresh_seeds: tuple[int, ...] = FINALIST_ORDER_FRESH_SEEDS,
+    pooled_p: float = FINALIST_ORDER_RULE["pooled_p"],
+    fresh_p: float = FINALIST_ORDER_RULE["fresh_p"],
+) -> dict:
+    """Apply the finalists' pre-registered rule to a pooled six-seed outcome.
+
+    | outcome | condition |
+    |---|---|
+    | order established | ``p_all < pooled_p``, ``p_fresh < fresh_p``, fresh winner == pooled winner |
+    | order coupled | ``p_all < pooled_p`` but the fresh blocks disagree |
+    | still not established | ``p_all >= pooled_p``, floor below threshold |
+    | floor limited | the six-block floor is at or above the threshold |
+
+    The second reading is not optional decoration: it is the whole reason the arm
+    was bought. ``results`` is the pooled row set, so the fresh blocks are selected
+    out of it here rather than read from a second invocation of the analyzer, which
+    keeps the two readings on one set of ledgers.
+    """
+    pooled = outcome.get("blocked_test") or {}
+    lengths = [int(value) for value in (outcome.get("lengths_present") or [])]
+    fresh_set = set(fresh_seeds)
+    fresh = (
+        blocked_permutation_test(
+            [result for result in results if result.seed in fresh_set], steps
+        )
+        if results
+        else {"available": False, "reason": "no rows supplied"}
+    )
+    if not pooled.get("available"):
+        reason = pooled.get("reason") or "no seed-matched test at this length"
+    elif outcome.get("steps") != steps:
+        reason = (
+            f"the outcome is at {outcome.get('steps')} steps and the rule is declared "
+            f"on {steps}; lengths with rows: {lengths or 'none'}"
+        )
+    elif not fresh.get("available"):
+        reason = (
+            f"the screening-free blocks {sorted(fresh_set)} do not carry a complete "
+            f"design: {fresh.get('reason')}"
+        )
+    elif sorted(fresh.get("seeds") or []) != sorted(fresh_set):
+        reason = (
+            f"the screening-free test was run over seeds {sorted(fresh.get('seeds') or [])} "
+            f"rather than the declared {sorted(fresh_set)}"
+        )
+    else:
+        reason = None
+    if reason is not None:
+        return {
+            "available": False,
+            "branch": "unavailable",
+            "label": "UNAVAILABLE - THE RULE NEEDS THE DECLARED SIX SEED BLOCKS",
+            "reading": FINALIST_ORDER_READINGS["unavailable"],
+            "conditions": [],
+            "reason": reason,
+        }
+
+    p_all = pooled.get("p")
+    p_fresh = fresh.get("p")
+    pooled_floor = pooled.get("min_achievable_p")
+    fresh_floor = fresh.get("min_achievable_p")
+    pooled_winner = next(iter(pooled.get("names") or []), None)
+    fresh_winner = next(iter(fresh.get("names") or []), None)
+    established = p_all is not None and p_all < pooled_p
+    fresh_clears = p_fresh is not None and p_fresh < fresh_p
+    # The branch claims a *replicated ordering*, and the exact test is omnibus: its
+    # statistic rises with any consistent column separation, so a design whose three
+    # screening blocks rank A first and whose three fresh blocks rank B first is
+    # significant on the pool while having replicated nothing. Requiring every block
+    # to name the same architecture first is what makes the claim true, and it is
+    # the condition that subsumes the loose "both readings pick the same winner"
+    # this rule was first drafted with - under which a clean reversal passed.
+    tops = [order[0] for order in (pooled.get("orderings") or []) if order]
+    blocks_all = pooled.get("blocks")
+    all_agree = bool(tops) and len(set(tops)) == 1 and len(tops) == blocks_all
+    floor_limited = (
+        not established and pooled_floor is not None and pooled_floor >= pooled_p
+    )
+    if floor_limited:
+        branch = "floor-limited"
+    elif established and fresh_clears and all_agree:
+        branch = "order-established"
+    elif established:
+        branch = "order-coupled"
+    else:
+        branch = "still-not-established"
+
+    def _p_text(p: float | None, floor: float | None) -> str:
+        if p is None:
+            return "p not computable"
+        return f"p={p:.4g}" + ("" if floor is None else f" (floor {floor:.4g})")
+
+    conditions = [
+        {
+            "condition": (
+                f"all {pooled.get('blocks')} blocks: p < {pooled_p:g} "
+                "(v1's 3-block test raised power on the screening seeds)"
+            ),
+            "value": _p_text(p_all, pooled_floor),
+            "met": bool(established),
+        },
+        {
+            "condition": (
+                f"screening-free blocks {list(fresh_seeds)} alone: p < {fresh_p:g} "
+                "(no selection coupling)"
+            ),
+            "value": _p_text(p_fresh, fresh_floor),
+            "met": bool(fresh_clears),
+        },
+        {
+            "condition": (
+                "every block ranks the same architecture first "
+                "(both readings, so the top replicates on uncoupled seeds)"
+            ),
+            "value": (
+                f"{tops[0]} in {len(tops)} of {blocks_all} blocks"
+                if all_agree
+                else (
+                    f"{len(set(tops))} different winners across "
+                    f"{len(tops)} of {blocks_all} blocks"
+                    if tops
+                    else "not computable"
+                )
+            ),
+            "met": bool(all_agree),
+        },
+    ]
+    label = {
+        "order-established": "ORDER ESTABLISHED - THE FINALIST RANKING SURVIVES UNCOUPLED SEEDS",
+        "order-coupled": "ORDER COUPLED - THE POOLED SIGNIFICANCE IS THE SCREENING SEEDS",
+        "still-not-established": "STILL NOT ESTABLISHED - NO ORDERING AT 6 BLOCKS",
+        "floor-limited": "OPEN - THE EXACT FLOOR IS ABOVE THE DECLARED THRESHOLD",
+    }[branch]
+    return {
+        "available": True,
+        "branch": branch,
+        "label": label,
+        "reading": FINALIST_ORDER_READINGS[branch],
+        "conditions": conditions,
+        "steps": outcome.get("steps"),
+        "p_all": p_all,
+        "p_fresh": p_fresh,
+        "blocks_all": pooled.get("blocks"),
+        "blocks_fresh": fresh.get("blocks"),
+        "pooled_winner": pooled_winner,
+        "fresh_winner": fresh_winner,
+        "block_tops": tops,
+        "all_blocks_agree": bool(all_agree),
+        "pooled_floor": pooled_floor,
+        "fresh_floor": fresh_floor,
+        "pooled_orderings": pooled.get("orderings") or [],
+        "fresh_orderings": fresh.get("orderings") or [],
+        "fresh_seeds": sorted(fresh_set),
+    }
+
+
 #: The §11 random-vs-manual comparison's pre-registered rule, declared before any
 #: ledger of that comparison exists. The arm it governs (both sets flat at 1200
 #: steps, the manual set re-run because v1's numbers came off a promotion schedule)

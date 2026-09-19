@@ -20,10 +20,12 @@ from typing import Sequence
 
 from act.search.architecture_eval import load_results, print_results_table
 from act.search.architecture_report import (
+    FINALIST_ORDER_RULE,
     HEAD_PAIRING_RULE,
     HORIZON_RULE,
     REPLICATION_RULE,
     best_available_summary,
+    finalist_order_decision,
     head_pairing_decision,
     horizon_decision,
     precision_offset,
@@ -132,6 +134,16 @@ def parse_args() -> argparse.Namespace:
             "are in HORIZON_RULE."
         ),
     )
+    parser.add_argument(
+        "--finalist-order-rule",
+        action="store_true",
+        help=(
+            "apply the v1 finalists' pre-registered rule to the pooled seed-matched "
+            "test at its declared length, reading it both over every pooled block and "
+            "over the screening-free blocks alone. Needs the fresh-seed arm pooled "
+            "with --also; thresholds are in FINALIST_ORDER_RULE."
+        ),
+    )
     parser.add_argument("--write", action="store_true", help="write ranked.json and decision.md")
     return parser.parse_args()
 
@@ -163,13 +175,28 @@ def cost_by_experiment(
     return split
 
 
+#: The precision of a row that does not carry ``run_config.mixed_precision``.
+#:
+#: ``mixed_precision`` was added to ``RunConfig`` in the same commit that gave the
+#: search path an autocast choice (``07fc36a``, 2026-09-18), so a row without it was
+#: trained by a harness that had no autocast to select: it ran in fp32, which is
+#: exactly what ``"off"`` means. Reading the absence as "unknown" refused to pool
+#: every pre-``07fc36a`` arm with every arm measured since - including this record
+#: with the fresh-seed arms that extend it - while adding nothing, because no row
+#: predating the field *could* be fp16 or bf16. Recorded values are still taken at
+#: face value, so the hazard the guard exists for is still refused: an fp16 arm
+#: pooled with an fp32 one has two *recorded* precisions and stays out.
+PRECISION_BEFORE_RECORDING = "off"
+
+
 def ledger_precisions(source: Path) -> set[str]:
-    """The autocast precisions one directory's ledgers recorded.
+    """The autocast precisions one directory's ledgers were measured under.
 
     ``run_config.mixed_precision`` travels with every row for exactly the reason
     this function exists: a loss measured under one precision is not comparable to
-    a loss measured under another. A row written before the field existed records
-    nothing, which is "unrecorded" rather than "the same as anything else".
+    a loss measured under another. A row that records nothing predates the field
+    and is fp32 by construction - see :data:`PRECISION_BEFORE_RECORDING` - not
+    "the same as anything else".
     """
     values: set[str] = set()
     for ledger in sorted(source.glob("*_seed*_results.jsonl")):
@@ -177,9 +204,8 @@ def ledger_precisions(source: Path) -> set[str]:
             if not line.strip():
                 continue
             row = json.loads(line)
-            values.add(
-                str((row.get("run_config") or {}).get("mixed_precision") or "unrecorded")
-            )
+            recorded = (row.get("run_config") or {}).get("mixed_precision")
+            values.add(str(recorded) if recorded else PRECISION_BEFORE_RECORDING)
     return values
 
 
@@ -263,6 +289,11 @@ def main() -> None:
         outcome["head_pairing_decision"] = head_pairing_decision(outcome)
     if args.horizon_rule:
         outcome["horizon_decision"] = horizon_decision(outcome)
+    if args.finalist_order_rule:
+        # Handed the pooled rows as well as the outcome: the rule's second reading is
+        # the same test over a seed subset, and selecting it from the same row set
+        # keeps both readings on one set of ledgers.
+        outcome["finalist_order_decision"] = finalist_order_decision(outcome, results)
     if args.offset_against:
         # Loaded beside the primary rather than pooled into it: the whole point of
         # the quantity is that the two experiments were measured differently, so
@@ -463,6 +494,7 @@ def main() -> None:
         ("replication_decision", "replication", REPLICATION_RULE),
         ("head_pairing_decision", "head-pairing", HEAD_PAIRING_RULE),
         ("horizon_decision", "horizon", HORIZON_RULE),
+        ("finalist_order_decision", "finalist-order", FINALIST_ORDER_RULE),
     ):
         rule = outcome.get(key) or {}
         if not rule:
