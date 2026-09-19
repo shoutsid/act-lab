@@ -1,5 +1,14 @@
 # ACT Implementation Status
 
+## A scratch sweep ignored its own arguments, and the reset it opened with reset nothing (2026-09-19)
+
+| | |
+|---|---|
+| **What was found** | `scripts/capacity_sweep.py` has no argument parser, so `--help` began a full four-scale sweep instead of printing the flags, and a misspelled flag was dropped while the default run went ahead. It was found by running `--help` to read those flags, which started a run. The same script opens by resetting state and named `<scale>-seed-<seed>`, while every run writes `<scale>-seed-<seed>-<arm>` - and `run_v0_session` **resumes** from an existing checkpoint directory, so the reset matched nothing and each re-run continued from the previous one's weights. |
+| **Fixed** | The axes are real flags (`--scales/--arms/--seeds/--steps/--out`), each validated or refused by name, and the reset now names the directory the run is handed. Both pinned in `tests/test_capacity_sweep.py` against a faked session, because the sweep has no study summary and nothing else reads it. |
+| **What finding it cost** | A `--help` invocation overwrote git-ignored scratch checkpoints under `artifacts/v0-sessions/20M-seed-42-{null,random}`. No tracked file was touched (`artifacts/*` is ignored) and nothing was deleted, because the reset named a path that never existed. |
+| **Scope** | The script is unregistered and referenced by no test, doc or shell script, so its output is still not part of any record. The fix is only that it no longer does something other than what it says. |
+
 ## The finalist arm resolved v1 as coupled, and getting there exposed a record that could not be regenerated (2026-09-19)
 
 | | |

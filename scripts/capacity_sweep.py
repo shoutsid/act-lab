@@ -6,6 +6,7 @@ random churn, null, and directional controls at 20M/40M/60M/100M.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 import time
@@ -67,7 +68,15 @@ class SweepResult:
     elapsed_s: float
 
 
-def make_config(scale_name: str, scale_kwargs: dict, seed: int, arm_name: str, arm_overrides: dict) -> V0SessionConfig:
+def make_config(
+    scale_name: str,
+    scale_kwargs: dict,
+    seed: int,
+    arm_name: str,
+    arm_overrides: dict,
+    *,
+    steps: int = STEPS,
+) -> V0SessionConfig:
     is_null = arm_name == "null"
     return V0SessionConfig(
         seed=seed,
@@ -82,7 +91,7 @@ def make_config(scale_name: str, scale_kwargs: dict, seed: int, arm_name: str, a
         active_experts=scale_kwargs["active_experts"],
         expert_width=scale_kwargs["expert_width"],
         batch_size=BATCH_SIZE,
-        total_steps=STEPS,
+        total_steps=steps,
         learning_rate=3e-4,
         mutation_interval=MUTATION_INTERVAL,
         mutation_budget=MUTATION_BUDGET,
@@ -121,25 +130,83 @@ def run_one(config: V0SessionConfig, scale_name: str, arm_name: str) -> SweepRes
     )
 
 
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """The sweep's axes, so an argument is honoured or rejected rather than ignored.
+
+    Without a parser the script read no arguments at all: ``--help`` began a full
+    sweep, and a misspelled flag was dropped while the default run went ahead. The
+    selection also decides what gets reset, which matters because the reset has to
+    name the directories the runs actually write.
+    """
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--scales",
+        default=",".join(SCALES),
+        help="comma-separated; one of " + ", ".join(SCALES),
+    )
+    parser.add_argument(
+        "--arms",
+        default=",".join(ARM_CONFIGS),
+        help="comma-separated; one of " + ", ".join(ARM_CONFIGS),
+    )
+    parser.add_argument("--seeds", default=",".join(str(s) for s in SEEDS))
+    parser.add_argument("--steps", type=int, default=STEPS)
+    parser.add_argument("--out", type=Path, default=OUTPUT_DIR)
+    return parser.parse_args(argv)
+
+
+def _selected(raw: str, known, flag: str) -> list[str]:
+    """Names from a comma-separated flag, refused rather than dropped when unknown."""
+    wanted = [part.strip() for part in raw.split(",") if part.strip()]
+    unknown = [name for name in wanted if name not in known]
+    if unknown:
+        raise SystemExit(f"{flag}: unknown name(s) {unknown}; choose from {list(known)}")
+    if not wanted:
+        raise SystemExit(f"{flag}: no name given; choose from {list(known)}")
+    return wanted
+
+
 def main() -> None:
     import shutil
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    for scale in SCALES:
-        for s in SEEDS:
-            shutil.rmtree(f"artifacts/v0-sessions/{scale}-seed-{s}", ignore_errors=True)
+    args = parse_args()
+    scales = _selected(args.scales, SCALES, "--scales")
+    arms = _selected(args.arms, ARM_CONFIGS, "--arms")
+    seeds = [int(part) for part in args.seeds.split(",") if part.strip()]
+    if not seeds:
+        raise SystemExit("--seeds: no seed given; pass e.g. --seeds 42")
+    output_dir: Path = args.out
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Reset the directories the runs *write* - ``<scale>-seed-<seed>-<arm>``, which
+    # ``run_one`` passes as ``checkpoint_dir`` - rather than ``<scale>-seed-<seed>``,
+    # which no run ever creates. ``run_v0_session`` resumes from an existing
+    # checkpoint directory, so the old glob reset nothing and every re-run continued
+    # from whatever the previous one left behind, making the sweep's numbers depend
+    # on it.
+    for scale in scales:
+        for seed in seeds:
+            for arm in arms:
+                shutil.rmtree(
+                    f"artifacts/v0-sessions/{scale}-seed-{seed}-{arm}", ignore_errors=True
+                )
 
     all_results: list[SweepResult] = []
 
-    for scale_name, scale_kwargs in SCALES.items():
+    for scale_name in scales:
+        scale_kwargs = SCALES[scale_name]
         print(f"\n{'='*60}")
         print(f"SCALE: {scale_name}")
         print(f"{'='*60}")
 
-        for seed in SEEDS:
-            for arm_name, arm_overrides in ARM_CONFIGS.items():
+        for seed in seeds:
+            for arm_name in arms:
+                arm_overrides = ARM_CONFIGS[arm_name]
                 print(f"  {scale_name} / seed={seed} / {arm_name} ... ", end="", flush=True)
                 try:
-                    config = make_config(scale_name, scale_kwargs, seed, arm_name, arm_overrides)
+                    config = make_config(
+                        scale_name, scale_kwargs, seed, arm_name, arm_overrides,
+                        steps=args.steps,
+                    )
                     total, active = estimated_parameter_count(config.model_config())
                     result = run_one(config, scale_name, arm_name)
                     all_results.append(result)
@@ -147,7 +214,7 @@ def main() -> None:
                 except Exception as e:
                     print(f"FAILED: {e}")
 
-    results_path = OUTPUT_DIR / "threshold_sweep.json"
+    results_path = output_dir / "threshold_sweep.json"
     with open(results_path, "w") as f:
         json.dump([asdict(r) for r in all_results], f, indent=2)
     print(f"\nResults saved to {results_path}")
@@ -158,7 +225,7 @@ def main() -> None:
     print(f"{'Scale':<8} {'Null':>8} {'Random':>8} {'Adaptive':>8} {'Anti':>8}  {'A-R':>8} {'A-N':>8}")
     print("-" * 72)
 
-    for scale_name in SCALES:
+    for scale_name in scales:
         by_arm = {}
         for r in all_results:
             if r.scale == scale_name:
@@ -173,10 +240,10 @@ def main() -> None:
     print(f"\n{'='*90}")
     print("PAIR WINS (adaptive vs random, per seed)")
     print(f"{'='*90}")
-    for scale_name in SCALES:
+    for scale_name in scales:
         wins = 0
         total = 0
-        for seed in SEEDS:
+        for seed in seeds:
             a = [r for r in all_results if r.scale == scale_name and r.seed == seed and r.arm == "adaptive"]
             b = [r for r in all_results if r.scale == scale_name and r.seed == seed and r.arm == "random"]
             if a and b:
