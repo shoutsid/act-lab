@@ -1,5 +1,14 @@
 # ACT Implementation Status
 
+## The verdict's action named the wrong gene, and the test only checked that both genes were named (2026-09-19)
+
+| | |
+|---|---|
+| **What was found** | A 9-edit mutation sweep over `verdict()` - the function that turns the evidence bundle into the headline and the *next action* - left **5 alive**. The serious one: swapping `max(resolved, key=abs(nats))` for `min` survived. That is not cosmetic. The action is an instruction about where to spend the next phase's budget - "spend the search budget there" - so attributing the effect to the *smaller* of two significant genes reverses the instruction. The existing attribution test asserted only that `` `hidden_size` `` and `` `depth` `` both appeared in the text, which they do either way: once as the lever and once as the qualification. It could not see the two swapped, so the mutant read as green. It now asserts which way round they are. |
+| **Three exact-equality boundaries** | Also unpinned, and the same class as the rule boundaries fixed in the entry below: the materiality floor (`spread <= 0.01`), the significance threshold (`p_value < 0.05`), and the per-gene attribution threshold (`row["p"] < 0.05`). All three are numbers the pipeline returns *exactly* - the floor is a declared constant and both p-values come from a discrete test - and each decides **against** spending compute, so reading one generously buys work on an undecidable result. Now pinned at equality. |
+| **What was pinned** | **4/4 caught**, where all four lived beforehand: the gene swap, the floor boundary, the verdict threshold, and the per-gene threshold. The attribution test was extended rather than duplicated, since the defect was in what it asserted rather than in what it covered. Each new assertion was confirmed to fail against its own mutation before being kept. |
+| **A wording looseness left alone** | At a spread of exactly 0.01 the headline reads "spread 0.0100 nats is **below** the 0.01 nat floor", which is false at equality. The refusal itself is correct and is the conservative direction; only the sentence is loose, and only at an equality a continuous statistic is unlikely to land on. Left unchanged as cosmetic rather than regenerating committed decision text for it. |
+
 ## The rules decide at exact equality, and the clause that looked like a gap is an equivalent mutant (2026-09-19)
 
 | | |

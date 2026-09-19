@@ -20,6 +20,7 @@ import scipy.stats
 from act.search.architecture_eval import EvalResult, load_results
 from act.search.architecture_report import (
     HEAD_PAIRING_RULE,
+    MATERIALITY_FLOOR_NATS,
     REPLICATION_RULE,
     _compact,
     _spearman_exact_p,
@@ -1265,6 +1266,49 @@ def test_verdict_names_the_attributed_lever_when_crossed():
     assert "`hidden_size`" in action
     assert "`depth`" in action
     assert "spend the search budget there" in action
+    # Named *which way round*: `hidden_size` is 0.20 nats against `depth`'s 0.08, so
+    # it is the lever, and `depth` is the qualification. Both names appear either
+    # way, so asserting their presence alone would not notice the two being swapped -
+    # and the action is an instruction about where to spend budget, which means a
+    # swap reverses it rather than merely rewording it.
+    assert "attributes it to `hidden_size`" in action
+    assert "with `depth` real but smaller" in action
+
+
+def test_verdict_equality_boundaries_all_decide_against_the_claim():
+    """Three thresholds decide at exact equality, and each refuses a claim there.
+
+    All three are values the pipeline returns exactly - the floor is a declared
+    constant, and both p-values come from a discrete test - so none is a boundary
+    the data is guaranteed to avoid. Each one is pinned because reading it
+    generously spends compute on an undecidable result.
+    """
+
+    def crossed_summary():
+        return effect_summary(
+            crossed_design(depth_effect=0.08, hidden_effect=0.20), STEPS, [42, 43, 44]
+        )
+
+    # A spread sitting exactly on the floor is not material.
+    outcome = crossed_summary()
+    outcome["architecture_spread"] = MATERIALITY_FLOOR_NATS
+    assert "NO MATERIAL SIGNAL" in verdict(outcome)[0]
+
+    # A p sitting exactly on the significance threshold is not established.
+    outcome = crossed_summary()
+    outcome["blocked_test"]["p"] = 0.05
+    assert "NOT ESTABLISHED" in verdict(outcome)[0]
+
+    # A main effect sitting exactly on the per-gene threshold is not attributed,
+    # however much larger it is than the gene that does clear it.
+    outcome = crossed_summary()
+    crossed = outcome["crossed_contrast"]["main"]
+    larger = max(crossed.items(), key=lambda item: abs(item[1]["nats"]))
+    assert larger[0] == "hidden_size"  # the fixture must make the point it claims
+    crossed[larger[0]]["p"] = 0.05
+    action = verdict(outcome)[1]
+    assert "attributes it to `depth`" in action
+    assert "`hidden_size`" not in action.split("attributes it to")[1].split(";")[0]
 
 
 def test_verdict_omits_attribution_without_a_crossing():
