@@ -32,6 +32,7 @@ from pathlib import Path
 
 from act.search.architecture_eval import load_results
 from act.search.architecture_report import (
+    reading_stability_lines,
     SET_COMPARISON_RULE,
     set_comparison_decision,
     two_set_blocked_test,
@@ -163,7 +164,17 @@ def render_markdown(
     ]
     for row in decision["conditions"]:
         lines.append(f"| {row['condition']} | {row['value']} | {'yes' if row['met'] else 'NO'} |")
-    lines += ["", "## All three statistics", ""]
+    lines.append("")
+    if decision.get("note"):
+        lines += [decision["note"], ""]
+    # The same table the zoo decision renders, from the same function: the §11
+    # comparison's branch is a threshold on a loss like every other rule's, and a second
+    # spelling of the table is how two arms end up describing one check differently.
+    if decision.get("reading_stability"):
+        lines += reading_stability_lines(
+            decision["reading_stability"], decision["label"]
+        )
+    lines += ["## All three statistics", ""]
     for name in ("mean", "best", "worst"):
         outcome = outcomes[name]
         if not outcome.get("available"):
@@ -230,8 +241,32 @@ def main() -> None:
         )
         for statistic in ("mean", "best", "worst")
     }
+    def rebuild(rows) -> dict:
+        """The same rule over the same rows with a different loss substituted.
+
+        This comparison's evidence is a two-set test built from both arms' rows rather
+        than one of the zoo outcome's own blocks, so it hands the reconstruction to
+        ``set_comparison_decision`` instead of asking it to rebuild a block it does not
+        have. Everything else about the reading - the fields substituted, the thresholds,
+        the branch logic - is the shared path the other four rules use.
+        """
+        return set_comparison_decision(
+            two_set_blocked_test(
+                rows,
+                args.steps,
+                (("manual", manual_names), ("random", random_names)),
+                statistic=args.statistic,
+                samples=args.samples,
+            ),
+            budget_ratio=budget_ratio,
+        )
+
     decision = set_comparison_decision(
-        outcomes[args.statistic], budget_ratio=budget_ratio
+        outcomes[args.statistic],
+        results,
+        rebuild=rebuild,
+        samples=args.samples,
+        budget_ratio=budget_ratio,
     )
 
     manual_summary = structural_summary(manual_zoo)

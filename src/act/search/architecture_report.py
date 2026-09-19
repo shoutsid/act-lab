@@ -2815,9 +2815,9 @@ def replication_decision(
     reading_stability = None
     if reading_check and results:
         readings = rule_reading_stability(
-            replication_decision,
-            outcome,
             results,
+            rule_fn=replication_decision,
+            outcome=outcome,
             blocks=RULE_READING_BLOCKS["replication"],
             samples=samples,
         )
@@ -3024,9 +3024,9 @@ def horizon_decision(
     note = None
     if reading_check and results:
         readings = rule_reading_stability(
-            horizon_decision,
-            outcome,
             results,
+            rule_fn=horizon_decision,
+            outcome=outcome,
             blocks=RULE_READING_BLOCKS["horizon"],
             samples=samples,
         )
@@ -3269,9 +3269,9 @@ def finalist_order_decision(
     reading_stability = None
     if reading_check and results:
         readings = rule_reading_stability(
-            finalist_order_decision,
-            outcome,
             results,
+            rule_fn=finalist_order_decision,
+            outcome=outcome,
             blocks=RULE_READING_BLOCKS["finalist-order"],
             samples=samples,
         )
@@ -3366,7 +3366,10 @@ SET_COMPARISON_READINGS: dict[str, str] = {
 
 def set_comparison_decision(
     mean_outcome: dict,
+    results: Sequence[EvalResult] | None = None,
     *,
+    rebuild: Callable[[Sequence[EvalResult]], dict] | None = None,
+    samples: int = 200_000,
     budget_ratio: float | None = None,
     budget_deviation: float = SET_COMPARISON_RULE["budget_deviation"],
     p_threshold: float = SET_COMPARISON_RULE["p"],
@@ -3392,6 +3395,13 @@ def set_comparison_decision(
        against the nominal 100M and an unmatched draw carries 12-15% more budget;
     3. ``p < p_threshold`` decides the sign; otherwise the null branch reports the
        power context rather than equality.
+
+    The reading check runs through the same shared path as the other rules, but this one
+    cannot describe its evidence as an outcome block: the two sets are built from both
+    arms' rows by ``two_set_blocked_test``, so the caller hands the reconstruction over
+    as ``rebuild``. Wiring it now, before the arm is bought, is the point - the check is
+    part of the rule's declaration rather than something added once a result looked
+    uncomfortable.
     """
     conditions: list[dict] = []
     seeds = len(mean_outcome.get("seeds", []))
@@ -3452,11 +3462,29 @@ def set_comparison_decision(
             "§11: NO DETECTABLE SET-MEAN DIFFERENCE AT THIS SIZE"
         ),
     }[branch]
+    reading_stability = None
+    note = None
+    if rebuild is not None and results:
+        readings = rule_reading_stability(
+            results, rebuild=rebuild, samples=samples
+        )
+        reading_stability = {
+            "readings": readings,
+            "moved": [
+                field
+                for field, reading in readings.items()
+                if reading["available"] and reading["branch"] != branch
+            ],
+        }
+        note = _reading_stability_clause(None, reading_stability)
+
     return {
         "available": True,
         "branch": branch,
         "label": labels,
         "reading": SET_COMPARISON_READINGS[branch],
+        "note": note,
+        "reading_stability": reading_stability,
         "conditions": conditions,
         "difference_nats": difference,
         "p": p_value,
@@ -3550,11 +3578,12 @@ RULE_READING_BLOCKS: dict[str, tuple[str, ...]] = {
 
 
 def rule_reading_stability(
-    rule_fn: Callable[..., dict],
-    outcome: dict,
-    results: list[EvalResult],
+    results: Sequence[EvalResult],
     *,
-    blocks: Sequence[str] = RULE_READING_BLOCKS["replication"],
+    rule_fn: Callable[..., dict] | None = None,
+    outcome: dict | None = None,
+    blocks: Sequence[str] = (),
+    rebuild: Callable[[Sequence[EvalResult]], dict] | None = None,
     samples: int = 200_000,
     fields: Sequence[str] = LOSS_READING_FIELDS,
 ) -> dict[str, dict]:
@@ -3580,31 +3609,44 @@ def rule_reading_stability(
     rows still go with the call, because the finalist-order rule selects its
     screening-free blocks out of them and would otherwise report ``unavailable`` on
     every alternate reading.
+
+    ``rebuild`` is for a rule whose evidence is not one of the outcome's own blocks -
+    the §11 comparison reads a two-set test built from both arms' rows - so it is handed
+    a ``read(rows)`` returning the rule applied to them. Either ``rebuild`` or the
+    ``rule_fn``/``outcome`` pair has to be supplied; a caller supplying neither is a
+    programming error rather than an empty reading.
     """
-    steps = outcome.get("steps")
-    baseline = rule_fn(outcome, results, reading_check=False)
+    if rebuild is None and (rule_fn is None or outcome is None):
+        raise ValueError("rule_reading_stability needs rebuild, or rule_fn with outcome")
+
+    def read(rows: Sequence[EvalResult]) -> dict:
+        if rebuild is not None:
+            return rebuild(rows)
+        steps = outcome.get("steps")
+        alternate = dict(outcome)
+        if "crossed_contrast" in blocks:
+            alternate["crossed_contrast"] = crossed_contrast(
+                rows, steps, samples=samples, seeds=outcome.get("seeds")
+            )
+        if "paired_contrasts" in blocks:
+            alternate["paired_contrasts"] = _paired_contrasts_at(rows, steps)
+        if "paired_level_splits" in blocks:
+            alternate["paired_level_splits"] = _paired_level_splits_at(rows, steps)
+        if "blocked_test" in blocks:
+            alternate["blocked_test"] = blocked_permutation_test(
+                rows, steps, samples=samples
+            )
+        return rule_fn(alternate, rows, reading_check=False)
+
     baseline_met = {
-        row["condition"]: row["met"] for row in baseline.get("conditions") or []
+        row["condition"]: row["met"] for row in read(results).get("conditions") or []
     }
     readings: dict[str, dict] = {}
     for field in fields:
         swapped = [
             replace(entry, validation_loss=getattr(entry, field)) for entry in results
         ]
-        alternate = dict(outcome)
-        if "crossed_contrast" in blocks:
-            alternate["crossed_contrast"] = crossed_contrast(
-                swapped, steps, samples=samples, seeds=outcome.get("seeds")
-            )
-        if "paired_contrasts" in blocks:
-            alternate["paired_contrasts"] = _paired_contrasts_at(swapped, steps)
-        if "paired_level_splits" in blocks:
-            alternate["paired_level_splits"] = _paired_level_splits_at(swapped, steps)
-        if "blocked_test" in blocks:
-            alternate["blocked_test"] = blocked_permutation_test(
-                swapped, steps, samples=samples
-            )
-        rule = rule_fn(alternate, swapped, reading_check=False)
+        rule = read(swapped)
         # Which condition moved is the part a reader can act on: a branch that turns on
         # a significance test and one that turns on a magnitude ratio are the same
         # label and very different claims if you are deciding what to believe.
@@ -3621,6 +3663,43 @@ def rule_reading_stability(
             "flipped": flipped,
         }
     return readings
+
+
+def reading_stability_lines(stability: dict, primary_label: str) -> list[str]:
+    """The reading table a rule's record carries, as markdown lines.
+
+    Shared by the zoo decision and the §11 comparison's renderer rather than written in
+    one of them and paraphrased in the other, for the same reason the clause above is
+    shared: two spellings of one table drift, and the field is about a claim being
+    readable rather than about a table looking a particular way.
+
+    ``primary_label`` is the rule's own label, so the table's first row is the reading
+    the record's branch was decided on rather than a restatement of the branch name.
+    """
+    moved = stability["moved"]
+    lines = [
+        "The branch is a threshold on a loss, so it was re-read on the other losses "
+        "these ledgers carry - the same rows with only the loss field substituted, "
+        "which is a second reading of one design rather than a second experiment:",
+        "",
+        "| Loss read | Branch |",
+        "|---|---|",
+        f"| `validation_loss` - {LOSS_FIELD_LABELS['validation_loss']} "
+        f"| {primary_label} |",
+    ]
+    for field, reading in stability["readings"].items():
+        branch_text = reading["label"] if reading["available"] else "not applicable"
+        lines.append(
+            f"| `{field}` - {reading['loss']} | "
+            + (f"**{branch_text}**" if field in moved else branch_text)
+            + " |"
+        )
+    return lines + [
+        "",
+        "Only the loss field changed; the design, the seeds and the declared "
+        "thresholds did not.",
+        "",
+    ]
 
 
 def _reading_stability_clause(note: str | None, stability: dict) -> str:
@@ -3905,9 +3984,9 @@ def head_pairing_decision(
     reading_stability = None
     if reading_check and results:
         readings = rule_reading_stability(
-            head_pairing_decision,
-            outcome,
             results,
+            rule_fn=head_pairing_decision,
+            outcome=outcome,
             blocks=RULE_READING_BLOCKS["head-pairing"],
             samples=samples,
         )
@@ -4686,32 +4765,7 @@ def write_decision(path: Path, outcome: dict) -> None:
             lines += [rule["note"], ""]
         stability = rule.get("reading_stability")
         if stability:
-            lines += [
-                "The branch is a threshold on a loss, so it was re-read on the other "
-                "losses these ledgers carry - the same rows with only the loss field "
-                "substituted, which is a second reading of one design rather than a "
-                "second experiment:",
-                "",
-                "| Loss read | Branch |",
-                "|---|---|",
-                f"| `validation_loss` - {LOSS_FIELD_LABELS['validation_loss']} "
-                f"| {rule['label']} |",
-            ]
-            for field, reading in stability["readings"].items():
-                branch_text = (
-                    reading["label"] if reading["available"] else "not applicable"
-                )
-                lines.append(
-                    f"| `{field}` - {reading['loss']} | "
-                    + (f"**{branch_text}**" if field in stability["moved"] else branch_text)
-                    + " |"
-                )
-            lines += [
-                "",
-                "Only the loss field changed; the design, the seeds and the declared "
-                "thresholds did not.",
-                "",
-            ]
+            lines += reading_stability_lines(stability, rule["label"])
         if rule.get("seeds_dropped"):
             lines += [
                 f"Applied over seeds {rule.get('seeds')}; "

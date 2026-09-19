@@ -41,6 +41,7 @@ from act.search.architecture_report import (
     replication_decision,
     _paired_contrasts_at,
     _paired_level_splits_at,
+    reading_stability_lines,
     effect_in_compute_units,
     effect_summary,
     finalist_order_decision,
@@ -3662,6 +3663,44 @@ def test_recorded_finalist_order_branch_is_stable_while_a_clause_flips():
     assert flipped[0]["met"], "the clause moved the other way"
     # Stable branch, so the note says so rather than naming a reading that moved.
     assert "does not depend on which loss" in rule["note"]
+
+
+def test_reading_stability_lines_mark_the_reading_that_moves():
+    """The table's bold is the whole point of the table.
+
+    A reader scanning the record needs the disagreeing row to stand out from the two
+    that agree; without the mark, three branches in a column is a table nobody reads.
+    Pinned on a constructed stability dict so the assertion is about the renderer rather
+    than about any one arm's numbers.
+    """
+    stability = {
+        "moved": ["mean_train_loss"],
+        "readings": {
+            "final_train_loss": {
+                "available": True,
+                "branch": "same",
+                "label": "SAME BRANCH",
+                "loss": "training loss at the end of training",
+                "flipped": [],
+            },
+            "mean_train_loss": {
+                "available": True,
+                "branch": "other",
+                "label": "OTHER BRANCH",
+                "loss": "mean training loss over the trajectory",
+                "flipped": [],
+            },
+        },
+    }
+    text = "\n".join(reading_stability_lines(stability, "PRIMARY BRANCH"))
+
+    assert (
+        "| `validation_loss` - held-out validation loss (the registered reading) "
+        "| PRIMARY BRANCH |"
+    ) in text
+    assert "| `final_train_loss` - training loss at the end of training | SAME BRANCH |" in text
+    assert "**OTHER BRANCH**" in text
+    assert "Only the loss field changed" in text
 
 
 def test_reading_check_can_be_turned_off_so_a_rule_cannot_read_forever():

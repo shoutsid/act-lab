@@ -1297,6 +1297,17 @@ exercised on synthetic planted-effect designs by `tests/test_set_comparison_deci
 held. When the comparison's hours are bought, its verdict is a command, not an
 afternoon of ad-hoc statistics.
 
+**Its reading check is declared with it rather than added later.** This branch is a
+threshold on a loss like every other pre-registered rule in the phase, and by the time
+§11 runs the other four will have shown what that costs: two of the four move when the
+same rows are read on a different loss, and one of those is §2c's own attribution. So
+`set_comparison_decision` re-reads itself over the same alternate losses through the
+shared path the other rules use — held-out, final training loss, and the trajectory
+average — and its record renders the same table. Wiring a check in *after* a result is
+how a declared threshold becomes a chosen one, which is the thing §11's pre-registration
+exists to prevent; the check costs the arm one extra two-set test per alternate and is
+part of the declaration above, not a response to anything.
+
 ## 10. Session cost
 
 | arm | runs | GPU-hours |

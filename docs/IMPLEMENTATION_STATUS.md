@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## The fifth rule gets its reading check before its arm is bought (2026-09-19)
+
+| | |
+|---|---|
+| **What was done** | The reading check covered four of the phase's five pre-registered rules, and the fifth — the §11 random-vs-manual comparison — was the one that has not run. It now runs through the same shared path, and `set_comparison_decision`'s record renders the same table. |
+| **Why that ordering matters** | Wiring a check in *after* a result is how a declared threshold becomes a chosen one, which is what §11's pre-registration exists to prevent. The check is part of the declaration rather than a response to anything, and by the time §11 runs, two of the four existing rules will have shown it costs something: one of them is §2c's own attribution. |
+| **The mechanism had to generalize** | §11's evidence is a two-set test built from both arms' rows, not one of the zoo outcome's own blocks, so `rule_reading_stability` now takes either the outcome-block path or a caller-supplied `read(rows)`. One shared path, one set of substituted fields, one set of thresholds. |
+| **One renderer, not two** | The reading table was inline in the zoo decision and absent from the §11 renderer; it is now `reading_stability_lines`, used by both. A second spelling of the table is how two arms end up describing one check differently. |
+| **Verified** | Three tests on synthetic planted-effect designs — a table rendered, a branch that moves when a per-set constant is planted on the trajectory loss, and no claim at all without a reconstruction — plus the bold marker pinned on a constructed dict so the disagreeing row stays readable. Four mutants caught, including a renderer that prints the verdict without the table. **1166 → 1170 tests.** |
+| **Result** | **1170 tests pass · 212/212 claims agree · 9/9 records reproduce.** |
+
 ## Every pre-registered branch now names the loss it was read on, and one of them moves (2026-09-19)
 
 | | |
