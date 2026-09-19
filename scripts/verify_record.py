@@ -785,6 +785,37 @@ def check_head_paired_confirm(root: Path, audit: Audit) -> None:
         f"{paired['p'] / HEAD_PAIRING_RULE['main_p']:.2f}x - not the 0.05 a reader applies",
     )
 
+    # The record's own reading table, recomputed from the ledgers the record was
+    # written from. The claim is not "the branch is stable" - it is not - but that the
+    # artifact *says* which loss produced the label and which one disagrees, so a
+    # reader who tries the second one finds it named rather than a silent contradiction
+    # of the line they first quoted.
+    ruled = head_pairing_decision(
+        best_available_summary(pooled, pooled_seeds, samples=20_000), pooled, samples=20_000
+    )
+    stability = ruled["reading_stability"] or {}
+    audit.check(
+        "§2c v4 pooled: the record names the reading that moves the branch",
+        ["mean_train_loss"],
+        stability.get("moved"),
+        "§2c",
+        "the same rule, same rows, only the loss field substituted",
+    )
+    audit.check(
+        "§2c v4 pooled: the reading the rule was pre-registered on holds",
+        "heads-free-at-wide",
+        (stability.get("readings") or {}).get("final_train_loss", {}).get("branch"),
+        "§2c",
+        "final train loss is the like-for-like partner, not the trajectory average",
+    )
+    audit.check(
+        "§2c v4 pooled: the disagreeing reading is recorded with its branch",
+        "head-axis-closed",
+        (stability.get("readings") or {}).get("mean_train_loss", {}).get("branch"),
+        "§2c",
+        "recorded as a sensitivity, and the record says which branch to quote",
+    )
+
 
 def check_finalist_order(root: Path, audit: Audit) -> None:
     """§9's open item, as the arm that closes it measures it.

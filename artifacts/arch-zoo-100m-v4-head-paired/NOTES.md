@@ -329,3 +329,19 @@ on held-out loss is an effect that did not generalise, which is the reading that
 null. The honest sentence is that it is **small (~0.02 nats, at most a third of the
 width effect) and reading-dependent in significance**, which is why the recommendation
 rests on the level split rather than on this p-value.
+
+## The record states that reading, so it is not left to a reader to hit
+
+The section above was written into the phase record first, which left the artifact a
+reader actually quotes — this arm's pooled `decision.md` — stating the branch with no
+mention of the loss it was read on. The rule now re-reads itself over the other losses
+these ledgers carry and the decision prints the table: held-out and final training loss
+both land on `HEAD EFFECT IS REAL AT WIDE WIDTH`, the trajectory average lands on
+`INTERACTION ABSENT - THE THREE-SEED AGREEMENT WAS SEED LUCK` and is bolded as the
+reading that moves. Substituting the loss is the only change — same rows, same seeds,
+same declared thresholds — so it is a second reading of one design rather than a second
+experiment, and the branch to quote is still the pre-registered one.
+
+Running it costs ~3.6 s on top of the 6.2 s analysis, and it is deliberately *not* gated
+on the margin looking thin: a check that silently skips itself is indistinguishable
+from a branch that held, which is the failure mode this whole section is about.

@@ -286,7 +286,13 @@ def main() -> None:
         # the evidence it was read from cannot drift apart.
         outcome["replication_decision"] = replication_decision(outcome)
     if args.head_rule:
-        outcome["head_pairing_decision"] = head_pairing_decision(outcome)
+        # Handed the pooled rows as well as the outcome, like the finalist-order rule:
+        # the branch is a threshold on a loss, so the record re-reads it over the
+        # other losses on the same rows when its margin is thin enough to move. The
+        # draws match the analysis's own so the readings are comparable.
+        outcome["head_pairing_decision"] = head_pairing_decision(
+            outcome, results, samples=args.samples
+        )
     if args.horizon_rule:
         outcome["horizon_decision"] = horizon_decision(outcome)
     if args.finalist_order_rule:

@@ -142,7 +142,17 @@ The level dependence is real: more attention heads help at wide residual-stream 
 | interaction nats > 0 (heads help more at wide width) | +0.0636 nats | yes |
 | the wide level's paired head effect < 0 | hidden_size=896: -0.0553 nats, p=0.0004883 (floor 0.0004883, 12 units) | yes |
 
-The pooled head contrast clears the threshold on a sign-inconsistent set of pairs, so it is a systematic average of disagreeing units rather than a uniform head effect - the level split above is what says which levels produce it, and it is the reason that split is reported rather than inferred from this average.
+The pooled head contrast clears the threshold on a sign-inconsistent set of pairs, so it is a systematic average of disagreeing units rather than a uniform head effect - the level split above is what says which levels produce it, and it is the reason that split is reported rather than inferred from this average. **The branch is reading-dependent**: on the same rows, with only the loss field substituted, the rule lands on `INTERACTION ABSENT - THE THREE-SEED AGREEMENT WAS SEED LUCK` under `mean_train_loss`. The design, the seeds and the declared thresholds are unchanged, so the branch to quote is the pre-registered one - held-out validation loss - and the reading that moves it is named here rather than left to a reader who tries the other.
+
+The branch is a threshold on a loss, so it was re-read on the other losses these ledgers carry - the same rows with only the loss field substituted, which is a second reading of one design rather than a second experiment:
+
+| Loss read | Branch |
+|---|---|
+| `validation_loss` - held-out validation loss (the registered reading) | HEAD EFFECT IS REAL AT WIDE WIDTH |
+| `final_train_loss` - training loss at the end of training | HEAD EFFECT IS REAL AT WIDE WIDTH |
+| `mean_train_loss` - mean training loss over the trajectory | **INTERACTION ABSENT - THE THREE-SEED AGREEMENT WAS SEED LUCK** |
+
+Only the loss field changed; the design, the seeds and the declared thresholds did not.
 
 ## Seed-matched contrast against the best architecture
 

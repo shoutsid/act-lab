@@ -2148,6 +2148,30 @@ def test_decision_renders_the_head_rule_and_the_level_split(tmp_path):
     assert "| Condition | Value | Met |" in text
 
 
+def test_decision_renders_the_loss_reading_table(tmp_path):
+    """The reading the branch was checked against is visible in the artifact.
+
+    A note in the prose is not enough for this: the branch label is the line a reader
+    quotes, and the table is what says which loss produced it and whether any other
+    one disagrees.
+    """
+    results = level_dependent_head_design(seeds=SIX)
+    outcome = head_rule_outcome(results, SIX)
+    outcome["head_pairing_decision"] = head_pairing_decision(
+        outcome, results, samples=2_000
+    )
+    path = tmp_path / "decision.md"
+    write_decision(path, outcome)
+    text = path.read_text()
+
+    assert "| Loss read | Branch |" in text
+    assert "`validation_loss`" in text
+    assert "held-out validation loss (the registered reading)" in text
+    assert "`final_train_loss` - training loss at the end of training" in text
+    assert "mean training loss over the trajectory" in text
+    assert "Only the loss field changed" in text
+
+
 def test_decision_renders_the_horizon_rule_at_its_declared_length(tmp_path):
     """The horizon arm's record artifact, pinned the way the head rule's is.
 
@@ -3480,6 +3504,68 @@ def test_recorded_head_pairing_branch_reverses_on_a_trajectory_averaged_loss():
     assert reversed_branch["label"] == (
         "INTERACTION ABSENT - THE THREE-SEED AGREEMENT WAS SEED LUCK"
     )
+
+
+def test_recorded_head_pairing_record_names_the_reading_that_flips_it():
+    """The reversal above has to reach the *record*, not just this test.
+
+    The arm's decision.md states the branch and nothing about which loss it was read
+    on, so a reader who tries the other one gets a different answer with no way to
+    tell which is pre-registered. Handing the rule its own rows is what closes that:
+    the branch is re-read on the alternate losses by the same code that decided it,
+    and the reading that disagrees is named in the record rather than left to be
+    discovered.
+    """
+    rows, seeds = _head_pair_pooled()
+    outcome = best_available_summary(rows, seeds, samples=_DRAWS)
+    rule = head_pairing_decision(outcome, rows, samples=_DRAWS)
+
+    assert rule["label"] == "HEAD EFFECT IS REAL AT WIDE WIDTH"
+    stability = rule["reading_stability"]
+    assert stability is not None
+    assert stability["moved"] == ["mean_train_loss"], stability["moved"]
+    assert stability["readings"]["final_train_loss"]["branch"] == rule["branch"]
+    assert "reading-dependent" in rule["note"]
+    assert "INTERACTION ABSENT" in rule["note"]
+    assert "mean_train_loss" in rule["note"]
+    # Only the loss field moved: the reading is reported with its units named, so a
+    # reader cannot take the alternate branch for a second arm.
+    assert stability["readings"]["mean_train_loss"]["loss"] == (
+        "mean training loss over the trajectory"
+    )
+
+
+def test_head_pairing_readings_are_withheld_without_the_rows():
+    """No rows, no claim either way - silence rather than a stability assertion.
+
+    The rule can be applied to an outcome alone, which is what every other rule in
+    this module takes. Claiming the branch is reading-stable without having read it
+    would be the exact over-claim this field exists to prevent.
+    """
+    rows, seeds = _head_pair_pooled()
+    outcome = best_available_summary(rows, seeds, samples=_DRAWS)
+    assert head_pairing_decision(outcome)["reading_stability"] is None
+
+
+def test_head_pairing_readings_do_not_move_on_a_constant_loss_offset():
+    """A loss field that differs by a constant cannot reorder anything.
+
+    This is the null for the check above: the synthetic design's two alternates are
+    the held-out loss plus a constant, so a branch that moved here would mean the
+    reading was being computed on something other than the substituted field.
+    """
+    seeds = (48, 49, 50)
+    results = level_dependent_head_design(seeds=seeds)
+    outcome = head_rule_outcome(results, seeds)
+    rule = head_pairing_decision(outcome, results, samples=2_000)
+
+    assert rule["branch"] == "open-floor-limited"
+    stability = rule["reading_stability"]
+    assert stability is not None and stability["moved"] == []
+    assert {reading["branch"] for reading in stability["readings"].values()} == {
+        "open-floor-limited"
+    }
+    assert "does not depend on which loss" in rule["note"]
 
 
 def test_recorded_level_pricing_survives_every_loss_reading():

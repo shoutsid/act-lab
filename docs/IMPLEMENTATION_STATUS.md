@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## The record's own branch label now carries the loss it was read on (2026-09-19)
+
+| | |
+|---|---|
+| **What was found** | The previous two stretches established that the head-paired arm's branch **reverses** on a trajectory-averaged loss, and wrote that into the findings record, the arm's NOTES and the audit - but the artifact a reader actually quotes, the arm's pooled `decision.md`, still printed the branch alone. A reader could try the second loss, get a different answer, and have no way to tell which one was pre-registered. The gap was the record, not the knowledge. |
+| **The fix is in the generator, not the artifact** | `head_pairing_decision` now takes the pooled rows and, when it gets them, re-reads its own rule over the other losses those ledgers carry - same rows, only the loss field substituted - then returns the branch each reading lands on plus a sentence naming any that disagrees. The decision prints that as a table. Because the alternate readings are produced by calling the *same* branch logic, the two cannot drift apart: a change to the rule moves both. |
+| **What the arm's record now says** | held-out `validation_loss` and `final_train_loss` both land on `HEAD EFFECT IS REAL AT WIDE WIDTH`; `mean_train_loss` lands on `INTERACTION ABSENT - THE THREE-SEED AGREEMENT WAS SEED LUCK` and is bolded as the reading that moves. The arm's own three-seed record is `open-floor-limited` and stable on all three, which is the informative null for this check. |
+| **Not gated on the margin looking thin** | The first draft skipped the re-read when no comparison sat within 2× of its threshold. That is a silent heuristic whose failure mode is indistinguishable from a branch that held - the exact defect this stretch is fixing - so it was removed. The check costs **3.6 s** against the 6.2 s 200,000-draw analysis it belongs to, and a rule applied to an outcome *without* rows reports no stability claim rather than an unverified one. |
+| **Verified** | Three tests and three claims, plus an artifact-level proof. Four mutants caught: substituting the held-out loss for every field (nothing moves), dropping the reading-dependent clause, suppressing the table, and claiming stability without rows. Stripping the table out of the committed `decision.md` makes it **stop reproducing** under `check_record_freshness.py`, so the record gate covers this too. **201 -> 204 claims.** |
+| **Result** | **1162 tests pass · 204/204 claims agree · 9/9 records reproduce.** |
+
 ## Every significance headline re-read on training loss: the two that move are both negatives (2026-09-19)
 
 | | |

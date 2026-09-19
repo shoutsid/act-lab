@@ -1777,7 +1777,26 @@
     "branch": "heads-free-at-wide",
     "label": "HEAD EFFECT IS REAL AT WIDE WIDTH",
     "reading": "The level dependence is real: more attention heads help at wide residual-stream width and do not at narrow. A search over this family must mutate `attention_heads` *jointly* with `hidden_size` - the free lever is only free at wide widths, so \"add heads\" is a rule with a precondition rather than a global one.",
-    "note": "The pooled head contrast clears the threshold on a sign-inconsistent set of pairs, so it is a systematic average of disagreeing units rather than a uniform head effect - the level split above is what says which levels produce it, and it is the reason that split is reported rather than inferred from this average.",
+    "note": "The pooled head contrast clears the threshold on a sign-inconsistent set of pairs, so it is a systematic average of disagreeing units rather than a uniform head effect - the level split above is what says which levels produce it, and it is the reason that split is reported rather than inferred from this average. **The branch is reading-dependent**: on the same rows, with only the loss field substituted, the rule lands on `INTERACTION ABSENT - THE THREE-SEED AGREEMENT WAS SEED LUCK` under `mean_train_loss`. The design, the seeds and the declared thresholds are unchanged, so the branch to quote is the pre-registered one - held-out validation loss - and the reading that moves it is named here rather than left to a reader who tries the other.",
+    "reading_stability": {
+      "readings": {
+        "final_train_loss": {
+          "available": true,
+          "branch": "heads-free-at-wide",
+          "label": "HEAD EFFECT IS REAL AT WIDE WIDTH",
+          "loss": "training loss at the end of training"
+        },
+        "mean_train_loss": {
+          "available": true,
+          "branch": "head-axis-closed",
+          "label": "INTERACTION ABSENT - THE THREE-SEED AGREEMENT WAS SEED LUCK",
+          "loss": "mean training loss over the trajectory"
+        }
+      },
+      "moved": [
+        "mean_train_loss"
+      ]
+    },
     "thresholds": {
       "main_p": 0.01,
       "interaction_p": 0.05

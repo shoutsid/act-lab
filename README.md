@@ -177,7 +177,9 @@ read — the parent arm is non-significant held-out and significant on final tra
 loss, its confirmation the reverse — while the level split holds on **every** loss
 reading, with all 12 wide-level units favouring more heads at the exact floor and the
 narrow level non-significant throughout. Read on a trajectory-averaged loss the
-six-seed branch itself changes. The width clause is solid on all three readings
+six-seed branch itself changes — and the arm's own `decision.md` prints that reading
+table beside the branch, so the reversal is stated where the label is quoted rather
+than only in this record. The width clause is solid on all three readings
 (−0.156 / −0.155 / −0.185, each at the design's floor), so the recommendation does not
 depend on the reading; the head contrast's null does.
 

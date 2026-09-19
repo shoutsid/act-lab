@@ -3424,9 +3424,76 @@ HEAD_PAIRING_READINGS: dict[str, str] = {
 }
 
 
+#: The loss fields this rule's branch is re-read on. Both are the same rows with a
+#: different loss substituted, so only the loss changes - the design, seeds and
+#: thresholds are untouched and the readings stay comparable. `final_train_loss` is
+#: the like-for-like partner (loss at the end of training, so a difference measures
+#: generalisation); `mean_train_loss` averages the whole trajectory, so it moves with
+#: descent speed rather than fit and is the reading most likely to disagree. Named
+#: here, in the module, so the set cannot be widened after a result without that edit
+#: being visible.
+HEAD_PAIRING_ALTERNATE_LOSSES: tuple[str, ...] = (
+    "final_train_loss",
+    "mean_train_loss",
+)
+
+#: What each loss field measures, so the reading table renders "loss at the end of
+#: training" rather than making a reader know the schema. The primary reading is
+#: named here too, because the table it appears in has to be readable on its own.
+HEAD_PAIRING_LOSS_LABELS: dict[str, str] = {
+    "validation_loss": "held-out validation loss (the registered reading)",
+    "final_train_loss": "training loss at the end of training",
+    "mean_train_loss": "mean training loss over the trajectory",
+}
+
+
+def head_pairing_readings(
+    outcome: dict,
+    results: list[EvalResult],
+    *,
+    samples: int = 200_000,
+    fields: Sequence[str] = HEAD_PAIRING_ALTERNATE_LOSSES,
+) -> dict[str, dict]:
+    """Re-read this rule's branch on the other losses the same ledgers carry.
+
+    The branch is a threshold comparison, and the quantity under the threshold is a
+    loss. Substituting a different loss on the *same rows* is therefore a reading of
+    the same design rather than a second experiment, and it is the cheapest available
+    check on whether the recorded branch is a property of the architectures or of the
+    loss field a reader happened to pick.
+
+    Applied by rebuilding the outcome's three evidence blocks over the substituted
+    loss and calling ``head_pairing_decision`` again, so the alternate reading runs
+    the *same* branch logic as the recorded one and the two cannot drift apart. The
+    design, the seeds and the declared thresholds are untouched.
+    """
+    steps = outcome.get("steps")
+    readings: dict[str, dict] = {}
+    for field in fields:
+        swapped = [
+            replace(entry, validation_loss=getattr(entry, field)) for entry in results
+        ]
+        alternate = dict(outcome)
+        alternate["crossed_contrast"] = crossed_contrast(
+            swapped, steps, samples=samples, seeds=outcome.get("seeds")
+        )
+        alternate["paired_contrasts"] = _paired_contrasts_at(swapped, steps)
+        alternate["paired_level_splits"] = _paired_level_splits_at(swapped, steps)
+        rule = head_pairing_decision(alternate)
+        readings[field] = {
+            "available": bool(rule.get("available")),
+            "branch": rule.get("branch"),
+            "label": rule.get("label"),
+            "loss": HEAD_PAIRING_LOSS_LABELS.get(field, field),
+        }
+    return readings
+
+
 def head_pairing_decision(
     outcome: dict,
+    results: list[EvalResult] | None = None,
     *,
+    samples: int = 200_000,
     main_p: float = HEAD_PAIRING_RULE["main_p"],
     interaction_p: float = HEAD_PAIRING_RULE["interaction_p"],
 ) -> dict:
@@ -3460,6 +3527,15 @@ def head_pairing_decision(
     check gates everything, because if the phase's one established attribution does
     not hold on its tightest-matched design then neither contrast in this rule is
     worth reading.
+
+    ``results`` is optional and is the pooled row set. When it is supplied, the same
+    rule is re-read over ``HEAD_PAIRING_ALTERNATE_LOSSES`` and the outcome carries the
+    branch each reading lands on, plus a sentence naming any reading that disagrees.
+    A threshold comparison computed on one loss is not evidence about another, and
+    this arm's own branch is the case that proves it: the pooled contrast clears its
+    declared threshold by 1.15x and one of the two alternates flips the branch. The
+    check is unconditional rather than gated on the margin looking thin, because a
+    silent skip is indistinguishable from a branch that held.
     """
     crossed = outcome.get("crossed_contrast") or {}
     main = crossed.get("main") or {}
@@ -3648,12 +3724,51 @@ def head_pairing_decision(
             "inferred from this average."
         )
 
+    # The branch is a threshold on a loss, so the record names the losses it was read
+    # on rather than leaving a reader to try a second one and find a different answer.
+    # Computed whenever the rows are supplied, with no "close enough to matter"
+    # shortcut: a margin that looks wide on the primary reading is exactly the kind of
+    # assumption this check exists to test, and a silent skip would be indistinguishable
+    # from a branch that held.
+    reading_stability = None
+    if results:
+        readings = head_pairing_readings(outcome, results, samples=samples)
+        moved = [
+            (field, reading)
+            for field, reading in readings.items()
+            if reading["available"] and reading["branch"] != branch
+        ]
+        reading_stability = {
+            "readings": readings,
+            "moved": [field for field, _ in moved],
+        }
+        if moved:
+            note = (note + " " if note else "") + (
+                "**The branch is reading-dependent**: on the same rows, with only the "
+                "loss field substituted, the rule lands on "
+                + "; ".join(
+                    f"`{reading['label']}` under `{field}`" for field, reading in moved
+                )
+                + ". The design, the seeds and the declared thresholds are unchanged, "
+                "so the branch to quote is the pre-registered one - held-out "
+                "validation loss - and the reading that moves it is named here rather "
+                "than left to a reader who tries the other."
+            )
+        else:
+            note = (note + " " if note else "") + (
+                "The branch does not depend on which loss it is read on: re-reading "
+                "the same rule over "
+                + ", ".join(f"`{field}`" for field in readings)
+                + " lands on the same branch, with only the loss field substituted."
+            )
+
     return {
         "available": True,
         "branch": branch,
         "label": label,
         "reading": HEAD_PAIRING_READINGS[branch],
         "note": note,
+        "reading_stability": reading_stability,
         "thresholds": {"main_p": main_p, "interaction_p": interaction_p},
         "conditions": conditions,
         "seeds": crossed.get("seeds"),
@@ -4410,6 +4525,34 @@ def write_decision(path: Path, outcome: dict) -> None:
         lines.append("")
         if rule.get("note"):
             lines += [rule["note"], ""]
+        stability = rule.get("reading_stability")
+        if stability:
+            lines += [
+                "The branch is a threshold on a loss, so it was re-read on the other "
+                "losses these ledgers carry - the same rows with only the loss field "
+                "substituted, which is a second reading of one design rather than a "
+                "second experiment:",
+                "",
+                "| Loss read | Branch |",
+                "|---|---|",
+                f"| `validation_loss` - {HEAD_PAIRING_LOSS_LABELS['validation_loss']} "
+                f"| {rule['label']} |",
+            ]
+            for field, reading in stability["readings"].items():
+                branch_text = (
+                    reading["label"] if reading["available"] else "not applicable"
+                )
+                lines.append(
+                    f"| `{field}` - {reading['loss']} | "
+                    + (f"**{branch_text}**" if field in stability["moved"] else branch_text)
+                    + " |"
+                )
+            lines += [
+                "",
+                "Only the loss field changed; the design, the seeds and the declared "
+                "thresholds did not.",
+                "",
+            ]
         if rule.get("seeds_dropped"):
             lines += [
                 f"Applied over seeds {rule.get('seeds')}; "

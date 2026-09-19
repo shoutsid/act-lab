@@ -534,6 +534,15 @@ reading, rather than on the pooled contrast, which does not — and the arm's he
 should be read with that margin named instead of as a null. Every number in this
 paragraph is recomputed from the two arms' ledgers by `verify_record.py`.
 
+The arm's own `decision.md` prints this rather than relying on a reader of the
+findings: the branch is a threshold on a loss, so the artifact re-reads the rule over
+the other losses those ledgers carry — same rows, only the loss field substituted —
+and prints the branch each one lands on, with the disagreeing reading in bold. Running
+it costs ~3.6 s against the 200,000-draw analysis it belongs to (6.2 s), and it is not
+gated on the margin looking thin, because a silent skip would be indistinguishable from
+a branch that held. A rule applied to an outcome without its rows reports no stability
+claim at all rather than an unverified one.
+
 ## 3. The effect decays with training — but the decay is variance, not signal
 
 **The v1 estimate, from overlapping subsets of its confounded families:**
