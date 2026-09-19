@@ -107,6 +107,28 @@ def make_config(
     )
 
 
+# Which session arm each sweep arm reports.
+#
+# ``run_v0_session`` returns its arms in ``config.arms`` order, and the three
+# probe-selection arms above are all configured as ``("random", "adaptive")`` so that
+# ``probe_selection`` - the only thing that distinguishes them - governs the
+# ``adaptive`` arm. Reading ``arms[0]`` therefore recorded the plain random-churn arm
+# for every sweep arm: the ``adaptive`` and ``anti`` rows carried the ``random`` arm's
+# numbers, bit-identical to it, with the ``probe_selection`` that told them apart
+# never read. The recorded arm is now selected by name rather than by position, and a
+# mode the session did not return is an error rather than a silently wrong row.
+#
+# The plain random arm is still trained inside the adaptive and anti sessions and the
+# sweep discards its result - 2x the compute for those rows. That is a study-design
+# question rather than this defect, so it is left as it is.
+ARM_MODE = {
+    "null": "null",
+    "random": "random",
+    "adaptive": "adaptive",
+    "anti": "adaptive",
+}
+
+
 def run_one(config: V0SessionConfig, scale_name: str, arm_name: str) -> SweepResult:
     cp_dir = f"artifacts/v0-sessions/{scale_name}-seed-{config.seed}-{arm_name}"
     t0 = time.monotonic()
@@ -114,7 +136,16 @@ def run_one(config: V0SessionConfig, scale_name: str, arm_name: str) -> SweepRes
     elapsed = time.monotonic() - t0
 
     total, active = estimated_parameter_count(config.model_config())
-    arm = asdict(result.arms[0])
+    wanted = ARM_MODE[arm_name]
+    arm = next(
+        (asdict(candidate) for candidate in result.arms if candidate.mode == wanted),
+        None,
+    )
+    if arm is None:
+        raise RuntimeError(
+            f"sweep arm {arm_name!r} reports mode {wanted!r}, which the session did "
+            f"not return (it returned {[a.mode for a in result.arms]})"
+        )
 
     return SweepResult(
         scale=scale_name,
@@ -213,6 +244,17 @@ def main() -> None:
                     print(f"loss={result.loss:.4f} mut={result.mutations} {result.elapsed_s:.1f}s")
                 except Exception as e:
                     print(f"FAILED: {e}")
+
+    # A run that fails is printed above and skipped, which is useful while a sweep is
+    # running - but a file written from no results at all is not a record of anything.
+    # The horizon arm already cost a session to this shape: every run in a stage was
+    # lost and the stage still reported success, because the file was written either
+    # way.
+    if not all_results:
+        raise SystemExit(
+            "no run produced a result, so there is nothing to write; the failures "
+            "above are the whole story"
+        )
 
     results_path = output_dir / "threshold_sweep.json"
     with open(results_path, "w") as f:

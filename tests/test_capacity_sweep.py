@@ -1,13 +1,15 @@
 """Tests for the capacity-threshold sweep (scripts/capacity_sweep.py).
 
-Two defects, both of the same shape: a step that did something other than what it
+Three defects, all of the same shape: a step that did something other than what it
 said. The script read no arguments at all, so ``--help`` started a full sweep and a
 misspelled flag was silently dropped while the default run went ahead - which is how
-the unguarded run was discovered, by running ``--help`` to see the flags. And the
-reset that opens the sweep named ``<scale>-seed-<seed>`` while every run writes
+the unguarded run was discovered, by running ``--help`` to see the flags. The reset
+that opens the sweep named ``<scale>-seed-<seed>`` while every run writes
 ``<scale>-seed-<seed>-<arm>``, so it reset nothing: ``run_v0_session`` *resumes* from
 an existing checkpoint directory, so each re-run continued from whatever the previous
-one had left behind.
+one had left behind. And the recorded arm was read as ``result.arms[0]`` while the
+three probe-selection arms are all configured as ``("random", "adaptive")``, so the
+``adaptive`` and ``anti`` rows carried the ``random`` arm's numbers.
 
 These are tested rather than only fixed because the sweep is not covered by a study
 summary, so nothing else reads it.
@@ -29,10 +31,16 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import capacity_sweep  # noqa: E402
 
 
+# A loss that identifies which arm a row came from, so a row recording the wrong arm
+# is readable rather than needing two runs to compare.
+_MODE_LOSS = {"null": 1.0, "random": 2.0, "adaptive": 3.0}
+
+
 @dataclass
 class _Arm:
     """The arm fields ``run_one`` reads off a session result."""
 
+    mode: str = "null"
     final_loss: float = 1.0
     mutation_count: int = 0
     search_flops: float = 0.0
@@ -44,12 +52,19 @@ class _Session:
     arms: list[_Arm] = field(default_factory=lambda: [_Arm()])
 
 
-def _patch_session(monkeypatch, seen: list[str]) -> None:
-    """Record the checkpoint directory each run is handed, without training."""
+def _patch_session(monkeypatch, seen: list[str], modes: list[str] | None = None) -> None:
+    """Record the checkpoint directory each run is handed, without training.
+
+    The fake mirrors the real contract in the way that matters here: it returns one
+    arm per ``config.arms``, in that order, each carrying its own ``mode``.
+    """
 
     def fake_session(config, *, checkpoint_dir, **kwargs):
         seen.append(str(checkpoint_dir))
-        return _Session()
+        wanted = modes if modes is not None else list(config.arms)
+        return _Session(
+            arms=[_Arm(mode=mode, final_loss=_MODE_LOSS[mode]) for mode in wanted]
+        )
 
     monkeypatch.setattr(capacity_sweep, "run_v0_session", fake_session)
 
@@ -136,6 +151,67 @@ def test_the_reset_covers_the_directory_the_runs_actually_write(tmp_path, monkey
     assert [(row["scale"], row["seed"], row["arm"]) for row in written] == [
         ("20M", 42, "null")
     ]
+
+
+def test_each_sweep_arm_records_the_arm_it_configures(tmp_path, monkeypatch):
+    """The defect: ``adaptive`` and ``anti`` recorded the random arm.
+
+    Every probe-selection arm is configured as ``("random", "adaptive")``, so
+    ``result.arms[0]`` is the plain random-churn arm for all of them and the
+    ``probe_selection`` that distinguishes them governs ``arms[1]``. The sweep's own
+    scratch output showed the signature - ``random``, ``adaptive`` and ``anti``
+    bit-identical at every scale.
+    """
+    _patch_reset(monkeypatch, [])
+    _patch_session(monkeypatch, [])
+    _run(
+        monkeypatch,
+        ["--scales", "20M", "--arms", "null,random,adaptive,anti", "--seeds", "42",
+         "--steps", "1", "--out", str(tmp_path)],
+    )
+
+    capacity_sweep.main()
+
+    written = json.loads((tmp_path / "threshold_sweep.json").read_text())
+    recorded = {row["arm"]: row["loss"] for row in written}
+    assert recorded == {
+        "null": _MODE_LOSS["null"],
+        "random": _MODE_LOSS["random"],
+        # Both report the adaptive arm - the one probe_selection governs.
+        "adaptive": _MODE_LOSS["adaptive"],
+        "anti": _MODE_LOSS["adaptive"],
+    }
+
+
+def test_the_arm_mode_map_covers_every_configured_arm() -> None:
+    """A new arm cannot be added without saying which session arm it reports."""
+    assert set(capacity_sweep.ARM_MODE) == set(capacity_sweep.ARM_CONFIGS)
+
+
+def test_an_arm_the_session_did_not_return_is_an_error(tmp_path, monkeypatch, capsys):
+    """A missing mode must fail loudly, not fall back to whatever arm is first.
+
+    ``main`` reports a failed run and carries on, so the run-level error is printed;
+    what must not happen is a results file written from nothing, which would read as a
+    sweep whose arm was merely quiet. An empty set of results is refused outright.
+    """
+    _patch_reset(monkeypatch, [])
+    # The session returns only the plain random arm, so the adaptive arm the sweep
+    # asked for is absent.
+    _patch_session(monkeypatch, [], modes=["random"])
+    _run(
+        monkeypatch,
+        ["--scales", "20M", "--arms", "adaptive", "--seeds", "42", "--steps", "1",
+         "--out", str(tmp_path)],
+    )
+
+    with pytest.raises(SystemExit) as exit_info:
+        capacity_sweep.main()
+
+    assert "nothing to write" in str(exit_info.value)
+    reported = capsys.readouterr().out
+    assert "FAILED" in reported and "'adaptive'" in reported and "'random'" in reported
+    assert not (tmp_path / "threshold_sweep.json").exists()
 
 
 def test_only_the_selected_runs_are_reset_and_reported(tmp_path, monkeypatch):
