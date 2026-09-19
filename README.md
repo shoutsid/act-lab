@@ -150,6 +150,22 @@ closed — an admission bar that asked for twice the schedule, a sweep that exit
 after losing every run in a stage, and a driver that read process exit codes as
 completeness rather than reading the ledgers.
 
+The other open question is v1's own, and it is now an arm rather than a caveat. That
+arm closed on "NOT ESTABLISHED — this experiment cannot yet tell": a 3-block exact
+test whose floor is 1/36, run on finalists that were promoted *on those same seeds*,
+so it is mildly anti-conservative in the winner's favour. Its own next step was to
+re-run those finalists on seeds never used in screening, and
+`artifacts/arch-zoo-100m-v1-finalists-6seed/NOTES.md` pre-registers exactly that —
+the three finalists, byte-identical genomes, flat at 1200 steps on fresh seeds, read
+*pooled* with v1 so the exact test moves to six blocks and a floor of 1/7776. Its
+rule reads that test twice and gates the positive branch on **both**: the pooled
+reading raises power, but a pooled test still contains the selection it is meant to
+check, so the three screening-free blocks have to name the same architecture first
+or the branch reports the ordering as coupled to the seeds that picked it. It runs
+on the idle local card in fp32 — Kaggle's ~3× advantage is an fp16 advantage, and
+fp16 is ruled out precisely here, because the gaps to resolve (0.017–0.023 nats) are
+the size of the fp16 differential this phase measured (≤0.018).
+
 The effect's *size* depends on the training horizon, and that was measured rather
 than assumed: the spread decays 1.65× per doubling of training, replicating the
 earlier estimate on a controlled design — but seed noise decays with it, so the
