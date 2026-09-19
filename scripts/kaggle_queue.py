@@ -793,6 +793,18 @@ def import_archzoo_output(
         f"hours={float(status.get('hours', 0.0)):.2f} rows={rows}",
         flush=True,
     )
+    missing = status.get("missing") or []
+    if missing:
+        # The kernel exits 0 whatever happened, so an incomplete arm has to say so
+        # here or it reads as a finished one. Naming the absent runs is the
+        # difference between "the design rule could not be read" and "re-push".
+        shown = ", ".join(str(item) for item in missing[:8])
+        log(
+            f"  WARNING: the arm is incomplete - {len(missing)} requested run(s) "
+            f"absent ({shown}{' ...' if len(missing) > 8 else ''}); the design rule "
+            "cannot be read until they exist",
+            flush=True,
+        )
     return status
 
 

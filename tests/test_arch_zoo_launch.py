@@ -233,6 +233,69 @@ def test_the_cost_warning_says_what_the_arm_would_report_on(capsys):
     assert "WARNING" not in fits
 
 
+def test_the_plan_is_checked_against_the_token_stream_before_any_gpu_time(tmp_path, capsys):
+    """The check the horizon arm's first launch did not have.
+
+    Its 12,000-step design was feasible on paper - 24.6M tokens under one epoch of
+    a 40.0M-token stream - and refused by the harness, which asked for 51.2M. The
+    mismatch appeared only as sixteen identical exceptions in a kernel log hours
+    into the session, after the quota was spent, so it is now read off the file
+    header at launch: the stream the plan points at is checked per length.
+    """
+    import numpy as np
+
+    from arch_zoo_screen import print_stream_feasibility, stream_feasibility
+
+    stream = tmp_path / "tokens.npy"
+    # open_memmap writes a real .npy header without allocating the body: the
+    # lengths here are the arm's own, so the file has to be its real size.
+    np.lib.format.open_memmap(stream, mode="w+", dtype=np.uint16, shape=(40_043_724,))
+    args = _plan_args(plan="flat", flat_steps="1200,12000", data_path=str(stream))
+    stages = planned_stages(args, zoo_size=8)
+
+    checks = print_stream_feasibility(stream_feasibility(args, stages))
+    text = capsys.readouterr().out
+    assert checks == []
+    assert "flat 12000: needs 26.6M tokens, stream holds 40.0M" in text
+    assert "flat 1200: needs 4.5M tokens" in text
+
+    # Why the first attempt was refused in fact rather than on paper: the old bar
+    # was twice the schedule plus the holdout, 51.2M against this 40.0M stream,
+    # while the schedule and its holdout are 26.6M.
+    horizon = stream_feasibility(args, stages)[1]
+    assert horizon["required"] == 26_600_000
+    assert 12000 * 2 * 1024 * 2 + 1024 + 2_000_000 == 51_153_024 > horizon["available"]
+
+
+def test_a_stream_that_cannot_serve_the_plan_is_named_per_length(tmp_path, capsys):
+    import numpy as np
+
+    from arch_zoo_screen import print_stream_feasibility, stream_feasibility
+
+    stream = tmp_path / "tokens.npy"
+    np.save(stream, np.zeros(7_190, dtype=np.uint16))
+    args = _plan_args(plan="flat", flat_steps="1200,12000", data_path=str(stream))
+    checks = print_stream_feasibility(
+        stream_feasibility(args, planned_stages(args, zoo_size=8))
+    )
+    assert [check["steps"] for check in checks] == [1200, 12000]
+    assert all(check["available"] == 7_190 for check in checks)
+    assert "TOO SHORT" in capsys.readouterr().out
+
+
+def test_a_missing_token_file_is_not_a_verdict(tmp_path, capsys):
+    """An empty `--data-path` selects the synthetic smoke stream, not a failure."""
+    from arch_zoo_screen import print_stream_feasibility, stream_feasibility
+
+    args = _plan_args(plan="flat", flat_steps="1200", data_path=None)
+    checks = print_stream_feasibility(
+        stream_feasibility(args, planned_stages(args, zoo_size=8))
+    )
+    assert checks == []
+    assert all(check["available"] is None for check in checks)
+    assert "no token file to check" in capsys.readouterr().out
+
+
 def test_the_matching_report_states_the_budget_the_arm_will_train():
     """The arm's budget is the set *sum*, and the band is a per-candidate limit.
 

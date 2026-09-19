@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## The horizon arm trained none of its horizon, and the admission bar that refused it was the defect (2026-09-19)
+
+| | |
+|---|---|
+| **What happened** | `act-t4-archzoo` ran 0.50 h and exited `COMPLETE`, and the driver reported `archzoo complete=True`. The 1200-step fp16 anchor trained; **all sixteen 12,000-step runs failed before a step** with `tokens.npy holds 40043724 tokens, need 51153024`. The per-seed logs holding the sixteen exceptions are scratch by the repo's own ignore rule (only `NOTES.md`, the decision/ranked/search-cost/matching/distance/zoo-definition files and the `*_results.jsonl` ledgers are durable), and the kernel's first version still carries the raw output on Kaggle; the failure is recorded in the arm's `NOTES.md` Status. |
+| **Root cause** | The harness admission check in `architecture_eval._prepare_streams` asked for **2x** the schedule plus the 2M validation holdout, with no stated reason. The design is feasible and the arm's own cost section said so: 12,000 steps consume 24.6M tokens and use 24,000 of the stream's 37,115 windows, so no window repeats. `required_train_tokens` now states the bar as the schedule itself (24.6M here) instead of 49.2M, plus `required_holdout_tokens`/`required_stream_tokens` so a caller can check a plan against the file on disk. A one-epoch stream is admitted; one token short is still refused. |
+| **Two reporting defects** | `mode_archzoo` derived `complete` from `not stopped_at_deadline` and the exit codes, but the screen catches a per-candidate exception and exits 0 even when every run in the stage failed. `complete` is now read off the requested (length, seed) grid against the ledgers, with the absent runs named; `kaggle_queue.py` warns when a re-read arm is incomplete. The screen also had no data-feasibility check, so an unservable plan was discovered inside a kernel rather than at launch: `--dry-run` now measures each length against the stream header and refuses with exit 1. |
+| **Not invalidated** | The correction relaxes an admission test, so it cannot alter a run that already passed it; `verify_record.py` reproduces **125/125** and the suite is 1068 passed. The design, candidate set, seeds, lengths and precision are unchanged, and the arm's `NOTES.md` Status section records the failure and the correction. |
+| **What the attempt produced** | The reusable fp16 anchor at 1200 steps, both seeds, batch-identical to the record (same stream and holdout). Pooled: depth **+0.0742** vs fp32 **+0.0842**, hidden **-0.1918** vs **-0.1928** - a precision offset of -0.010 and +0.001 nats against effects of 0.08-0.19, so fp16 is measured rather than assumed. |
+| **Re-run** | The design re-launched unchanged (~4 GPU-h at the measured 17.2k tok/s, against the 15 GPU-h horizon cap). |
+
 ## The head axis closed, the horizon arm opened on Kaggle, and the tree slimmed (2026-09-19)
 
 | | |

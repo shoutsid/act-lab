@@ -140,5 +140,60 @@ Then extend `verify_record.py` with the measured rows, update §3/§9/§11 of
 
 ## Status
 
-**Pre-registered, not yet run** (2026-09-19). Nothing in this file may change after
-the first ledger row exists except the Status section.
+**Pre-registered 2026-09-19; first attempt failed on a harness guard and was re-run
+after correcting it (2026-09-19).** Nothing above this section has changed since the
+first ledger row existed.
+
+### First attempt: the horizon never ran
+
+The kernel `act-t4-archzoo` ran 0.50 h and exited `COMPLETE`. The 1200-step anchor
+trained; **all sixteen 12,000-step runs failed before a step**, each with
+
+```
+ValueError: .../act-lab-tinystories-tokens/tokens.npy holds 40043724 tokens, need 51153024
+```
+
+The 51.15M was the harness's admission check in `architecture_eval._prepare_streams`,
+which asked for **twice** the schedule plus the 2M validation holdout. This file's own
+cost section says the design is feasible - 12,000 steps consume 24.6M tokens and use
+24,000 of the stream's 37,115 windows, so no window repeats, and the arm is under one
+epoch as intended. The check was the thing that was wrong, not the design: it is now
+`required_train_tokens`, the schedule itself (24.6M here) rather than an undocumented
+2x multiple, with a test pinning that a one-epoch stream is admitted and a
+single-token-short one still refused. **The design, the candidate set, the seeds, the
+two lengths and the precision are unchanged by that correction** - a relaxation of an
+admission test cannot alter a run that already passed it, and `verify_record.py`
+reproduces all 125 recorded claims after the change.
+
+Two reporting defects let a 0-for-16 arm read as a success, both now fixed:
+`kaggle_t4.mode_archzoo` derived `complete` from `not stopped_at_deadline` and the
+process exit codes, and the screen exits 0 when every candidate in a stage fails; it
+now compares the requested (length, seed) grid against the ledgers. And the screen
+had no data-feasibility check, so a plan that could not be served was discovered
+inside the kernel rather than at launch; `--dry-run` now checks the stream's header
+per length and refuses.
+
+### What the failed attempt did produce: the fp16 anchor, at 1200 steps
+
+Both seeds' 1200-step fp16 ledgers completed (16 rows) and **are reusable as the
+anchor**: the stream and holdout are the same size as the record's, so the window
+count, the seeded permutation and therefore the batch schedule are identical to the
+fp32 record's runs. On the same two seeds, the crossed main effects are
+
+| quantity | fp16 (this arm, 1200) | fp32 (record, 1200) | offset |
+|---|---|---|---|
+| depth (D14 - D5) | +0.0742 | +0.0842 | -0.010 |
+| hidden (H896 - H512) | -0.1918 | -0.1928 | +0.001 |
+
+per-cell differences 0.001-0.018 nats. So the precision offset is small against
+effects of 0.08-0.19 nats, which is the arm's own check on its choice of fp16, and it
+is now measured rather than assumed.
+
+### The re-run
+
+The design is re-launched unchanged: the same byte-identical crossed candidate set,
+seeds 42/43, flat at 1200 and 12,000 steps, fp16, one sweep per T4. The 1200-step
+anchor is retrained rather than carried over, because a flat plan restarts its own
+seed's ledgers on relaunch and special-casing one length inside the arm would be a
+change to the design. Cost is ~4 GPU-hours at the first attempt's measured 17.2k
+tokens/s, against the 15 GPU-h horizon cap; the first attempt spent 0.5.

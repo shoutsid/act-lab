@@ -32,11 +32,14 @@ import os
 from itertools import product
 from pathlib import Path
 
+import numpy as np
+
 from act.search.architecture_eval import (
     EvalResult,
     RunConfig,
     evaluate_batch,
     print_results_table,
+    required_stream_tokens,
 )
 from act.search.architecture_report import (
     best_available_summary,
@@ -709,6 +712,78 @@ def print_plan_cost(cost: dict) -> None:
     )
 
 
+def _token_file_count(path: str | None) -> int | None:
+    """Length of a token stream on disk, read from its header, or ``None``.
+
+    ``None`` for a missing or unset path, which is not a verdict: an empty
+    ``--data-path`` selects the harness's synthetic smoke stream, and a check that
+    failed there would refuse the smoke runs the harness documents.
+    """
+    if not path:
+        return None
+    candidate = Path(path)
+    if not candidate.is_file():
+        return None
+    return int(np.load(candidate, mmap_mode="r").shape[0])
+
+
+def stream_feasibility(args: argparse.Namespace, stages: list[dict]) -> list[dict]:
+    """Whether the token stream on disk can serve each length the plan asks for.
+
+    The harness admits a run only when its training file holds enough tokens for
+    the schedule plus the held-out validation tail (``required_stream_tokens``).
+    That bar was invisible from the plan printout, which is how the horizon arm
+    launched a 12,000-step design against a 40.0M-token stream, trained none of it
+    and still reported success: the mismatch appeared only as sixteen identical
+    exceptions in a kernel log, hours after the quota was spent. Reading the file
+    header here makes it a launch-time refusal instead.
+
+    Costs no GPU time and needs no training, so it runs on ``--dry-run`` too.
+    """
+    available = _token_file_count(getattr(args, "data_path", None))
+    val_tokens = _token_file_count(getattr(args, "val_data_path", None))
+    checks: list[dict] = []
+    for stage in stages:
+        run = make_run(args, stage["steps"], 0)
+        required = required_stream_tokens(run, val_tokens_available=val_tokens)
+        checks.append(
+            {
+                "label": stage["label"],
+                "steps": stage["steps"],
+                "required": required,
+                "available": available,
+                "ok": available is None or available >= required,
+            }
+        )
+    return checks
+
+
+def print_stream_feasibility(checks: list[dict]) -> list[dict]:
+    """Print whether the stream can carry the plan; return the lengths it cannot.
+
+    Printed beside the cost because it is the same kind of fact: what the arm is
+    about to ask for, computable on paper. Returning the failures rather than
+    raising keeps the decision in ``main``, where the refusal can say what to do.
+    """
+    short: list[dict] = []
+    for check in checks:
+        available = check["available"]
+        if available is None:
+            print(
+                f"  {check['label']}: needs {check['required'] / 1e6:.1f}M tokens "
+                "(no token file to check against)"
+            )
+            continue
+        print(
+            f"  {check['label']}: needs {check['required'] / 1e6:.1f}M tokens, "
+            f"stream holds {available / 1e6:.1f}M"
+            + ("" if check["ok"] else "  <-- TOO SHORT")
+        )
+        if not check["ok"]:
+            short.append(check)
+    return short
+
+
 def matching_report(
     candidates: list[ArchitectureCandidate],
     context_size: int,
@@ -1013,7 +1088,19 @@ def main() -> None:
     (output_dir / "matching_report.json").write_text(json.dumps(matching, indent=2))
     print(f"Reports written to {output_dir}")
 
-    print_plan_cost(plan_cost(args, planned_stages(args, len(zoo))))
+    plan = plan_cost(args, planned_stages(args, len(zoo)))
+    print_plan_cost(plan)
+    short = print_stream_feasibility(stream_feasibility(args, plan["stages"]))
+    if short:
+        raise SystemExit(
+            "the token stream cannot serve this plan: "
+            + "; ".join(
+                f"{check['label']} needs {check['required']:,} tokens, "
+                f"stream holds {check['available']:,}"
+                for check in short
+            )
+            + ". Lengthen --data-path or shorten the plan before spending the hours."
+        )
 
     if args.dry_run:
         print("\n--dry-run: stopping before any training.")

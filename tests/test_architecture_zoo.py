@@ -689,6 +689,79 @@ def test_ledgers_written_before_capability_existed_still_load(tmp_path):
     assert load_results(path)[0].capability == {}
 
 
+def test_a_stream_that_serves_the_schedule_once_is_admitted(tmp_path):
+    """The admission bar is the schedule, not twice it, and no window repeats.
+
+    The bar used to be ``train_tokens * 2``, which refused the horizon arm's
+    12,000-step design on a 40.0M-token stream even though it consumes 24.6M and
+    reuses nothing - sixteen runs raised at data load and the arm trained none of
+    what it was launched for. These are the arithmetic facts that made the
+    mismatch invisible until hours into a kernel session.
+    """
+    from act.search.architecture_eval import _prepare_streams, required_stream_tokens
+
+    run = RunConfig(
+        steps=200,
+        batch_size=2,
+        context_size=16,
+        val_batches=2,
+        val_holdout_tokens=500,
+        seed=1,
+        train_data_path=str(tmp_path / "tokens.npy"),
+    )
+    needed = required_stream_tokens(run, val_tokens_available=None)
+    np.save(run.train_data_path, np.arange(needed, dtype=np.int32))
+
+    train, val, source = _prepare_streams(VOCAB, run)
+
+    assert source.startswith("holdout:")
+    # Every window the schedule asks for exists, and none is reused.
+    assert train.numel() // (run.context_size + 1) == run.steps * run.batch_size
+    assert train.numel() + val.numel() <= needed
+
+
+def test_a_stream_too_short_for_the_schedule_is_still_refused(tmp_path):
+    """The bar moved, it did not disappear: a single token short is refused."""
+    from act.search.architecture_eval import _prepare_streams, required_stream_tokens
+
+    run = RunConfig(
+        steps=200,
+        batch_size=2,
+        context_size=16,
+        val_batches=2,
+        val_holdout_tokens=500,
+        seed=1,
+        train_data_path=str(tmp_path / "short.npy"),
+    )
+    np.save(
+        run.train_data_path,
+        np.arange(required_stream_tokens(run, val_tokens_available=None) - 1, dtype=np.int32),
+    )
+    with pytest.raises(ValueError, match="need"):
+        _prepare_streams(VOCAB, run)
+
+
+def test_the_holdout_is_only_taken_when_validation_cannot_stand_alone(tmp_path):
+    """A big enough val file costs the training stream nothing; a small one does.
+
+    The horizon arm's val-tokens.npy holds 7,190 tokens and cannot support a
+    16-batch evaluation at context 1024, so its runs hold out from the training
+    stream - which is why its 12,000-step requirement is 26.6M rather than 24.6M.
+    """
+    from act.search.architecture_eval import (
+        required_holdout_tokens,
+        required_stream_tokens,
+        required_train_tokens,
+    )
+
+    run = RunConfig(steps=12000, batch_size=2, context_size=1024, val_batches=16)
+    assert required_train_tokens(run) == 24_600_000
+    assert required_holdout_tokens(run, val_tokens_available=7_190) == 2_000_000
+    assert required_holdout_tokens(run, val_tokens_available=40_000) == 0
+    assert required_stream_tokens(run, val_tokens_available=7_190) == 26_600_000
+    assert required_stream_tokens(run, val_tokens_available=40_000) == 24_600_000
+
+
 def test_undersized_validation_file_falls_back_to_holdout(tmp_path):
     """The repository's val-tokens.npy is far too small to evaluate at 1024."""
     from act.search.architecture_eval import _prepare_streams

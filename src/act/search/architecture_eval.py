@@ -213,6 +213,53 @@ def _load_tokens(path: str | None, vocab_size: int, length: int, seed: int) -> t
     return torch.randint(0, vocab_size, (length,), generator=generator)
 
 
+def required_train_tokens(run: RunConfig) -> int:
+    """Tokens the training stream must hold to serve ``run``'s schedule once.
+
+    :func:`_training_batches` cuts the stream into ``context_size + 1`` spans, so
+    a schedule of ``steps * batch_size`` batches consumes exactly this many
+    tokens with no window repeated. That is the bar this module admits a run on.
+
+    It used to be ``train_tokens * 2`` - twice the schedule, for no stated
+    reason - which refused runs that were perfectly servable. The horizon arm is
+    the case that exposed it: its 12,000-step design consumes 24.6M tokens and
+    uses 24,000 of the stream's 37,115 windows (0.61 epochs, no repeat), yet a
+    40.0M-token stream was rejected for holding under 51.2M, so all sixteen runs
+    raised at data load and the sweep trained none of the arm it was launched
+    for. A stream that meets this bar can be scheduled; one that does not cannot.
+    """
+    return run.steps * run.batch_size * (run.context_size + 1)
+
+
+def required_holdout_tokens(run: RunConfig, *, val_tokens_available: int | None) -> int:
+    """Tokens carved off the training stream so validation has its own data.
+
+    Zero when the supplied validation file is large enough for the requested
+    evaluation, because then nothing is taken from the training stream; otherwise
+    the tail of the training stream is held out.
+    """
+    needed_val = run.val_tokens + run.context_size
+    if val_tokens_available is not None and val_tokens_available >= needed_val:
+        return 0
+    return max(run.val_holdout_tokens, needed_val)
+
+
+def required_stream_tokens(
+    run: RunConfig, *, val_tokens_available: int | None = None
+) -> int:
+    """Tokens ``run.train_data_path`` must hold for the whole run.
+
+    The module's own admission bar, exposed so a caller can check a plan against
+    the file on disk *before* spending GPU hours on it. ``scripts/arch_zoo_screen.py``
+    does exactly that at launch: under the old bar the horizon arm's plan was
+    feasible on paper, infeasible in fact, and the difference only appeared as
+    sixteen identical exceptions in a kernel log hours into the session.
+    """
+    return required_train_tokens(run) + required_holdout_tokens(
+        run, val_tokens_available=val_tokens_available
+    )
+
+
 def _prepare_streams(
     vocab_size: int, run: RunConfig
 ) -> tuple[torch.Tensor, torch.Tensor, str]:
@@ -224,7 +271,7 @@ def _prepare_streams(
     because the repository's ``val-tokens.npy`` holds roughly 7k tokens - about
     seven windows at context 1024 - which cannot support a 16-batch evaluation.
     """
-    needed_train = run.train_tokens * 2 + run.context_size
+    needed_train = required_train_tokens(run)
     needed_val = run.val_tokens + run.context_size
 
     if run.val_data_path is not None:
@@ -238,7 +285,9 @@ def _prepare_streams(
             flush=True,
         )
 
-    holdout = max(run.val_holdout_tokens, needed_val)
+    # Single-sourced with the admission bar so a caller checking a plan against the
+    # file on disk measures the same quantity this function enforces.
+    holdout = required_holdout_tokens(run, val_tokens_available=None)
     stream = _load_tokens(run.train_data_path, vocab_size, needed_train + holdout, run.seed)
     return (
         stream[: stream.numel() - holdout],

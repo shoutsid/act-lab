@@ -746,6 +746,43 @@ def mode_session(queue: Queue) -> None:
     _log(f"=== {queue.mode} session finished after {(time.time() - started) / 3600:.2f} h ===")
 
 
+def _missing_archzoo_runs(
+    rows: dict[str, dict[str, int]],
+    *,
+    seeds: tuple[int, ...],
+    requested: list[int],
+    expected: int,
+) -> list[str]:
+    """Requested ``(length, seed)`` runs with no completed row, named for a log.
+
+    ``expected`` is the design's candidate count; zero means the design could not
+    be read, and the bar falls back to one row per requested length rather than
+    treating an unknown grid as served.
+    """
+    return [
+        f"seed {seed} at {step} steps"
+        for seed in seeds
+        for step in requested
+        if rows.get(str(seed), {}).get(str(step), 0) < max(1, expected)
+    ]
+
+
+def _expected_candidates(experiment_dir: Path) -> int:
+    """How many candidates the design declares, or 0 when it cannot be read.
+
+    Zero means "unknown", which makes the completeness check fall back to
+    requiring at least one row per requested length - it never silently counts an
+    unreadable design as a served grid.
+    """
+    definition = experiment_dir / "zoo_definition.json"
+    if not definition.is_file():
+        return 0
+    try:
+        return len(json.loads(definition.read_text()).get("candidates", []))
+    except (OSError, ValueError, AttributeError):
+        return 0
+
+
 def _ledger_rows(experiment_dir: Path, seed: int) -> dict[str, int]:
     """Completed runs per training length for one seed, read off its ledgers."""
     rows: dict[str, int] = {}
@@ -858,6 +895,18 @@ def mode_archzoo() -> None:
     # travel in the kernel output, which a non-zero exit would put at risk, so
     # the outcome travels beside them and the driver reads it back.
     hours = (time.time() - started) / 3600
+    rows = {str(seed): _ledger_rows(experiment_dir, seed) for seed, _, _ in sweeps}
+    # Completeness is read off the ledgers, not inferred from a clean exit. The
+    # screen catches a per-candidate exception and keeps going, so a sweep exits 0
+    # even when every run in it failed - the horizon arm's first attempt trained
+    # none of its 12,000-step runs and still reported complete=True, because exit
+    # codes were the only evidence consulted. What the arm *owes* is its requested
+    # (length, seed) grid, so that grid is what is checked.
+    requested = [int(part) for part in ARCHZOO_FLAT_STEPS.split(",") if part.strip()]
+    expected = _expected_candidates(experiment_dir)
+    missing = _missing_archzoo_runs(
+        rows, seeds=ARCHZOO_SEEDS, requested=requested, expected=expected
+    )
     status = {
         "experiment": ARCHZOO_EXPERIMENT,
         "seeds": list(ARCHZOO_SEEDS),
@@ -867,9 +916,12 @@ def mode_archzoo() -> None:
         "hours": hours,
         "stopped_at_deadline": stopped_at_deadline,
         "exit_codes": {str(seed): proc.returncode for seed, proc, _ in sweeps},
-        "ledger_rows": {str(seed): _ledger_rows(experiment_dir, seed) for seed, _, _ in sweeps},
+        "ledger_rows": rows,
+        "expected_runs_per_length": expected,
+        "missing": missing,
         "complete": not stopped_at_deadline
-        and all(proc.returncode == 0 for _, proc, _ in sweeps),
+        and all(proc.returncode == 0 for _, proc, _ in sweeps)
+        and not missing,
     }
     (experiment_dir / ARCHZOO_STATUS_NAME).write_text(json.dumps(status, indent=2) + "\n")
     _keep_tree(experiment_dir)

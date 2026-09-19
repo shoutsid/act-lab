@@ -474,10 +474,18 @@ def test_ledger_rows_are_counted_per_length_for_one_seed(tmp_path: Path) -> None
     assert kaggle_t4._ledger_rows(tmp_path, 44) == {}
 
 
-def test_archzoo_mode_places_one_seed_per_device_and_exits_zero(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """The kernel must exit 0 whatever the sweeps did, with the outcome as data."""
+def _drive_archzoo(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    *,
+    written: str,
+    exit_43: int,
+) -> tuple[dict, list[tuple[str, str]]]:
+    """Run ``mode_archzoo`` over a fake sweep that writes ``written``'s ledgers.
+
+    Returns the kernel's own status record and the (seed, device) placements, so a
+    test can state what the arm owed and what it produced independently.
+    """
     import subprocess
     import types
 
@@ -521,8 +529,15 @@ def test_archzoo_mode_places_one_seed_per_device_and_exits_zero(
             seed = argv[argv.index("--finalist-seeds") + 1]
             launched.append((seed, env["CUDA_VISIBLE_DEVICES"]))
             exp = Path(argv[argv.index("--artifacts-root") + 1]) / kaggle_t4.ARCHZOO_EXPERIMENT
-            (exp / f"flat12000_seed{seed}_results.jsonl").write_text("{}\n" * 8)
-            self.returncode = 0 if seed == "42" else 3
+            exp.mkdir(parents=True, exist_ok=True)
+            # The design the sweeps write, so the candidate count is readable and
+            # the completeness check compares against it rather than "some rows".
+            (exp / "zoo_definition.json").write_text(
+                json.dumps({"candidates": [{"name": f"c{i}"} for i in range(8)]})
+            )
+            for length in written.split(","):
+                (exp / f"flat{length}_seed{seed}_results.jsonl").write_text("{}\n" * 8)
+            self.returncode = 0 if seed == "42" else exit_43
 
         def poll(self):
             return self.returncode
@@ -531,12 +546,60 @@ def test_archzoo_mode_places_one_seed_per_device_and_exits_zero(
 
     kaggle_t4.mode_archzoo()
 
-    assert sorted(launched) == [("42", "0"), ("43", "1")]
     status = json.loads(
         (output / kaggle_t4.ARCHZOO_EXPERIMENT / kaggle_t4.ARCHZOO_STATUS_NAME).read_text()
     )
+    return status, launched
+
+
+def test_archzoo_mode_places_one_seed_per_device_and_exits_zero(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The kernel must exit 0 whatever the sweeps did, with the outcome as data."""
+    status, launched = _drive_archzoo(
+        monkeypatch, tmp_path, written="1200,12000", exit_43=3
+    )
+    assert sorted(launched) == [("42", "0"), ("43", "1")]
     assert status["exit_codes"] == {"42": 0, "43": 3}
     assert status["complete"] is False  # a failed seed is not a complete arm
     assert status["stopped_at_deadline"] is False
-    assert status["ledger_rows"]["42"] == {"12000": 8}
+    assert status["ledger_rows"]["42"] == {"1200": 8, "12000": 8}
     assert status["mixed_precision"] == "fp16"
+
+
+def test_an_arm_that_trained_none_of_its_horizon_is_not_complete(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The production failure, pinned: clean exits over an empty design.
+
+    Every 12,000-step run raised at data load, the harness caught each one and kept
+    going, and both sweeps exited 0 - so `complete` was True on an arm that had
+    trained none of the horizon it was launched for, and the driver, reading only
+    that flag, reported success. The kernel's status artifact is the only thing that
+    can say otherwise before the analysis runs, so completeness is read off the
+    requested (length, seed) grid.
+    """
+    status, _ = _drive_archzoo(monkeypatch, tmp_path, written="1200", exit_43=0)
+    assert status["exit_codes"] == {"42": 0, "43": 0}
+    assert status["complete"] is False
+    assert status["missing"] == [f"seed {seed} at 12000 steps" for seed in (42, 43)]
+    assert status["expected_runs_per_length"] == 8
+
+
+def test_a_served_grid_is_complete(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    status, _ = _drive_archzoo(monkeypatch, tmp_path, written="1200,12000", exit_43=0)
+    assert status["complete"] is True
+    assert status["missing"] == []
+
+
+def test_a_partly_served_length_counts_as_missing(tmp_path: Path) -> None:
+    """A length is served when *every* candidate has a row, not when one does."""
+    rows = {"42": {"1200": 8, "12000": 3}, "43": {"1200": 8, "12000": 8}}
+    assert kaggle_t4._missing_archzoo_runs(
+        rows, seeds=(42, 43), requested=[1200, 12000], expected=8
+    ) == ["seed 42 at 12000 steps"]
+    # An unreadable design falls back to "at least one row", never to "served".
+    assert kaggle_t4._missing_archzoo_runs(
+        {}, seeds=(42,), requested=[1200], expected=0
+    ) == ["seed 42 at 1200 steps"]
+    assert kaggle_t4._expected_candidates(tmp_path / "no-arm") == 0
