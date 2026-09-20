@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## The 14.8x collapse against the budget: half of it was the budget, and the controller's edge is what 4x training takes away (2026-09-20)
+
+| | |
+|---|---|
+| **The question** | 5.50 registered a limit rather than only a result: at 14.8x the crossing arrives with the do-nothing arm collapsing (`+1.574`) and the arms absolutely worse (`15.1`-`16.9` against the rung's `12.4`-`12.5`), which at a fixed 48-step budget cannot be separated from "this substrate needs more training than the budget gives it". §5.51 runs the identical config at 4x the steps (192) and 4x the mutation interval (48) - the same three mutational events, asserted 3/3/0 at verdict time - with two primaries at `alpha/2`: P1, the collapse *relieved* (a one-sided rank-sum against the committed 48-step cell, the non-paired test 5.50 introduced), and P2, value creation surviving (5.50's own conjunction). Both outcomes were named before the run and the timing pilot ran with both on the table. |
+| **Registered outcome** | **Branch 1 - P1+P2 PASS.** P1: the collapse falls from `+1.574` to `+0.708` (rank-sum U `2925`, p `1.7e-183`) - relieved *by 55%, not removed*, since the unmutated arm is still the worst in the longer cell (`null 4.548` against `3.833`/`3.840`). P2: `576/576`, mean `-0.7149`, p `4.0e-174` - at a workable budget the 14.8x substrate still clears the do-nothing bar at every seed. |
+| **The decomposition, which is the finding** | The controller's *own* edge (adaptive-vs-random) falls from `-0.159` to `-0.0066` (reverse rank-sum p `2.1e-45`): still detectable against zero (`335/576`, p `5.2e-5`) but **24x smaller**. So at both budgets the value at 14.8x is the mutational pool (mutating at all): the collapse is largely a budget artifact and the controller's share *shrinks* as the budget grows - 5.50's "escape from a collapse, not a sharper controller" holds at the longer budget in a stronger form, with the escape itself reduced. |
+| **The absolute limit, scoped** | 4x training moves the same arms from `15.1`-`16.9` to `3.8`-`4.5`, so 5.50's "capacity is a liability" is a *fixed-budget* statement and nothing more. There is no 192-step width-24 control (pinned by a test), so no cross-width absolute claim is made at the longer budget; and the learning rate was deliberately left at the registered value, so this is not a tuned longer run. |
+| **Scrutiny before write-up** | Built-in checks 576/576 (3/3/0 mutations), three replays of committed seeds exact at `OMP_NUM_THREADS=1`, the relief bound stated as a *ratio* (0.45x, not "half"), and the collapse's persistence recorded beside the branch that calls it the budget's. |
+| **Result** | **1257 tests pass · 254/254 quick · 274/274 full claims agree**; summary `width-d4-dose2-long-576.json` (study `study_055561a11315cf41`) pins the cell, the relief, and the shrinking edge; pre-registration `a590a7f`, frozen revision `07e66cf`. |
+
 ## The width amplifier's second dose: the gate falls at 14.8x - and the decomposition says why (2026-09-20)
 
 | | |

@@ -6552,7 +6552,7 @@ all - while the controller's own edge is flat, so the transfer-policy problem (5
 5.40) remains exactly where it was, untouched by any arm that changes no model shape
 mid-run.
 
-### 5.51 Pre-registration: the 14.8x collapse against the training budget (RUNNING - summary `width-d4-dose2-long-576.json`)
+### 5.51 Pre-registration: the 14.8x collapse against the training budget (RAN - summary `width-d4-dose2-long-576.json`)
 
 5.50 registered its own limit rather than only a result: at 14.8x the do-nothing arm collapses
 (`random`-vs-`null` `-1.574`), and at a fixed 48-step budget "a wide substrate is unusable
@@ -6606,6 +6606,47 @@ predicted in one direction. Descriptive secondaries: the controller's edge
 the sibling cells): 576 seeds is ~48 min of single-thread CPU across 20 shards, minutes of
 wall clock, no GPU quota. Registered before the run; the running revision is recorded in
 the summary's `code_revision`.
+
+**Outcome (run 2026-09-20, revision `a590a7f`, 20 shards; committed summary
+`width-d4-dose2-long-576.json`). Registered branch 1: P1+P2 PASS: the collapse was the
+budget and value creation survives it - 5.50's crossing is not a fixed-budget
+artifact.** Built-in checks held in 576/576
+seeds (the mutational schedule still 3/3/0), and three replays of committed seeds matched
+the shards exactly.
+
+| cell (depth 4, width 96) | steps | adaptive-vs-null | mean delta | collapse (null-vs-random) | controller edge (adaptive-vs-random) | arm means (adaptive/null/random) |
+|---|---|---|---|---|---|---|
+| 48-step (5.50) | 48 | 576/576 | `-1.7330` | `+1.5739` | `-0.1591` | `15.127 / 16.860 / 15.286` |
+| **long (5.51)** | **192** | **576/576** | **`-0.7149`** | **`+0.7083`** | **`-0.0066`** | **`3.833 / 4.548 / 3.840`** |
+
+- **P1 - the collapse was the budget's, by 55%.** The pool effect falls from `+1.574` to
+  `+0.708` (rank-sum U `2925`, p `1.7e-183`) - relieved, but **not removed**: the
+  unmutated arm is still the worst arm in the longer cell (`null 4.548` against
+  `3.833`/`3.840`), so the substrate keeps the same shape at 4x the budget, just less
+  extreme.
+- **P2 - value creation survives, in its strongest form.** `576/576`, mean `-0.7149`, p
+  `4.0e-174`: at a workable budget a 14.8x-wide substrate still clears the do-nothing bar
+  at every seed.
+- **Descriptive - the controller's edge is what the budget takes away.**
+  `adaptive`-vs-`random` falls from `-0.159` to `-0.0066` (reverse rank-sum p `2.1e-45`):
+  still detectable against zero (`335/576`, p `5.2e-5`), but 24x smaller. At *both*
+  budgets the do-nothing comparison at 14.8x is carried by the mutational pool, and the
+  controller's own share *shrinks* as the budget grows - so 5.50's "the dose buys escape
+  from a collapse, not a sharper controller" holds at the longer budget in a stronger
+  form, with the escape itself reduced.
+- **The absolute-level limit, scoped.** 4x training moves the same arms from
+  `15.1`-`16.9` to `3.8`-`4.5`, so 5.50's "capacity is a liability" is a *fixed-budget*
+  statement and nothing more - but there is no 192-step width-24 control in this arm
+  (pinned by a test), so no cross-width absolute claim can be made at the longer budget
+  either. The learning rate was deliberately left at the registered value, so this is not
+  a tuned longer run.
+
+**What this changes.** Open question (ii)'s answer keeps its mechanism and loses its
+fixed-budget framing: the crossing at 14.8x is real at both budgets (5.50 and 5.51), the
+collapse is largely a budget artifact, and the controller's share of the crossing is
+small and *shrinking* with budget. 10.5(B)'s case that a width mutation is a package
+effect therefore strengthens: at the longer budget the width story is entirely "mutate at
+all".
 
 ## 6. Reproducibility
 
@@ -7222,7 +7263,9 @@ The program now has two cleanly separated empirical axes:
    width 96 the harm is not absent but negative - churning *pays* at both depths
    (depth 4: `576/576`, mean `-1.574`, p `4.0e-174`; depth 3: `527/576`, mean
    `-0.586`) - so width does not merely absorb the churn axis, it flips its sign once
-   the substrate is wide enough that mutation is what makes it trainable at all.
+   the substrate is wide enough that mutation is what makes it trainable at all -
+   and 5.51 then halves the reversal at 4x the budget (`+0.708`, rank-sum p
+   `1.7e-183`), so the sign flip is budget-sensitive too.
 
    **This survives the one configuration the project ships (5.40, added
    2026-09-20).** The 5.13 closure was scoped to a pre-repair path, so the
@@ -7307,7 +7350,10 @@ between 3.8x and 14.8x - with the decomposition that qualifies it: the *controll
 edge over random is flat above the gate (`-0.159` at 14.8x against `-0.195` at 3.8x,
 rank-sum p `0.98`) and what scales is the pool effect (`random`-vs-`null` `-0.0152` ->
 `-1.5739`), because at the fixed 48-step budget a wide substrate is unusable unless
-mutated at all;
+mutated at all; 5.51 (4x the steps, the same three mutational events) halves that
+collapse (`+1.574` -> `+0.708`) while value creation survives at `576/576` (`-0.7149`),
+and the controller's own edge - already flat above the gate - shrinks to `-0.0066` (from
+`-0.159`), so the value at 14.8x is the mutational pool at both budgets;
 (iii) a real-text scale run above the diagnostic fidelity (the closed
 program says nothing about longer horizons or larger models). Nothing in
 the current picture depends on re-tuning an existing cell, and no knob
@@ -7397,7 +7443,10 @@ not say: 5.49 ran *the same controller* on a 3.8x wider substrate above the gate
 this upside is a *package* effect: the unmutated arm collapses (`random`-vs-`null`
 `-1.574`) while the controller's edge over random stays flat (`-0.159`), so what a width
 mutation would buy is escape from that collapse, not a better controller - and nothing
-here measures a policy that widens *without* mutating. That is a **substrate** effect,
+here measures a policy that widens *without* mutating. 5.51 sharpens it: at 4x the
+budget the controller's edge above the gate is `-0.0066` (from `-0.159`), so the
+measured value of a wide substrate is the mutational package, and the controller's price
+for widening is whatever it costs to keep the package's events. That is a **substrate** effect,
 not evidence that a width *mutation* is safe: nothing changed shape mid-run, so the
 transfer-policy problem below is untouched, and a width mutation that re-draws the model
 would pay 5.24's class of cost on every tensor at once.)

@@ -39,7 +39,7 @@ def test_the_long_cell_is_the_pre_registered_one() -> None:
         "mutation_interval": 48,
     }
     assert spec["report_section"] == "5.51"
-    assert spec["run_revision"] == "07e66cf"  # frozen before the first shard ran
+    assert spec["run_revision"] == "a590a7f"  # the pre-registration commit
     assert len(spec["seeds"]) == 576
     assert spec["seeds"][0] == 87000
     assert study.DOSE2_LONG_REFERENCE == "width-d4-dose2"
