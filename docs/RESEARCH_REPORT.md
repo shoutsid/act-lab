@@ -6311,13 +6311,15 @@ question (ii): in this search space, capacity in the residual stream does not do
 depth does, at the parameter count where the above-onset cell's value exists. It does
 **not** close "any width" - the tested contrast is one level (+1.7% parameters, width 28
 vs 24) at two depths, and a dose (much wider below-onset substrates, no longer
-parameter-matched) is a different registration. It also answers 10.5(A)'s question in the
+parameter-matched) is a different registration. That registration was then written and run
+the same day (**5.49**, below): the dose does not move the gate either, and it shows what
+capacity *does* do above it. It also answers 10.5(A)'s question in the
 form that could be asked today: at matched parameters, the controller's value does not
 depend on the width it was given - its regime tracks depth - so moving width during a
 search (10.5(B)) would be a question about a different search, exactly the consequence
 10.5 registered for this outcome. No branch re-tunes anything.
 
-### 5.49 Pre-registration: the width *dose* at both depths (the form 5.48 left open)
+### 5.49 Pre-registration: the width *dose* at both depths (RAN - summaries `width-d3-dose-576.json`, `width-d4-dose-576.json`)
 
 Section 5.48 answered the matched-parameter form of open question (ii) - at equal parameter
 count, depth 3 does not create value and depth 4 does - and registered explicitly what it
@@ -6364,6 +6366,50 @@ every committed study's seeds, checked by a test rather than asserted.
 seeds is ~30 min of single-thread CPU across 20 shards - minutes of wall clock, no GPU
 quota - run while Gate 4 trains. Registered before the run; the running revision is
 recorded in the summaries' `code_revision`.
+
+**Outcome (run 2026-09-20, revision `e5dcbf6`, 20 shards per cell; committed summaries
+`artifacts/study-summaries/width-d3-dose-576.json` and `width-d4-dose-576.json`).
+Registered branch 3 - P2 only.** Built-in checks held in 576/576 seeds per cell.
+
+| cell | params | P2 adaptive-vs-null | mean delta | creates value |
+|---|---|---|---|---|
+| depth 3, width 24 | 23,280 | 188/384 | `+0.0046` | no |
+| depth 3, width 28 | 31,192 | 252/576 | `+0.0176` | no |
+| **depth 3, width 48** | **88,032** | **235/576** | **`+0.0615`** | **no** |
+| depth 4, width 24 | 30,672 | 225/384 | `-0.0371` | yes |
+| depth 4, width 28 | 41,160 | 316/576 | `-0.0326` | yes |
+| **depth 4, width 48** | **116,640** | **477/576** | **`-0.2097`** | **yes** |
+
+So the pre-registered reading stands in its strongest form: **the gate is depth, and a
+2.87x dose of capacity does not move it** - depth 3 fails at every width measured, and its
+average outcome gets *worse* as width grows (`+0.0046` -> `+0.0176` -> `+0.0615`; win rate
+`0.4896` -> `0.4375` -> `0.4080`, descriptive two-proportion `z = 2.49` for the 24-vs-48
+ends, `p = 0.013`). Two cross-cell observations are **descriptive, not pre-registered**
+(no cross-cell claim was registered in either arm):
+
+1. **Above the gate, capacity is an amplifier.** The same dose that does nothing below it
+takes the above-onset cell from `225/384` (mean `-0.0371`) to **`477/576` = 0.828** (mean
+`-0.2097`) - a both-controls-clearing edge (vs random `432/576`, mean `-0.1945`, p
+`1.1e-34`), and against width 24 the difference is `z = 8.2`. Value creation is depth-*gated*
+and capacity-*scaled*.
+2. **The churn harm itself is width-dependent above the gate - and it vanishes.** At depth 4
+x width 48 the null arm does **not** beat random churn: `null-vs-random 266/576`, mean
+`+0.0152`, p `0.97` - the first cell in the program where churning does not pay, against
+`387/576` (mean `-0.0880`) at width 28 and `266/384` (mean `-0.0701`) at width 24 in the
+same regime. Below the gate the harm is at its strongest (`494/576`, mean `-0.3053`), so
+the two regimes separate on *both* readings: shallow-and-wide churns destructively without
+creating value, deep-and-wide absorbs churn and creates value.
+
+**What this changes.** Open question (ii) is answered at this space's reachable widths:
+the onset is depth per se against the capacity covariate, and what capacity does is scale
+the value above the gate and (at 3.80x) remove the churn harm. It makes 10.4's width lever
+the same axis as this program's *amplifier* - the two tracks now share a measured
+phenomenon (width scales selection value above a depth gate) - and it sharpens what
+10.5(B) would have to be worth: a width *mutation* above the onset has a large measured
+upside, while the transfer-policy problem (5.24, 5.40) is untouched by this arm, which
+changes no model during training. Its 5.16.1-style discipline note: the branch was fixed
+before the run, and the two descriptive readings above are labelled as such rather than
+folded into the registered claim.
 
 ## 6. Reproducibility
 
@@ -6970,7 +7016,13 @@ The program now has two cleanly separated empirical axes:
    (5.13, 0/10 vs null), and random churn by construction (5.8, 8/8 for
    the null). The null arm never lost a registered comparison on real
    text. On the toy path, churn harm (null < random) holds at every
-   measured depth (5.9-5.15, all p < 1e-9).
+   measured depth (5.9-5.15, all p < 1e-9). **Width qualifies it (5.49,
+   added 2026-09-20):** at depth 4 x width 48 the harm is *absent* -
+   null-vs-random `266/576`, mean `+0.015`, p `0.97` - while at depth 3 it
+   grows with width (mean `-0.305` at width 48). So the churn axis is
+   substrate-general in depth but not in width: the same perturbation that
+   destroys loss on a shallow substrate is absorbed, and value-relevant, on a
+   deep-and-wide one.
 
    **This survives the one configuration the project ships (5.40, added
    2026-09-20).** The 5.13 closure was scoped to a pre-repair path, so the
@@ -7044,7 +7096,11 @@ holding width fixed at the **equal-parameter partner** of the above-onset cell
 fails the do-nothing bar (252/576, mean `+0.0176`) where depth 4 x width 28
 clears it (316/576, mean `-0.0326`) - so at this scale the onset is depth per se
 against the measured covariate, and the remaining candidates are the unmeasured
-ones (expert count, total compute);
+ones (expert count, total compute). 5.49's dose form closes it further: a 2.87x
+width dose does not move the gate either (depth 3 x width 48 fails, mean
+`+0.0615`), while above the gate the same dose takes the win rate from `0.586` to
+`0.828` and removes the churn harm (`266/576`, p `0.97`) - **depth gates,
+capacity scales**;
 (iii) a real-text scale run above the diagnostic fidelity (the closed
 program says nothing about longer horizons or larger models). Nothing in
 the current picture depends on re-tuning an existing cell, and no knob
@@ -7123,6 +7179,14 @@ missing, and the code says why it is the expensive half:
 | the genome already carries `hidden_size`, and `validate_genome` already enforces the parameter ceilings | nothing to add: the budget check a width mutation needs is the one already applied to grow/prune |
 | the FLOP and parameter identities are computed from the genome (the matching report's three cost axes) | nothing to add, but every "matched budget" claim in a width arm would have to be re-derived from them rather than inherited |
 | **no transfer policy exists anywhere in `src/act/model/`** (no slice, zero-pad or interpolation helper) | this is the whole of the missing work: a grown expert gets `new_expert_initialization`; a wider stream would need the same idea applied to every tensor, plus the optimizer state (shape-dependent) and the per-checkpoint payload (which scales with parameter count) |
+
+(And the upside of reaching it is now measured, which this section's earlier form could
+not say: 5.49 ran *the same controller* on a 3.8x wider substrate above the gate -
+116,640 parameters against 30,672 - and took the do-nothing comparison from `225/384` to
+`477/576` (mean `-0.2097`), with the churn harm absent. That is a **substrate** effect,
+not evidence that a width *mutation* is safe: nothing changed shape mid-run, so the
+transfer-policy problem below is untouched, and a width mutation that re-draws the model
+would pay 5.24's class of cost on every tensor at once.)
 
 The project has already priced the *smallest* version of that failure. The one
 shape-incompatible transfer it has measured is a single tensor - the router, whose shape
