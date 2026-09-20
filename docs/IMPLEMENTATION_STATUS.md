@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## The next gate's two candidate arms, read against the machinery that exists (2026-09-20)
+
+| | |
+|---|---|
+| **Why** | §10.4 established that the Gate-4 search cannot reach the lever the other track measured (residual width, −0.1562 nats at its factorial's exact floor), and left "what would the next gate have to build" open. Read against the code, that splits into two claims needing different work. |
+| **(A) Width as a gene the search is given** | Needs a **design, not a mechanism**: the zoo already crosses width at a matched budget (`arch-zoo-100m-v3-crossed`, 24 runs / 3.28 GPU-h, `crossed_contrast` at exact floors; `head-paired` matches pair halves exactly). Running the *same controller* against substrates fixed at two widths answers whether its value depends on the width it was given — which is also the covariate open question (ii) needs to tell depth from capacity. Costable from committed per-run figures before any hours. |
+| **(B) Width as a gene the search can move** | The expensive half, and the code says why: `rebuild_v0_moe_from_genome` transfers "every other parameter ... when shape-compatible", and a width change makes **every** parameter in the stream shape-incompatible — nothing transfers, so the model is re-drawn and the mutation is a restart wearing a mutation's name. The genome and the budget checks already exist; **no transfer policy exists anywhere in `src/act/model/`** (no slice, zero-pad or interpolation helper). That is the whole of the missing work, plus the shape-dependent optimizer state and the per-checkpoint payload. |
+| **And the failure mode is already priced** | The one shape-incompatible transfer this project has measured is a *single* tensor — the router, whose shape moves with the expert count — and §5.24 exists because re-drawing it discarded the learned routing function mid-training. §5.40 then measured the residual cost with the repair on: doing nothing still won every fresh seed by 0.136 nats. A width mutation without a transfer policy pays that class of cost on every tensor at once, so it would demonstrate the *mutation's* harm rather than the *search's* value. |
+| **The order the machinery implies** | (A) first: it is answerable today, and it decides whether (B) buys anything. Neither may be added to a running queue (the §5.5 discipline) and each needs its own pre-registration. Written up as report §10.5. |
+| **Result** | **1188 tests pass · 274/274 claims agree · 9/9 records reproduce.** |
+
 ## The exit publish is now recoverable: the per-seed payloads ride the kernel output (2026-09-20)
 
 | | |

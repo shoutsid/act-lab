@@ -6908,3 +6908,45 @@ weight in the stream, so it needs the treatment `grow_expert` already gives a ne
 expert, with re-initialisation and a parameter-budget check rather than a new genome
 field - which is exactly why it is worth deciding on deliberately after Gate 4 rather
 than adding to a running queue.
+
+### 10.5 What putting width under test would take, read against the machinery that exists
+
+Section 10.4 leaves one question open: what would the next gate actually have to build.
+Read against the code, the answer separates into two claims that need different work -
+and only one of them is a mutation problem.
+
+**(A) Width as a gene the search is *given*.** The zoo machinery already crosses width at
+a matched budget: `arch-zoo-100m-v3-crossed` is a balanced `depth x hidden_size` design
+(24 runs, 3.28 GPU-h at 1,200 steps) whose `crossed_contrast` reports both main effects
+at their exact floors, and `--design head-paired` went further by making the two halves
+of a pair *identical* in parameters and FLOPs. So an arm that asks "does adaptive
+expert-capacity control's value depend on the width it was given" needs a **design**, not
+a mechanism: the same controller, run against substrates whose width is fixed at two
+levels. It answers a question the program's own open question (ii) is pointed at (is the
+depth onset depth, or capacity?), and it can be pre-registered and costed from the
+committed per-run figures before any hours are spent.
+
+**(B) Width as a gene the search can *move*.** That is what section 10.4 shows is
+missing, and the code says why it is the expensive half:
+
+| what exists | what a width change does to it |
+|---|---|
+| `rebuild_v0_moe_from_genome` copies every retained expert by id and "every other parameter ... when shape-compatible" | a width change makes **every** parameter in the stream shape-incompatible, so nothing transfers and the model is re-drawn - a restart wearing a mutation's name |
+| the genome already carries `hidden_size`, and `validate_genome` already enforces the parameter ceilings | nothing to add: the budget check a width mutation needs is the one already applied to grow/prune |
+| the FLOP and parameter identities are computed from the genome (the matching report's three cost axes) | nothing to add, but every "matched budget" claim in a width arm would have to be re-derived from them rather than inherited |
+| **no transfer policy exists anywhere in `src/act/model/`** (no slice, zero-pad or interpolation helper) | this is the whole of the missing work: a grown expert gets `new_expert_initialization`; a wider stream would need the same idea applied to every tensor, plus the optimizer state (shape-dependent) and the per-checkpoint payload (which scales with parameter count) |
+
+The project has already priced the *smallest* version of that failure. The one
+shape-incompatible transfer it has measured is a single tensor - the router, whose shape
+moves with the expert count - and section 5.24 exists because re-drawing it discarded
+the learned routing function mid-training; the repair (`preserve_router_on_rebuild`) is
+what section 5.40 then measured the *residual* cost of, and doing nothing still won every
+fresh seed there by 0.136 nats. A width mutation with no transfer policy pays that class
+of cost on every tensor at once, so the first thing such an arm would demonstrate is the
+harm of the mutation rather than the value of the search.
+
+**Neither may be added to a running queue** (the section 5.5 discipline), and both need
+their own pre-registration before hours are spent. The order the machinery implies: (A)
+first, because it is answerable today and it decides whether (B)'s engineering buys
+anything - if the controller's value does not depend on the width it is given, moving
+width itself is a question about a different search, not about this one.
