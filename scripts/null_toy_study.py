@@ -103,14 +103,14 @@ PROFILES: dict[str, dict] = {
     "width-d3-equal": {
         "seeds": tuple(range(76000, 76576)),
         "overrides": {"depth": 3, "hidden_size": 28},
-        "run_revision": None,  # set to the pre-registration commit before the run
+        "run_revision": "38f3921",
         "report_section": "5.48",
         "summary": "artifacts/study-summaries/width-d3-equal-576.json",
     },
     "width-d4-equal": {
         "seeds": tuple(range(77000, 77576)),
         "overrides": {"depth": 4, "hidden_size": 28},
-        "run_revision": None,  # set to the pre-registration commit before the run
+        "run_revision": "38f3921",
         "report_section": "5.48",
         "summary": "artifacts/study-summaries/width-d4-equal-576.json",
     },

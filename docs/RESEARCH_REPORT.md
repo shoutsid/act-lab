@@ -6212,7 +6212,7 @@ record the run as flagged - that is, an untreated declared run is now *visible i
 artifact* rather than indistinguishable from a treated one. That legibility is the part of
 this amendment that holds whichever way the configuration decision goes.
 
-### 5.48 Pre-registration: the width covariate at the depth onset
+### 5.48 Pre-registration: the width covariate at the depth onset (RAN - summaries `width-d3-equal-576.json`, `width-d4-equal-576.json`)
 
 Section 10.4 named residual width the largest matched-budget effect either track has
 measured, and 10.3's open question (ii) asks whether the depth onset is *depth* or
@@ -6282,6 +6282,40 @@ both cells and prints exactly one of the four branches above).
 seeds is ~25 min of single-thread CPU across 20 shards - minutes of wall clock, against no
 GPU quota. Registered before the run; the revision that ran it is recorded in the
 summaries' `code_revision`.
+
+**Outcome (run 2026-09-20, revision `38f3921`, 20 shards per cell; committed
+summaries `artifacts/study-summaries/width-d3-equal-576.json` and
+`width-d4-equal-576.json`). Registered branch 3 - P2 only.** Built-in checks held in
+576/576 seeds per cell (mutations 3/3/0, zero null search FLOPs).
+
+| cell | params (total / active) | P2 adaptive-vs-null | mean delta | bar 313 | creates value |
+|---|---|---|---|---|---|
+| depth 3, width 24 (5.15) | 23,280 / 8,880 | 188/384 | `+0.0046` | fails at the sibling bar 212 | no |
+| **depth 3, width 28** | **31,192 / 11,704** | **252/576** | **`+0.0176`** | fails (p `0.999`) | **no** |
+| depth 4, width 24 (5.12) | 30,672 / 11,472 | 225/384 | `-0.0371` | passes 212 | yes |
+| **depth 4, width 28** | **41,160 / 15,176** | **316/576** | **`-0.0326`** | **passes (p `0.011`)** | **yes** |
+
+The equal-parameter contrast is the first and third rows' partner cells: at **the same
+parameter count** (31,192 vs 30,672, within 1.7%), depth 3 does not create value and
+depth 4 does. Widening does not buy what depth buys. The regime, not the level, is what
+width leaves alone: at both widths depth 3 is a churn-suppression cell (arm means
+`null 14.9594 < adaptive 14.9771 < random 15.1078` - adaptive beats random by `0.1307`,
+p `4.2e-25`, and loses to doing nothing on average) and depth 4 is a value-creation cell
+(`adaptive 13.6503 < null 13.6829 < random 13.7710`). The two width-28 cells are also
+within noise of their width-24 counterparts as a *level* (descriptive two-proportion
+`p = 0.11` and `p = 0.25`), so nothing here says width is harmful - it says width is not
+the covariate the onset reads.
+
+**What this closes, and what it does not.** It closes the matched-parameter form of open
+question (ii): in this search space, capacity in the residual stream does not do what
+depth does, at the parameter count where the above-onset cell's value exists. It does
+**not** close "any width" - the tested contrast is one level (+1.7% parameters, width 28
+vs 24) at two depths, and a dose (much wider below-onset substrates, no longer
+parameter-matched) is a different registration. It also answers 10.5(A)'s question in the
+form that could be asked today: at matched parameters, the controller's value does not
+depend on the width it was given - its regime tracks depth - so moving width during a
+search (10.5(B)) would be a question about a different search, exactly the consequence
+10.5 registered for this outcome. No branch re-tunes anything.
 
 ## 6. Reproducibility
 
@@ -6956,7 +6990,13 @@ cell says selection should create value, real text still puts the null
 0.136 nats ahead, so what (ii) is missing is not a deeper substrate but a
 covariate that separates *substrate* from *depth* - and the one measured
 candidate is residual width, which this search space cannot reach
-(section 10.4);
+(section 10.4). Section 5.48 then tested the one form the toy machinery can:
+holding width fixed at the **equal-parameter partner** of the above-onset cell
+(31,192 vs 30,672 parameters), the onset does not move - depth 3 x width 28
+fails the do-nothing bar (252/576, mean `+0.0176`) where depth 4 x width 28
+clears it (316/576, mean `-0.0326`) - so at this scale the onset is depth per se
+against the measured covariate, and the remaining candidates are the unmeasured
+ones (expert count, total compute);
 (iii) a real-text scale run above the diagnostic fidelity (the closed
 program says nothing about longer horizons or larger models). Nothing in
 the current picture depends on re-tuning an existing cell, and no knob
@@ -7009,12 +7049,22 @@ and only one of them is a mutation problem.
 a matched budget: `arch-zoo-100m-v3-crossed` is a balanced `depth x hidden_size` design
 (24 runs, 3.28 GPU-h at 1,200 steps) whose `crossed_contrast` reports both main effects
 at their exact floors, and `--design head-paired` went further by making the two halves
-of a pair *identical* in parameters and FLOPs. So an arm that asks "does adaptive
-expert-capacity control's value depend on the width it was given" needs a **design**, not
-a mechanism: the same controller, run against substrates whose width is fixed at two
+of a pair *identical* in parameters and FLOPs.So an arm that asks "does adaptive
+expert-capacity control's value depend on the width it was given" needs a **design**, not a
+mechanism: the same controller, run against substrates whose width is fixed at two
 levels. It answers a question the program's own open question (ii) is pointed at (is the
 depth onset depth, or capacity?), and it can be pre-registered and costed from the
 committed per-run figures before any hours are spent.
+
+**(Answered 2026-09-20, section 5.48 - registered and run while Gate 4 trained):** at
+matched parameters the controller's value does **not** depend on the width it was given.
+Depth 3 x width 28 (31,192 parameters, the equal-parameter partner of the committed
+above-onset cell) fails the do-nothing bar - 252/576 wins, mean `+0.0176` - where depth 4
+x width 24 (30,672 parameters) clears it, and depth 4 x width 28 keeps its value
+(316/576, mean `-0.0326`). The consequence 10.5 registered for this outcome applies: a
+search that *moves* width is asking about a different search than the one whose value was
+measured, so (B)'s engineering is not what (A) was missing. What stays open is the
+unmatched form - a dose of much wider, no-longer-equal-parameter below-onset substrates.
 
 **(B) Width as a gene the search can *move*.** That is what section 10.4 shows is
 missing, and the code says why it is the expensive half:
