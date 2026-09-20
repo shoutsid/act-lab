@@ -1730,6 +1730,8 @@ afterwards.
 | level under no effect | fires on **79/4096 = 1.93%** of blocks, i.e. a cleared clause happens **98.07%** of the time when adaptive is no better than doing nothing |
 | at the dev-fidelity effect (z = 1.20) | fires with probability **0.848** |
 | at z = 1.5 / z = 2.0 | **0.958 / 0.998** |
+| every withhold clause, not just this one | the harm guard, the pool-matched control clause and the null clause are the **same rule** - a 10-of-12 sign test on the adaptive arm, differing only in the comparison arm (random, pool control, null) - so each has level 1.93% and their union is **at most 5.79%** (less in fact: a hard block fires them together, so the dependence is positive) |
+| the clauses are not redundant, measured | on section 5.40's dev-fidelity seeds the **null clause fires** (the null beats adaptive 12/12) while the **harm guard does not** (the random arm beats it only 6/12), and the pool-matched control arm has never been run beside them |
 
 The z = 1.20 anchor is section 5.40's own rows - the only real-text
 effect this program has with the treatment in place (the null ahead by

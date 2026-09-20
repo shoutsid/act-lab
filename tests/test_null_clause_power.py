@@ -39,8 +39,47 @@ def test_the_clause_is_read_from_the_verdicts_own_constants() -> None:
     """The analysis must describe the rule the verdict applies, not a copy of it."""
     assert DECLARED_SEEDS == len(v0_verdict.DECLARED_SEEDS) == 12
     assert v0_verdict.NULL_WIN_LIMIT == 10
-    # The mirror of the registered harm guard, which is why the limit is 10 and not 7.
+    # Every withhold clause is the same 10-of-12 sign test on the adaptive arm, differing
+    # only in the comparison arm - which is why this one script can price all three, and
+    # why a future amendment to any one limit has to break this analysis.
     assert v0_verdict.HARM_GUARD_LOSS_LIMIT == v0_verdict.NULL_WIN_LIMIT
+    assert v0_verdict.POOL_CONTROL_WIN_LIMIT == v0_verdict.NULL_WIN_LIMIT
+
+
+def test_all_three_withhold_clauses_are_the_same_rule_on_different_arms() -> None:
+    payload = json.loads(ARTIFACT.read_text())
+    assert payload["clauses_share_one_limit"] is True
+    assert set(payload["clauses"]) == {
+        "harm_guard",
+        "pool_matched_control",
+        "null_clause",
+    }
+    for row in payload["clauses"].values():
+        assert row["fires_when_arm_beats_adaptive_on_at_least"] == 10
+        assert row["level_under_no_effect"] == 79 / 4096
+    # Union bound, since the three are positively dependent rather than independent.
+    assert payload["union_bound_level"] == 3 * 79 / 4096
+    assert math.isclose(payload["union_bound_level"], 0.057861328125, abs_tol=1e-12)
+
+
+def test_the_clauses_are_not_redundant_on_the_one_block_that_exists() -> None:
+    """Section 5.40's dev-fidelity seeds, read clause by clause.
+
+    The null clause fires there (the null arm beats adaptive on 12/12) while the harm
+    guard does not (the random arm beats adaptive on 6/12): a verdict can withhold on one
+    clause and clear another, so the clauses are three conditions rather than one.
+    """
+    read = json.loads(ARTIFACT.read_text())["dev_fidelity_clause_read"]
+    assert read["declared_block"] is False
+    assert (read["null_beats_adaptive"], read["null_clause_fires"]) == (12, True)
+    assert (read["random_beats_adaptive"], read["harm_guard_fires"]) == (6, False)
+    assert read["pool_matched_control"].startswith("not evaluated")
+    # And the counts agree with section 5.40's own comparison, which counts the seeds
+    # favouring random at 6/12.
+    comparison = json.loads(
+        (ROOT / "artifacts/study-summaries/real-path-deployed-vs-null.json").read_text()
+    )["comparisons"]["adaptive_minus_random"]
+    assert comparison["wins_in_tested_direction"] == 6
 
 
 def test_the_clause_fires_on_79_of_4096_no_effect_blocks() -> None:
