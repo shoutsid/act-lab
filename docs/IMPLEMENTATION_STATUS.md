@@ -1,5 +1,14 @@
 # ACT Implementation Status
 
+## The exit publish is now recoverable: the per-seed payloads ride the kernel output (2026-09-20)
+
+| | |
+|---|---|
+| **The risk this closes** | The dataset push is the durable copy of a session's work, and it is the one step that can fail *after* the hours are already spent: a session that trains five pairs and then fails to publish leaves the driver with an incomplete queue (exit 1/4) and nothing to read back. Every number the verdict needs per seed — each arm's final loss, search FLOPs, mutation count — is in a kilobyte `seed-summary.json`, so those files are now copied into the kernel output at session end, under ``seed-<n>-summary.json``. Checkpoints (gigabytes) stay dataset-only by construction; the *decision* survives a failed push even when the weights do not. |
+| **The bug the first version would have had** | Every published seed writes a file called `seed-summary.json`, so keeping them under their own names would keep exactly one and silently drop the rest — a 12-seed block would look like a 1-seed block. The target name carries the seed, and the test that pins it fails on the naive version. |
+| **Mutants** | The naive naming fails 1 test; deleting the call from `mode_session` fails 1 — the helper is exercised directly *and* the call site is pinned at bytecode level (`_keep_seed_summaries` must appear in `mode_session.__code__.co_names`), because an unwired helper is the same failure as no helper and a source-text match would pass on a commented-out call. |
+| **Result** | **1188 tests pass · 274/274 claims agree · 9/9 records reproduce.** |
+
 ## The three-queue read-back path, validated on real published data before the real data lands (2026-09-20)
 
 | | |

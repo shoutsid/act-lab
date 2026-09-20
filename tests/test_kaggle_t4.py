@@ -429,6 +429,53 @@ def test_dtypeprobe_prices_the_placement_the_runner_will_use(
     )
 
 
+def test_seed_summaries_are_kept_under_unique_names(tmp_path: Path) -> None:
+    """Publish insurance: the verdict's per-seed inputs survive a failed dataset push.
+
+    Every published seed writes ``seed-summary.json``, so keeping them under their own
+    names would keep exactly one - the helper must name them by seed, and this test
+    fails if that regresses.
+    """
+    root = tmp_path / "datasets"
+    for seed in (15000, 15001):
+        directory = root / "act-checkpoints" / "v0-5-1" / f"seed-{seed}"
+        directory.mkdir(parents=True)
+        (directory / "seed-summary.json").write_text(
+            json.dumps({"seed": seed, "arms": {"adaptive": {"final_loss": 1.0}}}),
+            encoding="utf-8",
+        )
+    output = tmp_path / "out"
+    output.mkdir()
+
+    assert kaggle_t4._keep_seed_summaries(root, output) == 2
+    kept = sorted(p.name for p in output.iterdir())
+    assert kept == ["seed-15000-summary.json", "seed-15001-summary.json"]
+    payload = json.loads((output / "seed-15001-summary.json").read_text())
+    assert payload["seed"] == 15001
+
+
+def test_keeping_seed_summaries_is_a_no_op_before_any_pair_completes(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "datasets"
+    root.mkdir()
+    output = tmp_path / "out"
+    output.mkdir()
+    assert kaggle_t4._keep_seed_summaries(root, output) == 0
+    assert list(output.iterdir()) == []
+
+
+def test_the_session_mode_calls_the_summary_insurance() -> None:
+    """The helper is useless unwired: pin the call site, not just the function.
+
+    ``mode_session`` writes to ``/kaggle/working`` through ``_keep``, so this asserts at
+    the bytecode level (the names the function references) rather than running it - a
+    source-text match would pass on a commented-out call, and this fails when the call
+    is dropped, which is the regression that matters on the exit path.
+    """
+    assert "_keep_seed_summaries" in kaggle_t4.mode_session.__code__.co_names
+
+
 def test_unknown_mode_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(kaggle_t4.MODE_ENV, "not-a-mode")
     with pytest.raises(SystemExit):

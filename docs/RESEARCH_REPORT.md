@@ -5640,8 +5640,15 @@ pair and `null - adaptive` has the same initialization structure as the register
 
 **Primaries** (two, so Bonferroni `alpha/2 = 0.025`; declared statistic is the
 one-sided paired sign-flip permutation test, exact sign test reported beside it per
-§5.31.1; deltas are `null - arm`, so **negative = the arm beats doing nothing**,
-the corrected §5.39 convention applied uniformly):
+§5.31.1; deltas are `null - arm`, so **negative = the mutating arm is worse than
+doing nothing** - the null arm has the lower loss - the corrected §5.39 convention
+applied uniformly. **(Corrected 2026-09-20.** As first written this sentence read
+"negative = the arm beats doing nothing", which inverts the convention every other
+use here and in §5.39 applies, including this registration's own diagnostic table
+below, where `null - adaptive_base = -0.24844` is described as the adaptive arm's
+*harm*. It is the second sign-convention incident in the program after §5.39.1, and
+it is the reason the verdict's two primaries are tested on opposite tails - see the
+result section at the end of §5.40.**)**:
 
 1. **P1 - adaptive beats doing nothing**: `null - adaptive`, registered prediction
    **not** negative at the bar (see above).

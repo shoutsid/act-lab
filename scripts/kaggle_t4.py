@@ -504,6 +504,31 @@ def _keep_tree(path: Path) -> None:
     _log(f"kept {target} ({len(files)} files: {', '.join(files)})")
 
 
+def _keep_seed_summaries(root: Path, output: Path | None = None) -> int:
+    """Copy every published seed's summary into the kernel output, uniquely named.
+
+    The dataset push is the durable copy, but it is also the one step that can fail
+    *after* hours of training - and when it does, the session's work is otherwise gone
+    with the kernel. Every number the verdict reads per seed (each arm's final loss,
+    search FLOPs, mutation count) is in this kilobyte file, so keeping them makes a
+    failed publish recoverable instead of a re-run. Checkpoints stay dataset-only: they
+    are gigabytes, and the kernel output is not a handoff channel for them.
+
+    The target name carries the seed because every summary is called
+    ``seed-summary.json`` - copying them under their own names would keep one and
+    silently drop the rest.
+    """
+    target_root = output if output is not None else Path("/kaggle/working")
+    kept = 0
+    for summary in sorted(root.rglob("seed-summary.json")):
+        name = summary.parent.name  # seed-<n>
+        shutil.copy(summary, target_root / f"{name}-summary.json")
+        kept += 1
+    if kept:
+        _log(f"kept {kept} seed summaries in the kernel output (publish insurance)")
+    return kept
+
+
 def report_resources() -> None:
     """Log disk headroom, because the dataset root grows with every seed.
 
@@ -746,6 +771,9 @@ def mode_session(queue: Queue) -> None:
     _keep(work / queue.session_dir / "session-log.json")
     publish_log = work / queue.dataset_root / "remote-publish-log.json"
     _keep(publish_log)
+    # And the per-seed payloads the verdict reads, because the publish above is the
+    # step that can fail after the hours are already spent.
+    _keep_seed_summaries(work / queue.dataset_root)
     report_resources()
     _reclaim(publish_log)
 
