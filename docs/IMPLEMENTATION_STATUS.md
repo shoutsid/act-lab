@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## The Gate-4 search cannot reach the one gene the other track measured as the lever (2026-09-20)
+
+| | |
+|---|---|
+| **What was found** | The two tracks of this program have never been read against each other, and read together the gap is the reachable operation set. The arch-search phase measured, at a matched ~100M budget on real text, that the loss lever is **residual-stream width** (−0.1562 nats at its factorial's exact 46,656-assignment floor), that head count is parameter-free and non-significant (−0.0177, p = 0.14), that depth is real but *shallow wins*, and that the **active-parameters hypothesis is refuted** (×4.51 spread at ρ = +0.214, p = 0.62, with the fully dense design 7th of 8). The V0 session's entire search space is `feasible_expert_mutations` — grow/prune of experts — so every candidate the declared block evaluates moves the axis that phase found *uncorrelated* with loss, and none can reach the axis it found as the lever: no operation sets `hidden_size`, head count or depth, and the only assignment to `hidden_size` in `src/act/topology/` is the restore on a rejected change. |
+| **What it does not mean** | Gate 4's question is about *selection* rather than about which gene — does adaptive selection beat doing nothing on the declared block — and §10.1's depth axis says selection value exists above an onset, with §10.2's null clause as the right control for it. What a pass licenses is what is bounded instead: "adaptive control of expert capacity at 15000-15011", which is not the same claim as adaptive architecture search and cannot move the other track's recommendation, because the two search spaces share no gene. |
+| **Why it matters to the next gate** | The arch phase's width effect is the largest single effect either track has measured at a matched budget, and it is the covariate this program's own open question (ii) needs in order to separate depth from capacity: `arch-zoo-100m-v3-crossed` is the program's only matched-budget separation of depth from width (ρ(depth, hidden) = 0.000, balanced 2×2) and it answered *width*. A width operation is not free engineering — it reshapes every weight in the stream, so it needs the treatment `grow_expert` already gives a new expert, with re-initialisation and a parameter-budget check — which is why it is a deliberate decision after Gate 4 rather than an edit to a running queue. |
+| **Written where a reader will find it** | New §10.4 of the research report, with the four-gene table, placed after 10.3's open questions because (ii) is the question it feeds. |
+| **Pinned** | `tests/test_topology_transactions.py::test_no_reachable_operation_can_move_the_gene_the_search_phase_measured` — the pool's operation vocabulary is a subset of grow/prune, and applying every candidate leaves `hidden_size`, depth, `heads`, `kv_heads` and `ffn_width` unchanged — so the claim fails loudly if an operation is ever added rather than quietly going stale. |
+| **Result** | **1172 tests pass · 274/274 claims agree · 9/9 records reproduce.** |
+
 ## The declared Gate-4 entry run is in flight, on a schedule measured before the spend (2026-09-20)
 
 | | |

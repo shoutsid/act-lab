@@ -6754,3 +6754,40 @@ layer width, expert count) would separate depth per se from capacity;
 program says nothing about longer horizons or larger models). Nothing in
 the current picture depends on re-tuning an existing cell, and no knob
 may be moved against a measured result (the 5.5 discipline).
+
+### 10.4 What Gate 4 buys, read against the other track
+
+The architecture-search phase (its own `ARCH_SEARCH_FINDINGS.md`, sections 2c and 9)
+and this topology program have never been read against each other. Read together, the
+gap is the reachable operation set:
+
+| gene | architecture phase (real text, ~100M, 1,200 steps) | the V0 session's search space |
+|---|---|---|
+| residual-stream width | **the lever**: -0.1562 nats at the factorial's exact 46,656-assignment floor | unreachable |
+| head count | -0.0177 nats (p = 0.14), and parameter-free at fixed width | unreachable |
+| depth | real but smaller, and **shallow wins**: +0.0209 nats at 10x the horizon, at its own floor | unreachable (layer count is fixed) |
+| expert capacity | **uncorrelated with loss**: active parameters span x4.51 inside a matched design at rho = +0.214 (p = 0.62), and the fully dense design places 7th of 8 | **the only reachable axis** |
+
+`feasible_expert_mutations` yields expert grow/prune and nothing else, and the only
+assignment to `hidden_size` in `src/act/topology/` is the restore on a rejected
+change. That is now pinned by `tests/test_topology_transactions.py`, so the claim fails
+loudly if an operation is ever added instead of quietly going stale.
+
+This does not demote Gate 4, whose question is about *selection* rather than about
+which gene: does adaptive selection beat doing nothing on the declared block. Section
+10.1's depth axis says selection value exists above an onset, and 10.2's null clause is
+the right control for it. What it bounds is what a pass **licenses** - adaptive control
+of expert capacity at block 15000-15011, which is not the same claim as adaptive
+architecture search, and cannot move the recommendation of the track that measured
+width, because the two search spaces share no gene.
+
+It also makes the priority of the *next* gate a live question rather than an
+inference. The arch phase's width effect is the largest single effect either track has
+measured at a matched budget, and it is the covariate open question (ii) above needs in
+order to tell depth from capacity: the crossed arm is the program's only
+matched-budget separation of the two (rho(depth, hidden) = 0.000 on a balanced 2x2),
+and it answered *width*. A width operation is not free engineering - it reshapes every
+weight in the stream, so it needs the treatment `grow_expert` already gives a new
+expert, with re-initialisation and a parameter-budget check rather than a new genome
+field - which is exactly why it is worth deciding on deliberately after Gate 4 rather
+than adding to a running queue.
