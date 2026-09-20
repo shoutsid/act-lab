@@ -522,6 +522,13 @@ def _keep_seed_summaries(root: Path, output: Path | None = None) -> int:
     kept = 0
     for summary in sorted(root.rglob("seed-summary.json")):
         name = summary.parent.name  # seed-<n>
+        # The publisher writes the same payload twice (once under the seed, once
+        # under its reports/ directory), so the walk sees both. Keeping the second
+        # would file eleven seeds' data under one `reports-summary.json`, which is
+        # worse than useless on the exit path - it looks like a seed's ledger and
+        # belongs to whichever seed happened to sort last.
+        if not name.startswith("seed-"):
+            continue
         shutil.copy(summary, target_root / f"{name}-summary.json")
         kept += 1
     if kept:

@@ -440,10 +440,13 @@ def test_seed_summaries_are_kept_under_unique_names(tmp_path: Path) -> None:
     for seed in (15000, 15001):
         directory = root / "act-checkpoints" / "v0-5-1" / f"seed-{seed}"
         directory.mkdir(parents=True)
-        (directory / "seed-summary.json").write_text(
-            json.dumps({"seed": seed, "arms": {"adaptive": {"final_loss": 1.0}}}),
-            encoding="utf-8",
-        )
+        payload = json.dumps({"seed": seed, "arms": {"adaptive": {"final_loss": 1.0}}})
+        (directory / "seed-summary.json").write_text(payload, encoding="utf-8")
+        # The publisher writes the same payload under reports/ as well - the layout
+        # the real dataset has, and the reason the target name must come from the
+        # seed directory rather than from whatever the walk happens to find.
+        (directory / "reports").mkdir()
+        (directory / "reports" / "seed-summary.json").write_text(payload, encoding="utf-8")
     output = tmp_path / "out"
     output.mkdir()
 
