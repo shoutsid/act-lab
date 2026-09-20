@@ -1027,10 +1027,15 @@ recommendation does not reverse. Full record in §2c.
    confirm finalists at the horizon the search actually trains for.** Screening at
    400 costs 0.046 GPU-hours per run against 0.133 at 1200, and §3 shows it
    recovers the explanation and not only the ordering. Its *price*, though, is set
-   by its last step, and §10 now prices that: **17 GPU-hours while the confirmation
-   stays at 1,200, but 29.6 with it at a 12,000-step horizon on Kaggle and ~49 on
-   this card** — because at that length the confirmation alone costs more than every
-   step before it. The obligation that does *not* relax: quote every effect size with
+   by its last step, and §10 now prices that: **17.0 GPU-hours while the confirmation
+   stays at 1,200, but 26.4 with it at a 12,000-step horizon on Kaggle and 45.7 on
+   this card** — because at that length the confirmation stops being the small term
+   it is at 1,200: 12.57 GPU-h against 13.80 of screening on Kaggle, and 31.92
+   against 13.80 on this card. (Those two totals were quoted as 29.6 and ~49 until
+   they were re-derived from their own arithmetic: each added the horizon
+   confirmation to the *complete* 1,200-step loop, paying twice to confirm the same
+   24 finalists. §10 states the composition and records the correction.) The
+   obligation that does *not* relax: quote every effect size with
    its training length, because that is the one quantity the screen gets wrong by
    3.7×.
 
@@ -1418,12 +1423,24 @@ horizon arm prices that step, at both lengths and on one design:**
 The two Kaggle rows are both *measured*, and cost is linear in steps between them —
 10.016× the time for 10× the steps — which is what licenses the local extrapolation
 rather than merely assuming it; a sublinear rate would have made the confirmation
-cheaper than this. So the loop is **17 GPU-h with the confirmation at 1,200, 29.6
-GPU-h with it at the horizon on Kaggle, and ~49 GPU-h with it on this card**, and the
-confirmation is the largest single term in the latter two. It is also the strongest
-argument for the horizon phase having run on Kaggle: the same 24 confirmations cost
-**2.54× less per run** there, and it is the step where the platform choice matters
-most because it is the step that dominates.
+cheaper than this. What the confirmation's *length* decides is a substitution rather
+than an addition, because the loop screens and then confirms: **17.0 GPU-h with the
+confirmation at 1,200** (13.80 screening + 3.19), **26.4 GPU-h with it at the
+12,000-step horizon on Kaggle** (13.80 + 12.57), and **45.7 GPU-h with it on this
+card** (13.80 + 31.92). Each horizon total is the screening half plus the
+confirmation *alone*; an earlier version of this paragraph quoted 29.6 and ~49,
+which added the horizon confirmation to the complete 1,200-step loop and so paid
+twice for confirming the same 24 finalists. The error is recorded rather than
+silently corrected because the loop's total is a budget number, and it is the one
+figure in this section that a plan would be sized against.
+
+What the substitution changes is which half dominates. At 1,200 steps the
+confirmation is 3.19 against 13.80 of screening, so the loop is a screening loop
+with a confirmation attached; at the horizon it is 12.57 (91% of the screening half)
+on Kaggle and 31.92 (2.3×) on this card, so the confirmation sets the price. That is
+also the strongest argument for the horizon phase having run on Kaggle: the same 24
+confirmations cost **2.54× less per run** there, and it is the step where the
+platform choice matters most.
 
 It is the same reason the baseline in the sentence above is quoted at 1,200 and not
 at the horizon. "All 100 at full length" is 100×3×0.133 ≈ 40 GPU-h at 1,200, so the

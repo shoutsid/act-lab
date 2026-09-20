@@ -290,12 +290,15 @@ at `--stage1-steps`, confirm the survivors at `--stage3-steps` — and
 the whole borderline set, including the candidate the cut landed on, instead of
 letting an unresolvable margin decide which candidate is never trained again. What
 that loop *costs* depends entirely on where it confirms, and §10 prices both ends:
-**17 GPU-hours** with the survivors confirmed at 1,200 steps — the length this phase
-measured at — against **29.6** with them confirmed at the 12,000-step horizon the
-loop is specified for, on Kaggle, and **~49** on the local card. At a realistic
-horizon the confirmation becomes the largest single term in the loop, which is why
-the horizon phase itself ran remotely: the same 24 confirmations cost 2.54× less per
-run there.
+**17.0 GPU-hours** with the survivors confirmed at 1,200 steps — the length this phase
+measured at — against **26.4** with them confirmed at the 12,000-step horizon the
+loop is specified for, on Kaggle, and **45.7** on the local card. Each horizon total
+is the screening half plus the confirmation alone (13.80 + 12.57, and 13.80 +
+31.92), because the longer confirmation replaces the shorter one rather than joining
+it — the totals were quoted as 29.6 and ~49 until that composition was re-derived.
+At a realistic horizon the confirmation becomes the loop's largest term on the local
+card and a near-equal one remotely, which is why the horizon phase itself ran there:
+the same 24 confirmations cost 2.54× less per run there.
 
 What a matched budget can and cannot identify is derived in §2b of that document
 — at fixed total parameters the free genes are not independent, expert count and

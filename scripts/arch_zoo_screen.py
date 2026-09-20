@@ -370,7 +370,14 @@ def refuse_if_runs_failed(runs: list[dict]) -> None:
     )
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: "list[str] | None" = None) -> argparse.Namespace:
+    """The driver's flags, from ``argv`` or from the process's own command line.
+
+    Taking an explicit ``argv`` is what lets a *plan* be checked without a shell: the
+    loop §10 prices is this driver's ``--plan screen``, whose composition (one screen
+    stage and one confirmation stage) is the thing a cost total must agree with.
+    """
+
     parser = argparse.ArgumentParser(description="Architecture zoo screening")
     parser.add_argument("--experiment-id", default="arch-zoo-100m-v1")
     parser.add_argument(
@@ -590,7 +597,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--artifacts-root", default="artifacts")
     parser.add_argument("--dry-run", action="store_true", help="emit reports, train nothing")
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def make_run(args: argparse.Namespace, steps: int, seed: int) -> RunConfig:

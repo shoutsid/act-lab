@@ -479,6 +479,41 @@ def check_structure_and_budget(root: Path, audit: Audit, *, quick: bool) -> None
         "§9a",
         "86.3M against the nominal 100M",
     )
+    # §9a's pre-flight of the random arm: the driver's own plan projection, which is
+    # what the launch line was checked with before any hours were spent. It is a
+    # projection over the plan flags and the token arithmetic, so it needs neither the
+    # draw scan below nor a GPU, and it belongs on the quick path with the rest.
+    import arch_zoo_screen
+
+    preflight = arch_zoo_screen.parse_args(
+        [
+            "--plan", "flat",
+            "--design", "random",
+            "--candidates", "13",
+            "--zoo-seed", "151",
+            "--random-tolerance", "0.3",
+            "--finalist-seeds", "42,43,44",
+            "--flat-steps", "1200",
+            "--budget-hours", "1000",
+        ]
+    )
+    projection = arch_zoo_screen.plan_cost(
+        preflight, arch_zoo_screen.planned_stages(preflight, preflight.candidates)
+    )
+    audit.check(
+        "§9a: the random arm's plan is 39 runs",
+        39,
+        projection["planned_runs"],
+        "§9a",
+        "13 candidates x 3 seeds, flat",
+    )
+    audit.check(
+        "§9a: its projection at the driver's 4,500 tok/s",
+        5.92,
+        projection["planned_hours"],
+        "§9a",
+        f"{projection['planned_tokens'] / 1e6:.1f}M tokens",
+    )
     if quick:
         match = budget_matching_draw(
             target_total=curated, size=13, seeds=range(48), target_params=100_000_000,
@@ -1765,13 +1800,71 @@ def check_horizon_10x(root: Path, audit: Audit) -> None:
         "10x the steps for 10.016x the time, which is what licenses the local extrapolation",
     )
     finalists = 8 * 3
+    # The loop's own halves, at the rates §10 quotes and from the ledgers those rates
+    # were measured on. Both are pooled means: 400 steps over the phase's runs at that
+    # length, 1,200 over v2's flat ones. The record quotes them to three decimals with
+    # a tilde, so they carry half a unit in the last quoted place, like a rounded
+    # percentile.
+    screened = [
+        row
+        for arm in ("arch-zoo-100m-v1", "arch-zoo-100m-v2-horizon")
+        for row in arm_results(root, arm)
+        if row.steps == 400 and row.elapsed_s > 0
+    ]
+    rate_400 = sum(row.elapsed_s for row in screened) / len(screened) / 3600
+    flat = [
+        row
+        for row in arm_results(root, "arch-zoo-100m-v2")
+        if row.steps == 1200 and row.elapsed_s > 0
+    ]
+    rate_1200 = sum(row.elapsed_s for row in flat) / len(flat) / 3600
+    audit.check(
+        "§10: a 400-step run on this card",
+        0.046,
+        rate_400,
+        "§10",
+        f"pooled over the {len(screened)} runs the phase screened at that length",
+        tolerance=0.0005 / 0.046,
+    )
+    audit.check(
+        "§10: a 1,200-step run on this card",
+        0.133,
+        rate_1200,
+        "§10",
+        f"v2's {len(flat)} flat runs at that length",
+        tolerance=0.0005 / 0.133,
+    )
+    # The composition, in the record's own quoted rates: screening 100x3 at 400 steps,
+    # then one confirmation of 8 finalists x 3 seeds. Which length that confirmation
+    # runs at is a *substitution* and not an addition - the loop screens and then
+    # confirms, so a 12,000-step confirmation replaces the 1,200-step one. These two
+    # horizon totals are the correction of a double count: they were quoted as 29.6
+    # and ~49 until re-derived, each having added the horizon confirmation to the
+    # complete 1,200-step loop and so paid twice for the same 24 finalists.
+    screening = 100 * 3 * 0.046
+    confirm_1200 = finalists * 0.133
     local_per_run_12000 = 0.133 * 10
+    audit.check(
+        "§10 loop: the screening half at 400 steps",
+        13.80,
+        screening,
+        "§10",
+        "100 x 3 at the measured 400-step rate",
+    )
+    audit.check("§10 loop: the confirmation at 1,200 steps", 3.19, confirm_1200, "§10")
+    audit.check(
+        "§10 loop: the quoted 17 GPU-hours",
+        17,
+        screening + confirm_1200,
+        "§10",
+        "screening plus the 1,200-step confirmation: 13.80 + 3.19",
+    )
     audit.check(
         "§10 loop: confirming 8 finalists x 3 seeds at 12,000, Kaggle fp16",
         12.57,
         finalists * per_run_12000,
         "§10",
-        "the step the loop's quoted 17 GPU-hours leaves out",
+        "the length that replaces the loop's 1,200-step confirmation",
     )
     audit.check(
         "§10 loop: the same confirmation on the local card (extrapolated)",
@@ -1780,10 +1873,61 @@ def check_horizon_10x(root: Path, audit: Audit) -> None:
         "§10",
     )
     audit.check(
-        "§10 loop: screening plus a horizon confirmation, on Kaggle",
-        29.56,
-        100 * 3 * 0.046 + 8 * 3 * 0.133 + finalists * per_run_12000,
+        "§10 loop: the loop at a 12,000-step horizon, on Kaggle",
+        26.4,
+        screening + finalists * per_run_12000,
         "§10",
+        "13.80 + 12.57 - the confirmation replaces the 1,200-step one rather than joining it",
+    )
+    audit.check(
+        "§10 loop: the loop at a 12,000-step horizon, on this card",
+        45.7,
+        screening + finalists * local_per_run_12000,
+        "§10",
+        "13.80 + 31.92, the same substitution",
+    )
+    # The composition itself, from the driver's own planner rather than from the
+    # paragraph: `--plan screen` is *one* screen stage and *one* confirmation stage, so
+    # a 12,000-step confirmation replaces the 1,200-step one rather than joining it.
+    # Without this the corrected totals would rest on prose alone, and a re-added
+    # confirmation term is exactly as consistent with its own arithmetic as the double
+    # count was - which is how it survived three stretches of checking.
+    import arch_zoo_screen
+
+    loop = arch_zoo_screen.parse_args(
+        [
+            "--plan", "screen",
+            "--design", "random",
+            "--candidates", "100",
+            "--screen-seeds", "42,43,44",
+            "--finalist-seeds", "42,43,44",
+            "--stage1-steps", "400",
+            "--stage3-steps", "12000",
+            "--keep-stage3", "8",
+            "--budget-hours", "1000",
+        ]
+    )
+    planned = arch_zoo_screen.planned_stages(loop, loop.candidates)
+    labels = [stage["label"] for stage in planned]
+    audit.check(
+        "§10 loop: the driver's plan for this loop is two stages",
+        True,
+        labels == ["screen", "confirmation"],
+        "driver",
+        f"{labels}",
+    )
+    audit.check(
+        "§10 loop: the stage whose length varies is the confirmation",
+        True,
+        planned[0]["steps"] == 400 and planned[1]["steps"] == 12000,
+        "driver",
+        f"screen at {planned[0]['steps']}, confirmation at {planned[1]['steps']}",
+    )
+    audit.check(
+        "§10 loop: the plan's runs (100 x 3 screened, 8 x 3 confirmed)",
+        324,
+        arch_zoo_screen.plan_cost(loop, planned)["planned_runs"],
+        "driver",
     )
     audit.check(
         "§10 loop: the platform ratio on the step that dominates it",
