@@ -124,10 +124,15 @@ def _experiment(seed: int, delta: float) -> dict:
     }
 
 
-def _write_cells(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, deltas: dict) -> None:
-    """Install synthetic shards for both cells under a monkeypatched root."""
+def _write_cells(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    deltas: dict,
+    profiles: tuple[str, ...] = study.WIDTH_PROFILES,
+) -> None:
+    """Install synthetic shards for both cells of an arm under a monkeypatched root."""
     seeds = tuple(range(90000, 90100))
-    for profile in study.WIDTH_PROFILES:
+    for profile in profiles:
         monkeypatch.setitem(
             study.PROFILES,
             profile,
@@ -207,5 +212,67 @@ def test_the_four_branches_are_fixed(
         {"width-d3-equal": cells[first], "width-d4-equal": cells[second]},
     )
     assert study.width_verdict(1, study.ALPHA) == 0
+    out = capsys.readouterr().out
+    assert branch in out
+
+
+def test_the_dose_cells_are_the_pre_registered_ones() -> None:
+    """Section 5.49's dose cells: fresh blocks 78000/79000, width 48.
+
+    The dose is deliberately *not* parameter-matched - that is the whole point
+    of running it after 5.48's matched-parameter null - so the registration has
+    to say so at the counts, not just in prose.
+    """
+    for profile, depth in {"width-d3-dose": 3, "width-d4-dose": 4}.items():
+        spec = study.PROFILES[profile]
+        assert spec["overrides"] == {"depth": depth, "hidden_size": 48}
+        assert spec["report_section"] == "5.49"
+        assert len(spec["seeds"]) == 576
+    assert study.PROFILES["width-d3-dose"]["seeds"][0] == 78000
+    assert study.PROFILES["width-d4-dose"]["seeds"][0] == 79000
+    assert study.DOSE_PROFILES == ("width-d3-dose", "width-d4-dose")
+
+
+def test_the_dose_is_a_dose_not_a_matched_contrast() -> None:
+    """Width 48 is 2.87x the above-onset cell - the doses' reading depends on it.
+
+    The branch text quotes the factor ("a threshold between +1.7% and +280%"),
+    so the counts are pinned: if the model's arithmetic changes, the quoted
+    factor must be revisited rather than silently invalidated.
+    """
+    above_onset_total = _parameters(4, 24)[0]
+    width24_total = _parameters(3, 24)[0]
+    dose3_total = _parameters(3, 48)[0]
+    dose4_total = _parameters(4, 48)[0]
+    assert (dose3_total, dose4_total) == (88_032, 116_640)
+    assert dose3_total / above_onset_total == pytest.approx(2.870, abs=5e-3)
+    assert dose3_total / width24_total == pytest.approx(3.782, abs=5e-3)
+
+
+@pytest.mark.parametrize(
+    ("first", "second", "branch"),
+    [
+        ("better", "better", "a dose of capacity buys value at a below-onset depth"),
+        ("better", "worse", "a dose buys value below the onset and destroys it above"),
+        ("worse", "better", "depth stands even at 2.87x width"),
+        ("worse", "worse", "the depth axis is not capacity in dose form"),
+    ],
+)
+def test_the_dose_branches_are_fixed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+    first: str,
+    second: str,
+    branch: str,
+) -> None:
+    cells = {"better": _all(-0.05), "worse": _all(+0.05)}
+    _write_cells(
+        tmp_path,
+        monkeypatch,
+        {"width-d3-dose": cells[first], "width-d4-dose": cells[second]},
+        profiles=study.DOSE_PROFILES,
+    )
+    assert study.dose_verdict(1, study.ALPHA) == 0
     out = capsys.readouterr().out
     assert branch in out

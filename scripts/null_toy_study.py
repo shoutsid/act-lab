@@ -114,6 +114,25 @@ PROFILES: dict[str, dict] = {
         "report_section": "5.48",
         "summary": "artifacts/study-summaries/width-d4-equal-576.json",
     },
+    # Section 5.49: the **dose** form the 5.48 outcome left open. Width 48 at
+    # both depths is deliberately *not* parameter-matched - 88,032 / 116,640
+    # total parameters, 2.87x the above-onset cell - because the question is
+    # whether enough capacity can buy value at a below-onset depth, which the
+    # +1.7% contrast could not answer. See `dose_verdict` for the branches.
+    "width-d3-dose": {
+        "seeds": tuple(range(78000, 78576)),
+        "overrides": {"depth": 3, "hidden_size": 48},
+        "run_revision": None,  # set to the pre-registration commit before the run
+        "report_section": "5.49",
+        "summary": "artifacts/study-summaries/width-d3-dose-576.json",
+    },
+    "width-d4-dose": {
+        "seeds": tuple(range(79000, 79576)),
+        "overrides": {"depth": 4, "hidden_size": 48},
+        "run_revision": None,  # set to the pre-registration commit before the run
+        "report_section": "5.49",
+        "summary": "artifacts/study-summaries/width-d4-dose-576.json",
+    },
 }
 REGISTERED = dict(
     hidden_size=24,
@@ -139,6 +158,8 @@ ALPHA = 0.05
 # The width arm's cells (section 5.48), in the order the branches read them:
 # the equal-parameter partner first, the above-onset depth second.
 WIDTH_PROFILES = ("width-d3-equal", "width-d4-equal")
+# The dose cells (section 5.49), same order and same reading.
+DOSE_PROFILES = ("width-d3-dose", "width-d4-dose")
 
 
 def run_shard(shard: int, shards: int, profile: str) -> Path:
@@ -209,6 +230,82 @@ def _sign_test(deltas: list[float]) -> tuple[int, float, float]:
     return wins, sum(deltas) / len(deltas), p
 
 
+def _cell_stats(profile: str, shards: int, alpha: float) -> dict[str, float | bool]:
+    """One width-arm cell's pre-registered statistic, from its shards.
+
+    One spelling for both arms (5.48's matched contrast and 5.49's dose): the
+    built-in checks, the one-sided sign test, the Bonferroni bar at alpha/2 and
+    the conjunction that a cell creates value only when the wins clear the bar
+    *and* the mean delta is negative.
+    """
+    experiments = load_shards(shards, profile)
+    _check_built_ins(experiments)
+    deltas = [
+        exp["losses"]["adaptive"] - exp["losses"]["null"]
+        for exp in experiments
+    ]
+    wins, mean, p = _sign_test(deltas)
+    bar = _gate_min_wins(len(deltas), alpha / 2)
+    creates = wins >= bar and mean < 0
+    print(
+        f"{profile}: adaptive-vs-null wins {wins}/{len(deltas)} (bar {bar}), "
+        f"mean {mean:+.6f}, p {p:.2e} -> creates value: {creates}"
+    )
+    return {
+        "wins": wins,
+        "n": len(deltas),
+        "mean": mean,
+        "binomial_p": p,
+        "min_wins_bonferroni": bar,
+        "creates_value": creates,
+    }
+
+
+def dose_verdict(shards: int, alpha: float) -> int:
+    """Section 5.49's primaries and branches: the dose form 5.48 left open.
+
+    Two fresh cells at width 48 (88,032 and 116,640 total parameters, 2.87x the
+    above-onset cell) - deliberately *not* parameter-matched, because the
+    question the +1.7% contrast could not answer is whether enough capacity can
+    buy value at a below-onset depth at all. Same test, same conjunction, same
+    bar as 5.48. Branches, fixed before the run:
+
+    - P1 and P2: a dose of capacity buys value below the onset and preserves it
+      above - the onset is capacity-driven above a threshold that lies between
+      +1.7% and +280% parameters.
+    - P1 only: a dose buys value below the onset and destroys it above - a
+      depth x width interaction in dose form.
+    - P2 only: depth stands even at 2.87x width - with 5.48, the width
+      covariate is closed at this search space's reachable widths.
+    - neither: width is harmful above the onset and useless below; the depth
+      axis is not capacity in dose form.
+    """
+    cells = {profile: _cell_stats(profile, shards, alpha) for profile in DOSE_PROFILES}
+    p1 = bool(cells[DOSE_PROFILES[0]]["creates_value"])
+    p2 = bool(cells[DOSE_PROFILES[1]]["creates_value"])
+    branches = {
+        (True, True): (
+            "P1+P2 PASS: a dose of capacity buys value at a below-onset depth - "
+            "the onset is capacity-driven above a threshold between +1.7% and "
+            "+280% parameters"
+        ),
+        (True, False): (
+            "P1 only: a dose buys value below the onset and destroys it above - "
+            "a depth x width interaction in dose form"
+        ),
+        (False, True): (
+            "P2 only: depth stands even at 2.87x width; with 5.48, the width "
+            "covariate is closed at this space's reachable widths"
+        ),
+        (False, False): (
+            "both FAIL: width is harmful above the onset and useless below; the "
+            "depth axis is not capacity in dose form"
+        ),
+    }
+    print(f"\nOUTCOME (alpha={alpha}, Bonferroni alpha/2={alpha / 2}): {branches[(p1, p2)]}")
+    return 0
+
+
 def width_verdict(shards: int, alpha: float) -> int:
     """Section 5.48's pre-registered primaries and four fixed branches.
 
@@ -233,29 +330,7 @@ def width_verdict(shards: int, alpha: float) -> int:
     - neither: width is harmful at both depths here, and the depth axis is not
       capacity - the width covariate is closed for this search space.
     """
-    cells: dict[str, dict[str, float | bool]] = {}
-    for profile in WIDTH_PROFILES:
-        experiments = load_shards(shards, profile)
-        _check_built_ins(experiments)
-        deltas = [
-            exp["losses"]["adaptive"] - exp["losses"]["null"]
-            for exp in experiments
-        ]
-        wins, mean, p = _sign_test(deltas)
-        bar = _gate_min_wins(len(deltas), alpha / 2)
-        creates = wins >= bar and mean < 0
-        cells[profile] = {
-            "wins": wins,
-            "n": len(deltas),
-            "mean": mean,
-            "binomial_p": p,
-            "min_wins_bonferroni": bar,
-            "creates_value": creates,
-        }
-        print(
-            f"{profile}: adaptive-vs-null wins {wins}/{len(deltas)} (bar {bar}), "
-            f"mean {mean:+.6f}, p {p:.2e} -> creates value: {creates}"
-        )
+    cells = {profile: _cell_stats(profile, shards, alpha) for profile in WIDTH_PROFILES}
     p1 = bool(cells[WIDTH_PROFILES[0]]["creates_value"])
     p2 = bool(cells[WIDTH_PROFILES[1]]["creates_value"])
     branches = {
@@ -453,6 +528,12 @@ def main() -> int:
     )
     width_p.add_argument("--shards", type=int, required=True)
     width_p.add_argument("--alpha", type=float, default=ALPHA)
+    dose_p = sub.add_parser(
+        "dose-verdict",
+        help="section 5.49: score both dose cells and print the pre-registered branch",
+    )
+    dose_p.add_argument("--shards", type=int, required=True)
+    dose_p.add_argument("--alpha", type=float, default=ALPHA)
     sum_p = sub.add_parser("summary", help="write the committed study summary")
     sum_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
     sum_p.add_argument("--alpha", type=float, default=ALPHA)
@@ -469,6 +550,8 @@ def main() -> int:
         return 0
     if args.command == "width-verdict":
         return width_verdict(args.shards, args.alpha)
+    if args.command == "dose-verdict":
+        return dose_verdict(args.shards, args.alpha)
     return verdict(args.shards, args.profile)
 
 

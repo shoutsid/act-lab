@@ -6317,6 +6317,54 @@ depend on the width it was given - its regime tracks depth - so moving width dur
 search (10.5(B)) would be a question about a different search, exactly the consequence
 10.5 registered for this outcome. No branch re-tunes anything.
 
+### 5.49 Pre-registration: the width *dose* at both depths (the form 5.48 left open)
+
+Section 5.48 answered the matched-parameter form of open question (ii) - at equal parameter
+count, depth 3 does not create value and depth 4 does - and registered explicitly what it
+did **not** close: "any width". The tested contrast there was +1.7% parameters. This arm
+spends width as a **dose**: width 48 at both depths, deliberately no longer
+parameter-matched, to ask whether enough capacity can buy what the matched contrast could
+not.
+
+**Design.** The same registered toy config and three-arm block as 5.48 (and as 5.9-5.15)
+with only the width gene changed - again nothing else:
+
+| cell | block | n | depth | width | total params | active params | vs the above-onset cell |
+|---|---|---|---|---|---|---|---|
+| `width-d3-dose` | 78000-78575 | 576 | 3 | **48** | 88,032 | 31,584 | **2.87x** |
+| `width-d4-dose` | 79000-79575 | 576 | 4 | **48** | 116,640 | 41,376 | 3.80x |
+
+**Primaries.** Identical to 5.48, and stated the same way - one number, computed by the
+verdict's own function: the one-sided exact sign test on per-seed adaptive-vs-null deltas
+at `alpha = 0.05` with two primaries, Bonferroni `alpha/2 = 0.025`, bar **313/576**; a cell
+creates value only when the wins clear the bar **and** the mean delta is negative. Power at
+the committed above-onset rate (0.5859): **0.982** (0.801 at 0.56, 0.641 at 0.55) - the
+same sizing as 5.48, restated because this arm's doses carry 2.87x the substrate that
+produced that rate.
+
+1. **P1 (the dose buys value below the onset).** `width-d3-dose` creates value.
+2. **P2 (the above-onset cell survives the dose).** `width-d4-dose` creates value.
+
+**Pre-registered interpretation (fixed before running).**
+
+- **P1 and P2:** capacity in dose form buys value below the onset and preserves it above -
+  the onset is capacity-driven above a threshold between +1.7% and +280% parameters, and
+  5.48's null is a statement about *small* capacity shifts, not about capacity.
+- **P1 only:** a dose buys value below the onset and destroys it above - a depth x width
+  interaction in dose form.
+- **P2 only:** depth stands even at 2.87x width; with 5.48, the width covariate is closed
+  at this search space's reachable widths.
+- **Neither:** width is harmful above the onset and useless below; the depth axis is not
+  capacity in dose form.
+
+No branch re-tunes anything (the 5.5 discipline), and both blocks are fresh - disjoint from
+every committed study's seeds, checked by a test rather than asserted.
+
+**Cost.** ~1.3-1.5 s/seed measured at the dose cells (3 arms, 4 threads); two cells x 576
+seeds is ~30 min of single-thread CPU across 20 shards - minutes of wall clock, no GPU
+quota - run while Gate 4 trains. Registered before the run; the running revision is
+recorded in the summaries' `code_revision`.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
