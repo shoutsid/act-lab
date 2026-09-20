@@ -1257,7 +1257,12 @@ are mixed with fresh ones.
 
 **Pre-registered outcome contract (alpha = 0.05, two primaries, Bonferroni
 alpha/2 = 0.0025; verdict machine-checked, exact binomial via
-`act.evolution.study`).**
+`act.evolution.study`).** *(Corrected 2026-09-20: the applied and committed level is
+`0.025` - `null-control-depth1-384.json` records `bonferroni_alpha: 0.025`, bar
+212/384 - so the `0.0025` here is the same factor-10 slip 5.16.1 documents, not a
+stricter reading. Unlike 5.16, no 5.9 primary changes at either bar:
+null-vs-random 280/384 and adaptive-vs-null 117/384 pass and fail identically at
+212 and 220.)*
 1. **Null-vs-random** (churn-harm replication at toy scale): one-tailed
    sign test on per-seed null-minus-random deltas (null < random = churn
    harm). Pass = clears alpha/2.
@@ -1950,6 +1955,10 @@ all (it sits at alpha `0.0140`). Section 5.15's declaration carries the same
 own outcome paragraph records the applied bar as 212 at alpha/2 = `0.025`.
 
 The `0.0025` is unique to section 5.16 and is a factor-10 slip for `0.025`.
+*(Corrected 2026-09-20: it is **not** unique - section 5.9's pre-registration
+contract also states it while its own sentence reads "alpha = 0.05, two
+primaries", and its committed summary applies 0.025. The same correction is
+carried at 5.9's contract above.)*
 Both slips happen to point the STRICT way, which makes the resolution
 load-bearing: the measured primary-1 win count is **212**, which is exactly
 the sibling bar and far below the declared one. Making this choice after
@@ -6202,6 +6211,77 @@ returns the protocol to its pre-amendment configuration; the conformance block w
 record the run as flagged - that is, an untreated declared run is now *visible in its own
 artifact* rather than indistinguishable from a treated one. That legibility is the part of
 this amendment that holds whichever way the configuration decision goes.
+
+### 5.48 Pre-registration: the width covariate at the depth onset
+
+Section 10.4 named residual width the largest matched-budget effect either track has
+measured, and 10.3's open question (ii) asks whether the depth onset is *depth* or
+*capacity*. The arch-track arm that **moves** width needs a transfer policy that does not
+exist (10.5(B)); the arm that holds width **fixed** and asks whether selection value
+follows it is answerable today on the toy path - which is where the onset lives and where
+the controller's value is measurable at all (at dev fidelity on real text the two mutating
+arms are tied: adaptive - random = -0.0101, mean 6/12, 5.40).
+
+**Design.** Two fresh cells of the registered toy config (5.9: `random,adaptive,null`,
+`independent_arm_rng=True`, `device=cpu`, cap 4 / 2 probe batches, 48 steps, interval 12,
+budget 3, `adaptive_policy=probe_loss`), the same three-arm block per seed and the same
+20-way sharding, with **one gene changed and nothing else**:
+
+| cell | block | n | depth | width | total params | active params |
+|---|---|---|---|---|---|---|
+| `width-d3-equal` | 76000-76575 | 576 | 3 | **28** | 31,192 (+1.7%) | 11,704 (+2.0%) |
+| `width-d4-equal` | 77000-77575 | 576 | 4 | **28** | 41,160 | 15,176 |
+
+Width 28 is *solved*, not chosen: it is the closest integer width whose parameter count at
+depth 3 equals the committed above-onset cell's - depth 4 x width 24 = **30,672 total /
+11,472 active** (5.12's `depth4-prefix` cell). So `width-d3-equal` is an equal-parameter
+partner of the cell that creates value, at a depth that does not; the match is pinned by a
+test against the model's own parameter count, not restated.
+
+**Primaries (per cell, one number, computed by the verdict's own function).** The
+one-sided exact sign test on per-seed adaptive-vs-null deltas at `alpha = 0.05` with two
+primaries, Bonferroni `alpha/2 = 0.025`; at n = 576 the bar is **313/576**
+(`_gate_min_wins(576, 0.025)`, asserted by a test). A cell counts as *creating value* only
+when the wins clear the bar **and** the mean delta is negative: the conjunction is
+pre-registered because a win-rate crossing can be a tail effect - depth 1 is exactly that
+(117/384 wins with the adaptive arm 0.0508 *worse* on average, 5.15) - and the six
+committed cells never disagreed on the sign. The bar, the alpha and the code are one
+statement (the 5.16.1 lesson), and the seed count was sized to the *committed* above-onset
+rate (225/384 = 0.5859): exact power **0.982** at n = 576, 0.801 at 0.56, 0.641 at 0.55. A
+smaller true effect reads as a null **by design**, which is stated here rather than
+discovered later.
+
+1. **P1 (capacity).** `width-d3-equal` creates value: a below-onset depth does create value
+   once the substrate carries the above-onset cell's parameter count.
+2. **P2 (persistence).** `width-d4-equal` creates value: the above-onset cell keeps its
+   value at the wider level.
+
+**Pre-registered interpretation (fixed before running).**
+
+- **P1 and P2:** the onset is a *capacity* onset - depth and width trade off at matched
+  parameters, so (ii)'s covariate is parameter count and 10.4's width lever is the same
+  axis as the depth axis.
+- **P1 only:** widening creates value below the onset and destroys it above - a depth x
+  width interaction; the capacity reading needs the depth axis retained.
+- **P2 only:** the onset is depth-like at this width; widening does not rescue a
+  below-onset substrate.
+- **Neither:** width is harmful at both depths here; the depth axis is not capacity, and
+  the width covariate is closed for this search space.
+
+No branch re-tunes anything, and a null result is recorded as a finding (the 5.5
+discipline). The committed comparison cells are quoted as-is at the applied sibling bar
+212/384: (depth 3, width 24) **188/384**, mean +0.0046 (5.15), below onset; (depth 4,
+width 24) **225/384**, mean -0.0371 (5.12), above it. The two new cells are what decides
+the question.
+
+**Built-in checks.** Identical to 5.9-5.15: mutations 3/3/0, zero null search FLOPs,
+matched budgets, arm-RNG isolation. The verdict is machine-checked (`width-verdict` reads
+both cells and prints exactly one of the four branches above).
+
+**Cost.** Measured at the new cells: ~1.2-1.4 s/seed (3 arms, 4 threads). Two cells x 576
+seeds is ~25 min of single-thread CPU across 20 shards - minutes of wall clock, against no
+GPU quota. Registered before the run; the revision that ran it is recorded in the
+summaries' `code_revision`.
 
 ## 6. Reproducibility
 

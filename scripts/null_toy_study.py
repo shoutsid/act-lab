@@ -92,6 +92,28 @@ PROFILES: dict[str, dict] = {
         "report_section": "5.15",
         "summary": "artifacts/study-summaries/null-control-depth3-384.json",
     },
+    # Section 5.48: the width covariate at the onset. The dose-response (5.15)
+    # brackets the onset to (3, 4] at hidden_size 24; these two fresh cells run
+    # the same registered config at **width 28**, the closest integer width
+    # whose parameter count equals depth 4 x width 24 (31,192 vs 30,672 total,
+    # +1.7%; +2.0% active; pinned by a test). Width-d3-equal is therefore the
+    # equal-parameter partner of the committed above-onset cell, and the arm's
+    # primaries are the pre-registered per-cell bars - see `width_verdict` for
+    # the four fixed branches, and report section 5.48 for the design.
+    "width-d3-equal": {
+        "seeds": tuple(range(76000, 76576)),
+        "overrides": {"depth": 3, "hidden_size": 28},
+        "run_revision": None,  # set to the pre-registration commit before the run
+        "report_section": "5.48",
+        "summary": "artifacts/study-summaries/width-d3-equal-576.json",
+    },
+    "width-d4-equal": {
+        "seeds": tuple(range(77000, 77576)),
+        "overrides": {"depth": 4, "hidden_size": 28},
+        "run_revision": None,  # set to the pre-registration commit before the run
+        "report_section": "5.48",
+        "summary": "artifacts/study-summaries/width-d4-equal-576.json",
+    },
 }
 REGISTERED = dict(
     hidden_size=24,
@@ -114,6 +136,9 @@ REGISTERED = dict(
     device="cpu",
 )
 ALPHA = 0.05
+# The width arm's cells (section 5.48), in the order the branches read them:
+# the equal-parameter partner first, the above-onset depth second.
+WIDTH_PROFILES = ("width-d3-equal", "width-d4-equal")
 
 
 def run_shard(shard: int, shards: int, profile: str) -> Path:
@@ -162,27 +187,109 @@ def load_shards(shards: int, profile: str) -> list[dict]:
     return sorted(experiments, key=lambda exp: exp["seed"])
 
 
-def verdict(shards: int, profile: str) -> int:
-    experiments = load_shards(shards, profile)
-    n = len(experiments)
-    built_in_ok = all(
+def _check_built_ins(experiments: list[dict]) -> None:
+    """The registered per-seed checks every profile shares (5.9)."""
+    ok = all(
         exp["mutations"] == {"random": 3, "adaptive": 3, "null": 0}
         and exp["search_flops"]["null"] == 0
         for exp in experiments
     )
-    if not built_in_ok:
+    if not ok:
         raise SystemExit("built-in check failed: unexpected mutation counts or null search FLOPs")
-    print(f"built-in check: mutations 3/3/0 and zero null search FLOPs in {n}/{n} seeds: OK")
+    print(
+        f"built-in check: mutations 3/3/0 and zero null search FLOPs in "
+        f"{len(experiments)}/{len(experiments)} seeds: OK"
+    )
+
+
+def _sign_test(deltas: list[float]) -> tuple[int, float, float]:
+    """One-sided exact sign test: (wins, mean delta, binomial p-value)."""
+    wins = sum(delta < 0 for delta in deltas)
+    p = _binomial_survival(wins, len(deltas))
+    return wins, sum(deltas) / len(deltas), p
+
+
+def width_verdict(shards: int, alpha: float) -> int:
+    """Section 5.48's pre-registered primaries and four fixed branches.
+
+    Two fresh cells at width 28: depth 3 (the equal-parameter partner of the
+    committed depth-4 x width-24 cell) and depth 4. Both primaries are the
+    dose-response's own test - the one-sided exact sign test of adaptive-vs-null
+    per-seed wins at the Bonferroni bar alpha/2 - and a cell counts as
+    *creating value* only when the wins clear the bar **and** the mean delta is
+    negative. The conjunction is part of the pre-registration because a
+    win-rate crossing can be a tail effect (depth 1 is exactly that: 117/384
+    wins while the adaptive arm is +0.0508 worse on average), and the six
+    committed cells never disagreed on the sign. The branches are fixed in
+    advance so no outcome can be re-narrated after the fact:
+
+    - P1 and P2: the onset is a **capacity** onset - a below-onset depth
+      creates value at the above-onset cell's parameter count, and the wider
+      above-onset cell keeps its own.
+    - P1 only: widening creates value below the onset and destroys it above -
+      a depth x width interaction, not a monotone capacity story.
+    - P2 only: the onset is depth-like at this width; widening does not rescue
+      a below-onset substrate.
+    - neither: width is harmful at both depths here, and the depth axis is not
+      capacity - the width covariate is closed for this search space.
+    """
+    cells: dict[str, dict[str, float | bool]] = {}
+    for profile in WIDTH_PROFILES:
+        experiments = load_shards(shards, profile)
+        _check_built_ins(experiments)
+        deltas = [
+            exp["losses"]["adaptive"] - exp["losses"]["null"]
+            for exp in experiments
+        ]
+        wins, mean, p = _sign_test(deltas)
+        bar = _gate_min_wins(len(deltas), alpha / 2)
+        creates = wins >= bar and mean < 0
+        cells[profile] = {
+            "wins": wins,
+            "n": len(deltas),
+            "mean": mean,
+            "binomial_p": p,
+            "min_wins_bonferroni": bar,
+            "creates_value": creates,
+        }
+        print(
+            f"{profile}: adaptive-vs-null wins {wins}/{len(deltas)} (bar {bar}), "
+            f"mean {mean:+.6f}, p {p:.2e} -> creates value: {creates}"
+        )
+    p1 = bool(cells[WIDTH_PROFILES[0]]["creates_value"])
+    p2 = bool(cells[WIDTH_PROFILES[1]]["creates_value"])
+    branches = {
+        (True, True): (
+            "P1+P2 PASS: the onset is a capacity onset - depth and width trade "
+            "off at matched parameters"
+        ),
+        (True, False): (
+            "P1 only: widening creates value below the onset and destroys it "
+            "above - a depth x width interaction"
+        ),
+        (False, True): (
+            "P2 only: the onset is depth-like at this width; widening does not "
+            "rescue a below-onset substrate"
+        ),
+        (False, False): (
+            "both FAIL: width is harmful at both depths here; the depth axis "
+            "is not capacity"
+        ),
+    }
+    print(f"\nOUTCOME (alpha={alpha}, Bonferroni alpha/2={alpha / 2}): {branches[(p1, p2)]}")
+    return 0
+
+
+def verdict(shards: int, profile: str) -> int:
+    experiments = load_shards(shards, profile)
+    n = len(experiments)
+    _check_built_ins(experiments)
 
     null_deltas = [exp["losses"]["null"] - exp["losses"]["random"] for exp in experiments]
     bar_deltas = [exp["losses"]["adaptive"] - exp["losses"]["null"] for exp in experiments]
     rand_deltas = [exp["losses"]["adaptive"] - exp["losses"]["random"] for exp in experiments]
 
-    def sign_test(deltas: list[float]) -> tuple[int, float, float]:
-        wins = sum(delta < 0 for delta in deltas)
-        p = _binomial_survival(wins, len(deltas))
-        return wins, sum(deltas) / len(deltas), p
-
+    sign_test = _sign_test
     n_wins, n_mean, n_p = sign_test(null_deltas)
     b_wins, b_mean, b_p = sign_test(bar_deltas)
     a_wins, a_mean, a_p = sign_test(rand_deltas)
@@ -340,6 +447,12 @@ def main() -> int:
     verdict_p = sub.add_parser("verdict", help="aggregate shards and score the contract")
     verdict_p.add_argument("--shards", type=int, required=True)
     verdict_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
+    width_p = sub.add_parser(
+        "width-verdict",
+        help="section 5.48: score both width cells and print the pre-registered branch",
+    )
+    width_p.add_argument("--shards", type=int, required=True)
+    width_p.add_argument("--alpha", type=float, default=ALPHA)
     sum_p = sub.add_parser("summary", help="write the committed study summary")
     sum_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
     sum_p.add_argument("--alpha", type=float, default=ALPHA)
@@ -354,6 +467,8 @@ def main() -> int:
         out.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n")
         print(f"summary written: {out} ({payload['study_id']})")
         return 0
+    if args.command == "width-verdict":
+        return width_verdict(args.shards, args.alpha)
     return verdict(args.shards, args.profile)
 
 
