@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## The three-queue read-back path, validated on real published data before the real data lands (2026-09-20)
+
+| | |
+|---|---|
+| **What was run** | The exact path each queue executes — benchmark artifact → dtype rule → pair time → runner → publish — with today's edits in place: `--profile` pair-session smokes on the idle local card for the **primary** (both arms), the **control** (`--probe-selection random`) and the **null** queue (`--session-arms null`), each publishing `act-checkpoints/v0-5-1/seed-*/seed-summary.json` the way a session does. Then `scripts/v0_verdict.py` was pointed at all three trees at once. |
+| **What it proves** | The artifact reader accepts the artifact the benchmark now writes (including `pairs_per_session_rule1` / `sessions_for_primary_rule1`); a pair completes and publishes for all three queue shapes; the null arm's published payload books **0 mutations and 0 search FLOPs** — the §5.14 built-in checks, on real published data rather than on a fixture; and the verdict evaluates **all three clauses** (`harm_guard`, `pool_matched_control`, `null_control`) from three separate roots, pairing the null and control arms cross-queue per seed. |
+| **A guard fired on the way, as designed** | Running the *real* benchmark at the declared 285M shape on this card produces no artifact at all: fp32 measures 1,817.5 tok/s (below the 2,500 floor, so the rule selects fp16) and fp16 measures 1,005.1 tok/s on Pascal, giving a **13.68 h pair against the 9 h window** — so `unusable_schedule_reason` refuses to write a plan no session could execute. That is §5.2/5.39.1's guard doing its job, and it is why the smoke artifact was built at a T4 rate. |
+| **And the verdict tool reproduces §5.41 from the other side** | The smoke verdict is a cost **FAIL** with `run_scale`/`band_reading` present: at a profile-scale run the cost criterion cannot pass, because the band is derived from the declared shape. That is the effect §5.41 documented, now seen end-to-end through the tool that will read the declared block. |
+| **Where it ran** | Entirely under `/tmp` (dataset roots, session dirs, outputs, `/tmp/smoke-benchmark.json`), so nothing in the repository moved: the committed state is the entry below. |
+| **Result** | **1185 tests · 274/274 claims agree · 9/9 records reproduce.** |
+
 ## The Gate-4 null clause was priced before its data exists: a withheld verdict is evidence, a cleared one is not (2026-09-20)
 
 | | |
