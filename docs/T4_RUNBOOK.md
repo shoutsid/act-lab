@@ -573,9 +573,17 @@ zero-mutation counters the §5.14 built-in checks read.
 ## 3. Running the queue to completion
 
 The queue is 12 declared seeds (15000–15011), one atomic pair each. Schedule
-expectations come from the benchmark artifact (`sessions_for_primary`,
-`sessions_total`); the plan's own arithmetic already includes the 45-minute
-publish reserve and the 20 GB working-dir ledger.
+expectations come from the benchmark artifact, and it now carries both readings:
+`sessions_for_primary` / `sessions_total` are section 5.2's registered
+arithmetic (`floor(usable hours / pair time)`), while
+`sessions_for_primary_rule1` and `pairs_per_session_rule1` are what the runner's
+own start gate will honour. **Plan from the `_rule1` fields.** The two agree
+only while the 45-minute publish reserve does not bind; measured 2026-09-20 at
+the fp16 placement rate (1.443 h per pair, one arm per device) the registered
+field reads 2 sessions for the primary queue while the runner starts 5 pairs
+per session and therefore needs 3 (5+5+2). The 20 GB working-dir ledger is part
+of the plan's arithmetic; the publish reserve was not, which is exactly the gap
+these fields close.
 
 Rules the runbook operator must not work around (all enforced in code):
 

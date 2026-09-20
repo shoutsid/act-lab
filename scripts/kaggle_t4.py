@@ -967,15 +967,26 @@ def dtypeprobe_report(
 
     One spelling of the probe's arithmetic, so the number a human reads and the
     number the launch plans from cannot come apart - the defect this replaced.
+    Both session counts are printed: the registered section 5.2 arithmetic and
+    the one the runner's own start gate will honour, because a reader planning
+    from the registered field alone expects one session too few whenever the
+    45-minute publish reserve binds.
     """
+    import math
+
+    from act.training.session_plan import session_pair_capacity
+
     lines: list[str] = []
     for dtype, rate in rates.items():
         schedule = probe_pair_schedule(rate, arms, device)
+        capacity = session_pair_capacity(schedule.pair_time_hours)
         lines.append(
             f"{dtype}: {rate:.1f} tokens/s -> pair "
             f"{schedule.pair_time_hours:.3f} h, "
-            f"{schedule.full_pairs_per_session} pairs/session, "
-            f"{schedule.sessions_for_primary} sessions for the primary queue"
+            f"{capacity} pairs/session by rule 1 "
+            f"({schedule.full_pairs_per_session} registered), "
+            f"{math.ceil(12 / capacity) if capacity else 0} sessions for the "
+            f"primary queue ({schedule.sessions_for_primary} registered)"
         )
     return "\n".join(lines)
 

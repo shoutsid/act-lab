@@ -23,6 +23,7 @@ from act.training.session_plan import (
     deadline_decision,
     decide_dtype,
     expected_probe_cost_percent,
+    session_pair_capacity,
     tolerance_band,
     unusable_schedule_reason,
     working_dir_headroom_gb,
@@ -124,19 +125,38 @@ def test_the_corrected_session_places_exactly_two_pairs() -> None:
     deferring it.
     """
     pair_time = PairSchedule(tokens_per_second=4_694.9).pair_time_hours
-    remaining = USABLE_HOURS
-    pairs = 0
-    while deadline_decision(remaining, pair_time).action == "start_pair":
-        remaining -= pair_time
-        pairs += 1
-
-    assert pairs == 2
+    assert session_pair_capacity(pair_time) == 2
     # 3.01 h pairs do not pack neatly into 9 h: two pairs leave 2.98 h, just
     # under one pair, so the session stops with a third of its window unused
     # rather than starting a pair it cannot finish. Sessions therefore exit
     # early (and bill for the ~6 h they ran, not the 9 h they were given).
+    remaining = USABLE_HOURS - 2 * pair_time
     assert remaining < pair_time
     assert math.isclose(9.0 - 2 * pair_time, remaining, abs_tol=1e-9)
+
+
+def test_the_registered_capacity_and_the_runners_gate_differ_when_the_reserve_binds() -> None:
+    """Measured 2026-09-20: the registered field reads one pair too many.
+
+    ``full_pairs_per_session`` is section 5.2's arithmetic and stays registered,
+    but the runner's start gate adds the 45-minute publish reserve to every
+    start. At the T4's fp16 placement rate (one arm per device, 5,083.4
+    tokens/s) the two disagree by exactly one pair per session, and therefore by
+    one *session* for the primary queue: 2 registered against the 3 the runner
+    needs. Reading the plan from the registered field alone is what made the
+    launch's own expectation wrong, so both numbers are asserted here.
+    """
+    schedule = PairSchedule(tokens_per_second=5_083.4, arms=2, arm_slots=2)
+    assert math.isclose(schedule.pair_time_hours, 1.443, abs_tol=5e-4)
+    assert schedule.full_pairs_per_session == 6
+    assert schedule.sessions_for_primary == 2  # registered, section 5.2's form
+    assert session_pair_capacity(schedule.pair_time_hours) == 5
+    assert math.ceil(12 / session_pair_capacity(schedule.pair_time_hours)) == 3
+    # And the reserve is the whole reason for the gap: lend the session those 45
+    # minutes as extra window and the runner's gate packs the registered six.
+    assert session_pair_capacity(
+        schedule.pair_time_hours, hours=USABLE_HOURS + PUBLISH_RESERVE_MINUTES / 60
+    ) == schedule.full_pairs_per_session
 
 
 def test_schedule_rejects_invalid_input() -> None:

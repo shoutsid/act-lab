@@ -207,6 +207,32 @@ def deadline_decision(
     )
 
 
+def session_pair_capacity(
+    pair_time_hours: float, hours: float = USABLE_HOURS
+) -> int:
+    """Pairs a session can *start*, by walking the deadline rules themselves.
+
+    ``PairSchedule.full_pairs_per_session`` is section 5.2's registered
+    arithmetic - ``floor(usable hours / pair time)`` - and stays exactly as
+    registered, because the section 5.2 table's rows are computed from it and
+    pinned by tests. The runner's start gate is stricter: rule 1 adds the
+    45-minute publish reserve to every start, so the registered field reads one
+    more pair per session than the runner will begin whenever the reserve binds.
+    Measured 2026-09-20 at the T4's fp16 placement rate (1.443 h/pair): the
+    registered field says 6 pairs and 2 sessions for the primary queue, while
+    the runner starts 5 per session and therefore needs 3 sessions (5+5+2).
+    Reading the plan from the registered field is what made that expectation
+    wrong, so the launch reports this number beside it.
+    """
+    if pair_time_hours <= 0:
+        raise ValueError("pair_time_hours must be positive")
+    remaining, pairs = hours, 0
+    while deadline_decision(remaining, pair_time_hours).action == "start_pair":
+        remaining -= pair_time_hours
+        pairs += 1
+    return pairs
+
+
 def expected_probe_cost_percent(probe_batch_count: int) -> float:
     """Section 5.1's declared-scale prediction for the chosen probe budget.
 

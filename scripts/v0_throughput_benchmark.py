@@ -35,6 +35,7 @@ from act.training.session_plan import (
     decide_dtype,
     deadline_decision,
     expected_probe_cost_percent,
+    session_pair_capacity,
     tolerance_band,
     unusable_schedule_reason,
     working_dir_headroom_gb,
@@ -278,6 +279,16 @@ def main() -> int:
             "pair_time_hours": schedule.pair_time_hours,
             "full_pairs_per_session": schedule.full_pairs_per_session,
             "sessions_for_primary": schedule.sessions_for_primary,
+            # The registered field above is section 5.2's arithmetic; these two
+            # are what the runner's own start gate (rule 1, with the 45-minute
+            # publish reserve) will do, which is the number a launch should
+            # expect. They differ whenever that reserve binds - measured
+            # 2026-09-20: 6 registered vs 5 started per session, i.e. 2 sessions
+            # for the primary queue registered against 3 needed.
+            "pairs_per_session_rule1": session_pair_capacity(schedule.pair_time_hours),
+            "sessions_for_primary_rule1": math.ceil(
+                12 / session_pair_capacity(schedule.pair_time_hours)
+            ),
             "sessions_total": schedule.sessions_total,
             "working_dir_steady_state_gb": schedule.steady_state_gb(),
             "working_dir_headroom_gb": working_dir_headroom_gb(),

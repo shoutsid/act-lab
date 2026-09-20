@@ -402,10 +402,14 @@ def test_dtypeprobe_prices_the_placement_the_runner_will_use(
     placed = kaggle_t4.probe_pair_schedule(rate, 2, torch.device("cuda"))
     assert placed == PairSchedule(tokens_per_second=rate, arms=2, arm_slots=2)
     assert (placed.full_pairs_per_session, placed.sessions_for_primary) == (6, 2)
-    # And the line the probe logs is the one priced here, not a second spelling.
-    assert "pair 1.486 h, 6 pairs/session, 2 sessions" in kaggle_t4.dtypeprobe_report(
-        {"fp16": rate}, 2, torch.device("cuda")
-    )
+    # And the line the probe logs is the one priced here, not a second spelling -
+    # carrying both the registered section 5.2 arithmetic and the capacity the
+    # runner's own gate honours (one pair fewer per session here, so one session
+    # more for the primary queue).
+    assert (
+        "pair 1.486 h, 5 pairs/session by rule 1 (6 registered), "
+        "3 sessions for the primary queue (2 registered)"
+    ) in kaggle_t4.dtypeprobe_report({"fp16": rate}, 2, torch.device("cuda"))
 
     monkeypatch.setattr(torch.cuda, "device_count", lambda: 1)
     sequential = kaggle_t4.probe_pair_schedule(rate, 2, torch.device("cuda"))
@@ -413,9 +417,10 @@ def test_dtypeprobe_prices_the_placement_the_runner_will_use(
         3,
         4,
     )
-    assert "3 pairs/session, 4 sessions" in kaggle_t4.dtypeprobe_report(
-        {"fp16": rate}, 2, torch.device("cuda")
-    )
+    assert (
+        "2 pairs/session by rule 1 (3 registered), "
+        "6 sessions for the primary queue (4 registered)"
+    ) in kaggle_t4.dtypeprobe_report({"fp16": rate}, 2, torch.device("cuda"))
     # The same rate and the same overhead, in one wave instead of two - which is
     # the whole difference the fix turns on: the two-wave reading bills the
     # arm-time twice, so it halves the pairs a session can fit.
