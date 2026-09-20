@@ -36,6 +36,7 @@ from act.training.session_plan import (
     deadline_decision,
     expected_probe_cost_percent,
     session_pair_capacity,
+    three_queue_plan,
     tolerance_band,
     unusable_schedule_reason,
     working_dir_headroom_gb,
@@ -57,6 +58,35 @@ def build_declared_model(device: torch.device) -> tuple[V0MoECausalLM, int, int]
     torch.manual_seed(15012)  # outside the reserved 15000-15011 seed block
     model = V0MoECausalLM(config).to(device)
     return model, total, active
+
+
+def campaign_plan_fields(schedule: PairSchedule) -> dict[str, float | int]:
+    """The three-queue campaign's plan, as the launch artifact records it.
+
+    One spelling of the campaign arithmetic, so the number read out of an
+    artifact, the line the probe logs and the numbers a test pins cannot come
+    apart. The declared campaign is three queues over the same block (primary,
+    the 5.5 pool-matched control, and the 5.14 null queue), and the null queue
+    is not a cheap afterthought: a null seed trains the same 24,576,000 tokens
+    as a pair arm, so on a host with a device per arm it costs exactly a pair -
+    a "~90 s/seed" figure recorded from a dev-fidelity study is 1.44 h here
+    (2026-09-20 correction, see `session_plan.three_queue_plan`). It is a
+    single arm, so its time is derived rather than inherited: one wave even
+    where the pair queues pay two.
+    """
+    null_schedule = PairSchedule(
+        tokens_per_second=schedule.tokens_per_second, arms=1, arm_slots=1
+    )
+    campaign = three_queue_plan(
+        schedule.pair_time_hours,
+        null_pair_time_hours=null_schedule.pair_time_hours,
+    )
+    return {
+        "three_queue_sessions": campaign.sessions,
+        "three_queue_training_hours": campaign.training_hours,
+        "three_queue_sessions_primary": campaign.primary.sessions,
+        "three_queue_sessions_null": campaign.null.sessions,
+    }
 
 
 def measure_tokens_per_second(
@@ -244,6 +274,11 @@ def main() -> int:
         )
         raise SystemExit(f"unusable section 5.2 schedule: {reason}{detail}")
 
+    # Read only after the schedule is known to be usable: a zero-capacity plan
+    # is refused by `QueuePlan` itself, and this branch must stay the clean
+    # SystemExit above, not a traceback.
+    campaign_fields = campaign_plan_fields(schedule)
+
     report = {
         "benchmark": "v0-throughput-5.2",
         "profile": "declared-285M" if not args.profile else "smoke-profile",
@@ -290,6 +325,13 @@ def main() -> int:
                 12 / session_pair_capacity(schedule.pair_time_hours)
             ),
             "sessions_total": schedule.sessions_total,
+            # The campaign's own plan, across all three declared queues, from
+            # the runner's start gate rather than section 5.2's registered
+            # arithmetic. ``training_hours`` is a floor on billed hours (each
+            # session also pays boot, restore and the exit publish); the 5.14
+            # null queue is a full-rate third, so the floor is 3x the per-queue
+            # training time, not 2x plus an afterthought.
+            **campaign_fields,
             "working_dir_steady_state_gb": schedule.steady_state_gb(),
             "working_dir_headroom_gb": working_dir_headroom_gb(),
             "max_checkpoints": MAX_CHECKPOINTS,

@@ -1651,9 +1651,14 @@ outcome. Only the declared-scale measurement can.
 block 15000-15011, run as its own single-arm sessions (`arms=("null",)`)
 into its own dataset/session roots (as the 5.5 pool-matched control uses
 its own roots), publishing per-seed `null_final_loss` under the existing
-runner contract (5.8). Expected cost ~90 s/seed of GPU (~18 min over 12
-sessions) plus restore/publish overhead; no probes, no search FLOPs,
-mutations always zero. A null session trains the SAME init and data
+runner contract (5.8). Expected cost **~1.44 h/seed of GPU (~17.3 h over the
+queue)** plus restore/publish overhead - a null seed trains the declared
+config's 24.576M tokens, so it costs a pair's arm-time; no probes, no search
+FLOPs, mutations always zero. (Corrected 2026-09-20: this section first
+recorded "~90 s/seed (~18 min over 12 sessions)", which is a *dev-fidelity*
+measurement - 400 steps at the dev shape, 102.9 s mean over the 24 sessions of
+`deployed_vs_null_study` - and understated the declared queue by ~58x per
+seed.) A null session trains the SAME init and data
 stream as the pair sessions, so its losses are paired with the primary
 run's adaptive/random arms per seed. No probe-budget flag is needed; the
 null arm is policy-free by construction.
@@ -1708,13 +1713,18 @@ the null arm has none); null queue completeness on the same block;
 per-seed pairing (each null loss must come from the same seed as the
 pair it is compared against).
 
-**Cost.** ~90 s/seed on the T4 (24.576M tokens at the measured rate,
-no probe/event overhead beyond zero mutations) - ~7 min of GPU across
-the queue, plus per-session restore/publish overhead. It runs as
-regular sessions in the same 12-hour Kaggle windows, after the primary
-queue completes (the runbook order). The declared block's pairs are
-~1.443 h each at the measured placement, so all three queues are ~55
-GPU-h rather than the ~47 the pre-placement plan recorded.
+**Cost.** A null seed's 24.576M tokens at the T4's measured placement
+rate (5,083.4 tokens/s) are **1.343 h**, plus the fixed 0.1 h event
+overhead = **~1.44 h/seed**; zero mutations means no probe or event work
+rides on top. The queue is **~17.3 h of training**, so the three declared
+queues are **~52 GPU-h of training over nine sessions** (~55 with
+per-session restore/publish overhead) - composed in one place
+(`three_queue_plan`) and carried in the launch artifact as
+`schedule.three_queue_*`. The null queue is a full-rate third, not the
+"~7 min" an earlier version of this paragraph recorded, and the old ~47
+was below the training-only floor. It runs as regular sessions in the
+same 12-hour Kaggle windows, after the primary queue completes (the
+runbook order).
 
 **What the clause can decide, measured before its data exists
 (2026-09-20, `scripts/null_clause_power.py`).** The clause is a sign

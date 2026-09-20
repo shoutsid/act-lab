@@ -233,6 +233,113 @@ def session_pair_capacity(
     return pairs
 
 
+@dataclass(frozen=True)
+class QueuePlan:
+    """One queue's sessions and training time at the runner's own start gate.
+
+    ``sessions`` is what a driver's re-push loop needs (one push is one
+    session), and ``training_hours`` is the token-derived time the queue spends
+    training - a *floor* on what it bills, because a session that exits when
+    rule 1 refuses the next pair still pays boot, restore and its exit publish.
+    """
+
+    seeds: int
+    pair_time_hours: float
+    pairs_per_session: int
+
+    def __post_init__(self) -> None:
+        if self.seeds < 1:
+            raise ValueError("seeds must be positive")
+        if self.pairs_per_session < 1:
+            raise ValueError(
+                "a queue plan with no pair per session describes a run that "
+                "bills quota and publishes nothing; refuse it before launch"
+            )
+        if self.pair_time_hours <= 0:
+            raise ValueError("pair_time_hours must be positive")
+
+    @property
+    def sessions(self) -> int:
+        return math.ceil(self.seeds / self.pairs_per_session)
+
+    @property
+    def training_hours(self) -> float:
+        return self.seeds * self.pair_time_hours
+
+
+def queue_plan(
+    pair_time_hours: float,
+    *,
+    seeds: int = 12,
+    hours: float = USABLE_HOURS,
+) -> QueuePlan:
+    """Plan one queue from the runner's start gate, not the registered field.
+
+    The capacity comes from :func:`session_pair_capacity`, so a session that
+    the 45-minute reserve keeps one pair short is priced as the runner will run
+    it (see that function for the measured 2026-09-20 divergence).
+    """
+    return QueuePlan(
+        seeds=seeds,
+        pair_time_hours=pair_time_hours,
+        pairs_per_session=session_pair_capacity(pair_time_hours, hours),
+    )
+
+
+@dataclass(frozen=True)
+class ThreeQueuePlan:
+    """The declared campaign: primary, pool-matched control, and null queue.
+
+    Three symmetric queues over the same 12-seed block. Composed here rather
+    than in prose because every recorded total so far has been wrong in its own
+    way: the "~47 GPU-hours" plan was built on a pair time the placement
+    correction changed, and the null queue carried a "~90 s/seed" figure
+    measured at *dev* fidelity (400 steps, dev shape, `deployed_vs_null_study`
+    2026-09-20: 102.9 s mean over 24 sessions) even though a declared null seed
+    trains the same 24,576,000 tokens as a pair arm and costs a pair's
+    arm-time. ``training_hours`` is the floor under the campaign's bill.
+    """
+
+    primary: QueuePlan
+    control: QueuePlan
+    null: QueuePlan
+
+    @property
+    def sessions(self) -> int:
+        return self.primary.sessions + self.control.sessions + self.null.sessions
+
+    @property
+    def training_hours(self) -> float:
+        return (
+            self.primary.training_hours
+            + self.control.training_hours
+            + self.null.training_hours
+        )
+
+
+def three_queue_plan(
+    pair_time_hours: float,
+    *,
+    null_pair_time_hours: float | None = None,
+    seeds_per_queue: int = 12,
+    hours: float = USABLE_HOURS,
+) -> ThreeQueuePlan:
+    """The three declared queues at these pair times.
+
+    ``null_pair_time_hours`` defaults to the pair time because on a host with a
+    device per arm both are one wave: a two-arm pair overlaps its arms and a
+    null seed is a single arm, so they cost the same. On a one-device host the
+    pair queues pay two waves and the null queue one, so the caller passes the
+    sequential pair time's null cost explicitly rather than inheriting it.
+    """
+    null_time = pair_time_hours if null_pair_time_hours is None else null_pair_time_hours
+    return ThreeQueuePlan(
+        primary=queue_plan(pair_time_hours, seeds=seeds_per_queue, hours=hours),
+        control=queue_plan(pair_time_hours, seeds=seeds_per_queue, hours=hours),
+        null=queue_plan(null_time, seeds=seeds_per_queue, hours=hours),
+    )
+
+
 def expected_probe_cost_percent(probe_batch_count: int) -> float:
     """Section 5.1's declared-scale prediction for the chosen probe budget.
 

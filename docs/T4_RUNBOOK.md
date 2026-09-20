@@ -110,8 +110,10 @@ and publish log in the kernel output.
 Drive a queue with `scripts/kaggle_queue.py`, which stages the kernel, pushes
 it, waits for the session, and re-pushes until the declared block is complete.
 One push is one session, so `--max-sessions 1` means "run one session now",
-and the default budget of eight covers the two sessions the primary queue needs
-(with slack for a session that advances less than a full block):
+and the default budget of eight covers the three sessions the primary queue
+needs (5+5+2 pairs, by the runner's own start gate - see §3; the registered
+first pass is 6 pairs per session, which would be two), with slack for a
+session that advances less than a full block:
 
 ```bash
 python scripts/kaggle_queue.py --queue session
@@ -164,9 +166,11 @@ which is the one loop that can spend a week's budget producing nothing. Fix
 the cause - usually `--hours` - then re-run. It reads `kaggle quota --format json` before every push and
 refuses when the remaining GPU hours are below the declared window, because a
 session stopped part-way still bills every hour it used and produces nothing.
-Over the ~47 GPU-hour plan for the three queues against a 30 GPU-h/week
-quota (about two weeks of sessions) that is the difference between waiting a
-day and losing the quota. An unreadable quota
+Over the ~52 GPU-hours of training the three queues need - nine sessions,
+about 55 billed - against a 30 GPU-h/week quota (about two weeks of sessions)
+that is the difference between waiting a day and losing the quota. The plan is
+not prose: `three_queue_plan` composes it from the runner's own start gate and
+the launch artifact carries it (`schedule.three_queue_*`). An unreadable quota
 line never blocks (it can only ever spend less), and a session that is already
 live is adopted instead of gated.
 
@@ -245,8 +249,9 @@ cost one failed run:
    that is a *schedule* change, so it re-runs the section 5.2 benchmark and
    re-derives `full_pairs_per_session` rather than being assumed. **Settled
    2026-09-15: `count` is 2**, one arm now trains per device (see the schedule
-   section above), and the corrected three-queue plan is ~47 GPU-hours rather
-   than the ~86 the fp32 sequential arithmetic implied.
+   section above), and the three-queue plan is ~52 GPU-hours of training (nine
+   sessions, ~55 billed) rather than the ~86 the fp32 sequential arithmetic
+   implied.
 7. **The kernel runs the mounted dataset, not this working tree.** The staged
    kernel body is embedded from the tree, but `src/`, `scripts/` and `tests/`
    are copied from the attached `act-lab-code` dataset, so a dataset that lags
@@ -302,7 +307,13 @@ The last row is what the benchmark now reports on a two-T4 host: the placement
 is part of the arithmetic, so the artifact describes the pair the session will
 train rather than the sequential one it used to. The middle row is what the
 same measurement produced before the placement was implemented, kept because
-it is the evidence the `arms`-per-wave correction is worth 2x.
+it is the evidence the `arms`-per-wave correction is worth 2x. **Both packing
+columns are the *registered* fields** (`full_pairs_per_session`,
+`sessions_for_primary`); the runner's own start gate adds the 45-minute publish
+reserve to every start and packs one fewer pair, so plan from the artifact's
+`pairs_per_session_rule1` / `sessions_for_primary_rule1` - at the 2026-09-20
+rate (5,083.4 tokens/s, 1.443 h) that is 5 pairs and 3 sessions, not the 6 and
+2 this table's form reads.
 
 **Two corrections sit behind those rows, and they nearly cancel.**
 
@@ -328,6 +339,19 @@ queue the same ~31, and 2c 12 pairs x 1.36 h (one arm) = **~16**, so about
 **79 GPU-hours** against the free tier's 30/week. The recorded "2c ~0.3" does
 not follow from the runner: an arm's token budget is `batch x context x steps`,
 independent of how many arms run, so the null queue cannot be cheap.
+
+**Superseded 2026-09-20.** The totals above are computed from the 2026-09-15
+fp16 rate and the registered packing. The plan now comes from the measured
+artifact and the runner's own gate, composed in one place (`three_queue_plan`):
+at the T4's measured **5,083.4 tokens/s** placement rate a pair is 1.443 h, each
+queue packs **5 pairs per session** (5+5+2 over three sessions), and the three
+queues are **~52 GPU-hours of training over nine sessions** (~55 billed with
+per-session overhead) - not ~47. The null queue in particular is a full-rate
+third (~17.3 h), because a null seed trains the same 24.576M tokens as a pair
+arm; a "~90 s/seed" figure that circulated for it came from a *dev-fidelity*
+study (400 steps, dev shape) and understated the declared queue by ~58x per
+seed. `schedule.three_queue_sessions` / `schedule.three_queue_training_hours`
+are the artifact's own statement of this.
 
 **And the second T4 is the point.** The pair-time model was written for one arm
 per GPU; two T4s exist, so that model is reachable and the sequential runner is
@@ -365,8 +389,11 @@ arithmetic follows the placement automatically (`arm_slots`), so the plan cannot
 describe more concurrency than the run performs.
 
 Pass `--hours 9` (the registered usable window): at the fp16 rate the deadline
-rules then place three completed pairs per session sequentially, or six with
-one arm per device.
+rules then place **two** completed pairs per session sequentially, or **five**
+with one arm per device. Both are one pair below the registered
+`floor(9 h / pair time)` because rule 1 adds the 45-minute publish reserve to
+every start; plan from the artifact's `_rule1` fields (§3) rather than from the
+registered ones.
 
 A kernel that requests a GPU accelerator queues when no T4 is free (status
 `QUEUED`, which consumes no quota); the queue clears on its own.
@@ -542,8 +569,9 @@ sessions (`--session-arms null`) at the SAME declared fidelity over the SAME
 block, into their own roots. A null session trains the identical init and
 data stream but performs no probe and no mutation, so its per-seed loss is
 the do-nothing baseline the adaptive arm must beat before Gate 4. Run it
-AFTER the primary and §2b queues (it is ~90 s of GPU per seed plus session
-overhead):
+AFTER the primary and §2b queues (it is **~1.44 h of GPU per seed** plus
+session overhead - a null seed trains the same 24.576M tokens as a pair arm,
+so the null queue is a full-rate third of the campaign, not an afterthought):
 
 ```bash
 PYTHONPATH=src python -m act.training.cli --mode pair-session \

@@ -110,6 +110,23 @@ def test_declared_session_config_builds_the_protocol_target() -> None:
     assert declared.activation_checkpointing is True
 
 
+def test_a_declared_null_seed_trains_the_pair_arm_budget() -> None:
+    """The 5.14 null queue is full-fidelity, so it costs a pair's arm-time.
+
+    Measured 2026-09-20: the report and the runbook both priced a null seed at
+    "~90 s of GPU" - a figure from a dev-shape, 400-step study. A null session
+    launched by the runbook's own command inherits the declared config (only
+    `--profile` shrinks it), so its budget is the pair arm's 24,576,000 tokens
+    and the three declared queues are symmetric. Pinned here because the cost
+    claim moved a campaign's plan by a factor of ~58.
+    """
+    declared = declared_session_config(arms=("null",))
+    assert declared.declared is True
+    assert declared.total_steps == 6_000
+    assert declared.arms == ("null",)
+    assert declared.training_tokens() == 24_576_000
+
+
 def test_v0_moe_materialized_counts_match_estimator() -> None:
     config = V0MoEConfig(**TINY)
     model = V0MoECausalLM(config)

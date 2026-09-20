@@ -408,7 +408,8 @@ def test_dtypeprobe_prices_the_placement_the_runner_will_use(
     # more for the primary queue).
     assert (
         "pair 1.486 h, 5 pairs/session by rule 1 (6 registered), "
-        "3 sessions for the primary queue (2 registered)"
+        "3 sessions for the primary queue (2 registered); "
+        "three queues 9 sessions / 53.5 h training floor"
     ) in kaggle_t4.dtypeprobe_report({"fp16": rate}, 2, torch.device("cuda"))
 
     monkeypatch.setattr(torch.cuda, "device_count", lambda: 1)
@@ -419,7 +420,11 @@ def test_dtypeprobe_prices_the_placement_the_runner_will_use(
     )
     assert (
         "2 pairs/session by rule 1 (3 registered), "
-        "6 sessions for the primary queue (4 registered)"
+        "6 sessions for the primary queue (4 registered); "
+        # The null queue is one arm and therefore one wave: on a one-device host
+        # it keeps the device-per-arm capacity while the pair queues halve, so
+        # the campaign total is not 3x the primary's session count.
+        "three queues 15 sessions / 86.7 h training floor"
     ) in kaggle_t4.dtypeprobe_report({"fp16": rate}, 2, torch.device("cuda"))
     # The same rate and the same overhead, in one wave instead of two - which is
     # the whole difference the fix turns on: the two-wave reading bills the

@@ -1,5 +1,17 @@
 # ACT Implementation Status
 
+## The campaign's plan had never been composed, and the null queue was priced at dev fidelity (2026-09-20)
+
+| | |
+|---|---|
+| **What was found** | The three-queue Gate 4 campaign has been running with its total cost stated only in prose, and the prose was wrong twice over. `RESEARCH_REPORT.md` §5.14 and the runbook priced a declared null seed at "~90 s of GPU (~18 min over the queue)" - a figure measured at *dev* fidelity (400 steps, dev shape: 102.9 s mean wall over the 24 sessions of `deployed_vs_null_study`, run 2026-09-20). A null session launched by the runbook's own command inherits the declared config (only `--profile` shrinks it), so a null seed trains the same 24,576,000 tokens as a pair arm: 1.343 h at the T4's measured 5,083.4 tokens/s plus the 0.1 h event overhead = **~1.44 h**, ~58x the quoted figure. And the recorded "~47 GPU-hour plan" was below the training-only floor of the corrected rate (3 queues x 12 x 1.443 h = 51.9 h): it predated the placement correction and the null queue's true cost. |
+| **Why nothing caught it** | There was no composed plan to check. `session_pair_capacity` priced one session's packing, the launch artifact carried `pairs_per_session_rule1` / `sessions_for_primary_rule1` for the primary queue alone, and the three-queue total existed only in sentences - which is exactly where the two stale numbers survived four stretches of verification. |
+| **The fix** | `three_queue_plan` (`session_plan.py`) composes the campaign from the runner's own start gate: primary, pool-matched control and null, each priced by rule 1 and the declared token budget. The launch artifact now carries `schedule.three_queue_sessions` / `three_queue_training_hours` (with the primary's and null's session counts beside them), and the dtype probe prints the campaign line next to each dtype's per-queue numbers, so the number a human reads and the number a budget uses cannot come apart. |
+| **Corrected** | Report §5.14 (both passages, with the 90 s figure's provenance recorded); runbook §0.5 ("six with one arm per device" -> five, "two sessions" -> three, the ~47 -> ~52 + nine sessions), §2c (the null queue's real per-seed cost), and the superseded 2026-09-15 derivation marked in place; the status entries carrying the old figures now carry the correction beside them. |
+| **The numbers now** | At the measured 5,083.4 tokens/s placement rate: pair 1.443 h, 5 pairs/session by rule 1, 3 sessions per queue (5+5+2) - **nine sessions and a ~52 h training floor for the campaign** (~55 billed with boot/restore/publish), about two weeks against the 30 GPU-h/week quota. On a one-device host the two pair queues halve their packing (2 pairs/session, 6 sessions each) while the null queue keeps 5/session - 15 sessions, 84.2 h training - because one arm is one wave. |
+| **Pinned** | `tests/test_session_plan.py` asserts the composition (three symmetric queues, the null queue at full rate, and the falsifier `training_hours > 47.0` - any composition that prices the null queue as an afterthought fails), the one-device asymmetry, and that a zero-capacity plan is refused where it is composed. `tests/test_v0_session.py` pins that a declared null config trains 24,576,000 tokens. The probe's new campaign line is asserted in `test_kaggle_t4.py` at both placements. |
+| **Result** | **1195 tests pass**, tree clean, campaign session 1 still training. |
+
 ## The next gate's two candidate arms, read against the machinery that exists (2026-09-20)
 
 | | |
@@ -1553,7 +1565,10 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   "one per GPU" is reachable, the second T4 has been idle for the entire run,
   and running each arm on its own device is the remaining change that takes
   the pair to 1.36 h / 6 pairs per session / 2 sessions for the primary queue -
-  ~47 GPU-h for the whole run instead of 79. That is the parallelism section
+  ~47 GPU-h for the whole run instead of 79. *(Superseded 2026-09-20: at the
+  measured 5,083.4 tokens/s the pair is 1.443 h, the runner's gate packs 5 per
+  session (3 per queue), and the campaign is ~52 GPU-h of training over nine
+  sessions - see the entry at the top of this file.)* That is the parallelism section
   5.2 already specifies, so implementing it aligns execution with the
   registration rather than changing it. The benchmark also refuses
  to write an artifact
@@ -1661,7 +1676,11 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   Secrets - only `enable_internet: true`, which the generated metadata sets.
 - **Quota plan for the section 5.1 queues** (measured, not assumed). Superseded
   twice, and the corrected figure is ~47 GPU-hours against the free tier's
-  30 GPU-h/week - about two weeks of sessions, not three. First the 3.585 h
+  30 GPU-h/week - about two weeks of sessions, not three. *(Corrected
+  2026-09-20: the figure is ~52 GPU-hours of training over nine sessions by the
+  runner's own start gate, ~55 billed; see the entry at the top of this file.
+  The ~47 predates the measured 5,083.4 tokens/s rate and priced the null queue
+  at dev fidelity.)* First the 3.585 h
   pair time came from the fp32 rate the dtype *rule* reads while the arms train
   fp16 (2.27x pessimistic), then it charged two waves of arms where one arm per
   device is available on the two-T4 shape (2x). At the measured fp16 rate with
@@ -1690,8 +1709,9 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   writes a coherent verdict. Pinned by 2 new verdict tests and a driver test
   asserting exit 3 is not treated as a verdict code.
 - **The re-push loop is mechanised** (`scripts/kaggle_queue.py`), because the
-  three queues are ~47 GPU-h against a 30 GPU-h week (two sessions each at the
-  measured rate, with one arm per device) and "re-run the same command until
+  three queues are ~52 GPU-h of training against a 30 GPU-h week (three
+  sessions each at the measured rate, with one arm per device - the "~47" and
+  "two sessions" here were the registered packing; corrected 2026-09-20) and "re-run the same command until
   the queue completes" should not depend on someone remembering - nor on
   someone remembering to stop when the week's quota is nearly gone. It
   stages the kernel, pushes it, waits for a terminal status, reads the
@@ -1786,8 +1806,10 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   kernel.** `kaggle_queue.py` reads `kaggle quota --format json` before each
   push and refuses when remaining GPU hours are below the declared window
   (exit 3), because a session cut off by quota still bills every hour it used
-  and produces nothing - the dominant failure mode of a ~47 GPU-hour plan
-  against a 30 GPU-h/week line. An unreadable quota line never blocks (it can
+  and produces nothing - the dominant failure mode of a ~52 GPU-hour plan
+  against a 30 GPU-h/week line (nine sessions; the "~47" this sentence first
+  carried predated the measured rate and the null queue's real cost - entry at
+  the top of this file). An unreadable quota line never blocks (it can
   only spend less), and a live session is adopted rather than gated. Fixing
   this exposed the flag it depends on: `--hours` set `ACT_T4_HOURS` in the
   *driver's* process, which a script kernel never sees, so the kernel silently
@@ -2232,7 +2254,9 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   only, so a full-fidelity run could pass while adaptive still loses to
   doing nothing (the exact 5.9 trap). The amendment: a null-session queue
   at declared fidelity over the SAME block 15000-15011 (runbook step 2c,
-  `--session-arms null`, own roots, ~90 s/seed), and two new verdict
+  `--session-arms null`, own roots, ~90 s/seed *(corrected 2026-09-20: a null
+  seed trains the declared 24.576M tokens, so it is ~1.44 h on the T4, not
+  90 s - that figure was a dev-shape 400-step measurement)*), and two new verdict
   clauses - `PASS_COST_ONLY_NULL_REJECTS` (adaptive loses-or-ties >= 10/12
   vs null) and `PASS_COST_ONLY_NULL_MISSING` (the queue is mandatory), both
   exit-2 withholdings leaving the cost PASS standing. Clause order: harm

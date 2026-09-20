@@ -1009,19 +1009,33 @@ def dtypeprobe_report(
     """
     import math
 
-    from act.training.session_plan import session_pair_capacity
+    from act.training.session_plan import (
+        PairSchedule,
+        session_pair_capacity,
+        three_queue_plan,
+    )
 
     lines: list[str] = []
     for dtype, rate in rates.items():
         schedule = probe_pair_schedule(rate, arms, device)
         capacity = session_pair_capacity(schedule.pair_time_hours)
+        # The declared null seed is a single arm, so its pair time is one wave;
+        # the campaign total is what the driver's re-push loop and the quota
+        # gate care about, and it prices the null queue at full rate.
+        null_schedule = PairSchedule(tokens_per_second=rate, arms=1, arm_slots=1)
+        campaign = three_queue_plan(
+            schedule.pair_time_hours,
+            null_pair_time_hours=null_schedule.pair_time_hours,
+        )
         lines.append(
             f"{dtype}: {rate:.1f} tokens/s -> pair "
             f"{schedule.pair_time_hours:.3f} h, "
             f"{capacity} pairs/session by rule 1 "
             f"({schedule.full_pairs_per_session} registered), "
             f"{math.ceil(12 / capacity) if capacity else 0} sessions for the "
-            f"primary queue ({schedule.sessions_for_primary} registered)"
+            f"primary queue ({schedule.sessions_for_primary} registered); "
+            f"three queues {campaign.sessions} sessions / "
+            f"{campaign.training_hours:.1f} h training floor"
         )
     return "\n".join(lines)
 

@@ -23,7 +23,9 @@ from act.training.session_plan import (
     deadline_decision,
     decide_dtype,
     expected_probe_cost_percent,
+    queue_plan,
     session_pair_capacity,
+    three_queue_plan,
     tolerance_band,
     unusable_schedule_reason,
     working_dir_headroom_gb,
@@ -157,6 +159,88 @@ def test_the_registered_capacity_and_the_runners_gate_differ_when_the_reserve_bi
     assert session_pair_capacity(
         schedule.pair_time_hours, hours=USABLE_HOURS + PUBLISH_RESERVE_MINUTES / 60
     ) == schedule.full_pairs_per_session
+
+
+def test_the_declared_campaign_is_three_symmetric_queues() -> None:
+    """The three-queue plan, composed from the runner's gate (2026-09-20).
+
+    Every recorded total so far has been wrong in its own way. The "~47
+    GPU-hours" plan was built on a pair time the placement correction changed;
+    the null queue carried a "~90 s/seed" figure measured at *dev* fidelity
+    (400 steps, dev shape: 102.9 s mean over the 24 sessions of
+    `deployed_vs_null_study`) when a declared null seed trains the same
+    24,576,000 tokens as a pair arm. So the campaign is three symmetric queues,
+    and its training floor is 3 x the per-queue training time - a number this
+    test keeps above the recorded plan it superseded.
+    """
+    schedule = PairSchedule(tokens_per_second=5_083.4, arms=2, arm_slots=2)
+    campaign = three_queue_plan(schedule.pair_time_hours)
+    assert math.isclose(schedule.pair_time_hours, 1.443, abs_tol=5e-4)
+    # The runner's start gate, per queue (not section 5.2's registered six):
+    # 5 + 5 + 2 pairs over three sessions.
+    assert campaign.primary.pairs_per_session == 5
+    assert (campaign.primary.sessions, campaign.control.sessions) == (3, 3)
+    assert campaign.sessions == 9
+    assert math.isclose(campaign.training_hours, 51.95, abs_tol=5e-2)
+    # The recorded "~47 GPU-hour plan" is *below* the training-only floor at
+    # the measured rate, so it cannot have been a plan for this campaign. This
+    # assertion is the falsifier: it fails on any composition that prices the
+    # null queue as an afterthought.
+    assert campaign.training_hours > 47.0
+
+    # The null queue is a full-rate third: one arm, one wave, same 24.576M
+    # tokens per seed as each pair arm, so it packs identically and costs the
+    # same as either pair queue - not the dev study's ~90 s.
+    assert campaign.null.pairs_per_session == 5
+    assert campaign.null.sessions == 3
+    assert math.isclose(
+        campaign.null.training_hours, campaign.primary.training_hours, rel_tol=1e-9
+    )
+
+    # And the composition reads the runner's gate, not the registered field:
+    # the registered arithmetic would plan six sessions for the same campaign.
+    assert schedule.full_pairs_per_session == 6
+    assert math.ceil(12 / schedule.full_pairs_per_session) * 3 == 6
+    assert campaign.sessions == 9
+
+
+def test_a_one_device_host_keeps_the_null_queue_at_one_wave() -> None:
+    """Sequential pairs pay two waves; the null seed still pays one.
+
+    The asymmetry is why the campaign total cannot be derived from the pair
+    queue's numbers alone: halving the pair queues' capacity on a one-device
+    host leaves the null queue's untouched.
+    """
+    rate = 5_083.4
+    placed = PairSchedule(tokens_per_second=rate, arms=2, arm_slots=2)
+    sequential = PairSchedule(tokens_per_second=rate, arms=2, arm_slots=1)
+    null = PairSchedule(tokens_per_second=rate, arms=1, arm_slots=1)
+    campaign = three_queue_plan(
+        sequential.pair_time_hours, null_pair_time_hours=null.pair_time_hours
+    )
+    assert campaign.primary.pairs_per_session == 2
+    assert (campaign.primary.sessions, campaign.control.sessions) == (6, 6)
+    assert campaign.null.pairs_per_session == 5
+    assert campaign.null.sessions == 3
+    assert campaign.sessions == 15
+    assert campaign.null.pair_time_hours < sequential.pair_time_hours
+    # The floor under the sequential arithmetic: two pair queues at two waves
+    # each, plus the null queue at one, with the +0.1 h event overhead charged
+    # once per pair (2 x 1.3429 + 0.1 = 2.7859 h) rather than per wave:
+    # 12 x (2 x 2.7859 + 1.4429) = 84.2 h.
+    assert math.isclose(campaign.training_hours, 84.2, abs_tol=5e-2)
+    assert math.isclose(
+        sequential.pair_time_hours,
+        2 * placed.pair_time_hours - 0.1,
+        rel_tol=1e-9,
+    )
+
+
+def test_queue_plan_refuses_a_schedule_that_starts_nothing() -> None:
+    # A pair time above the usable window yields zero pairs; a plan that bills
+    # quota and publishes nothing is refused where it is composed.
+    with pytest.raises(ValueError, match="no pair per session"):
+        queue_plan(USABLE_HOURS + 1.0)
 
 
 def test_schedule_rejects_invalid_input() -> None:
