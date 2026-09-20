@@ -5662,19 +5662,66 @@ resumable and budget-aware.
 **Execution.** `scripts/deployed_vs_null_study.py` (`--run`, `--summarize`), summary
 `artifacts/study-summaries/real-path-deployed-vs-null.json`.
 
-**Status: REGISTERED, not yet run.** Five of the twenty-four sessions were executed
-(seeds 15240-15242) and then the block was stopped deliberately. Two reasons, both
-recorded rather than left implicit: the registered shape costs ~200 s per seed
-(135 s pair + 67 s null), so the block is ~40 min of GPU; and a long run **cannot** be
-made to outlive its launching shell in this environment, so it cannot be bought in the
-background while other work proceeds - it can only be bought in foreground chunks, which
-is the cost this project's own operator has now twice said is not worth paying. No
-statistics are reported from the partial rows: they are scratch
-(`artifacts/real-path-null-study/runs.jsonl`), no summary was written, and nothing here
-is a verdict. The registration stands as written, and its prediction is sourced from the
-disclosed diagnostic above, which is reproducible from committed rows (`--summarize`
-recomputes the registration's table as a built-in check). The runner is resumable, so
-the block can be finished in one sitting whenever the GPU time is worth spending.
+**Status: RUN, 24/24 sessions (2026-09-20). VERDICT: branch (b), and the registered
+prediction was met.** The block was finished in one detached sitting after the stated
+blocker was tested and found false: the earlier entry recorded that a long run "cannot
+be made to outlive its launching shell in this environment", and it can - `setsid nohup`
+detaches from the launching shell (the same technique the Kaggle queue driver has been
+using all along), so the ~40 min block ran to completion in the background while other
+work proceeded. The full block cost ~38 min of the local card.
+
+| primary | delta (`null - arm`) | sd | wins in the tested direction | exact sign p | permutation p | at `alpha/2 = 0.025` |
+|---|---|---|---|---|---|---|
+| **P1** adaptive beats doing nothing | **-0.1355** | 0.1129 | **0/12** | 1.000 | **1.0000** | **not established - P1 fails** |
+| **P2** churn harm under the treatment | **-0.1457** | 0.0859 | **12/12** (bar 10) | 0.0002 | **0.0005** | **established - as predicted** |
+
+Secondary: `adaptive - random` is **-0.0101** at 6/12 (p = 0.61), i.e. the two mutating
+arms are tied under the repair, which is the diagnostic's `+0.0007` seen again on fresh
+seeds. All eleven built-in checks hold: the null arm mutated zero times, booked zero
+probe FLOPs and left its architecture hash unchanged across all four cadence slots; both
+mutating arms applied exactly three mutations; the adaptive arm booked positive search
+FLOPs and the random arm did not; the pair session really carried both arms; and the
+registration's own post-hoc table recomputes from the committed section 5.38/5.39 rows.
+
+**So the closure is re-established on the configuration the project actually ships.**
+On twelve fresh seeds, at depth 6 on the real TinyStories stream, the do-nothing arm has
+the **lowest final loss on 12/12 seeds** against both mutating arms - the repaired
+configuration removes the adaptive arm's *disadvantage* without creating an advantage
+(its harm falls from 0.248 nats pre-repair to 0.117 post-repair on the diagnostic's
+spent seeds, and reads 0.136 on this fresh block) over doing nothing. Since the dev shape is
+depth 6 and the toy value-creation cell requires depth >= 4, the prior was *favourable*
+here, so this failure points at the substrate rather than at the depth dose-response -
+exactly the reading the registration pre-declared for a P1 failure. Gate 4's quality
+premise therefore rests on the toy factor map plus the compute-efficiency protocol
+alone, with **no transfer claim at all**, and that is what the declared run's write-up
+must say.
+
+**Two corrections the run surfaced, both recorded because they are the interesting part.**
+
+1. *The registration sentence that states the sign convention is inverted.* It says
+   "deltas are `null - arm`, so **negative = the arm beats doing nothing**". Every other
+   use of the convention in this program - section 5.39's summary and its test, and
+   section 5.40's own diagnostic table ("the adaptive arm's harm falls from 0.248 to
+   0.117", for `null - adaptive <= 0`) - reads the same delta as **negative = the
+   mutating arm is worse**, i.e. the null has the lower loss. The registration's
+   sentence is corrected here rather than left standing, because a reader checking the
+   verdict against it would conclude the opposite of what the numbers say. This is the
+   second sign-convention incident in the program (section 5.39.1 was the first), which
+   is why the quantity itself is now asserted convention-free in a test.
+2. *The first summary printed the inverted branch.* P1 and P2 are opposite claims about
+   the same delta, so they need **opposite tails** (P1: `null - adaptive` significantly
+   positive; P2: `null - random` significantly negative). The first run tested both on
+   the churn-harm tail, so `established` for P1 meant "the null is significantly better
+   than adaptive" - P1 *failing* - and the derivation printed **branch (a), the real-text
+   leg reopening**, on a block where the null arm won every seed. The numbers were right
+   and only the label was wrong, which is why nothing else caught it: the artifact's own
+   `per_seed` rows contradict its branch. `tests/test_deployed_vs_null_summary.py` now
+   pins the tail of each primary, the branch re-derived from the stored comparisons, and
+   the constructed failure (recomputing P1 on the wrong tail reads as established) - so
+   re-running the original bug fails three tests rather than printing a headline claim.
+
+The runner is resumable and budget-aware, and `--summarize` recomputes all of the above,
+including the registration's table as a built-in check.
 
 ### 5.41 The tolerance band could only be passed at the declared scale (found by reading the committed verdicts)
 
@@ -6711,6 +6758,17 @@ The program now has two cleanly separated empirical axes:
    text. On the toy path, churn harm (null < random) holds at every
    measured depth (5.9-5.15, all p < 1e-9).
 
+   **This survives the one configuration the project ships (5.40, added
+   2026-09-20).** The 5.13 closure was scoped to a pre-repair path, so the
+   deployed treatment (`preserve_router_on_rebuild` + `clone` init) was
+   tested against the null arm on twelve fresh seeds at depth 6: the null
+   has the lowest final loss on **12/12** seeds, beating the adaptive arm by
+   **0.1355 nats** (p = 1.0 against P1) and the random arm by **0.1457**
+   (p = 0.0005 for churn harm). So the closure is *re-established on the
+   deployed configuration*, and "the repair" removes the mutating arms'
+   disadvantage without giving either an advantage - the two are tied
+   (`adaptive - random` = -0.0101, p = 0.61).
+
 2. **The depth axis (toy path).** Value creation by probe-ordered
    selection is a function of substrate depth: adaptive-vs-null wins go
    117 (d1) < 161 (d2) < 188 (d3) < 225 (d4) of 384, mean delta
@@ -6736,7 +6794,18 @@ Above it, about a quarter of the raw edge survives the strictest control
   do-nothing clause: a null queue at declared fidelity runs alongside the
   primary and pool-matched control queues, and Gate 4 is withheld unless
   the adaptive arm beats doing nothing on the declared block. The
-  three-queue launch path is smoke-tested; the run needs a T4.
+  three-queue launch path is smoke-tested; the run needs a T4. **In flight
+  since 2026-09-20** (Kaggle T4, three queues, ~18.4 GPU-h each at the
+  measured rate).
+
+  **Its write-up now has less to lean on than when it was registered.**
+  With 5.40 measured, the quality premise rests on the toy factor map plus
+  the compute-efficiency protocol alone, with **no transfer claim**: at dev
+  fidelity, at a depth the toy prior favours, and with the deployed
+  treatment in place, doing nothing still wins every fresh seed. The
+  declared run's null clause is therefore not a formality but the operative
+  bar, and its most likely outcome is the one 5.40 saw at small scale - the
+  null arm winning, which withholds Gate 4 at exit 2.
 - **The real-text topology program is closed** (5.13). Its residue is
   the churn-harm mechanism and the replication-grade tooling (null arm,
   bit-identity checks, pre-registration discipline) the toy program now
@@ -6749,7 +6818,13 @@ a pass authorizes the next gate; a null-clause rejection replicates the
 real-text ordering at declared fidelity and closes the 5.1 program's
 selection premise at its own scale; (ii) the depth-3/4 boundary - the
 onset is bracketed to (3, 4], and a finer covariate (parameter count,
-layer width, expert count) would separate depth per se from capacity;
+layer width, expert count) would separate depth per se from capacity.
+Section 5.40 sharpens (ii) without settling it: at depth 6, where the toy
+cell says selection should create value, real text still puts the null
+0.136 nats ahead, so what (ii) is missing is not a deeper substrate but a
+covariate that separates *substrate* from *depth* - and the one measured
+candidate is residual width, which this search space cannot reach
+(section 10.4);
 (iii) a real-text scale run above the diagnostic fidelity (the closed
 program says nothing about longer horizons or larger models). Nothing in
 the current picture depends on re-tuning an existing cell, and no knob

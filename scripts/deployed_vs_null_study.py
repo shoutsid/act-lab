@@ -303,6 +303,25 @@ def diagnostic() -> dict:
     }
 
 
+def branch_from_primaries(p1: bool, p2: bool, red_flag: bool) -> str:
+    """The registered branch, from the two primaries and the red-flag check.
+
+    Extracted so the derivation is testable independently of the block: the
+    registered branch is a function of *which primary passed*, and the failure
+    mode this guards is a primary tested on the wrong tail, which changes the
+    boolean without changing anything a reader can see in the numbers. Both
+    flags mean "the registered primary passed" - P1 by ``null - adaptive`` being
+    significantly positive, P2 by ``null - random`` being significantly negative.
+    """
+    if p1:
+        return "a_real_text_leg_reopens"
+    if red_flag:
+        return "d_red_flag_selection_worse_than_churn"
+    if p2:
+        return "b_closure_holds_under_the_deployed_configuration"
+    return "c_churn_harm_does_not_reproduce_on_fresh_seeds"
+
+
 def summarize() -> int:
     rows = load_runs()
     missing = [
@@ -319,9 +338,28 @@ def summarize() -> int:
     random = losses("pair", "random")
     adaptive = losses("pair", "adaptive")
 
+    # The two primaries are tested on opposite tails, because they are opposite
+    # claims about the same sign convention, and getting this wrong prints the
+    # inverted branch rather than an error. The convention is section 5.39's, and
+    # section 5.40's own diagnostic table states it: the delta is ``null - arm``,
+    # so **negative means the mutating arm is worse than doing nothing** (the null
+    # arm has the lower loss).
+    #
+    #   P1  adaptive beats doing nothing  <=>  ``null - adaptive`` significantly
+    #                                          *positive*  -> tail "upper".
+    #   P2  churn harm under the treatment <=>  ``null - random`` significantly
+    #                                          *negative*  -> tail "lower".
+    #
+    # The first run of this block tested P1 on "lower" as well, which made the
+    # p-value mean "the null is significantly better than adaptive" - the exact
+    # opposite of P1 passing - and reported branch (a), the real-text leg
+    # reopening, on a block where the null arm had the lowest loss on 12/12
+    # seeds. The registered prose has the same inversion in one sentence
+    # ("negative means that arm beats doing nothing"), which is how it survived
+    # review; the signed quantity is what the tests pin.
     comparisons = {
         "null_minus_adaptive": compare(
-            "null_minus_adaptive", null, adaptive, PER_PRIMARY_ALPHA, "lower"
+            "null_minus_adaptive", null, adaptive, PER_PRIMARY_ALPHA, "upper"
         ),
         "null_minus_random": compare(
             "null_minus_random", null, random, PER_PRIMARY_ALPHA, "lower"
@@ -336,14 +374,7 @@ def summarize() -> int:
     p1 = comparisons["null_minus_adaptive"]["established"]
     p2 = comparisons["null_minus_random"]["established"]
     red_flag = (not p1) and comparisons["adaptive_minus_random"]["established"]
-    if p1:
-        branch = "a_real_text_leg_reopens"
-    elif red_flag:
-        branch = "d_red_flag_selection_worse_than_churn"
-    elif p2:
-        branch = "b_closure_holds_under_the_deployed_configuration"
-    else:
-        branch = "c_churn_harm_does_not_reproduce_on_fresh_seeds"
+    branch = branch_from_primaries(p1, p2, red_flag)
 
     per_seed = [
         {
@@ -427,13 +458,28 @@ def summarize() -> int:
         "per_primary_alpha": PER_PRIMARY_ALPHA,
         "permutation_seed": PERMUTATION_SEED,
         "direction": (
-            "deltas are null minus the arm; **negative means that arm beats doing "
-            "nothing** (the corrected section 5.39 convention)"
+            "deltas are null minus the arm; **negative means the mutating arm is "
+            "worse than doing nothing** (the null arm has the lower loss) - the "
+            "section 5.39 convention, restated because section 5.40's registration "
+            "sentence inverts it"
         ),
+        # Which tail each primary is tested on. P1 and P2 are opposite claims about
+        # the same delta, so a single tail for both cannot be right; the first run
+        # used "lower" for P1 and reported the inverted branch.
+        "primary_tails": {
+            "null_minus_adaptive": "upper (P1: adaptive beats doing nothing)",
+            "null_minus_random": "lower (P2: churn harm under the treatment)",
+        },
         "registered_prediction": {
             "null_minus_adaptive": "fails",
             "null_minus_random": "passes (negative at the bar)",
             "source": "the disclosed post-hoc six-seed diagnostic below",
+        },
+        "prediction_met": {
+            "null_minus_adaptive": "passes" if p1 else "fails",
+            "null_minus_random": (
+                "passes (negative at the bar)" if p2 else "fails (not negative at the bar)"
+            ),
         },
         "bit_reproducible": False,
         "reproduction_note": (
