@@ -310,13 +310,21 @@ def _rank_sum_one_sided(a: list[float], b: list[float]) -> tuple[float, float]:
     return u, 0.5 * math.erfc(-z / math.sqrt(2))
 
 
-def _cell_stats(profile: str, shards: int, alpha: float) -> dict[str, float | bool]:
+def _cell_stats(profile: str, shards: int, level: float) -> dict[str, float | bool]:
     """One width-arm cell's pre-registered statistic, from its shards.
 
-    One spelling for both arms (5.48's matched contrast and 5.49's dose): the
-    built-in checks, the one-sided sign test, the Bonferroni bar at alpha/2 and
-    the conjunction that a cell creates value only when the wins clear the bar
-    *and* the mean delta is negative.
+    One spelling for every arm (5.48's matched contrast, 5.49's dose, 5.50's
+    second dose): the built-in checks, the one-sided sign test, the bar at the
+    caller's **per-primary level** and the conjunction that a cell creates
+    value only when the wins clear the bar *and* the mean delta is negative.
+
+    The caller passes the level its own registration states - alpha/2 for the
+    two-primary arms, alpha/3 for 5.50's three - so the printed bar can never
+    disagree with the declared family. (5.50's first verdict run passed alpha/3
+    into an earlier version that halved again, printing bar 318 where the
+    registration said 315: stricter than declared, and still the defect 5.16.1
+    adjudicates, because a declaration whose bar and alpha disagree cannot be
+    applied as written.)
     """
     experiments = load_shards(shards, profile)
     _check_built_ins(experiments)
@@ -325,7 +333,7 @@ def _cell_stats(profile: str, shards: int, alpha: float) -> dict[str, float | bo
         for exp in experiments
     ]
     wins, mean, p = _sign_test(deltas)
-    bar = _gate_min_wins(len(deltas), alpha / 2)
+    bar = _gate_min_wins(len(deltas), level)
     creates = wins >= bar and mean < 0
     print(
         f"{profile}: adaptive-vs-null wins {wins}/{len(deltas)} (bar {bar}), "
@@ -348,7 +356,7 @@ def dose_verdict(shards: int, alpha: float) -> int:
     above-onset cell) - deliberately *not* parameter-matched, because the
     question the +1.7% contrast could not answer is whether enough capacity can
     buy value at a below-onset depth at all. Same test, same conjunction, same
-    bar as 5.48. Branches, fixed before the run:
+    bar as 5.48 (the two-primary level). Branches, fixed before the run:
 
     - P1 and P2: a dose of capacity buys value below the onset and preserves it
       above - the onset is capacity-driven above a threshold that lies between
@@ -360,7 +368,7 @@ def dose_verdict(shards: int, alpha: float) -> int:
     - neither: width is harmful above the onset and useless below; the depth
       axis is not capacity in dose form.
     """
-    cells = {profile: _cell_stats(profile, shards, alpha) for profile in DOSE_PROFILES}
+    cells = {profile: _cell_stats(profile, shards, alpha / 2) for profile in DOSE_PROFILES}
     p1 = bool(cells[DOSE_PROFILES[0]]["creates_value"])
     p2 = bool(cells[DOSE_PROFILES[1]]["creates_value"])
     branches = {
@@ -496,7 +504,7 @@ def width_verdict(shards: int, alpha: float) -> int:
     - neither: width is harmful at both depths here, and the depth axis is not
       capacity - the width covariate is closed for this search space.
     """
-    cells = {profile: _cell_stats(profile, shards, alpha) for profile in WIDTH_PROFILES}
+    cells = {profile: _cell_stats(profile, shards, alpha / 2) for profile in WIDTH_PROFILES}
     p1 = bool(cells[WIDTH_PROFILES[0]]["creates_value"])
     p2 = bool(cells[WIDTH_PROFILES[1]]["creates_value"])
     branches = {
@@ -558,8 +566,14 @@ def verdict(shards: int, profile: str) -> int:
     return 0
 
 
-def _comparison(deltas: list[float], alpha: float) -> dict:
-    """One pre-registered primary: sign-test statistics at the Bonferroni bar."""
+def _comparison(deltas: list[float], level: float) -> dict:
+    """One pre-registered primary: sign-test statistics at the declared level.
+
+    ``level`` is the per-primary Bonferroni level the arm's registration
+    states - alpha/2 for the two-primary arms (5.9-5.49), alpha/3 for 5.50 -
+    and the bar and the pass flag are both computed at it, so the summary and
+    the verdict cannot disagree about the level either.
+    """
     wins = sum(delta < 0 for delta in deltas)
     n = len(deltas)
     mean = sum(deltas) / n
@@ -573,20 +587,27 @@ def _comparison(deltas: list[float], alpha: float) -> dict:
         "mean_delta": mean,
         "delta_stddev": stddev,
         "binomial_p": p,
-        "min_wins_bonferroni": _gate_min_wins(n, alpha / 2),
-        "passes_bonferroni": p <= alpha / 2,
+        "min_wins_bonferroni": _gate_min_wins(n, level),
+        "passes_bonferroni": p <= level,
     }
 
 
-def summarize(profile: str, alpha: float) -> dict:
+def summarize(profile: str, alpha: float, divisor: float = 2.0) -> dict:
     """Build the committed study summary from this profile's shard payloads.
 
     The summary is self-contained: the per-seed loss triples let every
     quoted statistic be recomputed exactly, so the report numbers stay
     machine-checked against ``artifacts/study-summaries/`` without
     committing the (large, gitignored) shard payloads.
+
+    ``divisor`` is the Bonferroni divisor the arm's registration states (two
+    primaries from 5.9 to 5.49, three in 5.50). The 5.50 cells also carry the
+    arm's own per-cell label, because the 5.9 vocabulary describes a different
+    pair of primaries and mislabelling a cell is the defect this family keeps
+    re-finding.
     """
     spec = PROFILES[profile]
+    level = alpha / divisor
     experiments = load_shards(20 if profile == "depth1" else 20, profile)
     n = len(experiments)
     per_seed = [
@@ -595,18 +616,18 @@ def summarize(profile: str, alpha: float) -> dict:
     comparisons = {
         "null_vs_random": _comparison(
             [exp["losses"]["null"] - exp["losses"]["random"] for exp in experiments],
-            alpha,
+            level,
         ),
         "adaptive_vs_null": _comparison(
             [exp["losses"]["adaptive"] - exp["losses"]["null"] for exp in experiments],
-            alpha,
+            level,
         ),
         "adaptive_vs_random": _comparison(
             [
                 exp["losses"]["adaptive"] - exp["losses"]["random"]
                 for exp in experiments
             ],
-            alpha,
+            level,
         ),
     }
     arm_means = {
@@ -628,7 +649,15 @@ def summarize(profile: str, alpha: float) -> dict:
         raise SystemExit(f"built-in checks failed: {built_in}")
     p1 = comparisons["null_vs_random"]["passes_bonferroni"]
     p2 = comparisons["adaptive_vs_null"]["passes_bonferroni"]
-    if p1 and p2:
+    if spec["report_section"] == "5.50":
+        creates = p2 and comparisons["adaptive_vs_null"]["mean_delta"] < 0
+        outcome = (
+            "cell creates value (5.50's per-cell primary: adaptive-vs-null clears "
+            "the alpha/3 bar and the mean delta is negative)"
+            if creates
+            else "cell does not create value (5.50's per-cell primary: the conjunction fails)"
+        )
+    elif p1 and p2:
         outcome = (
             "branch 1 (1+2 PASS): the edge is real beyond the pool effect and "
             "churn suppression"
@@ -648,7 +677,7 @@ def summarize(profile: str, alpha: float) -> dict:
         "report_section": spec["report_section"],
         "code_revision": spec["run_revision"],
         "alpha": alpha,
-        "bonferroni_alpha": alpha / 2,
+        "bonferroni_alpha": level,
         "arms": ["random", "adaptive", "null"],
         "independent_arm_rng": True,
         "seeds": list(spec["seeds"]),
@@ -709,12 +738,18 @@ def main() -> int:
     sum_p = sub.add_parser("summary", help="write the committed study summary")
     sum_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
     sum_p.add_argument("--alpha", type=float, default=ALPHA)
+    sum_p.add_argument(
+        "--divisor",
+        type=float,
+        default=2.0,
+        help="the arm's Bonferroni divisor (2 from 5.9 to 5.49, 3 for 5.50)",
+    )
     args = parser.parse_args()
     if args.command == "run":
         run_shard(args.shard, args.shards, args.profile)
         return 0
     if args.command == "summary":
-        payload = summarize(args.profile, args.alpha)
+        payload = summarize(args.profile, args.alpha, args.divisor)
         out = ROOT / PROFILES[args.profile]["summary"]
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n")

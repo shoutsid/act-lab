@@ -6411,7 +6411,7 @@ changes no model during training. Its 5.16.1-style discipline note: the branch w
 before the run, and the two descriptive readings above are labelled as such rather than
 folded into the registered claim.
 
-### 5.50 Pre-registration: the width amplifier's *second* dose (RUNNING - summaries `width-d3-dose2-576.json`, `width-d4-dose2-576.json`)
+### 5.50 Pre-registration: the width amplifier's *second* dose (RAN - summaries `width-d3-dose2-576.json`, `width-d4-dose2-576.json`)
 
 5.49 answered the dose form of open question (ii) at one dose: at 2.87x/3.80x the
 substrate, capacity does not move the onset and does amplify the value above it
@@ -6480,6 +6480,77 @@ width 96 at the same 48 steps) - two cells x 576 seeds is ~30 min of single-thre
 across 20 shards, minutes of wall clock, no GPU quota, run while Gate 4 trains.
 Registered before the run; the running revision is recorded in the summaries'
 `code_revision`.
+
+**Outcome (run 2026-09-20, revision `05efa7b`, 20 shards per cell; committed summaries
+`width-d3-dose2-576.json` and `width-d4-dose2-576.json`). Registered branch 1: P1+P2
+PASS, with the third primary also passing.** Built-in checks held in 576/576 seeds per
+cell, and six replays of committed seeds matched the shards exactly.
+
+| cell | params | adaptive-vs-null | mean delta | p | creates value |
+|---|---|---|---|---|---|
+| depth 3, width 96 | 341,952 | 573/576 | `-0.8966` | `1.3e-166` | **yes** |
+| depth 4, width 96 | 454,464 | 576/576 | `-1.7330` | `4.0e-174` | **yes** |
+
+The registered reading stands in branch 1's form: at 11.15x/14.82x both cells clear the
+do-nothing bar at `alpha/3` (bar `315/576`), so **the onset is capacity-driven above a
+threshold between 3.8x and 14.8x** - 5.49's depth clause is a statement about the
+reachable doses up to 3.8x. P3 also passes in its strongest possible form: the 14.8x
+cell's adaptive-vs-null deltas are *completely* separated from the 3.8x rung's (`U = 0.0`,
+p `4.8e-190`). Its dose-form rider was pre-registered for the P2-only branch, which did
+not obtain, so the continuation is recorded here as a primary result rather than as that
+branch's reading.
+
+**The decomposition is where the interest is - and it qualifies 5.49's "amplifier"
+language.** Every cell carries three paired contrasts; against the committed above-onset
+rung and the earlier widths:
+
+| cell (depth 4) | x the above-onset cell | adaptive-vs-null | adaptive-vs-random (the controller's edge) | random-vs-null (the pool effect) |
+|---|---|---|---|---|
+| width 24 (committed) | 1.00x | `-0.0371` | `-0.1072` | `+0.0701` |
+| width 28 (5.48) | 1.34x | `-0.0326` | `-0.1207` | `+0.0880` |
+| width 48 (5.49) | 3.80x | `-0.2097` | `-0.1945` | `-0.0152` |
+| **width 96 (5.50)** | **14.82x** | **`-1.7330`** | **`-0.1591`** | **`-1.5739`** |
+
+and below the gate, at depth 3 (same reading, the cells at 0.76x/1.02x/2.87x/11.15x):
+
+| cell (depth 3) | adaptive-vs-null | adaptive-vs-random | random-vs-null |
+|---|---|---|---|
+| width 24 (committed) | `+0.0046` | `-0.1022` | `+0.1068` |
+| width 28 (5.48) | `+0.0176` | `-0.1307` | `+0.1484` |
+| width 48 (5.49) | `+0.0615` | `-0.2438` | `+0.3053` |
+| **width 96 (5.50)** | **`-0.8966`** | **`-0.3106`** | **`-0.5860`** |
+
+Three readings, all cross-cell and therefore **descriptive, not pre-registered** (the
+family's convention, unchanged):
+
+1. **The controller's edge does not scale above the gate; the pool effect does.**
+   `adaptive`-vs-`random` reads `-0.107`, `-0.121`, `-0.195`, `-0.159` across the four
+   depth-4 rungs: flat, and the w96-vs-w48 rank-sum on that contrast reads p `0.98` in
+   the "larger at 14.8x" direction (the reverse direction reads p `0.016` - marginally
+   *smaller*). What explodes is `random`-vs-`null`: `+0.070`, `+0.088`, `-0.015`,
+   **`-1.574`** (rank-sum p `6.3e-190`). At 14.8x the unmutated arm is not slightly
+   worse - it is the worst arm by a wide margin (depth-4 x width-96 arm means
+   `adaptive 15.127 < random 15.286 < null 16.860`). **The dose buys escape from a
+   collapse, not a sharper controller.**
+2. **Below the gate the same decomposition explains the crossing.** The depth-3 edge
+   grows with every rung (`-0.102`, `-0.131`, `-0.244`, `-0.311`; w96-vs-w48 p
+   `1.4e-3`) and its pool effect changes sign (`+0.107` -> `+0.305` -> `-0.586`). At
+   11.15x the below-onset cell creates value against the bar, and its controller edge
+   (`-0.311`) is the largest in either ladder - so the crossing is the pool effect
+   flipping, not the depth-3 controller changing regime.
+3. **Absolute levels say the "value" is not a quality gain.** The width-96 arms
+   (`15.1`-`16.9`) are far worse in absolute loss than the committed rung's
+   (`12.4`-`12.5`): at a fixed 48-step budget, capacity is a liability that mutation
+   partly repairs. The contrast is what this arm measured, and this confound - capacity
+   versus trainability at fixed steps - is its own stated limit rather than a result.
+
+**What this changes.** Open question (ii)'s boundary moves: the onset is depth-like up to
+3.8x and capacity-driven at 14.8x, with the mechanism named. 10.1's churn axis flips sign
+in width (harm at <=1.34x, absent at 3.8x, *pays* at 14.8x). And 10.5(B) sharpens rather
+than resolves: the measured upside of a wide substrate is a package effect - mutation at
+all - while the controller's own edge is flat, so the transfer-policy problem (5.24,
+5.40) remains exactly where it was, untouched by any arm that changes no model shape
+mid-run.
 
 ## 6. Reproducibility
 
@@ -7092,7 +7163,11 @@ The program now has two cleanly separated empirical axes:
    grows with width (mean `-0.305` at width 48). So the churn axis is
    substrate-general in depth but not in width: the same perturbation that
    destroys loss on a shallow substrate is absorbed, and value-relevant, on a
-   deep-and-wide one.
+   deep-and-wide one. **The second dose reverses it (5.50, added 2026-09-20):** at
+   width 96 the harm is not absent but negative - churning *pays* at both depths
+   (depth 4: `576/576`, mean `-1.574`, p `4.0e-174`; depth 3: `527/576`, mean
+   `-0.586`) - so width does not merely absorb the churn axis, it flips its sign once
+   the substrate is wide enough that mutation is what makes it trainable at all.
 
    **This survives the one configuration the project ships (5.40, added
    2026-09-20).** The 5.13 closure was scoped to a pre-repair path, so the
@@ -7170,7 +7245,14 @@ ones (expert count, total compute). 5.49's dose form closes it further: a 2.87x
 width dose does not move the gate either (depth 3 x width 48 fails, mean
 `+0.0615`), while above the gate the same dose takes the win rate from `0.586` to
 `0.828` and removes the churn harm (`266/576`, p `0.97`) - **depth gates,
-capacity scales**;
+capacity scales**. 5.50's second dose (width 96, 14.82x) then crosses the gate itself:
+both depths clear the do-nothing bar at `alpha/3` (depth 3: `573/576`, mean `-0.8966`;
+depth 4: `576/576`, mean `-1.7330`), so the onset is capacity-driven above a threshold
+between 3.8x and 14.8x - with the decomposition that qualifies it: the *controller's*
+edge over random is flat above the gate (`-0.159` at 14.8x against `-0.195` at 3.8x,
+rank-sum p `0.98`) and what scales is the pool effect (`random`-vs-`null` `-0.0152` ->
+`-1.5739`), because at the fixed 48-step budget a wide substrate is unusable unless
+mutated at all;
 (iii) a real-text scale run above the diagnostic fidelity (the closed
 program says nothing about longer horizons or larger models). Nothing in
 the current picture depends on re-tuning an existing cell, and no knob
@@ -7239,6 +7321,9 @@ x width 24 (30,672 parameters) clears it, and depth 4 x width 28 keeps its value
 search that *moves* width is asking about a different search than the one whose value was
 measured, so (B)'s engineering is not what (A) was missing. What stays open is the
 unmatched form - a dose of much wider, no-longer-equal-parameter below-onset substrates.
+(That form was registered and run the same day - 5.50, width 96: the unmatched dose does
+cross the gate, `573/576` and `576/576` against the do-nothing bar, and the same
+decomposition shows the crossing is a pool effect rather than a controller effect.)
 
 **(B) Width as a gene the search can *move*.** That is what section 10.4 shows is
 missing, and the code says why it is the expensive half:
@@ -7253,7 +7338,11 @@ missing, and the code says why it is the expensive half:
 (And the upside of reaching it is now measured, which this section's earlier form could
 not say: 5.49 ran *the same controller* on a 3.8x wider substrate above the gate -
 116,640 parameters against 30,672 - and took the do-nothing comparison from `225/384` to
-`477/576` (mean `-0.2097`), with the churn harm absent. That is a **substrate** effect,
+`477/576` (mean `-0.2097`), with the churn harm absent. 5.50 then shows that at 14.8x
+this upside is a *package* effect: the unmutated arm collapses (`random`-vs-`null`
+`-1.574`) while the controller's edge over random stays flat (`-0.159`), so what a width
+mutation would buy is escape from that collapse, not a better controller - and nothing
+here measures a policy that widens *without* mutating. That is a **substrate** effect,
 not evidence that a width *mutation* is safe: nothing changed shape mid-run, so the
 transfer-policy problem below is untouched, and a width mutation that re-draws the model
 would pay 5.24's class of cost on every tensor at once.)
