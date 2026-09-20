@@ -603,6 +603,24 @@ Rules the runbook operator must not work around (all enforced in code):
 
 ## 4. The verdict (machine-checked, pre-registered)
 
+**Read this before the verdict lands, so it cannot be re-narrated afterwards
+(2026-09-20).** Every withhold clause in the table below is the *same* rule: a 10-of-12
+sign test on the adaptive arm, differing only in the comparison arm (random, pool
+control, null). Three consequences, all computed in `scripts/null_clause_power.py`
+while block 15000-15011 was still training:
+
+- **A cleared clause is not evidence of value.** Clearing needs only **3 of 12** seeds,
+  and under no effect it happens **98.07%** of the time (the clause fires on 79/4096
+  blocks). If the verdict is a `PASS`, the claim it supports is "the clause did not
+  fire", and the value inference rests on the registered cost/band/control rules.
+- **A withheld Gate 4 is strong evidence.** At the dev-fidelity effect §5.40 measured
+  (the null arm ahead by 0.136 nats at sd 0.113, z = 1.20) the null clause fires with
+  probability **0.848**; at z = 1.5 it is 0.958. So `PASS_COST_ONLY_NULL_REJECTS` is not
+  a coin flip that landed against the adaptive arm.
+- **The clauses are not redundant.** On §5.40's fresh seeds the null clause fires
+  (12/12) while the harm guard does not (6/12), so a verdict can withhold on one clause
+  and clear another; the union bound on all three firing on noise is 5.79%.
+
 When all 12 seeds publish `complete` versions:
 
 ```bash
@@ -658,6 +676,7 @@ Secondary config (if pre-registered): same command with
 | Symptom | Response |
 |---|---|
 | OOM in benchmark or sessions on non-T4 hardware | The decision context is a 16 GB T4. Move the run; never shrink the declared config. |
+| The session trains but the **exit publish fails** (driver reports a failed/incomplete queue) | The session's hours are not lost: `mode_session` keeps every published seed's summary in the kernel output as `seed-<n>-summary.json` (kilobytes), and those carry every number the verdict reads per seed (per-arm final loss, search FLOPs, mutation count). Fetch them with `kaggle kernels output <owner>/act-t4-session` and compare against the dataset; the *checkpoints* are dataset-only and cannot be recovered this way. |
 | Exit publish fails (`remote_publish.status` = `failed`) | Never fatal to the *session*, and now retried 3 times with backoff before it is recorded - but treat it as a loss: the handoff roots live in the container overlay, so when the kernel ends there is no local copy for a later session to push, and every pair this session completed is gone. Check `remote-publish-log.json` (= `remote_publish` in the kernel log) for the error, then relaunch; the queue resumes from the last published version. |
 | Two sessions of one queue running (burn at 2x) | They will not stop each other: `kaggle kernels delete <owner>/<slug> --yes`, then push once (§0.5 gotcha 5). Nothing is published by the abandoned version. |
 | Local per-pair publish fails (`action: publish_failed`) | The pair is **not** recorded complete and the queue stops at that seed, so the session can still exit-publish the seeds that did complete (it would otherwise abort before publishing anything). Fix the substrate - disk space, permissions - and relaunch; the failed pair restarts from scratch. With the handoff roots on the overlay (§0.2) this should not fire. |
