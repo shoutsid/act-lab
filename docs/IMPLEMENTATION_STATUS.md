@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## The declared Gate-4 entry run is in flight, on a schedule measured before the spend (2026-09-20)
+
+| | |
+|---|---|
+| **What was launched** | The project's critical path, per §10.2 of the research report - "Gate 4 is prepared, amended, and unspent ... the run needs a T4" - is now running on Kaggle T4: the pre-registered §5.1 compute-efficiency protocol on the declared 285M V0 config, three queue-kernels (`session`, `control`, `null`) over seeds **15000-15011**, publishing to `act-v0-5-1`. `kaggle_queue.py --queue session --max-sessions 6` is driving the primary queue detached (`artifacts/v0-5-1-launch/session.log`); nothing had been pushed since the arch-zoo kernel. |
+| **Pre-flight, before any spend** | `verdict_rehearsal.py --check` applies the real verdict to every withholding clause, both absent-queue and both short-queue cases and the label-precedence combinations, and all fourteen variants match their registered label and exit code (~1 s, no GPU; the artifact it rewrites is byte-identical, so the check is idempotent). Datasets present, quota read **25.16 h remaining**, and the code dataset was republished at `92f86c0` so the pushed kernel ran this tree rather than a stale copy. |
+| **The dtype probe, which decides whether a session can advance at all** | Measured on the T4 before the queue was pushed: **fp32 1,401.5 tokens/s** -> 9.842 h per pair -> **0 pairs fit a 9-hour window**, i.e. an fp32 session would idle its deadline and burn the window producing nothing - the exit-4 loop the driver refuses to re-push on. **fp16 4,926.4 tokens/s** -> **2.871 h per pair, 3 pairs per session, 4 sessions for the primary queue.** So the pre-committed throughput-gated rule selects fp16, it is **3.5x** the fp32 rate, and §5.2's committed schedule (3.585 h per pair, 6 sessions) is conservative against the measurement rather than optimistic. |
+| **What the run decides** | A pass authorizes Gate 4; a null-clause rejection closes §5.1's selection premise at its own scale; and the cost measurement is the registered blocker on scaling. The strongest real-text fact measured so far points the other way - at diagnostic fidelity the do-nothing arm beat every mutation policy, and the rebuild repair removes only 31% of the churn harm - which is why the declared run is the decisive spend rather than a formality. |
+| **Why not the §11 comparison instead** | The arch-search phase's only un-run item is measured to be undecidable at its own size (§9a: 13 candidates per set needs a 0.30-nat effect, and its coverage form is invisible at every size priced), so it cannot be the next decisive spend. |
+| **Verified** | The launch is quota-gated and resumable by construction: one session per queue, atomic pairs, deadline stops with in-progress snapshots, restart-from-scratch, skip-completed idempotence, and a published checkpoint dataset as the durable copy. The driver reads the weekly quota before every push and refuses when the remaining window cannot cover one. |
+
 ## The loop's price at a real horizon double-counted its confirmation (2026-09-20)
 
 | | |
