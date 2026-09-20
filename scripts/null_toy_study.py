@@ -146,7 +146,7 @@ PROFILES: dict[str, dict] = {
     "width-d3-dose2": {
         "seeds": tuple(range(80000, 80576)),
         "overrides": {"depth": 3, "hidden_size": 96},
-        "run_revision": None,  # set to the pre-registration commit before the run
+        "run_revision": "05efa7b",
         "report_section": "5.50",
         "summary": "artifacts/study-summaries/width-d3-dose2-576.json",
     },
@@ -156,7 +156,7 @@ PROFILES: dict[str, dict] = {
     "width-d4-dose2": {
         "seeds": tuple(range(84000, 84576)),
         "overrides": {"depth": 4, "hidden_size": 96},
-        "run_revision": None,  # set to the pre-registration commit before the run
+        "run_revision": "05efa7b",
         "report_section": "5.50",
         "summary": "artifacts/study-summaries/width-d4-dose2-576.json",
     },

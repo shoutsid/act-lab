@@ -55,7 +55,9 @@ def test_the_second_dose_cells_are_the_pre_registered_ones() -> None:
         spec = study.PROFILES[profile]
         assert spec["overrides"] == {"depth": depth, "hidden_size": 96}
         assert spec["report_section"] == "5.50"
-        assert spec["run_revision"] is None  # frozen by the registration commit
+        # Frozen before the first shard ran: the registration commit, which
+        # is what the summaries' code_revision must cite.
+        assert spec["run_revision"] == "05efa7b"
         assert len(spec["seeds"]) == 576
     assert study.PROFILES["width-d3-dose2"]["seeds"][0] == 80000
     assert study.PROFILES["width-d4-dose2"]["seeds"][0] == 84000
