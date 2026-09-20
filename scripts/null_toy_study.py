@@ -160,6 +160,25 @@ PROFILES: dict[str, dict] = {
         "report_section": "5.50",
         "summary": "artifacts/study-summaries/width-d4-dose2-576.json",
     },
+    # Section 5.51: the limit 5.50 registered. At 14.8x the do-nothing arm
+    # collapses, and at the fixed 48-step budget that is inseparable from
+    # "this substrate needs more training than the budget gives it". This cell
+    # runs the identical config at 4x the steps (192) and 4x the mutation
+    # interval (48), which keeps the three mutational events (asserted by the
+    # built-in checks) - so only the training amount and the events' timing
+    # change. See `dose2_long_verdict` for the branches.
+    "width-d4-dose2-long": {
+        "seeds": tuple(range(87000, 87576)),
+        "overrides": {
+            "depth": 4,
+            "hidden_size": 96,
+            "steps": 192,
+            "mutation_interval": 48,
+        },
+        "run_revision": None,  # set to the pre-registration commit before the run
+        "report_section": "5.51",
+        "summary": "artifacts/study-summaries/width-d4-dose2-long-576.json",
+    },
 }
 REGISTERED = dict(
     hidden_size=24,
@@ -192,6 +211,9 @@ DOSE_PROFILES = ("width-d3-dose", "width-d4-dose")
 # committed 3.8x rung, so the reference is named rather than spelled inline.
 DOSE2_PROFILES = ("width-d3-dose2", "width-d4-dose2")
 DOSE2_REFERENCE = "width-d4-dose"
+# The long-budget cell (section 5.51) and the 48-step cell it is read against.
+DOSE2_LONG_PROFILE = "width-d4-dose2-long"
+DOSE2_LONG_REFERENCE = "width-d4-dose2"
 
 
 def run_shard(shard: int, shards: int, profile: str) -> Path:
@@ -262,10 +284,12 @@ def _sign_test(deltas: list[float]) -> tuple[int, float, float]:
     return wins, sum(deltas) / len(deltas), p
 
 
-def _cell_deltas(profile: str, shards: int) -> list[float]:
-    """One cell's per-seed adaptive-vs-null deltas, from its shards."""
+def _cell_deltas(
+    profile: str, shards: int, left: str = "adaptive", right: str = "null"
+) -> list[float]:
+    """One cell's per-seed deltas for a named pair of arms, from its shards."""
     return [
-        exp["losses"]["adaptive"] - exp["losses"]["null"]
+        exp["losses"][left] - exp["losses"][right]
         for exp in load_shards(shards, profile)
     ]
 
@@ -480,6 +504,88 @@ def dose2_verdict(shards: int, alpha: float) -> int:
     return 0
 
 
+def dose2_long_verdict(shards: int, alpha: float) -> int:
+    """Section 5.51's primaries and branches: 5.50's collapse against the budget.
+
+    5.50 registered a limit rather than only a result: at 14.8x the crossing
+    arrives with the do-nothing arm collapsing, and at a fixed 48-step budget
+    "capacity is a liability unless mutated at all" cannot be separated from
+    "this substrate needs more training than the budget gives it". One fresh
+    cell runs the identical config at 4x the steps and 4x the mutation interval,
+    keeping the three mutational events. Two primaries at the sibling arms'
+    alpha/2 (bar 313/576):
+
+    - P1 (the collapse is the budget's): the longer cell's *collapse* - its
+      null-vs-random deltas, the quantity 5.50 measured at `+1.574` - is
+      stochastically *smaller* than the 48-step cell's: a one-sided rank-sum
+      against the committed 5.50 cell, the same non-paired test 5.50 introduced
+      and rehearsed on committed rungs.
+    - P2 (value creation survives the budget): adaptive-vs-null clears the bar
+      and the mean delta is negative (5.50's own per-cell conjunction).
+
+    Branches, fixed before the run:
+
+    - P1 and P2: the collapse was the budget and value creation survives it -
+      5.50's crossing is not a fixed-budget artifact.
+    - P1 only: the collapse was the budget and the advantage goes with it -
+      5.50's crossing WAS the fixed-budget collapse, and the honest form of the
+      width story is about trainability, not selection value.
+    - P2 only: the collapse is structural at width 96 - 4x training does not
+      repair the unmutated arm - and value creation rides it.
+    - neither: the longer budget neither relieves the collapse nor keeps the
+      advantage.
+
+    The controller's own edge and the absolute levels are reported
+    descriptively, as every cross-cell reading in this family is.
+    """
+    level = alpha / 2
+    cell = _cell_stats(DOSE2_LONG_PROFILE, shards, level)
+    p2 = bool(cell["creates_value"])
+    # The collapse is measured in the same direction 5.50 quoted it: null minus
+    # random, positive when churning beats doing nothing. "Relieved" means the
+    # longer cell's collapse is the smaller one, so it is the first argument.
+    collapse_long = _cell_deltas(DOSE2_LONG_PROFILE, shards, "null", "random")
+    collapse_reference = _cell_deltas(DOSE2_LONG_REFERENCE, shards, "null", "random")
+    u, p1 = _rank_sum_one_sided(collapse_long, collapse_reference)
+    relief = p1 <= level
+    print(
+        f"\nP1 (the collapse is the budget's): rank-sum {DOSE2_LONG_PROFILE} vs "
+        f"{DOSE2_LONG_REFERENCE} on null-vs-random: U {u:.1f}, one-sided p {p1:.2e} "
+        f"(bar alpha/2 = {level:.4f}; means {sum(collapse_long) / len(collapse_long):+.6f} "
+        f"vs {sum(collapse_reference) / len(collapse_reference):+.6f}) "
+        f"-> collapse relieved: {relief}"
+    )
+    edge_long = _cell_deltas(DOSE2_LONG_PROFILE, shards, "adaptive", "random")
+    edge_reference = _cell_deltas(DOSE2_LONG_REFERENCE, shards, "adaptive", "random")
+    u_edge, p_edge = _rank_sum_one_sided(edge_long, edge_reference)
+    print(
+        f"edge (descriptive): adaptive-vs-random rank-sum vs the 48-step cell: "
+        f"U {u_edge:.1f}, one-sided p {p_edge:.2e} "
+        f"(mean {sum(edge_long) / len(edge_long):+.6f} vs "
+        f"{sum(edge_reference) / len(edge_reference):+.6f})"
+    )
+    branches = {
+        (True, True): (
+            "P1+P2 PASS: the collapse was the budget and value creation survives "
+            "it - 5.50's crossing is not a fixed-budget artifact"
+        ),
+        (True, False): (
+            "P1 only: the collapse was the budget and the advantage goes with it - "
+            "5.50's crossing WAS the fixed-budget collapse"
+        ),
+        (False, True): (
+            "P2 only: the collapse is structural at width 96 - 4x training does "
+            "not repair the unmutated arm - and value creation rides it"
+        ),
+        (False, False): (
+            "both FAIL: the longer budget neither relieves the collapse nor keeps "
+            "the advantage"
+        ),
+    }
+    print(f"\nOUTCOME (alpha={alpha}, Bonferroni alpha/2={level}): {branches[(relief, p2)]}")
+    return 0
+
+
 def width_verdict(shards: int, alpha: float) -> int:
     """Section 5.48's pre-registered primaries and four fixed branches.
 
@@ -649,13 +755,16 @@ def summarize(profile: str, alpha: float, divisor: float = 2.0) -> dict:
         raise SystemExit(f"built-in checks failed: {built_in}")
     p1 = comparisons["null_vs_random"]["passes_bonferroni"]
     p2 = comparisons["adaptive_vs_null"]["passes_bonferroni"]
-    if spec["report_section"] == "5.50":
+    if spec["report_section"] in ("5.50", "5.51"):
+        # These arms carry their own per-cell primary, so the 5.9 vocabulary
+        # (whose pair of primaries is a different pair) would mislabel them.
         creates = p2 and comparisons["adaptive_vs_null"]["mean_delta"] < 0
+        section = spec["report_section"]
         outcome = (
-            "cell creates value (5.50's per-cell primary: adaptive-vs-null clears "
-            "the alpha/3 bar and the mean delta is negative)"
+            f"cell creates value ({section}'s per-cell primary: adaptive-vs-null clears "
+            f"the alpha/{divisor:g} bar and the mean delta is negative)"
             if creates
-            else "cell does not create value (5.50's per-cell primary: the conjunction fails)"
+            else f"cell does not create value ({section}'s per-cell primary: the conjunction fails)"
         )
     elif p1 and p2:
         outcome = (
@@ -735,6 +844,12 @@ def main() -> int:
     )
     dose2_p.add_argument("--shards", type=int, required=True)
     dose2_p.add_argument("--alpha", type=float, default=ALPHA)
+    long_p = sub.add_parser(
+        "dose2-long-verdict",
+        help="section 5.51: the 14.8x collapse against the training budget",
+    )
+    long_p.add_argument("--shards", type=int, required=True)
+    long_p.add_argument("--alpha", type=float, default=ALPHA)
     sum_p = sub.add_parser("summary", help="write the committed study summary")
     sum_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
     sum_p.add_argument("--alpha", type=float, default=ALPHA)
@@ -761,6 +876,8 @@ def main() -> int:
         return dose_verdict(args.shards, args.alpha)
     if args.command == "dose2-verdict":
         return dose2_verdict(args.shards, args.alpha)
+    if args.command == "dose2-long-verdict":
+        return dose2_long_verdict(args.shards, args.alpha)
     return verdict(args.shards, args.profile)
 
 

@@ -6552,6 +6552,61 @@ all - while the controller's own edge is flat, so the transfer-policy problem (5
 5.40) remains exactly where it was, untouched by any arm that changes no model shape
 mid-run.
 
+### 5.51 Pre-registration: the 14.8x collapse against the training budget (RUNNING - summary `width-d4-dose2-long-576.json`)
+
+5.50 registered its own limit rather than only a result: at 14.8x the do-nothing arm collapses
+(`random`-vs-`null` `-1.574`), and at a fixed 48-step budget "a wide substrate is unusable
+unless mutated at all" cannot be separated from "it needs more training than the budget
+gives it". The absolute levels say the same thing from the other side (the width-96 arms at
+`15.1`-`16.9` against the committed rung's `12.4`-`12.5`). This arm asks which of the two
+the collapse is, with one cell and two primaries.
+
+**Design.** The identical depth-4 x width-96 config at **4x the steps (192) and 4x the
+mutation interval (48)** - which keeps the mutational schedule at the same three events,
+asserted by the built-in checks (3/3/0) - so the only changes are how much training happens
+and when the events fall:
+
+| cell | block | n | depth | width | steps | interval | events | total params |
+|---|---|---|---|---|---|---|---|---|
+| `width-d4-dose2-long` | 87000-87575 | 576 | 4 | 96 | **192** | **48** | 3 | 454,464 |
+
+Block fresh against every other profile and every committed summary (checked by a test).
+One thing is deliberately *not* changed: the learning rate stays at the registered value,
+so this is not a tuned longer run - stated as a limit rather than tuned after the fact (the
+5.5 discipline).
+
+**Primaries.** Two, at the sibling arms' level: `alpha/2 = 0.025`, bar **313/576**.
+
+1. **P1 (the collapse is the budget's).** The longer cell's collapse - its null-vs-random
+   deltas, the quantity 5.50 measured at `+1.574` - is stochastically *smaller* than the
+   48-step cell's: a one-sided rank-sum at `alpha/2`, the non-paired test 5.50 introduced
+   and rehearsed on committed rungs (p `4.5e-44` on the measured dose step, `0.50` on the
+   measured wash).
+2. **P2 (value creation survives the budget).** adaptive-vs-null clears the bar **and** the
+   mean delta is negative - 5.50's own per-cell conjunction.
+
+**Pre-registered interpretation (fixed before running).**
+
+- **P1 and P2:** the collapse was the budget and value creation survives it - 5.50's
+  crossing is not a fixed-budget artifact, and the width story keeps its selection
+  reading.
+- **P1 only:** the collapse was the budget and the advantage goes with it - 5.50's crossing
+  WAS the fixed-budget collapse, and the honest form of the width story is about
+  trainability, not selection value.
+- **P2 only:** the collapse is structural at width 96 - 4x training does not repair the
+  unmutated arm - and value creation rides it.
+- **Neither:** the longer budget neither relieves the collapse nor keeps the advantage.
+
+Both branches were fixed before the run and the arm's timing pilot (two seeds, cost only,
+seeds outside this block) ran with *both* outcomes on the table, so nothing here is
+predicted in one direction. Descriptive secondaries: the controller's edge
+(adaptive-vs-random, rank-sum against the 48-step cell) and the absolute levels.
+
+**Cost.** ~4.7-5.3 s/seed measured at the new cell (three arms, one thread; 4x the steps of
+the sibling cells): 576 seeds is ~48 min of single-thread CPU across 20 shards, minutes of
+wall clock, no GPU quota. Registered before the run; the running revision is recorded in
+the summary's `code_revision`.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
