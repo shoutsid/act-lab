@@ -6411,6 +6411,76 @@ changes no model during training. Its 5.16.1-style discipline note: the branch w
 before the run, and the two descriptive readings above are labelled as such rather than
 folded into the registered claim.
 
+### 5.50 Pre-registration: the width amplifier's *second* dose (RUNNING - summaries `width-d3-dose2-576.json`, `width-d4-dose2-576.json`)
+
+5.49 answered the dose form of open question (ii) at one dose: at 2.87x/3.80x the
+substrate, capacity does not move the onset and does amplify the value above it
+(`0.586` -> `0.828`, mean `-0.2097`), and it removed the churn harm. One dose cannot say
+whether capacity keeps paying or plateaus - and that shape is exactly what 10.5(B)
+prices: a width *mutation* above the onset is worth the marginal value of capacity, so a
+plateau would say the transfer policy is not worth building. This arm spends a second,
+larger dose, and it pre-registers the continuation claim as a test between two
+independent cells - the family's first non-paired primary.
+
+**Design.** The same registered toy config and three-arm block as 5.9-5.49, with only the
+width gene changed:
+
+| cell | block | n | depth | width | total params | active params | vs the above-onset cell | vs the 5.49 rung above it |
+|---|---|---|---|---|---|---|---|---|
+| `width-d3-dose2` | 80000-80575 | 576 | 3 | **96** | 341,952 | 118,464 | **11.15x** | 3.88x |
+| `width-d4-dose2` | 84000-84575 | 576 | 4 | **96** | 454,464 | 156,480 | **14.82x** | 3.90x |
+
+Both blocks are fresh against every other profile's registered block and every committed
+summary - checked by a test, and the check earned its keep before the run: the depth-4
+block's first draft (81000-81575) overlapped the section-5.17 reusability block
+(81000-81383) and was moved to the first free window.
+
+**Primaries.** Three this time, so the family's Bonferroni level is `alpha/3 = 0.01667`,
+bar **315/576** - computed by the verdict's own `_gate_min_wins` (5.16.1's discipline),
+not transcribed. The two cell primaries are the sibling cells' own test at the stricter
+level; power at the committed above-onset rate (0.5859) is **0.97**.
+
+1. **P1 (the largest dose buys no value below the onset).** `width-d3-dose2` creates
+   value - wins clear the bar **and** the mean delta is negative.
+2. **P2 (value creation survives the largest dose).** `width-d4-dose2` creates value,
+   same conjunction.
+3. **P3 (the amplifier keeps paying).** One-sided rank-sum of `width-d4-dose2`'s per-seed
+   adaptive-vs-null deltas against the committed 3.80x rung's (`width-d4-dose`),
+   stochastic superiority meaning the bigger dose's deltas tend more negative, at
+   `alpha/3`. This is the family's **one asymptotic test** - average ranks for ties,
+   tie-corrected variance, a continuity correction in the conservative direction -
+   because P3 compares two independent fresh blocks, the one contrast no paired exact
+   test can reach. It was rehearsed on committed data through the same function the
+   verdict calls: on the measured dose step (3.80x versus the width-28 cell, a 2.84x
+   parameter step) it reads `p = 4.5e-44`, and on the measured wash (+1.7%, width 28
+   versus 24) `p = 0.50`. Detectability at n = 576 per cell: power ~0.8 at a probability
+   of superiority of 0.55.
+
+**Pre-registered interpretation (fixed before running).**
+
+- **P1 and P2:** at 14.8x, capacity buys value at a below-onset depth - the onset is
+  capacity-driven above a threshold between 3.8x and 14.8x, and 5.49's depth clause is a
+  statement about the reachable doses up to 3.8x.
+- **P1 only:** the largest dose buys value below the onset and destroys it above - the
+  depth x width interaction inverts at high dose.
+- **P2 only:** depth stands at every reachable dose; value creation survives 14.8x
+  width. P3 then reads the dose form: **continues** if it clears `alpha/3`, otherwise
+  "not distinguishable from a plateau at this level". The rider prints only on this
+  branch, and no cell-level win rate - even one above the committed `0.828` - is allowed
+  to carry it (pinned by a constructed test).
+- **Neither:** at 14.8x nothing creates value - capacity above the gate reverses at the
+  fixed training budget.
+
+Secondaries, fixed in advance but outside the branch table: the churn reading
+(null-vs-random sign test at the same `alpha/3`, labelled by that test alone, as in
+5.49) and the descriptive cross-cell levels.
+
+**Cost.** ~1.5 s/seed measured at the new cells (three-arm block, one thread per run;
+width 96 at the same 48 steps) - two cells x 576 seeds is ~30 min of single-thread CPU
+across 20 shards, minutes of wall clock, no GPU quota, run while Gate 4 trains.
+Registered before the run; the running revision is recorded in the summaries'
+`code_revision`.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

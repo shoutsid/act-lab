@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -133,6 +134,32 @@ PROFILES: dict[str, dict] = {
         "report_section": "5.49",
         "summary": "artifacts/study-summaries/width-d4-dose-576.json",
     },
+    # Section 5.50: the amplifier's **second** dose. 5.49 showed that above the
+    # onset a 3.80x dose takes the adaptive-vs-null edge from 0.586 to 0.828
+    # (mean -0.2097) while below the onset the same dose makes value creation
+    # *worse* - but one dose cannot say whether capacity keeps paying or
+    # plateaus, the shape 10.5(B)'s movable-width policy would need. These two
+    # fresh cells run width 96 (11.15x / 14.82x the above-onset cell, 3.90x the
+    # 5.49 dose above it) and add a third pre-registered primary - a one-sided
+    # rank-sum of the depth-4 cells' per-seed deltas, the study family's one
+    # asymptotic test. See `dose2_verdict` for the branches.
+    "width-d3-dose2": {
+        "seeds": tuple(range(80000, 80576)),
+        "overrides": {"depth": 3, "hidden_size": 96},
+        "run_revision": None,  # set to the pre-registration commit before the run
+        "report_section": "5.50",
+        "summary": "artifacts/study-summaries/width-d3-dose2-576.json",
+    },
+    # The depth-4 block was first drafted at 81000; the freshness test caught
+    # that 81000-81383 is the section-5.17 reusability study's (the depth-3
+    # block's 80000-80575 was free). Moved to the first free 576-window.
+    "width-d4-dose2": {
+        "seeds": tuple(range(84000, 84576)),
+        "overrides": {"depth": 4, "hidden_size": 96},
+        "run_revision": None,  # set to the pre-registration commit before the run
+        "report_section": "5.50",
+        "summary": "artifacts/study-summaries/width-d4-dose2-576.json",
+    },
 }
 REGISTERED = dict(
     hidden_size=24,
@@ -160,6 +187,11 @@ ALPHA = 0.05
 WIDTH_PROFILES = ("width-d3-equal", "width-d4-equal")
 # The dose cells (section 5.49), same order and same reading.
 DOSE_PROFILES = ("width-d3-dose", "width-d4-dose")
+# The second-dose cells (section 5.50), same order and same reading. The
+# continuation primary compares DOSE2_PROFILES[1] (the 14.8x cell) against the
+# committed 3.8x rung, so the reference is named rather than spelled inline.
+DOSE2_PROFILES = ("width-d3-dose2", "width-d4-dose2")
+DOSE2_REFERENCE = "width-d4-dose"
 
 
 def run_shard(shard: int, shards: int, profile: str) -> Path:
@@ -228,6 +260,54 @@ def _sign_test(deltas: list[float]) -> tuple[int, float, float]:
     wins = sum(delta < 0 for delta in deltas)
     p = _binomial_survival(wins, len(deltas))
     return wins, sum(deltas) / len(deltas), p
+
+
+def _cell_deltas(profile: str, shards: int) -> list[float]:
+    """One cell's per-seed adaptive-vs-null deltas, from its shards."""
+    return [
+        exp["losses"]["adaptive"] - exp["losses"]["null"]
+        for exp in load_shards(shards, profile)
+    ]
+
+
+def _rank_sum_one_sided(a: list[float], b: list[float]) -> tuple[float, float]:
+    """One-sided Mann-Whitney U, tie-corrected normal approximation.
+
+    Section 5.50's third primary compares two *independent* cells (different
+    fresh seed blocks), which is the one place in this study family no paired
+    exact test can reach. The statistic tests whether ``a``'s deltas are
+    stochastically smaller than ``b``'s (more negative = more value): average
+    ranks for ties, the standard tie correction to the variance, and a
+    continuity correction added toward the null in the lower tail. The
+    registration states the level and the rehearsed sensitivity; this function
+    is the one spelling both the verdict and the rehearsal call.
+    """
+
+    def _ranks(values: list[float]) -> list[float]:
+        order = sorted(range(len(values)), key=lambda i: values[i])
+        ranks = [0.0] * len(values)
+        i = 0
+        while i < len(order):
+            j = i
+            while j + 1 < len(order) and values[order[j + 1]] == values[order[i]]:
+                j += 1
+            average = (i + j) / 2 + 1
+            for k in range(i, j + 1):
+                ranks[order[k]] = average
+            i = j + 1
+        return ranks
+
+    n_a, n_b = len(a), len(b)
+    n = n_a + n_b
+    ranks = _ranks(a + b)
+    u = sum(ranks[:n_a]) - n_a * (n_a + 1) / 2
+    mean = n_a * n_b / 2
+    tie_sum = sum(rank * rank for rank in ranks)
+    variance = (n_a * n_b / (n * (n - 1))) * (tie_sum - n * (n + 1) ** 2 / 4)
+    if variance <= 0:  # every observation identical: no ordering information
+        return u, 1.0
+    z = (u + 0.5 - mean) / variance ** 0.5
+    return u, 0.5 * math.erfc(-z / math.sqrt(2))
 
 
 def _cell_stats(profile: str, shards: int, alpha: float) -> dict[str, float | bool]:
@@ -303,6 +383,92 @@ def dose_verdict(shards: int, alpha: float) -> int:
         ),
     }
     print(f"\nOUTCOME (alpha={alpha}, Bonferroni alpha/2={alpha / 2}): {branches[(p1, p2)]}")
+    return 0
+
+
+def dose2_verdict(shards: int, alpha: float) -> int:
+    """Section 5.50's primaries and branches: the amplifier's second dose.
+
+    Two fresh cells at width 96 (341,952 / 454,464 total parameters - 11.15x
+    and 14.82x the above-onset cell, 3.90x the 5.49 dose above it). P1 and P2
+    are the sibling cells' own test at this arm's Bonferroni level (three
+    primaries: alpha/3, bar 315/576); P3 is the arm's new test - a one-sided
+    rank-sum of the depth-4 cells' adaptive-vs-null deltas against the
+    committed 3.80x cell, stochastic superiority meaning the bigger dose's
+    deltas tend more negative. P3 was rehearsed on the committed adjacent rung
+    before this arm ran: the same test on the 3.80x cell versus the width-28
+    cell (a 2.84x parameter step) gives p = 4.5e-44, and on the +1.7% step
+    gives p = 0.50, so it detects the measured dose step and is a dead null on
+    the measured wash. Branches, fixed before the run:
+
+    - P1 and P2: at 14.8x, capacity buys value at a below-onset depth - the
+      onset is capacity-driven above a threshold between 3.8x and 14.8x.
+    - P1 only: the largest dose buys value below the onset and destroys it
+      above - the depth x width interaction inverts at high dose.
+    - P2 only: depth stands at every reachable dose; value creation survives
+      14.8x width. The dose form then reads P3.
+    - neither: at 14.8x nothing creates value - capacity above the gate
+      reverses at the fixed training budget.
+
+    P3 is a rider on the P2-only branch, printed separately and never folded
+    into the cell labels: a continuation of the amplifier is a claim about two
+    cells, and the pre-registered test is the only thing allowed to carry it.
+    The churn reading is secondary and stated as such (as in 5.49).
+    """
+    alpha_3 = alpha / 3
+    cells = {profile: _cell_stats(profile, shards, alpha_3) for profile in DOSE2_PROFILES}
+    p1 = bool(cells[DOSE2_PROFILES[0]]["creates_value"])
+    p2 = bool(cells[DOSE2_PROFILES[1]]["creates_value"])
+    u, p3 = _rank_sum_one_sided(
+        _cell_deltas(DOSE2_PROFILES[1], shards),
+        _cell_deltas(DOSE2_REFERENCE, shards),
+    )
+    continues = p3 <= alpha_3
+    print(
+        f"\nP3 (the amplifier continues): rank-sum {DOSE2_PROFILES[1]} vs "
+        f"{DOSE2_REFERENCE}: U {u:.1f}, one-sided p {p3:.2e} "
+        f"(bar alpha/3 = {alpha_3:.4f}) -> continues: {continues}"
+    )
+    for profile in DOSE2_PROFILES:
+        churn = [
+            exp["losses"]["random"] - exp["losses"]["null"]
+            for exp in load_shards(shards, profile)
+        ]
+        wins, mean, p = _sign_test(churn)
+        bar = _gate_min_wins(len(churn), alpha_3)
+        print(
+            f"churn (secondary, {profile}): random-vs-null wins {wins}/{len(churn)} "
+            f"(bar {bar}), mean {mean:+.6f}, p {p:.2e} -> churn pays: {wins >= bar}"
+        )
+    branches = {
+        (True, True): (
+            "P1+P2 PASS: at 14.8x, capacity buys value at a below-onset depth - "
+            "the onset is capacity-driven above a threshold between 3.8x and 14.8x"
+        ),
+        (True, False): (
+            "P1 only: the largest dose buys value below the onset and destroys "
+            "it above - the depth x width interaction inverts at high dose"
+        ),
+        (False, True): (
+            "P2 only: depth stands at every reachable dose; value creation "
+            "survives 14.8x width"
+        ),
+        (False, False): (
+            "both FAIL: at 14.8x nothing creates value - capacity above the "
+            "gate reverses at the fixed training budget"
+        ),
+    }
+    print(f"\nOUTCOME (alpha={alpha}, Bonferroni alpha/3={alpha_3}): {branches[(p1, p2)]}")
+    if (p1, p2) == (False, True):
+        print(
+            "dose form (P3, pre-registered rider): "
+            + (
+                "the amplifier continues - the 14.8x cell's deltas are "
+                "stochastically smaller than the 3.8x cell's"
+                if continues
+                else "not distinguishable from a plateau at this level"
+            )
+        )
     return 0
 
 
@@ -534,6 +700,12 @@ def main() -> int:
     )
     dose_p.add_argument("--shards", type=int, required=True)
     dose_p.add_argument("--alpha", type=float, default=ALPHA)
+    dose2_p = sub.add_parser(
+        "dose2-verdict",
+        help="section 5.50: score the second-dose cells, the rank-sum primary and the branch",
+    )
+    dose2_p.add_argument("--shards", type=int, required=True)
+    dose2_p.add_argument("--alpha", type=float, default=ALPHA)
     sum_p = sub.add_parser("summary", help="write the committed study summary")
     sum_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
     sum_p.add_argument("--alpha", type=float, default=ALPHA)
@@ -552,6 +724,8 @@ def main() -> int:
         return width_verdict(args.shards, args.alpha)
     if args.command == "dose-verdict":
         return dose_verdict(args.shards, args.alpha)
+    if args.command == "dose2-verdict":
+        return dose2_verdict(args.shards, args.alpha)
     return verdict(args.shards, args.profile)
 
 
