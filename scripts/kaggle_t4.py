@@ -67,6 +67,12 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # annotations only: the kernel imports these lazily
+    import torch
+
+    from act.training.session_plan import PairSchedule
 
 MODE_ENV = "ACT_T4_MODE"
 QUEUE_ENV = "ACT_T4_QUEUE"
@@ -930,6 +936,50 @@ def mode_archzoo() -> None:
     _log(f"=== archzoo finished after {hours:.2f} h (complete={status['complete']}) ===")
 
 
+def probe_pair_schedule(
+    tokens_per_second: float, arms: int, device: torch.device
+) -> PairSchedule:
+    """The probe's plan for *this* host, priced at its arm placement.
+
+    The benchmark prices the launch input at the placement it measures
+    (``arm_slots(...)``), but the probe built its schedule with the dataclass
+    default - one device - so on Kaggle's two-T4 kernels the plan a human reads
+    to decide (pairs per session, sessions for the primary queue) was twice the
+    run the launch would actually execute. Measured on the same host
+    2026-09-20: the self-check reports 2 devices and one arm per device, so the
+    sequential arithmetic disagreed with the runner's own. Defaulting to one
+    device stays honest for a host that really has one.
+    """
+    from act.training.session_plan import PairSchedule
+    from act.training.v0_session import arm_slots
+
+    return PairSchedule(
+        tokens_per_second=tokens_per_second,
+        arms=arms,
+        arm_slots=arm_slots(arms, device),
+    )
+
+
+def dtypeprobe_report(
+    rates: dict[str, float], arms: int, device: torch.device
+) -> str:
+    """The probe's plan lines, priced at the placement the runner will use.
+
+    One spelling of the probe's arithmetic, so the number a human reads and the
+    number the launch plans from cannot come apart - the defect this replaced.
+    """
+    lines: list[str] = []
+    for dtype, rate in rates.items():
+        schedule = probe_pair_schedule(rate, arms, device)
+        lines.append(
+            f"{dtype}: {rate:.1f} tokens/s -> pair "
+            f"{schedule.pair_time_hours:.3f} h, "
+            f"{schedule.full_pairs_per_session} pairs/session, "
+            f"{schedule.sessions_for_primary} sessions for the primary queue"
+        )
+    return "\n".join(lines)
+
+
 def mode_dtypeprobe() -> None:
     """Diagnostic: the declared step loop timed in fp32 and in fp16.
 
@@ -939,17 +989,30 @@ def mode_dtypeprobe() -> None:
     two rates differ the plan and the configuration that actually runs have
     come apart, and the run buys more sessions than it needs.
     """
+    import math
+
     import torch
 
     _bootstrap()
     from act.model.v0_moe import V0MoECausalLM
-    from act.training.session_plan import PairSchedule
-    from act.training.v0_session import V0SessionConfig, declared_session_config
+    from act.training.runtime import resolve_device
+    from act.training.v0_session import (
+        V0SessionConfig,
+        arm_slots,
+        declared_session_config,
+    )
 
     config = declared_session_config()
+    arms = len(config.arms)
+    device = resolve_device(config.device)
+    slots = arm_slots(arms, device)
     steps, warmup = 10, 3
     _log("=== ACT lab: dtype throughput probe ===")
     _log(f"declared config: batch {config.batch_size} x context {config.context_size}")
+    _log(
+        f"arm placement: {arms} arm(s) in {math.ceil(arms / slots)} wave(s) "
+        f"of slots={slots} on {device}"
+    )
 
     def measure(dtype: str) -> float:
         torch.manual_seed(15012)  # outside the reserved 15000-15011 block
@@ -992,14 +1055,7 @@ def mode_dtypeprobe() -> None:
         torch.cuda.empty_cache()
         return steps * config.batch_size * config.context_size / elapsed
 
-    for dtype in ("fp32", "fp16"):
-        rate = measure(dtype)
-        schedule = PairSchedule(tokens_per_second=rate)
-        _log(
-            f"{dtype}: {rate:.1f} tokens/s -> pair {schedule.pair_time_hours:.3f} h, "
-            f"{schedule.full_pairs_per_session} pairs/session, "
-            f"{schedule.sessions_for_primary} sessions for the primary queue"
-        )
+    _log(dtypeprobe_report({dtype: measure(dtype) for dtype in ("fp32", "fp16")}, arms, device))
     _log("=== DTYPE PROBE COMPLETE ===")
 
 

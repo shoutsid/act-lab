@@ -382,6 +382,48 @@ def test_benchmark_argv_is_the_registered_step_count() -> None:
     ]
 
 
+def test_dtypeprobe_prices_the_placement_the_runner_will_use(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The probe's plan must be the benchmark's, priced at this host.
+
+    The benchmark prices the launch input with ``arm_slots(...)``, but the probe
+    used the dataclass default (one device), so on Kaggle's two-T4 kernels the
+    plan a human reads to decide - pairs per session, sessions for the primary
+    queue - was twice the run the launch would execute. Measured on the same
+    host 2026-09-20: the self-check reports 2 devices, one arm per device.
+    """
+    import torch
+
+    from act.training.session_plan import PairSchedule
+
+    rate = 4_926.4
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 2)
+    placed = kaggle_t4.probe_pair_schedule(rate, 2, torch.device("cuda"))
+    assert placed == PairSchedule(tokens_per_second=rate, arms=2, arm_slots=2)
+    assert (placed.full_pairs_per_session, placed.sessions_for_primary) == (6, 2)
+    # And the line the probe logs is the one priced here, not a second spelling.
+    assert "pair 1.486 h, 6 pairs/session, 2 sessions" in kaggle_t4.dtypeprobe_report(
+        {"fp16": rate}, 2, torch.device("cuda")
+    )
+
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 1)
+    sequential = kaggle_t4.probe_pair_schedule(rate, 2, torch.device("cuda"))
+    assert (sequential.full_pairs_per_session, sequential.sessions_for_primary) == (
+        3,
+        4,
+    )
+    assert "3 pairs/session, 4 sessions" in kaggle_t4.dtypeprobe_report(
+        {"fp16": rate}, 2, torch.device("cuda")
+    )
+    # The same rate and the same overhead, in one wave instead of two - which is
+    # the whole difference the fix turns on: the two-wave reading bills the
+    # arm-time twice, so it halves the pairs a session can fit.
+    assert placed.pair_time_hours == pytest.approx(
+        (sequential.pair_time_hours + 0.1) / 2
+    )
+
+
 def test_unknown_mode_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(kaggle_t4.MODE_ENV, "not-a-mode")
     with pytest.raises(SystemExit):
