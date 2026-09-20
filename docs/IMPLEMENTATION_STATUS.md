@@ -1,5 +1,18 @@
 # ACT Implementation Status
 
+## The Gate-4 null clause was priced before its data exists: a withheld verdict is evidence, a cleared one is not (2026-09-20)
+
+| | |
+|---|---|
+| **Why this, now** | §5.14's do-nothing clause is what authorizes or withholds Gate 4, and it is a *rule*: how much it decides is a property of the rule and the noise, not of the run. Its declared block (15000-15011) is still training, so this reading was taken **before the data exists** — the interpretation of whichever verdict lands is fixed in advance rather than chosen afterwards. |
+| **The rule, read from the verdict's own constants** | `NULL_WIN_LIMIT = 10` of 12: the clause withholds Gate 4 only when the adaptive arm loses-or-ties against the null on **≥10 seeds**, with ties counting against the arm seeking authorization. So a **pass needs only 3 of 12**. |
+| **The level** | Under no effect the clause fires on **79/4096 = 1.93%** of blocks — a cleared clause therefore happens **98.07%** of the time when adaptive is no better than doing nothing. |
+| **The power, anchored on measured data** | At the dev-fidelity effect §5.40 just measured (the null ahead by 0.13554 nats at sd 0.11288, 12/12 fresh seeds → z = 1.20) the clause fires with probability **0.848**; at z = 1.5 it is 0.958 and at z = 2.0 it is 0.998. The anchor is *read from the committed §5.40 summary*, not assumed. |
+| **The reading, stated before the run reports** | (i) A withheld Gate 4 is **strong evidence** — at the only effect size this program has measured, the clause fires ~85% of the time, so it is not a coin flip that landed against the adaptive arm. (ii) A **cleared** clause is **not evidence of value**: clearing needs 3 of 12 seeds and 98% of no-effect blocks clear it, so if the clause does not fire the value claim rests on the registered cost/band/control rules exactly as registered, and the write-up must say "the clause did not fire" rather than "adaptive beats doing nothing". |
+| **Where it lives** | `scripts/null_clause_power.py` (imports `NULL_WIN_LIMIT` and the declared block from `v0_verdict`, and the anchor from the §5.40 summary, so neither can drift), artifact `artifacts/null-clause-power.json`, report §5.14. |
+| **Mutants** | The clause limit relaxed to 8 fails all four tests (the analysis can no longer describe the rule the verdict applies); halving the anchor's z fails 1; hand-restating the pass bar fails 1; changing a number in the artifact's **prose** fails 1 — the artifact is compared to what the script computes *now*, whole, so a stale or hand-edited field cannot look correct while the code says otherwise (the field-by-field version of that test passed with the pass bar mutated). |
+| **Result** | **1183 tests pass · 274/274 claims agree · 9/9 records reproduce.** |
+
 ## §5.40 ran, and the registered prediction held — the closure survives the deployed configuration (2026-09-20)
 
 | | |

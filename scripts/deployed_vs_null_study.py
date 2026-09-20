@@ -18,11 +18,15 @@ Per seed, two sessions:
             preserve_router_on_rebuild=True and new_expert_initialization="clone"
     null    arms=("null",) alone, exactly as section 5.39 ran it
 
-Primaries are ``null - arm``, so **negative = that arm beats doing nothing** (the
-corrected section 5.39 convention, applied uniformly):
+Primaries are ``null - arm``, so **negative = the mutating arm is worse than doing
+nothing** (the null arm has the lower loss) - the section 5.39 convention, applied
+uniformly. Note that section 5.40's registration sentence states the opposite ("negative
+= that arm beats doing nothing"); every other use of the convention in the program, and
+this block's own diagnostic narrative, read it as below. The two primaries are therefore
+tested on **opposite tails**:
 
-    P1  null - adaptive   adaptive beats doing nothing   (registered prediction: FAILS)
-    P2  null - random     churn harm under the treatment (registered prediction: PASSES)
+    P1  null - adaptive   adaptive beats doing nothing   tail "upper", prediction FAILS
+    P2  null - random     churn harm under the treatment tail "lower", prediction PASSES
 
 The registered prediction is stated in the report before the block ran, sourced from the
 six-seed post-hoc diagnostic on the spent 15210-15215 rows, so that a passing P1 reads as
@@ -68,6 +72,7 @@ SCRATCH = ROOT / "artifacts" / "real-path-null-study"
 RUNS = SCRATCH / "runs.jsonl"
 SESSIONS = SCRATCH / "sessions"
 SUMMARIES = ROOT / "artifacts" / "study-summaries"
+SUMMARY_PATH = SUMMARIES / "real-path-deployed-vs-null.json"
 
 REPORT_SECTION = "5.40"
 ALPHA = 0.05
@@ -493,7 +498,7 @@ def summarize() -> int:
         "branch": branch,
         "red_flag_adaptive_worse_than_churn": red_flag,
     }
-    target = SUMMARIES / "real-path-deployed-vs-null.json"
+    target = SUMMARY_PATH
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n")
     print(f"wrote {target}")

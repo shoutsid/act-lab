@@ -1712,7 +1712,40 @@ pair it is compared against).
 no probe/event overhead beyond zero mutations) - ~7 min of GPU across
 the queue, plus per-session restore/publish overhead. It runs as
 regular sessions in the same 12-hour Kaggle windows, after the primary
-queue completes (the runbook order).
+queue completes (the runbook order). The declared block's pairs are
+~1.443 h each at the measured placement, so all three queues are ~55
+GPU-h rather than the ~47 the pre-placement plan recorded.
+
+**What the clause can decide, measured before its data exists
+(2026-09-20, `scripts/null_clause_power.py`).** The clause is a sign
+test with a fixed limit, so how much it decides is a property of the
+rule and the noise rather than of the run - and it was computed while
+block 15000-15011's null queue was still training, so the reading of
+whichever verdict lands is fixed in advance rather than chosen
+afterwards.
+
+| reading | quantity |
+|---|---|
+| the pass bar | **3 of 12 seeds** - the clause withholds only when adaptive loses-or-ties on 10 or more, and ties count against it |
+| level under no effect | fires on **79/4096 = 1.93%** of blocks, i.e. a cleared clause happens **98.07%** of the time when adaptive is no better than doing nothing |
+| at the dev-fidelity effect (z = 1.20) | fires with probability **0.848** |
+| at z = 1.5 / z = 2.0 | **0.958 / 0.998** |
+
+The z = 1.20 anchor is section 5.40's own rows - the only real-text
+effect this program has with the treatment in place (the null ahead by
+0.13554 nats at sd 0.11288, on 12/12 fresh seeds) - so it is a measured
+analogue rather than an assumed effect size. Two consequences are worth
+stating before the run reports, because they are easy to get backwards:
+
+- **A withheld Gate 4 is strong evidence.** At the one effect size this
+  program has measured, the clause fires ~85% of the time; it is not a
+  coin flip that happened to land against the adaptive arm.
+- **A cleared clause is not evidence of value.** Clearing needs only 3 of
+  12 seeds, and 98% of no-effect blocks clear it. If the declared run's
+  null clause does not fire, the value claim rests on the registered
+  cost/band/control rules exactly as registered, and the write-up must
+  say "the clause did not fire" rather than "adaptive beats doing
+  nothing".
 
 ### 5.15 Pre-registration: the depth dose-response of value creation (RAN - summaries `null-control-depth2-384.json`, `null-control-depth3-384.json`; `IMPLEMENTATION_STATUS.md`)
 
