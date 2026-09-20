@@ -63,7 +63,14 @@ from arch_zoo_screen import (  # noqa: E402
     seed_std_measured_at_steps,
 )
 from set_comparison_power import candidate_population, power_at  # noqa: E402
-from space_typicality import budget_matching_draw, set_total_params  # noqa: E402
+from space_typicality import (  # noqa: E402
+    budget_matching_draw,
+    population_structure,
+    sample_statistics,
+    set_total_params,
+    structure_of_set,
+    typicality,
+)
 
 #: Documented values are quoted from the record to the precision it states them at, so
 #: comparisons are relative rather than exact: 3.28 in a table against a computed
@@ -446,6 +453,32 @@ def check_structure_and_budget(root: Path, audit: Audit, *, quick: bool) -> None
 
     # §11: a band-matched draw is not an equal-compute draw, and the matched seed is.
     curated = set_total_params(root / "arch-zoo-100m-v1" / "zoo_definition.json")
+    # Equal compute is a statement about the curated set's *total*, so the set's own
+    # numbers are checked before anything that depends on a draw - and they are what
+    # the 1.12x of the distribution below is a ratio *to*, which until now the audit
+    # took on trust as `curated`.
+    definitions = json.loads(
+        (root / "arch-zoo-100m-v1" / "zoo_definition.json").read_text()
+    )["candidates"]
+    totals = [int(candidate["total_params"]) for candidate in definitions]
+    audit.check("§9a: the curated set's candidates", 13, len(totals), "§9a")
+    audit.check(
+        "§9a: its total parameters",
+        1121409984,
+        sum(totals),
+        "§9a",
+        "1.121e9 in the record - the quantity equal compute is about",
+    )
+    audit.check("§9a: its smallest candidate", 70830720, min(totals), "§9a", "70.8M")
+    audit.check("§9a: its largest candidate", 123300480, max(totals), "§9a", "123.3M")
+    audit.check("§9a: its candidate spread", 1.74, max(totals) / min(totals), "§9a", "1.7408x")
+    audit.check(
+        "§9a: its mean candidate",
+        86262306,
+        sum(totals) / len(totals),
+        "§9a",
+        "86.3M against the nominal 100M",
+    )
     if quick:
         match = budget_matching_draw(
             target_total=curated, size=13, seeds=range(48), target_params=100_000_000,
@@ -471,6 +504,56 @@ def check_structure_and_budget(root: Path, audit: Audit, *, quick: bool) -> None
     audit.check("§9a: median band-matched draw vs the curated total", 1.1208, dist["median"], "§9a")
     audit.check("§9a: p10", 1.0523, dist["p10"], "§9a")
     audit.check("§9a: p90", 1.1840, dist["p90"], "§9a")
+
+    # The band is part of the launch line rather than a default, and the claim is
+    # checkable: the *same* seed draws a different set under the driver's own 0.15, so
+    # seeding without the band would silently drop the match it was chosen for.
+    banded = budget_matching_draw(
+        target_total=curated,
+        size=13,
+        seeds=[151],
+        target_params=100_000_000,
+        tolerance=0.15,
+    )
+    audit.check(
+        "§9a: the same seed at the driver's default 0.15 band",
+        1282387008,
+        banded["total_params"],
+        "§9a",
+        "the band is required, not optional",
+    )
+    audit.check("§9a: and its ratio there", 1.1435, banded["ratio"], "§9a")
+
+    # The matched draw is only usable as the comparison's random arm if its structure
+    # is typical: a matched *budget* that also carried the designed sets' coverage
+    # would be the manual arm's mechanism in disguise, and the record compares the draw
+    # against the band's own population to show it does not. The draw's depth mean is
+    # quoted to one decimal, so it carries half a unit in the last quoted place rather
+    # than the default half a percent - 7.846 rounds to 7.8 and is not a disagreement.
+    drawn = sample_statistics(match["structure"])
+    audit.check(
+        "§9a: the matched draw's depth mean",
+        7.8,
+        drawn["depth_mean"],
+        "§9a",
+        "quoted to one decimal",
+        tolerance=0.05 / 7.8,
+    )
+    audit.check("§9a: its depth spread", 3.2, drawn["depth_spread"], "§9a")
+    audit.check("§9a: its hidden mean", 718.8, drawn["hidden_size_mean"], "§9a")
+    audit.check("§9a: its hidden spread", 137.8, drawn["hidden_size_spread"], "§9a")
+    base = sample_statistics(
+        population_structure(
+            target_params=100_000_000,
+            tolerance=0.30,
+            context_size=1024,
+            vocab_size=8192,
+        )
+    )
+    audit.check("§9a: the 30% band's population: depth mean", 9.49, base["depth_mean"], "§9a")
+    audit.check("§9a: its depth spread", 3.50, base["depth_spread"], "§9a")
+    audit.check("§9a: its hidden mean", 716, base["hidden_size_mean"], "§9a")
+    audit.check("§9a: its hidden spread", 144, base["hidden_size_spread"], "§9a")
 
 
 def check_head_paired(root: Path, audit: Audit) -> None:
@@ -1262,6 +1345,80 @@ def _powers_in_parallel(
         return dict(pool.map(_power_for, jobs))
 
 
+def check_space_typicality(root: Path, audit: Audit) -> None:
+    """§9a's first precondition: the curated sets carry no location advantage.
+
+    An equal-compute comparison of manual against random is only informative if the
+    manual arm is a *fair* manual selection. If the hand-curated zoos already sat in
+    the region §2c later measured to be good, "manual beats random" would measure
+    hindsight rather than judgement and the whole comparison would be circular - so
+    this table is the condition the section rests on before any hours are spent, and
+    it is the one table in §9a no check touched. Recomputed from the zoo definitions
+    against the same enumerated population the tool builds at its own 4,000 draws.
+    """
+    population = population_structure(
+        target_params=78_000_000, tolerance=0.05, context_size=1024, vocab_size=8192
+    )
+    base = sample_statistics(population)
+    audit.check(
+        "§9a population: cells within +/-5% of 78M",
+        1059,
+        len(population),
+        "§9a",
+        "the null the curated sets are read against",
+    )
+    audit.check("§9a population: depth mean", 8.97, base["depth_mean"], "§9a")
+    audit.check("§9a population: depth spread", 3.35, base["depth_spread"], "§9a")
+    audit.check("§9a population: hidden mean", 718, base["hidden_size_mean"], "§9a")
+    audit.check("§9a population: hidden spread", 143, base["hidden_size_spread"], "§9a")
+
+    # The table row by row. The percentile decides the non-circularity condition - a
+    # set pinned to one extreme on a stat is a set that is distinguishable from a
+    # random draw of its size - while the value beside it is what a reader compares
+    # against the population row, so both are checked rather than only one.
+    documented = [
+        (
+            "v1",
+            "arch-zoo-100m-v1",
+            "13 hand-authored families, depths 8-12",
+            [("depth mean", "depth_mean", 9.69, 83), ("depth spread", "depth_spread", 2.82, 16),
+             ("hidden mean", "hidden_size_mean", 684, 19), ("hidden spread", "hidden_size_spread", 151, 64)],
+        ),
+        (
+            "v2",
+            "arch-zoo-100m-v2",
+            "8 manual matched-total designs",
+            [("depth mean", "depth_mean", 9.38, 68), ("depth spread", "depth_spread", 4.39, 96),
+             ("hidden mean", "hidden_size_mean", 680, 22), ("hidden spread", "hidden_size_spread", 194, 98)],
+        ),
+        (
+            "v3",
+            "arch-zoo-100m-v3-crossed",
+            "8 designed factorial - the contrast row, not a manual selection",
+            [("depth mean", "depth_mean", 9.50, 72), ("depth spread", "depth_spread", 5.14, 100),
+             ("hidden mean", "hidden_size_mean", 704, 42), ("hidden spread", "hidden_size_spread", 219, 100)],
+        ),
+    ]
+    for label, arm, detail, cells in documented:
+        sample = structure_of_set(root / arm / "zoo_definition.json")
+        result = typicality(sample, population, draws=4000, seed=0)
+        for stat, key, value, percentile in cells:
+            audit.check(f"§9a {label}: {stat}", value, result[key]["value"], "§9a", detail if stat.startswith("depth mean") else "")
+            # Compared as the tool renders it. A percentile is a rank expressed as a
+            # whole percentage - the tool prints it with ``:.0f`` and the record quotes
+            # that - so a relative tolerance is the wrong test on a small rank (5e-3 of
+            # 16 is 0.08, a third of a draw) and the exact integer is the right one: a
+            # rank that moved by a whole point fails, one that moved within its own
+            # rendering does not, which is as strong as the record can be.
+            audit.check(
+                f"§9a {label}: {stat} percentile",
+                percentile,
+                round(result[key]["percentile"]),
+                "§9a",
+                f"computed {result[key]['percentile']:.2f}",
+            )
+
+
 def check_set_comparison_coverage(root: Path, audit: Audit, *, quick: bool) -> None:
     """§9a's coverage form: why the set *mean* is the pre-registered statistic.
 
@@ -1647,6 +1804,7 @@ CHECKS: tuple[str, ...] = (
     "check_v1_screening",
     "check_attribution",
     "check_structure_and_budget",
+    "check_space_typicality",
     "check_power_study",
     "check_set_comparison_coverage",
     "check_replication_rule",

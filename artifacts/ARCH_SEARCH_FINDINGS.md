@@ -1151,7 +1151,9 @@ hindsight rather than judgement, and the conclusion would be circular.
 
 That is checkable from the zoo definitions alone, with no training, and the
 answer is that **the curated sets carry no such advantage** — measured by
-`scripts/space_typicality.py` against every cell within ±5% of 78M (1059 cells),with each statistic's percentile taken among uniform draws of the same size:
+`scripts/space_typicality.py` against every cell within ±5% of 78M (1059 cells),
+with each statistic's percentile taken among uniform draws of the same size and
+quoted as the tool renders it, to the whole percentage:
 
 | set | n | depth mean | depth spread | hidden mean | hidden spread |
 |---|---|---|---|---|---|

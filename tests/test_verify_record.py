@@ -55,6 +55,11 @@ def test_the_audit_covers_the_headline_claims_rather_than_a_sample():
         "§9a: 13 per set rejects a true null only at the nominal rate",
         "§9a: a 0.60-nat better winner is invisible at 13 per set",
         "§9a: the same statistic sees a 0.30-nat set-wide shift",
+        "§9a population: cells within +/-5% of 78M",
+        "§9a v1: hidden spread percentile",
+        "§9a v2: depth spread percentile",
+        "§9a: its total parameters",
+        "§9a: its mean candidate",
         "§10 total: runs",
         "README: the fully dense design's rank",
         "promotion threshold at 2 seeds / 400 steps",
@@ -92,6 +97,16 @@ def test_an_exact_count_must_match_exactly():
     # A statistic quoted to fewer digits than it is computed to is not a disagreement.
     assert Claim("spread", 0.2462, 0.24623161554336548, "§4").ok
     assert not Claim("spread", 0.2462, 0.3001, "§4").ok
+    # A percentile is a rank the tool renders to a whole percentage, so the audit
+    # compares that rendering: 15.7 is p16, and a rank that moved within its own
+    # rendering is not a drift the record could state.
+    assert Claim("p16", 16, round(15.7), "§9a").ok
+    assert not Claim("p16", 16, round(20.7), "§9a").ok
+    # And a value quoted to one decimal rounds: the matched draw's depth mean is
+    # 7.846 and the record's 7.8 is that rounded, so half a unit in the last quoted
+    # place is the right tolerance and the default half a percent is too tight.
+    assert not Claim("depth mean", 7.8, 7.846153846153846, "§9a").ok
+    assert Claim("depth mean", 7.8, 7.846153846153846, "§9a", tolerance=0.05 / 7.8).ok
     # Bools are not numbers: True == 1 would let a verdict comparison pass silently.
     assert Claim("signs agree", True, True, "§2c").ok
     assert not Claim("signs agree", False, True, "§2c").ok
