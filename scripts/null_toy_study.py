@@ -175,7 +175,7 @@ PROFILES: dict[str, dict] = {
             "steps": 192,
             "mutation_interval": 48,
         },
-        "run_revision": None,  # set to the pre-registration commit before the run
+        "run_revision": "a590a7f",
         "report_section": "5.51",
         "summary": "artifacts/study-summaries/width-d4-dose2-long-576.json",
     },
