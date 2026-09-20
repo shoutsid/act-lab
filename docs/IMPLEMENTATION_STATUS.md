@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## The reason §11 pre-registers the set mean was the last unchecked decision claim (2026-09-20)
+
+| | |
+|---|---|
+| **What was found** | §9a makes the set-mean form §11's pre-registered primary because the *coverage* form — curation finds a better winner rather than lifting the whole set — is invisible at every size the phase prices. That is a Monte-Carlo property of the shipped test, not a measured loss, and nothing recomputed it: the audit already checked the mean rows' power, the budget-matched draw and the typicality percentiles, while the sentence that decides which statistic the arm is *declared* on had no machine check. It is the last such claim in §9a. |
+| **What it measures** | A 0.60-nat better winner — twice the effect the mean form is priced at, and four fifths of the whole 0.74-nat candidate spread — leaves the `best` statistic at **0.03 power** at 13 candidates per set, **0.02** at 26 and **0.04** at 52, every one at or below the nominal 0.05. Doubling the advantage from 0.30 to 0.60 leaves the rate where it was, **0.03 both times**, so the coverage form is unsensitive rather than merely underpriced — the structural argument (half the assignments put the improved member on either side) read off the shipped test instead of asserted. |
+| **The contrast that makes it informative** | The same statistic sees a set-wide 0.30-nat shift at **0.94**, so the row above is not a dead test reporting nulls. Run on the contrast's own design, an inert statistic reads 0.430 against the 0.8 the check asserts, so the assertion discriminates a live statistic from a dead one. |
+| **How it is checked** | `check_set_comparison_coverage` recomputes it from the phase's own population and seed noise through `set_comparison_power.power_at`, sharing one parallel power path with `check_power_study` — generalized to take the model and statistic instead of hard-coding `shift-all`/`mean`, so a future reading cannot be computed on the wrong one. Quick mode runs the two claims the suite needs; full mode adds the three sizes, the flatness row, and the best/worst null rows. |
+| **Verified** | Four mutants: the parallel path ignoring its model/statistic (the coverage claim fails at power **1.000**), the contrast row computed on an inert statistic, the 52-per-set row transcribed as 13, and the check dropped from `CHECKS`. The two substitution mutants fail *loudly* with a `KeyError` rather than passing silently, and the dropped check is caught by two tests. No measurable wall clock — the audit is bounded by its slowest check. **212 → 218 claims.** |
+| **Result** | **1171 tests pass · 218/218 claims agree · 9/9 records reproduce.** |
+
 ## The fifth rule gets its reading check before its arm is bought (2026-09-19)
 
 | | |

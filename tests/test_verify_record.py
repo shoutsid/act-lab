@@ -53,12 +53,32 @@ def test_the_audit_covers_the_headline_claims_rather_than_a_sample():
         "§4a: the eventual winner's place at 400 steps",
         "§9a: 80% power is reached at 0.30 nats, and not at 0.20",
         "§9a: 13 per set rejects a true null only at the nominal rate",
+        "§9a: a 0.60-nat better winner is invisible at 13 per set",
+        "§9a: the same statistic sees a 0.30-nat set-wide shift",
         "§10 total: runs",
         "README: the fully dense design's rank",
         "promotion threshold at 2 seeds / 400 steps",
     ):
         assert expected in checked, expected
     assert len(audit.claims) >= 60
+
+
+def test_the_coverage_form_is_the_reason_the_mean_is_the_primary_statistic():
+    """§9a pre-registers the set *mean* because the coverage form cannot be seen.
+
+    If that claim is ever wrong, the pre-registration is wrong in a way no other
+    test would notice: the arm would be measuring the statistic it can see rather
+    than the one it declared. Both halves matter - that the winner form is inert,
+    and that the same statistic is not simply a dead test - so a mutant that makes
+    either one pass alone is caught.
+    """
+    audit = run_audit(ARTIFACTS, quick=True)
+    claims = {claim.what: claim for claim in audit.claims}
+    inert = claims["§9a: a 0.60-nat better winner is invisible at 13 per set"]
+    contrast = claims["§9a: the same statistic sees a 0.30-nat set-wide shift"]
+    assert inert.ok and contrast.ok
+    assert "0.03" in inert.detail, inert.detail
+    assert "0.9" in contrast.detail, contrast.detail
 
 
 def test_an_exact_count_must_match_exactly():

@@ -1185,13 +1185,26 @@ def check_power_study(root: Path, audit: Audit, *, quick: bool) -> None:
     # the numbers are identical to calling them one by one - only the wall clock
     # changes: this check was 27 s of the audit's full mode, bounded by nothing
     # but the serial loop.
-    specs = [(0.0, 13, 2), (0.30, 13, 2), (0.20, 13, 2)]
+    specs = [(0.0, "shift-all", "mean", 13, 2), (0.30, "shift-all", "mean", 13, 2), (0.20, "shift-all", "mean", 13, 2)]
     if not quick:
-        specs += [(0.15, 26, 2), (0.10, 26, 2), (0.10, 13, 2), (0.10, 13, 3), (0.10, 13, 4)]
+        specs += [
+            (0.15, "shift-all", "mean", 26, 2),
+            (0.10, "shift-all", "mean", 26, 2),
+            (0.10, "shift-all", "mean", 13, 2),
+            (0.10, "shift-all", "mean", 13, 3),
+            (0.10, "shift-all", "mean", 13, 4),
+        ]
     powers = _powers_in_parallel(population, noise, specs)
 
-    def power(advantage: float, *, set_size: int = 13, blocks: int = 2) -> float:
-        return powers[(advantage, set_size, blocks)]
+    def power(
+        advantage: float,
+        *,
+        set_size: int = 13,
+        blocks: int = 2,
+        model: str = "shift-all",
+        statistic: str = "mean",
+    ) -> float:
+        return powers[(advantage, model, statistic, set_size, blocks)]
 
     audit.check(
         "§9a: 13 per set rejects a true null only at the nominal rate",
@@ -1224,12 +1237,13 @@ def check_power_study(root: Path, audit: Audit, *, quick: bool) -> None:
 
 
 def _power_for(args: tuple) -> tuple[tuple, float]:
-    population, noise, (advantage, set_size, blocks) = args
-    return (advantage, set_size, blocks), power_at(
+    population, noise, spec = args
+    advantage, model, statistic, set_size, blocks = spec
+    return spec, power_at(
         population,
         advantage=advantage,
-        model="shift-all",
-        statistic="mean",
+        model=model,
+        statistic=statistic,
         set_size=set_size,
         blocks=blocks,
         noise=noise,
@@ -1246,6 +1260,83 @@ def _powers_in_parallel(
     jobs = [(population, noise, spec) for spec in specs]
     with concurrent.futures.ProcessPoolExecutor(max_workers=len(jobs)) as pool:
         return dict(pool.map(_power_for, jobs))
+
+
+def check_set_comparison_coverage(root: Path, audit: Audit, *, quick: bool) -> None:
+    """§9a's coverage form: why the set *mean* is the pre-registered statistic.
+
+    §9a makes the set-mean form primary because the *coverage* form - curation finds a
+    better winner rather than lifting the whole set - is invisible at every size the
+    phase prices. That is a property of the shipped test against the phase's own
+    measured population rather than a loss, and it is the only reason the
+    pre-registered statistic is the one it is, so it is measured here rather than
+    argued: a 0.60-nat better winner is four times the effect the mean form is priced
+    at and larger than the whole candidate spread, and the same statistic that cannot
+    see it does see a 0.30-nat set-wide shift. Rates are checked as orderings, like
+    the mean rows, because a rate is a property and a two-decimal quote is not a
+    measurement; the three sizes are the ones the record prices, including the 52-per-
+    set form whose 4.78 GPU-hours is the largest the section quotes.
+    """
+    population, noise = candidate_population(root, "arch-zoo-100m-v1", 400)
+    specs = [(0.60, "shift-best", "best", 13, 2), (0.30, "shift-all", "best", 13, 2)]
+    if not quick:
+        specs += [
+            (0.60, "shift-best", "best", 26, 2),
+            (0.60, "shift-best", "best", 52, 2),
+            (0.30, "shift-best", "best", 13, 2),
+            (0.00, "shift-all", "best", 13, 2),
+            (0.00, "shift-all", "worst", 13, 2),
+        ]
+    powers = _powers_in_parallel(population, noise, specs)
+
+    def power(advantage: float, model: str, statistic: str, set_size: int = 13) -> float:
+        return powers[(advantage, model, statistic, set_size, 2)]
+
+    audit.check(
+        "§9a: a 0.60-nat better winner is invisible at 13 per set",
+        True,
+        power(0.60, "shift-best", "best") < 0.08,
+        "§9a",
+        f"power {power(0.60, 'shift-best', 'best'):.3f} on the best statistic",
+    )
+    audit.check(
+        "§9a: the same statistic sees a 0.30-nat set-wide shift",
+        True,
+        power(0.30, "shift-all", "best") >= 0.8,
+        "§9a",
+        f"power {power(0.30, 'shift-all', 'best'):.3f} - the contrast that makes the row above informative",
+    )
+    if quick:
+        return
+    audit.check(
+        "§9a: and 26 candidates per set do not buy the coverage form",
+        True,
+        power(0.60, "shift-best", "best", set_size=26) < 0.08,
+        "§9a",
+        f"power {power(0.60, 'shift-best', 'best', set_size=26):.3f}",
+    )
+    audit.check(
+        "§9a: nor do the 52 per set that cost 4.78 GPU-hours",
+        True,
+        power(0.60, "shift-best", "best", set_size=52) < 0.08,
+        "§9a",
+        f"power {power(0.60, 'shift-best', 'best', set_size=52):.3f}",
+    )
+    audit.check(
+        "§9a: doubling the better winner's advantage does not move the rate",
+        True,
+        abs(power(0.30, "shift-best", "best") - power(0.60, "shift-best", "best")) < 0.03,
+        "§9a",
+        f"{power(0.30, 'shift-best', 'best'):.3f} at 0.30 against "
+        f"{power(0.60, 'shift-best', 'best'):.3f} at 0.60 - the form is unsensitive, not merely underpriced",
+    )
+    audit.check(
+        "§9a: the best and worst null rows are at the nominal rate",
+        True,
+        power(0.00, "shift-all", "best") < 0.08 and power(0.00, "shift-all", "worst") < 0.08,
+        "§9a",
+        f"{power(0.00, 'shift-all', 'best'):.3f} / {power(0.00, 'shift-all', 'worst'):.3f}",
+    )
 
 
 def check_horizon_10x(root: Path, audit: Audit) -> None:
@@ -1557,6 +1648,7 @@ CHECKS: tuple[str, ...] = (
     "check_attribution",
     "check_structure_and_budget",
     "check_power_study",
+    "check_set_comparison_coverage",
     "check_replication_rule",
     "check_head_paired",
     "check_head_paired_confirm",
