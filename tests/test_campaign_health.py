@@ -10,6 +10,7 @@ that would look like a healthy stalled campaign.
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -192,6 +193,121 @@ def test_nothing_live_with_quota_available_is_stalled(monkeypatch: pytest.Monkey
     assert state["verdict"] == "STALLED"
     assert campaign_health.VERDICT_EXIT["STALLED"] == 1
     assert "STALLED" in campaign_health.report(state)
+
+
+def _summary(*, random: float, adaptive: float) -> dict:
+    return {
+        "arms": {
+            "random": {"final_loss": random},
+            "adaptive": {"final_loss": adaptive},
+        }
+    }
+
+
+def test_the_readout_fetches_the_path_the_upload_created(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The remote path carries the doubled component, and each seed needs its own directory.
+
+    Both were measured on 2026-09-21: a seed is pushed as ``seed-N.tar`` whose members
+    already begin ``seed-N/``, so the summary lives at ``seed-N/seed-N/reports/...``; and
+    because the CLI writes a fetched file under its own basename, four seeds downloaded
+    into one directory leave **one** file - the last one - which would have read as three
+    unknown seeds.
+    """
+    calls: list[list[str]] = []
+
+    def fake_run(argv, **kwargs):
+        calls.append(list(argv))
+        directory = Path(argv[argv.index("-p") + 1])
+        (directory / "seed-summary.json").write_text(
+            json.dumps(_summary(random=1.0, adaptive=0.5)), encoding="utf-8"
+        )
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(campaign_health.subprocess, "run", fake_run)
+    read = campaign_health.seed_readout("o/d", [15000, 15001])
+
+    assert [call[call.index("-f") + 1] for call in calls] == [
+        "seed-15000/seed-15000/reports/seed-summary.json",
+        "seed-15001/seed-15001/reports/seed-summary.json",
+    ]
+    directories = [call[call.index("-p") + 1] for call in calls]
+    assert len(set(directories)) == 2, "both seeds were fetched into one directory"
+    # And the seed is visible in the directory name, so a failed download names its seed.
+    for seed, directory in zip((15000, 15001), directories, strict=True):
+        assert str(seed) in Path(directory).name
+    assert read["seeds_read"] == [15000, 15001]
+    assert read["adaptive_wins"] == 2
+    assert read["mean_adaptive_minus_random"] == -0.5
+
+
+def test_the_readout_reports_inputs_and_says_it_is_not_a_verdict(
+    monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An incomplete queue cannot produce the registered verdict, so it is not attempted.
+
+    The thresholds live in the pre-registered rule, and applying one here would be the
+    provisional verdict that pre-registration exists to prevent - so the block reports the
+    differences and the win count and stops.
+    """
+    summaries = {
+        15000: _summary(random=10.3977, adaptive=10.3975),
+        15001: _summary(random=10.3976, adaptive=10.3982),
+    }
+    monkeypatch.setattr(
+        campaign_health, "fetch_seed_summary", lambda *a, **k: summaries.get(a[1])
+    )
+    read = campaign_health.seed_readout("o/d", [15000, 15001])
+    lines = "\n".join(campaign_health._readout_lines(read))
+
+    assert read["adaptive_wins"] == 1 and read["adaptive_losses"] == 1
+    assert "not a verdict" in lines
+    assert "no threshold is applied here" in lines
+    assert "adaptive won 1 of 2" in lines
+    assert "10.3977" in lines
+
+
+def test_the_floor_is_the_registered_vocabulary() -> None:
+    """The block trains on synthetic tokens, so ln(vocab) is the loss with nothing to learn."""
+    assert campaign_health.DECLARED_VOCAB == 32768
+    assert campaign_health.UNIFORM_PRIOR_NATS == pytest.approx(10.3972, abs=5e-5)
+    assert "ln(32768)" in "\n".join(
+        campaign_health._readout_lines(
+            {
+                "rows": [
+                    {
+                        "seed": 15000,
+                        "losses": {"random": 10.3977, "adaptive": 10.3975},
+                        "adaptive_minus_random": -0.0002,
+                    }
+                ],
+                "seeds_unread": [],
+                "adaptive_wins": 1,
+                "mean_adaptive_minus_random": -0.0002,
+                "largest_gap_from_uniform": 0.0005,
+                "uniform_prior_nats": 10.3972,
+            }
+        )
+    )
+
+
+def test_a_seed_that_cannot_be_read_is_named_not_silently_dropped(
+    monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A seed with no readable summary must not read as a seed with no difference."""
+    monkeypatch.setattr(campaign_health, "fetch_seed_summary", lambda *a, **k: None)
+    read = campaign_health.seed_readout("o/d", [15000, 15001])
+
+    assert read["rows"] == [] and read["seeds_unread"] == [15000, 15001]
+    assert "could not be read" in "\n".join(campaign_health._readout_lines(read))
+
+
+def test_the_readout_is_opt_in() -> None:
+    """The health check is meant to be cheap; the readout costs a download per seed."""
+    source = (ROOT / "scripts" / "campaign_health.py").read_text(encoding="utf-8")
+    assert '"--readout"' in source
+    assert "readout: bool = False" in source
 
 
 def test_the_verdict_is_the_exit_code() -> None:

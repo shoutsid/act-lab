@@ -34,9 +34,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -54,6 +56,14 @@ DECLARED_ARMS: tuple[str, ...] = tuple(
     str(mode) for mode in v0_verdict.REGISTERED_RUN_CONFIG["arms"]  # type: ignore[union-attr]
 )
 DECLARED_SEEDS: tuple[int, ...] = tuple(v0_verdict.DECLARED_SEEDS)
+
+#: The registered vocabulary, so a report can place each arm against the loss a model with
+#: no signal must reach. Uniform over the vocabulary is ``ln(vocab_size)`` nats, and the
+#: declared block trains on synthetic tokens (``config.data_path`` is null), so this is the
+#: floor the arms sit on rather than a target - which is why it is worth printing beside
+#: differences of 1e-4.
+DECLARED_VOCAB: int = int(v0_verdict.REGISTERED_RUN_CONFIG["vocab_size"])  # type: ignore[arg-type]
+UNIFORM_PRIOR_NATS: float = math.log(DECLARED_VOCAB)
 
 VERDICT_EXIT = {
     "RUNNING": 0,
@@ -172,6 +182,104 @@ def seed_progress(seeds: dict[int, dict]) -> dict:
     }
 
 
+def fetch_seed_summary(dataset_id: str, seed: int, *, timeout: float = 180.0) -> dict | None:
+    """One published seed's summary: a kilobyte carrying both arms' final losses.
+
+    Fetched as a **single file**, not by downloading the session dataset - that is ~24 GB
+    and this needs five kilobytes per seed. Two things about the CLI are load-bearing here
+    and both were measured on 2026-09-21: ``-f`` serves one path out of a dataset, and the
+    CLI writes the file under its own basename, so seeds fetched into *one* directory leave
+    **one** file (the last one) - which would read as the others being unreadable rather
+    than as a fetch that overwrote them. This function therefore owns a directory per call
+    and the seed is in its name, so a download that fails names the seed it was for.
+
+    The remote path carries the doubled first component the upload created, because a seed
+    is pushed as ``seed-N.tar`` whose members already begin ``seed-N/``.
+    """
+    name = f"seed-{seed}/seed-{seed}/reports/seed-summary.json"
+    with tempfile.TemporaryDirectory(prefix=f"act-seed-{seed}-") as directory:
+        try:
+            subprocess.run(
+                [
+                    "kaggle", "datasets", "download", "-d", dataset_id,
+                    "-f", name, "-p", directory, "-o", "-q",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        path = Path(directory) / "seed-summary.json"
+        if not path.is_file():
+            return None
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+
+
+def seed_readout(dataset_id: str, seeds, *, timeout: float = 180.0) -> dict:
+    """What the published seeds *show* - which is not the verdict.
+
+    The queue is incomplete for most of the campaign's life and the registered verdict
+    withholds itself until every declared seed is published, so this reports the inputs
+    only: each seed's two arm losses, the adaptive-minus-random difference, and how many
+    seeds the adaptive arm won. **No threshold is applied and no verdict is implied** - a
+    provisional verdict is exactly what a pre-registered rule exists to prevent.
+
+    It also places the arms against ``ln(vocab_size)``, the loss a signal-free model must
+    reach on the declared block's synthetic stream, because an arm sitting on that floor
+    turns a 1e-4 difference from a result into a reading.
+    """
+    rows: list[dict] = []
+    unread: list[int] = []
+    for seed in sorted(seeds):
+        summary = fetch_seed_summary(dataset_id, seed, timeout=timeout)
+        arms = (summary or {}).get("arms") or {}
+        losses = {
+            arm: (arms.get(arm) or {}).get("final_loss") for arm in DECLARED_ARMS
+        }
+        if any(value is None for value in losses.values()):
+            unread.append(seed)
+            continue
+        delta = losses["adaptive"] - losses["random"]
+        rows.append(
+            {
+                "seed": seed,
+                "losses": losses,
+                "adaptive_minus_random": round(delta, 6),
+                "adaptive_wins": delta < 0,
+            }
+        )
+    wins = sum(1 for row in rows if row["adaptive_wins"])
+    return {
+        "seeds_read": [row["seed"] for row in rows],
+        "seeds_unread": unread,
+        "rows": rows,
+        "adaptive_wins": wins,
+        "adaptive_losses": len(rows) - wins,
+        "mean_adaptive_minus_random": (
+            round(sum(row["adaptive_minus_random"] for row in rows) / len(rows), 6)
+            if rows
+            else None
+        ),
+        "uniform_prior_nats": round(UNIFORM_PRIOR_NATS, 4),
+        "largest_gap_from_uniform": (
+            round(
+                max(
+                    abs(loss - UNIFORM_PRIOR_NATS)
+                    for row in rows
+                    for loss in row["losses"].values()
+                ),
+                6,
+            )
+            if rows
+            else None
+        ),
+    }
+
+
 def lock_holder(kernel_id: str) -> dict | None:
     """Who holds the driver's lock for this kernel, if anyone.
 
@@ -189,8 +297,16 @@ def lock_holder(kernel_id: str) -> dict | None:
             return {"detail": str(holder)}
 
 
-def health(queue_mode: str, *, window: float | None = None) -> dict:
-    """Assemble the campaign's state and pick the verdict."""
+def health(
+    queue_mode: str, *, window: float | None = None, readout: bool = False
+) -> dict:
+    """Assemble the campaign's state and pick the verdict.
+
+    ``readout`` additionally fetches each published seed's summary, which costs one small
+    network call per seed - so it is opt-in: the health check itself is meant to be cheap
+    enough to run at every queue boundary, and the substance of the campaign is a
+    different question from whether it is running.
+    """
     queue = kaggle_t4.QUEUES[queue_mode]
     status = kaggle_queue.active_status(queue.kernel_id)
     quota = kaggle_queue.active_quota() or {}
@@ -235,6 +351,11 @@ def health(queue_mode: str, *, window: float | None = None) -> dict:
             "partial": progress.get("partial"),
             "next": progress.get("next_seed"),
         },
+        "readout": (
+            seed_readout(queue.dataset, progress["complete"])
+            if readout and progress.get("complete")
+            else None
+        ),
         "verdict": verdict,
     }
 
@@ -275,7 +396,46 @@ def report(state: dict) -> str:
         remaining=quota["remaining_hours"],
     )
     lines.append(f"  verdict         : {state['verdict']} - {action}")
+    lines.extend(_readout_lines(state.get("readout")))
     return "\n".join(lines)
+
+
+def _readout_lines(read: dict | None) -> list[str]:
+    """What the published seeds show, laid out so a difference of 1e-4 is readable.
+
+    The floor line is the point of the block: the declared block trains on synthetic tokens,
+    so ``ln(vocab_size)`` is the loss a model with nothing to learn arrives at, and an arm
+    sitting on it is a fact that has to be visible next to the differences.
+    """
+    if not read:
+        return []
+    if not read["rows"]:
+        return [
+            f"  seed readout    : {len(read['seeds_unread'])} published seed(s) could not be "
+            "read; no verdict is computed here regardless"
+        ]
+    lines = [
+        f"  seed readout    : {len(read['rows'])} published seed(s) read. These are the "
+        "verdict's inputs, not a verdict - the queue is incomplete and the registered "
+        "rule withholds itself until it is; no threshold is applied here."
+    ]
+    for row in read["rows"]:
+        losses = row["losses"]
+        lines.append(
+            f"    seed {row['seed']}      : random {losses['random']:.4f}  "
+            f"adaptive {losses['adaptive']:.4f}  "
+            f"adaptive-random {row['adaptive_minus_random']:+.6f}"
+        )
+    lines.append(
+        f"    adaptive won {read['adaptive_wins']} of {len(read['rows'])}; "
+        f"mean adaptive-random {read['mean_adaptive_minus_random']:+.6f} nats"
+    )
+    lines.append(
+        f"    arms sit within {read['largest_gap_from_uniform']:.6f} nats of "
+        f"ln({DECLARED_VOCAB}) = {read['uniform_prior_nats']}, the loss a signal-free "
+        "model reaches on this block's synthetic stream"
+    )
+    return lines
 
 
 def main() -> int:
@@ -290,9 +450,15 @@ def main() -> int:
              "(default: the kernel's declared 7 h)",
     )
     parser.add_argument("--json", action="store_true", help="print the state as JSON")
+    parser.add_argument(
+        "--readout", action="store_true",
+        help="also fetch each published seed's summary (one small download per seed) and "
+             "report the arms' losses; still not a verdict, which an incomplete queue "
+             "cannot produce",
+    )
     args = parser.parse_args()
 
-    state = health(args.queue, window=args.window)
+    state = health(args.queue, window=args.window, readout=args.readout)
     if args.json:
         print(json.dumps(state, indent=1, sort_keys=True))
     else:

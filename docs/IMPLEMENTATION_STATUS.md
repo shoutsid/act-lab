@@ -1,5 +1,17 @@
 # ACT Implementation Status
 
+## What the four published seeds show, read for free while the GPU week is spent (2026-09-21)
+
+| | |
+|---|---|
+| **The command** | `PYTHONPATH=src python scripts/campaign_health.py --readout`. The health report answered *is anything driving this?*; this answers *what does it show so far?* - from durable remote state, without a session, a GPU-hour, or the 24 GB dataset: each published seed's summary is a **5 KB file** and `kaggle datasets download -f` serves one path out of a dataset. Opt-in, because it costs a small download per seed and the health check is meant to be cheap. |
+| **Why it is not a verdict, in the command itself** | The queue is incomplete and the registered rule withholds itself until it is, so the block reports the **inputs** - each seed's two arm losses, the difference, the win count - and says in its own output that no threshold is applied. A provisional verdict is exactly what pre-registration exists to prevent. |
+| **The four seeds** | adaptive won **2 of 4** (seeds 15000, 15001); mean adaptive-minus-random **+0.000041 nats**. Per seed: 15000 `-0.000162`, 15001 `-0.000591`, 15002 `+0.000546`, 15003 `+0.000372`. |
+| **The number that has to be read beside those** | Every arm sits within **0.001120 nats** of `ln(32768) = 10.3972`. The declared block trains on **synthetic tokens** - `config.data_path` is `null` in the published summary, read off the seed's own record rather than inferred - so `ln(vocab_size)` is the loss a model with nothing to learn reaches, and differences of 1e-4 nats are the differences between two arms that have both arrived there. |
+| **The project has already priced this class of reading** | `SCREENING_AUDIT.md` invalidated the zoo's screening table for precisely this reason - "uniform random tokens ... the reason the synthetic table ranks initialization luck" - and `null_clause_power.py` computed, before this block's data existed, that a cleared clause needs only 3 of 12 seeds and fires on 79/4096 blocks under no effect. So the block's clauses were given their power in advance, and this readout adds no new claim to them; it makes the numbers visible while the hours are still being spent. |
+| **Two measurements the seeds carry that nothing else did** | Per-arm `wall_time_seconds` is **1.434-1.463 h** (5,164-5,268 s), which confirms the benchmark's 1.6477 h pair prediction to ~7% with the arms in one wave - and bounds the 3.50 h loss at ~2.4 pairs, independent of the pair-time arithmetic reproducing itself. And per-arm `tokens_per_second` is **4,665-4,759** against the schedule's 4,410.88, so the schedule the deadline rules use is ~6% conservative. |
+| **Result** | **1615 tests pass**; queue **4 of 12**; quota **1.42 h**; campaign stopped at exit 1. |
+
 ## A third session died unread, because the capture gave up at minute four and the child never spoke (2026-09-21)
 
 | | |
