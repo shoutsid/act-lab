@@ -1,12 +1,44 @@
 # Adaptive Computational Topology — Research Report
 
-Status: skeleton covering the narrowed first scientific milestone (Gate 3,
-low-fidelity Experiment 0). Updated: 2026-09-13 (deliverable 2's reproducible
-notebooks built and verified; see section 7).
+Status: the narrative report for the whole program to date - the factor map (section 3, Gate 3),
+the pre-registered study series (section 5, 91 subsections), the substrate audit (section 9) and
+the synthesis (section 10). **Updated: 2026-09-21** - sections 5.48-5.56 close the covariate
+programme (parameter count, layer width, expert count and total compute) and then measure the
+depth axis itself, and section 10 is re-read against them. Gate 4 is declared and running: 4 of
+its 12 declared seeds are published, on the corrected 7-hour session window (section 5.2 and
+`docs/T4_RUNBOOK.md`).
 
 This report is the narrative companion to `IMPLEMENTATION_STATUS.md` (the
-implementation tracker) and the append-only study records under
-`artifacts/study-summaries/`.
+implementation tracker, newest entry first) and the append-only study records under
+`artifacts/study-summaries/`. Every number in it is machine-checked rather than transcribed:
+`scripts/verify_record.py` audits the report's claims against the committed artifacts (274 of
+them), and the pytest suite pins each arm's recorded result against its own summary - a claim
+that drifts from the record fails the suite.
+
+**What this report is not.** It is not the architecture-search track's record, which has its own
+`artifacts/ARCH_SEARCH_FINDINGS.md` and is cross-read against this track in section 10.4; it is not
+the operational runbook for the Gate 4 campaign (`docs/T4_RUNBOOK.md`); and it is not the
+implementation tracker (`docs/IMPLEMENTATION_STATUS.md`, which is append-newest-first and records
+the defects found along the way).
+
+## Contents
+
+A reader looking for one thing rather than all of it: the top-level sections, then section 5's 91
+subsections grouped by what they answer. Section 9 and section 10 are the two reading paths worth
+taking first - 9 is the audit that changed the interpretation, and 10 is the current state.
+
+| sections | what they cover |
+|---|---|
+| **1-4** | The hypothesis and the factor map: hypothesis, prediction and decision rule (§1), method (§2), the nine-study factor map and its three passes (§3), and what Gate 3 means (§4). |
+| **5.1-5.3** | Protocol and its execution plan: the real-scale compute-efficiency protocol (§5.1), GPU session budgeting against the platform's limit (§5.2), and the real-data selection diagnostic (§5.3). |
+| **5.4-5.7** | The first real-text gated run: accept/reject gating of random draws (§5.4), the adopted revision to the protocol (§5.5), the depth-4 Gate 3 confirmation (§5.6), and the gated outcome in which the **null arm won** (§5.7). |
+| **5.8-5.15** | The do-nothing clause and the depth ladder's first pass: the `null` arm (§5.8), the depth-1 (§5.9) and depth-4 (§5.10) null controls, the theta sweep (§5.11), the depth x policy 2x2 (§5.12), the routing-statistics heuristic (§5.13), Gate 4's do-nothing clause (§5.14), and the first depth dose-response (§5.15). |
+| **5.16-5.20** | What the discovered artifact *is*: reusability (§5.16), initialization against topology (§5.17), portability of the genome (§5.18), whether the matched-init value shares the depth-4 onset (§5.19), and whether it is selection-specific (§5.20). |
+| **5.21-5.34** | The mid-training penalty and the prune-target chain: the penalty's arm-genericity (§5.22), optimizer history against the architecture change (§5.23), the discarded routing head (§5.24), prune against grow (§5.25), the freshly drawn expert (§5.26), cloning's two effects (§5.27-§5.28), the discovery path (§5.29-§5.30), and the powered prune-target studies (§5.31-§5.34). |
+| **5.35-5.40** | The declared path: defects found by reading rather than by a study (§5.35), dev-scale evidence on the real token stream (§5.36), the measured liveness contract (§5.37), whether the rebuild treatment transfers (§5.38), churn harm as a property of churn (§5.39), and the deployed configuration against the do-nothing arm (§5.40). |
+| **5.41-5.47** | Audit-derived corrections and the Gate 4 registration: the tolerance band's scale (§5.41), the clause a partial run made unfireable (§5.42), the verdict-path rehearsal (§5.43), the one-directional quality clause (§5.44), the suite's cost (§5.45), the launch path's missing rebuild treatment (§5.46), and the amendment that registers it (§5.47). |
+| **5.48-5.56** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), and the depth dose with its confirmation rung (§5.55-§5.56). |
+| **6-10** | Reproducibility (§6), the deliverables checklist (§7), figures (§8), the substrate audit (§9), and the synthesis (§10) - which reads this track against the architecture-search track. |
 
 Reproducibility at notebook fidelity (plan sections 39 and 104) now ships with
 the report: all ten notebooks (`00_environment` through `09_compare`) live
