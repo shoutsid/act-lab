@@ -1,5 +1,17 @@
 # ACT Implementation Status
 
+## The crossing rule: my own staging claim was half wrong, and the committed ladders say so (2026-09-21)
+
+| | |
+|---|---|
+| **What was wrong** | Sections 5.60 and 5.61 read the crossing's mechanism as a *division between the sides of the onset* - "below it the controller's edge crosses the gate, above it the pool term does". The onset cell itself is a counterexample: `depth4-prefix` is open (225/384) with a **positive** pool term (`+0.0701`). The claim was read off the *dose steps* above 3.80x, where the pool term happens to be negative, and generalised to the depth division it does not track. |
+| **What the committed cells actually show** | Value is `(adaptive - random) + (random - null)` on the same seeds, so write the ratio: 0.96, 0.88 and 0.80 (all closed) below 1; **1.0959** at the 4.01x near miss (mean crossed, bar not); **1.55** (5.66x), **1.53** (the onset cell itself) and **1.37** (1.34x) all open. **No cell with a positive pool term and a ratio below 1 opens the gate; every cell at 1.37 or above does**, and the pool term's own sign is irrelevant once it turns negative (the 3.80x-14.82x doses and every depth rung from 6 up are open with a negative one). |
+| **The corrected statement** | The crossing is located in the **ratio**, bracketed by construction to `[1.10, 1.37]`, and **what tracks the mechanism is the dose, not the side of the onset**: on either ladder the small-dose end is edge-dominated and the large-dose end is pool-dominated. What made the depth axis look pool-only is that every rung at the registered width except the onset cell sits on the far side of that transition. |
+| **And it explains the near miss** | At 4.01x the ratio has passed 1 (so the *mean* has crossed, `-0.028562`) while the *win rate* has not (310/576, five short) - the boundary between the mean's crossing and the bar's is a distribution-shape effect, and the ratio table is where it becomes visible rather than surprising. |
+| **Status, stated honestly** | This is a **descriptive reading of committed cells made after both arms**, not a prediction either arm made - the interval was bracketed by the doses rather than derived from a model, and the report says so in the paragraph itself. The test it invites is a dose placed to land inside the interval on a ladder that has not been swept. |
+| **Pinned** | `tests/test_report_navigation.py` recomputes every ratio and every gate verdict from the summaries, asserts the closed set's maximum (`1.0959`) and the open set's minimum (`1.37`) so the bracket cannot silently widen, and requires the corrected framing and the explicit statement that it corrects 5.60/5.61. Mutants: reverting the framing to the onset split fails **1**; dropping the boundary bracket fails **1**. |
+| **Result** | 254/254 quick · 274/274 full claims agree; the correction is in §10.1, with a scoped pointer from §10.3. |
+
 ## The second bisection: both declared brackets hit, and the gate's price tightens to 4.0x-7.5x (2026-09-21)
 
 | | |

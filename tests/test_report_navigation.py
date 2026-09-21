@@ -301,6 +301,65 @@ def test_the_deliverables_checklist_is_not_stale_about_the_handoff() -> None:
         assert "DONE for the declared" in row or "DONE as for item 4" in row, row
 
 
+def test_the_crossing_rule_is_read_from_the_committed_ladders() -> None:
+    """§10.1's ratio table: the gate's boundary in `|edge| / pool`, recomputed.
+
+    The rule is a *description* of the committed cells, and it is the corrected
+    form of the staging sections 5.60/5.61 read: those arms divided the mechanism
+    by the side of the onset, and the onset cell itself is a counterexample. The
+    assertions recompute every ratio and every gate verdict, so the table cannot
+    drift from the summaries and the boundary has to stay bracketed the way the
+    report says it is.
+    """
+    import json as _json
+
+    summaries = ROOT / "artifacts" / "study-summaries"
+
+    def terms(name: str) -> tuple[float, float, float]:
+        rows = _json.loads((summaries / name).read_text())["per_seed"]
+
+        def mean(left: str, right: str) -> float:
+            values = [r["losses"][left] - r["losses"][right] for r in rows]
+            return sum(values) / len(values)
+
+        return mean("adaptive", "null"), mean("adaptive", "random"), mean("random", "null")
+
+    def opened(name: str) -> bool:
+        payload = _json.loads((summaries / name).read_text())
+        return bool(payload["comparisons"]["adaptive_vs_null"]["passes_bonferroni"])
+
+    ladder = (
+        ("null-control-depth3-384.json", 0.96, False),
+        ("width-d3-equal-576.json", 0.88, False),
+        ("width-d3-dose-576.json", 0.80, False),
+        ("width-d3-dose4-576.json", 1.10, False),
+        ("width-d3-dose3-576.json", 1.55, True),
+        ("null-control-depth4-prefix-384.json", 1.53, True),
+        ("width-d4-equal-576.json", 1.37, True),
+    )
+    ratios: list[tuple[float, bool]] = []
+    for name, expected_ratio, expected_open in ladder:
+        value, edge, pool = terms(name)
+        assert pool > 0, f"{name} no longer has a positive pool term"
+        assert abs(edge) / pool == pytest.approx(expected_ratio, abs=0.01), name
+        assert opened(name) is expected_open, name
+        # The mean crosses before the bar does: every cell whose ratio clears 1
+        # has a negative mean, including the one the bar still rejects.
+        assert (value < 0) is (expected_ratio > 1.0), name
+        ratios.append((abs(edge) / pool, expected_open))
+    # The boundary the report quotes, stated as the bracket it is: no open cell
+    # below the highest closed one, and the near miss is the top of the closed set.
+    closed = [r for r, is_open in ratios if not is_open]
+    open_ = [r for r, is_open in ratios if is_open]
+    assert max(closed) == pytest.approx(1.0959, abs=0.001)
+    assert min(open_) == pytest.approx(1.37, abs=0.01)
+    assert max(closed) < min(open_), "the boundary is no longer bracketed"
+    text = " ".join(_text().split())
+    assert "bracketed by construction to `[1.10, 1.37]`" in text
+    assert "corrects a reading sections 5.60 and 5.61 gave" in text
+    assert "tracks the mechanism is the *dose*, not the side" in text
+
+
 def test_the_cross_axis_claims_the_bisection_added_are_live() -> None:
     """§10.1, §10.3, §10.5 read against 5.60: a price, a peak, and an exception.
 

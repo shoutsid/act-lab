@@ -8889,6 +8889,36 @@ creation. At depth 4 about a quarter of the raw edge survives the strictest   co
    it and the controller's own edge contributes `+0.019619` **against**
    (5.56-5.59).
 
+**The crossing rule, read off both ladders (descriptive, added 2026-09-21).** Value decomposes
+identically everywhere in this family: `adaptive - null` = (`adaptive - random`) + (`random - null`),
+so the gate is open exactly when the *mean* of that sum is negative and the win rate clears the bar.
+Written as a ratio of the two terms, the committed widths and depths fall into a clean order:
+
+| cell | dose | controller's edge | pool term | \|edge\| / pool | gate |
+|---|---|---|---|---|---|
+| `depth3` (5.15) | 0.76x | `-0.1022` | `+0.1068` | 0.96 | closed |
+| `width-d3-equal` (5.48) | 1.02x | `-0.1307` | `+0.1484` | 0.88 | closed |
+| `width-d3-dose` (5.49) | 2.87x | `-0.2438` | `+0.3053` | 0.80 | closed |
+| `width-d3-dose4` (5.61) | 4.01x | `-0.3263` | `+0.2977` | **1.10** | closed - mean crossed, bar not |
+| `width-d3-dose3` (5.60) | 5.66x | `-0.3598` | `+0.2318` | **1.55** | **open** |
+| `depth4-prefix` (5.12) | 1.00x (depth) | `-0.1072` | `+0.0701` | **1.53** | **open** |
+| `width-d4-equal` (5.48) | 1.34x | `-0.1207` | `+0.0880` | **1.37** | **open** |
+
+**No cell with a positive pool term and a ratio below 1 opens the gate** (0.96, 0.88, 0.80 - all
+closed), **the single cell between the mean's crossing and the bar's is the 1.10 near miss, and every
+cell at 1.37 or above is open** - with the pool term's own sign irrelevant once it turns negative
+(the 3.80x, 5.32x, 7.52x and 14.82x doses, and every depth rung from 6 up, are open with a negative
+one). So the crossing is located in the *ratio*, bracketed by construction to `[1.10, 1.37]`, and it
+**corrects a reading sections 5.60 and 5.61 gave**: those arms read the staging as a division between
+the sides of the onset ("below it the edge crosses, above it the pool does"), and the onset cell
+itself is a counterexample - `depth4-prefix` is open at ratio 1.53 with a **positive** pool term. What
+tracks the mechanism is the *dose*, not the side: on either ladder the small-dose end is
+edge-dominated and the large-dose end is pool-dominated, and what makes the depth axis look
+pool-only is that every rung at the registered width except the onset itself sits on the far side of
+that transition. This is a descriptive reading of committed cells, made after both arms rather than
+predicted by either, and the interval `[1.10, 1.37]` was bracketed by the doses rather than derived -
+the test it invites is a dose placed to land inside it on a ladder that has not been swept.
+
 ### 10.2 What this means for the gates
 
 - **Gate 3 stands, narrowed.** The depth-4 confirmation (5.6) passes with
@@ -9024,9 +9054,11 @@ more steps while the pool term moves at p `2.6e-28` and `1.5e-63`). And the bise
 refuted the mechanism 5.50 had attributed the crossing to, replacing it with a staged account: at
 5.66x the gate is open while the pool term is still positive (`+0.231778`, having *peaked* at 2.87x)
 - what crosses it is the controller's own edge, at its ladder maximum (`-0.359770`), and only at
-larger doses does the unmutated collapse take over (`-0.585988` at 11.15x). Above the onset the
-order is reversed and the edge is flat (`-0.194518` -> `-0.199203`, p `0.199`) while the pool term
-does everything (p `4.6e-119`). So "the gate is depth" becomes "depth is the cheapest substrate on
+larger doses does the unmutated collapse take over (`-0.585988` at 11.15x). Across the above-onset
+dose *step* the order is reversed - the edge is flat (`-0.194518` -> `-0.199203`, p `0.199`) while
+the pool term does everything (p `4.6e-119`) - and 10.1's ratio table is where that is generalised
+and corrected: what tracks the mechanism is the dose rather than the side of the onset, and the
+onset cell itself is edge-dominated. So "the gate is depth" becomes "depth is the cheapest substrate on
 which mutation pays", and the one regime this program has found where *selection skill* is what
 crosses a threshold is a wide-and-shallow one - a hypothesis about where a transfer policy might
 eventually matter, named here as a hypothesis and measured nowhere else; and
