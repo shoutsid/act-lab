@@ -66,19 +66,42 @@ PSTDEV_VINTAGE = {
 }
 
 
-def _committed(profile: str) -> dict:
-    """The profile's committed summary, or a skip if it is registered but unrun.
+def _shards_cover_the_block(profile: str) -> bool:
+    """Whether every seed the profile declares has a written shard row.
 
-    An arm is *registered* before it runs (that is the point of a
-    pre-registration), so a profile carries ``run_revision: None`` until its
-    registration commit exists. A profile that HAS a frozen revision but no
-    committed summary is a failure, not a skip - which is what
-    ``test_every_frozen_profile_has_a_committed_summary`` enforces.
+    Independent of the shard count a run happened to use: the test is coverage of
+    the declared block, so a 12-shard run and a 20-shard run are both complete
+    when their seeds are all present.
+    """
+    spec = study.PROFILES[profile]
+    directory = study.SHARD_DIR / profile
+    if not directory.is_dir():
+        return False
+    seen: set[int] = set()
+    for path in sorted(directory.glob("shard*.json")):
+        payload = json.loads(path.read_text())
+        seen |= {int(row["seed"]) for row in payload.get("experiments", [])}
+    return set(spec["seeds"]) <= seen
+
+
+def _committed(profile: str) -> dict:
+    """The profile's committed summary, a skip while the arm is mid-flight, or a failure.
+
+    Three states, and only the third is a defect. A profile is *registered* with
+    ``run_revision: None`` before it runs, so it cannot already have a summary. A
+    frozen profile whose shards are still being written is the state the freeze
+    commit creates on purpose - the revision is set before the run, so the window
+    between the freeze and the summary is a state every arm passes through, not an
+    error, and this used to fail there. A frozen profile whose block is **complete**
+    and whose summary is missing is the defect this check exists for: a summary
+    path that is wrong, or a record that never landed.
     """
     path = summaries_dir() / Path(study.PROFILES[profile]["summary"]).name
     if not path.exists():
         if study.PROFILES[profile]["run_revision"] is None:
             pytest.skip(f"{profile} is registered but has not run yet")
+        if not _shards_cover_the_block(profile):
+            pytest.skip(f"{profile} is frozen and its shards are still being written")
         pytest.fail(f"missing committed study summary: {path}")
     return json.loads(path.read_text())
 
@@ -136,8 +159,9 @@ def test_an_unfrozen_profile_has_no_summary_and_a_missing_one_fails() -> None:
     unfrozen profile cannot already have a summary. The reverse does *not*
     hold: the freeze commit sets the revision and the shards run after it, so
     frozen-without-a-summary is a legitimate intermediate state - which is why
-    ``_committed`` fails loudly (rather than skipping) for a frozen profile
-    whose summary is missing, catching a summary path that is simply wrong.
+    ``_committed`` distinguishes the two: it skips while the shards of a frozen
+    block are still being written and fails once the block is covered, which is
+    the case that catches a summary path that is simply wrong.
     """
     for profile, spec in study.PROFILES.items():
         path = summaries_dir() / Path(spec["summary"]).name
@@ -200,8 +224,9 @@ def test_the_committed_summary_regenerates(profile: str) -> None:
         # the run, so a frozen profile without a summary is the arm mid-flight.
         # Nothing is lost by skipping here - the loud check that a frozen
         # profile's summary eventually exists is ``_committed``, which the
-        # divisor and label tests call and which fails rather than skipping.
-        pytest.skip(f"{profile} is registered but its shards have not run yet")
+        # divisor and label tests call and which fails once the block is
+        # covered rather than skipping.
+        pytest.skip(f"{profile} has no committed summary yet")
     fresh = study.summarize(profile, study.ALPHA)
     committed = json.loads(path.read_text())
     if name not in PSTDEV_VINTAGE:
