@@ -126,6 +126,17 @@ python scripts/kaggle_queue.py --queue selfcheck        # session battery + arm 
 python scripts/kaggle_queue.py --queue archzoo          # architecture-search horizon arm (one push)
 ```
 
+`--wait-for-quota` is for the whole campaign rather than one queue: the three
+queues need ~55 GPU-hours against a 30 GPU-hour week, so no single week can
+finish them. Passed to a queue, a week too short to cover another session
+**sleeps to the payload's own `refreshAt`** and re-runs instead of exiting 3 -
+sleeping is free, and the alternative is a two-week run that stops every week
+until an operator notices. It is bounded (`--max-waits`, default 2) so a queue
+that never fits cannot sleep forever, and it refuses to sleep at all when the
+refresh time is unreadable, because a blind sleep of unknown length is how an
+unattended campaign stalls silently for days. Without the flag the behaviour is
+unchanged: stop and say why.
+
 `--queue` accepts eight values, and all eight are listed above: the three
 queues (`session`, `control`, `null`) and the five one-shot jobs. `null` is the
 §2c baseline that §1-2 describes the other two against, and `archzoo` is the

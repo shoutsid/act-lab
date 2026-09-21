@@ -13,6 +13,7 @@ import os
 import subprocess
 import sys
 import tarfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -387,6 +388,101 @@ def test_drive_still_pushes_when_the_week_can_cover_the_session(monkeypatch) -> 
     assert [argv for argv in calls if argv[1:3] == ["kernels", "push"]]
     # The push happened, then it stopped on the missing session log.
     assert code == kaggle_queue.EXIT_SESSION_FAILED
+
+
+def test_the_quota_wait_is_measured_from_the_apis_own_refresh_time() -> None:
+    """The wait is a number read off the payload, not a guess."""
+    quota = {"remaining_hours": 2.0, "refresh_at": "2026-09-26T00:00:00"}
+    noon_before = datetime(2026, 9, 25, 12, 0, 0, tzinfo=timezone.utc).timestamp()
+    assert kaggle_queue.seconds_until_refresh(quota, now=noon_before) == pytest.approx(
+        12 * 3600 + kaggle_queue.QUOTA_REFRESH_MARGIN_SECONDS
+    )
+    # A refresh time that has already passed still returns the margin rather than
+    # zero, so a stale payload cannot turn the wait into a spin.
+    day_after = datetime(2026, 9, 27, 0, 0, 0, tzinfo=timezone.utc).timestamp()
+    assert kaggle_queue.seconds_until_refresh(
+        quota, now=day_after
+    ) == pytest.approx(kaggle_queue.QUOTA_REFRESH_MARGIN_SECONDS)
+    # And "cannot tell" is never a number to sleep on.
+    assert kaggle_queue.seconds_until_refresh(None) is None
+    assert kaggle_queue.seconds_until_refresh({}) is None
+    assert kaggle_queue.seconds_until_refresh({"refresh_at": ""}) is None
+    assert kaggle_queue.seconds_until_refresh({"refresh_at": "soon"}) is None
+
+
+def test_waiting_for_the_refresh_refuses_to_sleep_blind() -> None:
+    """An unreadable refresh time is a reason to stop, not to sleep.
+
+    A blind sleep of unknown length is how an unattended campaign stalls for
+    days without anyone learning that it had.
+    """
+    slept: list[float] = []
+    lines: list[str] = []
+
+    def collect(message: str, **_kwargs: object) -> None:
+        lines.append(message)
+
+    assert kaggle_queue.wait_for_refresh(None, log=collect, sleep=slept.append) is False
+    assert slept == []
+    assert any("unreadable" in line for line in lines)
+
+    quota = {"remaining_hours": 1.0, "refresh_at": "2026-09-26T00:00:00"}
+    assert kaggle_queue.wait_for_refresh(quota, log=collect, sleep=slept.append) is True
+    assert len(slept) == 1 and slept[0] > 0
+    assert any("refresh" in line for line in lines)
+
+
+def test_wait_for_quota_sleeps_and_retries_instead_of_exiting(monkeypatch) -> None:
+    """The flag turns exit 3 into "wait for the week, then try again"."""
+    codes = [kaggle_queue.EXIT_QUOTA_INSUFFICIENT, kaggle_queue.EXIT_COMPLETE]
+    monkeypatch.setattr(kaggle_queue, "drive", lambda *a, **k: codes.pop(0))
+    waits: list[object] = []
+    monkeypatch.setattr(
+        kaggle_queue,
+        "wait_for_refresh",
+        lambda quota, **k: waits.append(quota) or True,
+    )
+    quota = {"remaining_hours": 1.0, "refresh_at": "2026-09-26T00:00:00"}
+    monkeypatch.setattr(kaggle_queue, "active_quota", lambda *a, **k: quota)
+
+    assert kaggle_queue.main(["--queue", "session", "--wait-for-quota"]) == 0
+    assert waits == [quota]
+
+
+def test_without_the_flag_a_short_week_still_exits_three(monkeypatch) -> None:
+    """The default stays the previous behaviour: stop, and say why."""
+    monkeypatch.setattr(
+        kaggle_queue, "drive", lambda *a, **k: kaggle_queue.EXIT_QUOTA_INSUFFICIENT
+    )
+    monkeypatch.setattr(
+        kaggle_queue,
+        "wait_for_refresh",
+        lambda *a, **k: pytest.fail("waited without --wait-for-quota"),
+    )
+    assert (
+        kaggle_queue.main(["--queue", "session"])
+        == kaggle_queue.EXIT_QUOTA_INSUFFICIENT
+    )
+
+
+def test_the_wait_is_bounded_by_max_waits(monkeypatch) -> None:
+    """A queue that never fits must not sleep forever."""
+    attempts = {"count": 0}
+
+    def fake_drive(*a, **k):
+        attempts["count"] += 1
+        return kaggle_queue.EXIT_QUOTA_INSUFFICIENT
+
+    waits: list[float] = []
+    monkeypatch.setattr(kaggle_queue, "drive", fake_drive)
+    monkeypatch.setattr(kaggle_queue, "wait_for_refresh", lambda *a, **k: waits.append(1.0) or True)
+
+    code = kaggle_queue.main(
+        ["--queue", "session", "--wait-for-quota", "--max-waits", "1"]
+    )
+    assert code == kaggle_queue.EXIT_QUOTA_INSUFFICIENT
+    assert attempts["count"] == 2  # one attempt, one wait, one more attempt
+    assert len(waits) == 1
 
 
 def test_a_failed_session_reports_the_loss_instead_of_going_silent(

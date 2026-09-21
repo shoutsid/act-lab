@@ -43,6 +43,7 @@ import sys
 import tempfile
 import time
 from collections.abc import Mapping
+from datetime import datetime, timezone
 from pathlib import Path
 
 import kaggle_t4
@@ -605,6 +606,65 @@ def burned_note(
     return f" (it used {burned:.2f} GPU-h of the quota)" if burned > 0 else ""
 
 
+# The weekly quota is what bounds this campaign: ~55 GPU-hours of work against
+# a 30 GPU-hour week. A driver that exits 3 and waits for an operator to re-run
+# it spends wall-clock as well as quota, so ``--wait-for-quota`` sleeps to the
+# API's own refresh time instead. The margin is there because the refresh is
+# reported to the minute, not to the second: waking one second early would read
+# the same exhausted week and give up again.
+QUOTA_REFRESH_MARGIN_SECONDS = 600.0
+
+
+def seconds_until_refresh(
+    quota: Mapping[str, object] | None, *, now: float | None = None
+) -> float | None:
+    """Seconds to wait for this quota's refresh, or ``None`` when unreadable.
+
+    ``None`` means "cannot tell", and the caller must not sleep on it - a blind
+    sleep of unknown length is how a campaign stalls silently for days. A
+    refresh time that has already passed still returns the margin rather than
+    zero, so a stale payload cannot turn the wait into a spin.
+    """
+    if not quota:
+        return None
+    raw = str(quota.get("refresh_at") or "").strip()
+    if not raw:
+        return None
+    try:
+        refresh = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+    if refresh.tzinfo is None:
+        # The API reports a naive UTC timestamp, e.g. 2026-09-26T00:00:00.
+        refresh = refresh.replace(tzinfo=timezone.utc)
+    current = datetime.fromtimestamp(
+        time.time() if now is None else now, tz=timezone.utc
+    )
+    return max((refresh - current).total_seconds(), 0.0) + QUOTA_REFRESH_MARGIN_SECONDS
+
+
+def wait_for_refresh(
+    quota: Mapping[str, object] | None, *, log=print, sleep=time.sleep
+) -> bool:
+    """Sleep until ``quota`` refreshes. ``False`` when it cannot be read."""
+    wait = seconds_until_refresh(quota)
+    if wait is None:
+        log(
+            "  the weekly quota's refresh time is unreadable, and sleeping for an "
+            "unknown length is how a campaign stalls silently; re-run after the "
+            "week rolls over instead",
+            flush=True,
+        )
+        return False
+    log(
+        f"  the week refreshes at {quota.get('refresh_at')} ({wait / 3600:.1f} h "
+        "away); waiting rather than billing a partial session",
+        flush=True,
+    )
+    sleep(wait)
+    return True
+
+
 def _wait_for_terminal(kernel: str, poll: float, timeout: float) -> str:
     """Poll the kernel until a terminal status, then return it."""
     deadline = time.monotonic() + timeout
@@ -957,19 +1017,43 @@ def main(argv: list[str] | None = None) -> int:
                         help="seconds to wait for one session (default 13 h)")
     parser.add_argument("--max-sessions", type=int, default=8,
                         help="push at most this many sessions (default 8)")
+    parser.add_argument(
+        "--wait-for-quota",
+        action="store_true",
+        help="when the week is short, sleep to the quota's refresh and re-run "
+             "instead of exiting 3 (the campaign needs ~55 GPU-h against a "
+             "30 GPU-h week, so this is the difference between a two-week run "
+             "and one that waits for an operator every week)",
+    )
+    parser.add_argument("--max-waits", type=int, default=2,
+                        help="refreshes to wait through before giving up (default 2)")
     args = parser.parse_args(argv)
 
     if args.queue in ONE_SHOT_MODES:
         return run_once(args.queue, poll=args.poll, timeout=args.timeout)
     # Deliberately *not* set in this process's environment: the kernel runs on
     # Kaggle and would never see it. ``drive`` pins it into the staged body.
-    return drive(
-        args.queue,
-        hours=args.hours,
-        poll=args.poll,
-        timeout=args.timeout,
-        max_sessions=args.max_sessions,
-    )
+    def attempt() -> int:
+        return drive(
+            args.queue,
+            hours=args.hours,
+            poll=args.poll,
+            timeout=args.timeout,
+            max_sessions=args.max_sessions,
+        )
+
+    if not args.wait_for_quota:
+        return attempt()
+    # One wait per weekly refresh. ``drive`` reads the quota before every push,
+    # so this loop only decides whether to sleep between attempts - the
+    # scheduling rules stay where they already are.
+    for waited in range(args.max_waits + 1):
+        code = attempt()
+        if code != EXIT_QUOTA_INSUFFICIENT or waited == args.max_waits:
+            return code
+        if not wait_for_refresh(active_quota()):
+            return code
+    return EXIT_QUOTA_INSUFFICIENT
 
 
 if __name__ == "__main__":
