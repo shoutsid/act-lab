@@ -12,6 +12,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import select
+import subprocess
 import sys
 from pathlib import Path
 
@@ -93,6 +95,58 @@ def test_bootstrap_makes_the_copied_tree_importable_in_process(
     import actlab_mount_probe
 
     assert actlab_mount_probe.VALUE == "from the mount"
+
+
+def _first_line_within(env: dict[str, str], argv: list[str], *, timeout: float) -> str | None:
+    """A child's first piped stdout line, or None if it never arrives in time."""
+    process = subprocess.Popen(
+        argv, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+    )
+    try:
+        ready, _, _ = select.select([process.stdout], [], [], timeout)
+        if not ready:
+            return None
+        return (process.stdout.readline() or "").strip() or None
+    finally:
+        process.kill()
+        process.wait(timeout=10)
+
+
+def test_the_bootstrap_env_unbuffers_the_session_child(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A piped child block-buffers, so the session's own progress never reaches anyone.
+
+    Measured 2026-09-21: a 3.50 h session's captured log held 28 lines - the header, the
+    disk report and the benchmark, all of which the *launcher* prints itself - and nothing
+    from the child doing the work, because the runner logs through ``log=print`` and a pipe
+    is block-buffered. Streaming the child's output cannot help while the child holds it.
+
+    Demonstrated rather than asserted: one child is read through this bootstrap's env and
+    then through the same env without the flag, which is the failure it prevents.
+    """
+    source = _make_repo(tmp_path / "input", "sid123123234/act-lab-code")
+    monkeypatch.setattr(kaggle_t4, "find_code_root", lambda *a, **k: source)
+    monkeypatch.setattr(kaggle_t4, "WORK_ROOT", tmp_path / "work")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "path", list(sys.path))
+
+    _, env = kaggle_t4._bootstrap()
+    assert env["PYTHONUNBUFFERED"] == "1"
+
+    child = [
+        sys.executable,
+        "-c",
+        "import time; print('seed 15004: starting pair'); time.sleep(30)",
+    ]
+    assert (
+        _first_line_within(env, child, timeout=10.0) == "seed 15004: starting pair"
+    )
+
+    buffered = {key: value for key, value in env.items() if key != "PYTHONUNBUFFERED"}
+    assert _first_line_within(buffered, child, timeout=2.0) is None, (
+        "the contrast failed: this child was not buffering, so the flag may be untested"
+    )
 
 
 def test_bootstrap_fails_closed_without_a_code_root(

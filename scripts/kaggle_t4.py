@@ -560,7 +560,18 @@ def _bootstrap() -> tuple[Path, dict[str, str]]:
     # the verdict would have failed.
     if src not in sys.path:
         sys.path.insert(0, src)
-    return WORK_ROOT, dict(os.environ, PYTHONPATH=src)
+    # ``PYTHONUNBUFFERED`` for every step this launcher runs, and for their children.
+    # A child's stdout is a *pipe* here, so Python block-buffers it (8 KiB) and the
+    # session's own progress lines sit in that buffer: the runner logs through
+    # ``log=print``, which does not flush. Measured 2026-09-21, a 3.50 h session's
+    # captured log held 28 lines - the header, the disk report and the benchmark, all of
+    # which the launcher prints itself - and **nothing** from the child that was doing the
+    # work, because its first, second and every subsequent line were still buffered when
+    # the platform's stream gave in at 4.1 min. Streaming the child's output is not enough
+    # while the child holds it, so the flag is set here rather than trusted to reach the
+    # child from wherever it happened to be set last (the archzoo sweeps passed it
+    # explicitly, one mode at a time, which is how the session came to be missed).
+    return WORK_ROOT, dict(os.environ, PYTHONPATH=src, PYTHONUNBUFFERED="1")
 
 
 def _keep(path: Path) -> None:
