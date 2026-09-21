@@ -152,3 +152,45 @@ def test_the_report_still_has_the_sections_the_header_promises() -> None:
 def test_the_documents_the_header_points_at_exist(name: str) -> None:
     assert (ROOT / "docs" / name).is_file()
     assert (ROOT / "artifacts" / "ARCH_SEARCH_FINDINGS.md").is_file()
+
+
+def test_the_deliverables_checklist_is_not_stale_about_the_handoff() -> None:
+    """Items 3-5 said TODO/PARTIAL while the machinery shipped.
+
+    The checklist claimed "no published artifacts" and "Adaptive checkpoints:
+    TODO" while `src/act/training/v0_handoff.py` was already the declared path's
+    publish-and-restore contract. Pin the two ends: the rows must claim DONE for
+    the declared path, and the code the claim names must exist.
+    """
+    import sys
+
+    sys.path.insert(0, str(ROOT / "src"))
+    from act.training import v0_handoff  # noqa: E402
+
+    assert v0_handoff.HANDOFF_DATASET == "act-checkpoints/v0-5-1"
+    for name in ("publish_seed", "restore_seed", "published_seed_status", "seed_directory"):
+        assert callable(getattr(v0_handoff, name)), name
+
+    checklist = "\n".join(
+        line for line in _text().splitlines() if re.match(r"^\| \d+\. ", line)
+    )
+    for item in ("| 3. Dataset manifests |", "| 4. Baseline checkpoints |", "| 5. Adaptive checkpoints |"):
+        row = next((line for line in checklist.splitlines() if line.startswith(item)), None)
+        assert row is not None, f"the checklist no longer has a row for {item}"
+        assert "DONE for the declared" in row or "DONE as for item 4" in row, row
+
+
+def test_the_real_text_series_the_checklist_claims_exists() -> None:
+    """Item 9 points at the architecture track's own artifacts; keep it honest."""
+    series = sorted((ROOT / "artifacts").glob("arch-zoo-100m-v*"))
+    assert series, "the real-text series the checklist names is absent"
+    assert (ROOT / "artifacts" / "ARCH_SEARCH_FINDINGS.md").is_file()
+    row = next(
+        (
+            line
+            for line in _text().splitlines()
+            if line.startswith("| 9. Benchmark results |")
+        ),
+        None,
+    )
+    assert row is not None and "arch-zoo-100m-v1" in row, row

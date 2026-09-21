@@ -7404,13 +7404,13 @@ the run; the running revision is recorded in the summary's `code_revision`.
 |---|---|
 | 1. Source repository | DONE (this repository) |
 | 2. Reproducible Kaggle notebooks | DONE for the plan section 39 set (`00_environment` + section 104's `01`-`03` and `04`-`09` per section 39's role list; deterministic builder `scripts/build_notebooks.py`, byte-identical re-runs, all ten notebooks' cells executed and verified) |
-| 3. Dataset manifests | PARTIAL (synthetic-tokenizer manifests only) |
-| 4. Baseline checkpoints | PARTIAL (local checkpoint format; no published artifacts) |
-| 5. Adaptive checkpoints | TODO |
+| 3. Dataset manifests | DONE for the declared path (the manifest contract - `act.ops.publish_artifacts` / `restore_artifacts` - is what the V0 checkpoint handoff publishes through: staged under a temporary directory, manifest checksummed and written **last**, then the seed directory swapped in, so a partial publish is never mistaken for a complete one; `src/act/training/v0_handoff.py`); the synthetic-tokenizer manifests remain as before |
+| 4. Baseline checkpoints | DONE for the declared block's published seeds: `act-checkpoints/v0-5-1/seed-NNNN/<arm>/` holds each arm's latest event checkpoint, its metrics JSON and the seed summary, and the non-adaptive arms are published through the same path as the adaptive one |
+| 5. Adaptive checkpoints | DONE as for item 4 - the campaign's exit publish is what makes the session boundary survivable, and it has published 4 of the declared block's 12 seeds at this writing (section 5.2 for the handoff rule, `docs/T4_RUNBOOK.md` for the campaign) |
 | 6. Architecture genomes | DONE for the gate model (serialization, hashing, fossils) |
 | 7. Topology evolution logs | PARTIAL (mutation histories and fossils in records) |
 | 8. Experiment registry | DONE for the gate (append-only JSONL + study summaries) |
-| 9. Benchmark results | PARTIAL (this report's factor map; no real-corpus benchmarks) |
+| 9. Benchmark results | PARTIAL - this report's factor map, **plus the architecture-search track's real-text series** (`artifacts/arch-zoo-100m-v1` through `-v4-head-paired`, ~100M tokens, 1,200 steps at its registered horizon, with its own `ARCH_SEARCH_FINDINGS.md`), cross-read against this track in section 10.4; no real-corpus benchmark on *this* track |
 | 10. Fresh-initialization results | DONE for the toy-fidelity mechanism (sections 5.16-5.18.2: genome extraction, fresh/rewound/donor transport with 384/384 exact transport validity; the topology has standalone value under a *matched* initialization - own 293/384, donor 234/384 - and gains extra from its own initialization, 237/384 on the differenced contrast); the section-52 scaling version (300M -> 1B) is TODO and is triggered |
 | 11. Qwen architecture analysis | TODO (deferred) |
 | 12. Paper-quality figures | DONE for the factor map, in **two sets** (section 8): the registered coupled-path figures, and the corrected decoupled set (`--set decoupled`) plotted from summaries emitted by `scripts/factor_map_recheck.py --summaries` and re-checked by `check_summary` at plot time. Both regenerate byte-identically. Both sets carry all nine rows (section 9.12 recovered study 1's predated config field), and figure 4's counterfactual analysis is re-run separately by `scripts/probe_validity_analysis.py`. |
