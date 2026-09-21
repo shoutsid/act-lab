@@ -194,8 +194,14 @@ def test_the_committed_summary_regenerates(profile: str) -> None:
     """
     name = Path(study.PROFILES[profile]["summary"]).name
     path = summaries_dir() / name
-    if not path.exists() and study.PROFILES[profile]["run_revision"] is None:
-        pytest.skip(f"{profile} is registered but has not run yet")
+    if not path.exists():
+        # Two legitimate intermediate states, and the frozen one lasts only as
+        # long as the shards do: the freeze commit sets the revision *before*
+        # the run, so a frozen profile without a summary is the arm mid-flight.
+        # Nothing is lost by skipping here - the loud check that a frozen
+        # profile's summary eventually exists is ``_committed``, which the
+        # divisor and label tests call and which fails rather than skipping.
+        pytest.skip(f"{profile} is registered but its shards have not run yet")
     fresh = study.summarize(profile, study.ALPHA)
     committed = json.loads(path.read_text())
     if name not in PSTDEV_VINTAGE:

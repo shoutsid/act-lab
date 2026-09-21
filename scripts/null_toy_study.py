@@ -299,7 +299,7 @@ PROFILES: dict[str, dict] = {
     "depth3-long": {
         "seeds": tuple(range(90000, 90576)),
         "overrides": {"depth": 3, "steps": 192, "mutation_interval": 48},
-        "run_revision": None,
+        "run_revision": "64046da",
         "report_section": "5.54",
         "per_cell_primary": True,
         "bonferroni_divisor": 2.0,
