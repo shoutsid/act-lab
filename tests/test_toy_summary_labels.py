@@ -53,7 +53,7 @@ from act.evolution.study import _gate_min_wins  # noqa: E402
 LEGACY_VOCABULARY_SECTIONS = {"5.9", "5.10", "5.12", "5.15"}
 # The two 5.50 cells are the family's only three-primary arm (two per-cell bars
 # plus the rank-sum between cells), so they are read at alpha/3.
-THREE_PRIMARY_SECTIONS = {"5.50", "5.60"}
+THREE_PRIMARY_SECTIONS = {"5.50", "5.60", "5.61"}
 # The six summaries written by the earlier accumulation, named so that the
 # enumeration is a decision rather than a discovered tolerance.
 PSTDEV_VINTAGE = {
@@ -114,7 +114,7 @@ def test_every_profile_declares_its_bonferroni_divisor() -> None:
     """
     # A tripwire, not a contract: if a new arm is added to the table and this
     # test has not been revisited, the count here is what says so.
-    assert len(study.PROFILES) == 24
+    assert len(study.PROFILES) == 26
     for profile, spec in study.PROFILES.items():
         assert "bonferroni_divisor" in spec, f"{profile} declares no divisor"
         declared = float(spec["bonferroni_divisor"])

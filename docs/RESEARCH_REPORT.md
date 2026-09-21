@@ -4,8 +4,9 @@ Status: the narrative report for the whole program to date - the factor map (sec
 the pre-registered study series (section 5, 91 subsections), the substrate audit (section 9) and
 the synthesis (section 10). **Updated: 2026-09-21** - sections 5.48-5.59 close the covariate
 programme (parameter count, layer width, expert count and total compute) and then measure the
-depth axis itself, out to six rungs above its onset, 5.60 bisects the one window that closure
-left open (the width axis's gate between 2.87x and 11.15x), and section 10 is re-read against them. Gate 4 is declared and running: 4 of
+depth axis itself, out to six rungs above its onset, 5.60 and 5.61 bisect the one window
+that closure left open (the width axis's gate between 2.87x and 11.15x) to 1.97x and then 1.41x, and
+section 10 is re-read against them. Gate 4 is declared and running: 4 of
 its 12 declared seeds are published **at this writing**, on the corrected 7-hour session window
 (section 5.2 and `docs/T4_RUNBOOK.md`).
 
@@ -38,7 +39,7 @@ taking first - 9 is the audit that changed the interpretation, and 10 is the cur
 | **5.21-5.34** | The mid-training penalty and the prune-target chain: the penalty's arm-genericity (§5.22), optimizer history against the architecture change (§5.23), the discarded routing head (§5.24), prune against grow (§5.25), the freshly drawn expert (§5.26), cloning's two effects (§5.27-§5.28), the discovery path (§5.29-§5.30), and the powered prune-target studies (§5.31-§5.34). |
 | **5.35-5.40** | The declared path: defects found by reading rather than by a study (§5.35), dev-scale evidence on the real token stream (§5.36), the measured liveness contract (§5.37), whether the rebuild treatment transfers (§5.38), churn harm as a property of churn (§5.39), and the deployed configuration against the do-nothing arm (§5.40). |
 | **5.41-5.47** | Audit-derived corrections and the Gate 4 registration: the tolerance band's scale (§5.41), the clause a partial run made unfireable (§5.42), the verdict-path rehearsal (§5.43), the one-directional quality clause (§5.44), the suite's cost (§5.45), the launch path's missing rebuild treatment (§5.46), and the amendment that registers it (§5.47). |
-| **5.48-5.60** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), and the width bisection that halves the gate window the width programme left open (§5.60). |
+| **5.48-5.61** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), and the two width bisections that halve the gate window the width programme left open, and then test where the edge's maximum is reached (§5.60-§5.61). |
 | **6-10** | Reproducibility (§6), the deliverables checklist (§7), figures (§8), the substrate audit (§9), and the synthesis (§10) - which reads this track against the architecture-search track. |
 
 Reproducibility at notebook fidelity (plan sections 39 and 104) now ships with
@@ -8071,6 +8072,82 @@ transcribed.
 trainability limit above; the bisection is cross-column descriptive in this family's convention while
 all three primaries are tests on their own cells; and the *mechanism* reading above is descriptive,
 not a pre-registered test - the registered prediction was the one that missed.
+
+### 5.61 Pre-registration: the second bisection, where the edge's maximum is reached (REGISTERED; summaries `width-d3-dose4-576.json`, `width-d4-dose4-576.json`)
+
+5.60 left two things: a narrower window, and a mechanism. The window is (2.87x, 5.66x) -
+the gate's width price at the below-onset depth lies between 88,032 and 173,672 parameters, a 1.97x
+interval. The mechanism is a **staging**: at 5.66x the gate is open while the pool term is still
+positive, and what crosses it there is the controller's own edge at its ladder maximum
+(`-0.359770`). One dose cannot say whether that maximum is approached gradually or reached
+abruptly - the edge's committed readings below the onset are `-0.102151` (0.76x), `-0.130727` (1.02x),
+`-0.243801` (2.87x), `-0.359770` (5.66x), so the rise from 2.87x to 5.66x is the largest step in the
+series and nothing between them is measured.
+
+This arm sits at the new window's **geometric midpoint**: width 57, 123,006 parameters at depth 3
+(4.01x) and 163,134 at depth 4 (5.32x). It halves the price window again, and it is the first dose
+placed specifically to test the staging rather than the bar:
+
+| cell | depth | width | total params | x the above-onset cell | measured |
+|---|---|---|---|---|---|
+| `width-d3-dose` (5.49) | 3 | 48 | 88,032 | **2.87x** | `+0.061466` - no gate |
+| **`width-d3-dose4`** | **3** | **57** | **123,006** | **4.01x** | *this arm* |
+| `width-d3-dose3` (5.60) | 3 | 68 | 173,672 | **5.66x** | `-0.127992` - **gate** |
+| `width-d4-dose` (5.49) | 4 | 48 | 116,640 | **3.80x** | `-0.209673` - gate |
+| **`width-d4-dose4`** | **4** | **57** | **163,134** | **5.32x** | *this arm* |
+| `width-d4-dose3` (5.60) | 4 | 68 | 230,520 | **7.52x** | `-0.725298` - gate |
+
+**Design.** Two fresh cells, one gene each - `hidden_size` 48 -> 57 and 68 -> 57 respectively - with
+every other registered knob unchanged. Each cell is a *step back* toward its own column's ladder:
+the depth-3 cell sits between 5.49's and 5.60's doses, the depth-4 cell between 5.49's and 5.60's.
+
+**Primaries.** Three at `alpha/3`, bar **315/576**, unchanged from 5.60 (the same three tests).
+
+1. **P1 (the below-onset cell creates value):** the gate's own reading.
+2. **P2 (the above-onset cell creates value):** the same conjunction one depth up.
+3. **P3 (the dose keeps paying above the gate):** one-sided rank-sum against the 3.80x rung.
+
+**The declared brackets, made before the run and reported either way.**
+
+- **the depth-3 controller's edge lies strictly between its 2.87x and 5.66x readings**
+  (`-0.359770 < edge < -0.243801`) - the edge is still rising at this dose and has *not* reached its
+  maximum, which is the staging read as a gradient rather than a step; and
+- **the depth-3 pool term is still positive and below its 2.87x peak**
+  (`0 < pool < +0.305267`) - the decline 5.60 found has already begun here, so the peak at 2.87x is a
+  real turning point and not an artefact of the two cells that bracketed it.
+
+Linked to the first, and declared in the same breath: **the gate is still shut at 4.01x** (P1 is
+declared to fail), which is what would place the width price in (123,006, 173,672] parameters -
+a 1.41x window where 5.49/5.50 left 3.9x.
+
+**Pre-registered interpretation (fixed before running).**
+
+- **not P1, P2, P3:** **the window narrows to (123,006, 173,672]** - the gate crosses between 4.01x
+  and 5.66x, and the ratio to the depth axis's own bracket (23,280-30,672) rises to 4.0x-7.5x.
+- **P1, P2, P3:** **the window narrows to (88,032, 123,006]** - and the declared shut-gate prediction
+  missed, which also places the crossing *below* the edge's ladder maximum, i.e. the staging boundary
+  is further down than 5.60's single dose suggested.
+- **P1, not P2:** width opens the gate below the onset and destroys value above it at this dose.
+- **not P1, not P2:** width is harmful above the onset and useless below at this dose.
+- **not P3:** the above-gate dose stops paying between 3.80x and 5.32x, bounding 5.50's "capacity
+  scales above the gate" to the doses under 3.80x.
+
+**Descriptive secondaries.** The full width ladders at both depths (value, the controller's edge and
+the pool term), the bisection arithmetic, and both declared brackets above - read together with 5.60's
+staging, so the mechanism is either confirmed as a gradient or located as a step.
+
+**Scope.** The same fixed-48-step budget limit 5.50 stated and 5.60 re-measured: at this budget the
+wide substrate is a worse model in absolute loss, and the value the gate reports is escape from that
+collapse. The bisection is cross-column descriptive in this family's convention while all three
+primaries are tests on their own cells; both brackets are descriptive, and the registered prediction
+here is the gate's own.
+
+**Cost.** Measured on each cell's own config before registering: ~1.58 s/seed at depth 3 and ~1.25
+s/seed at depth 4, so 576 seeds each is ~15.1 and ~12.0 min of single-thread CPU across 40 shards -
+no GPU quota, run while the Gate 4 campaign trains. The blocks are 98384-98959 and 99384-99959, the
+first free 576-windows at or after those points, checked by a test against every other profile *and*
+every committed summary's recorded seeds. As in 5.60 the cost probe ran one seed of each cell for
+timing only, and both brackets are derived from the committed neighbours rather than from it.
 
 ## 6. Reproducibility
 

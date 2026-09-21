@@ -389,6 +389,32 @@ PROFILES: dict[str, dict] = {
         "bonferroni_divisor": 3.0,
         "summary": "artifacts/study-summaries/width-d4-dose3-576.json",
     },
+    # Section 5.61: the *second* bisection. 5.60 halved the width axis's gate
+    # window from 3.9x to (2.87x, 5.66x) = 88,032-173,672 parameters, and - more
+    # usefully - found the crossing coincides with the controller's edge reaching
+    # its ladder maximum while the pool term is still positive. This dose sits at
+    # the new window's own geometric midpoint (width 57: 123,006 at depth 3 =
+    # 4.01x; 163,134 at depth 4 = 5.32x), so it halves the window again and asks
+    # whether the edge's rise is still in progress there or already at its peak.
+    # See `dose4_verdict` for the branches and the two declared brackets.
+    "width-d3-dose4": {
+        "seeds": tuple(range(98384, 98960)),
+        "overrides": {"depth": 3, "hidden_size": 57},
+        "run_revision": None,
+        "report_section": "5.61",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 3.0,
+        "summary": "artifacts/study-summaries/width-d3-dose4-576.json",
+    },
+    "width-d4-dose4": {
+        "seeds": tuple(range(99384, 99960)),
+        "overrides": {"depth": 4, "hidden_size": 57},
+        "run_revision": None,
+        "report_section": "5.61",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 3.0,
+        "summary": "artifacts/study-summaries/width-d4-dose4-576.json",
+    },
 }
 REGISTERED = dict(
     hidden_size=24,
@@ -505,6 +531,26 @@ DOSE3_ABOVE_REFERENCE = "width-d4-dose"  # 3.80x: open, value -0.2097
 # about the mechanism rather than about the outcome, and it is why the branch where
 # the gate stays shut still says something if it obtains.
 DOSE3_POOL_GROWS = True
+# The second bisection (section 5.61): the same construction one dose lower, at
+# the *new* window's geometric midpoint. 5.60 left the gate's width price in
+# (88,032, 173,672] parameters and - the sharper half - left the crossing's
+# mechanism as a staging: at 5.66x the controller's edge is at its ladder maximum
+# while the pool term is still positive. This dose is the rung below it, so it can
+# say whether that maximum is approached gradually (the edge still rising at
+# 4.01x) or reached abruptly, and it halves the price window either way.
+DOSE4_PROFILES = ("width-d3-dose4", "width-d4-dose4")
+DOSE4_BELOW = DOSE4_PROFILES[0]
+DOSE4_ABOVE = DOSE4_PROFILES[1]
+# The below-onset neighbours the two declared brackets are read against: the two
+# committed 576-seed rungs that sandwich this dose on the depth-3 width ladder.
+DOSE4_BELOW_LOWER = "width-d3-dose"  # 2.87x: edge -0.243801, pool +0.305267
+DOSE4_BELOW_UPPER = DOSE3_BELOW  # 5.66x: edge -0.359770, pool +0.231778
+DOSE4_ABOVE_REFERENCE = DOSE3_ABOVE_REFERENCE  # 3.80x, the nearest lower dose above the onset
+# The declared brackets, fixed before the run: the depth-3 edge is *between* its
+# two neighbours' readings (still rising, maximum not yet reached) and the pool
+# term is still positive and below its 2.87x peak (the decline has begun).
+DOSE4_EDGE_BRACKET = (-0.359770, -0.243801)
+DOSE4_POOL_BRACKET = (0.0, 0.305267)
 # The model's forecast, declared before the run. The gradient band is the
 # *measured* range of the three existing increments (0.0382..0.0422, i.e. about
 # 0.040) widened by a flat 0.005 on each side, so the forecast is the model's own
@@ -1369,6 +1415,160 @@ def dose3_verdict(shards: int, alpha: float) -> int:
         ("depth 4  width 28 (1.34x)", "width-d4-equal"),
         ("depth 4  width 48 (3.80x)", DOSE3_ABOVE_REFERENCE),
         ("depth 4  width 68 (7.52x, this arm)", DOSE3_ABOVE),
+        ("depth 4  width 96 (14.82x)", "width-d4-dose2"),
+    ):
+        try:
+            value = _cell_deltas(profile, shards, "adaptive", "null")
+            edge = _cell_deltas(profile, shards, "adaptive", "random")
+            pool = _cell_deltas(profile, shards, "random", "null")
+        except Exception:  # a committed 384-seed cell read at this arm's n
+            continue
+        print(
+            f"  {label:<34} value {sum(value) / len(value):+.6f}  "
+            f"edge {sum(edge) / len(edge):+.6f}  pool {sum(pool) / len(pool):+.6f}"
+        )
+    return 0
+
+
+def dose4_verdict(shards: int, alpha: float) -> int:
+    """Section 5.61's primaries, brackets and branches: the second bisection.
+
+    5.60 halved the width axis's gate window to (88,032, 173,672] parameters and
+    found that the crossing coincides with the controller's edge reaching its
+    ladder maximum at 5.66x, while the pool term is still positive there. This
+    dose sits at the new window's geometric midpoint - width 57: 123,006 at depth
+    3 (4.01x), 163,134 at depth 4 (5.32x) - so it halves the window again and asks
+    a question the previous dose could not: is the edge's maximum approached
+    gradually?
+
+    Three primaries at ``alpha/3`` (the 5.60 level, same three tests):
+
+    - P1 (the below-onset cell creates value): the gate's own reading.
+    - P2 (the above-onset cell creates value): the same, one depth up.
+    - P3 (the dose keeps paying above the gate): one-sided rank-sum against the
+      3.80x rung.
+
+    And two **declared brackets**, fixed before the run and reported either way:
+
+    - the depth-3 controller's edge lies strictly *between* its 2.87x and 5.66x
+      readings (`DOSE4_EDGE_BRACKET`), i.e. still rising at this dose and short of
+      the maximum - 5.60's staging read as a gradient rather than a step; and
+    - the depth-3 pool term is still **positive** and **below its 2.87x peak**
+      (`DOSE4_POOL_BRACKET`), i.e. the decline 5.60 found has already begun here.
+
+    Linked to the first of those, and declared in the same breath: the gate is
+    **still shut** at 4.01x (P1 fails), which is what would put the width price in
+    (123,006, 173,672] parameters - a 1.41x window where 5.49/5.50 left 3.9x.
+
+    Branches, fixed before the run (P1, P2, P3 as above):
+
+    - not P1, P2, P3: **the window narrows to (123,006, 173,672]** - the gate
+      crosses between 4.01x and 5.66x, and the price ratio to the depth axis's own
+      bracket rises to 4.0x-7.5x.
+    - P1, P2, P3: **the window narrows to (88,032, 123,006]** - and the declared
+      shut-gate prediction missed, which also puts the crossing *below* the edge's
+      ladder maximum.
+    - P1, not P2: width opens the gate below the onset and destroys value above it
+      again at this dose.
+    - not P1, not P2: width is harmful above the onset and useless below at this
+      dose.
+    - not P3: the above-gate dose stops paying between 3.80x and 5.32x.
+    """
+    level = alpha / 3
+    below = _cell_stats(DOSE4_BELOW, shards, level)
+    above = _cell_stats(DOSE4_ABOVE, shards, level)
+    p1 = bool(below["creates_value"])
+    p2 = bool(above["creates_value"])
+    new = _cell_deltas(DOSE4_ABOVE, shards, "adaptive", "null")
+    reference = _cell_deltas(DOSE4_ABOVE_REFERENCE, shards, "adaptive", "null")
+    u, p3 = _rank_sum_one_sided(new, reference)
+    p3_passes = p3 <= level
+    print(
+        f"\nP3 (the dose keeps paying above the gate): rank-sum {DOSE4_ABOVE} vs "
+        f"{DOSE4_ABOVE_REFERENCE} on adaptive-vs-null: U {u:.1f}, one-sided "
+        f"p {p3:.2e} (bar alpha/3 = {level:.4f}; means "
+        f"{sum(new) / len(new):+.6f} vs {sum(reference) / len(reference):+.6f})"
+        f" -> wider is better: {p3_passes}"
+    )
+    branches = {
+        (False, True, True): (
+            "P1 fails, P2+P3 pass: the window narrows to (123,006, 173,672] - the "
+            "gate crosses between 4.01x and 5.66x and costs 4.0x-7.5x the depth "
+            "axis's bracket"
+        ),
+        (True, True, True): (
+            "all three pass: the window narrows to (88,032, 123,006] - capacity "
+            "buys the gate below this dose, so the crossing sits under the "
+            "edge's ladder maximum"
+        ),
+        (True, False, True): (
+            "P1+P3 pass, P2 fails: width opens the gate below the onset and "
+            "destroys value above it at this dose"
+        ),
+        (False, False, True): (
+            "P2 fails: width is harmful above the onset and useless below at this "
+            "dose"
+        ),
+        (False, True, False): (
+            "P3 fails: the gate stays shut at 4.01x while the above-gate dose "
+            "stops paying between 3.80x and 5.32x"
+        ),
+        (True, True, False): (
+            "P3 fails with P1 passing: the gate opens below the onset but the "
+            "above-gate dose ladder has flattened"
+        ),
+        (True, False, False): (
+            "P1 only: the below-onset dose buys the gate while both above-gate "
+            "readings fail"
+        ),
+        (False, False, False): (
+            "all three fail: the second bisection is inert at both depths"
+        ),
+    }
+    print(f"BRANCH: {branches[(p1, p2, p3_passes)]}")
+
+    # The two declared brackets, evaluated as descriptive secondaries.
+    for term, (left, right), bracket, label in (
+        ("edge", ("adaptive", "random"), DOSE4_EDGE_BRACKET, "controller's own edge"),
+        ("pool", ("random", "null"), DOSE4_POOL_BRACKET, "pool term"),
+    ):
+        measured = _cell_deltas(DOSE4_BELOW, shards, left, right)
+        value = sum(measured) / len(measured)
+        low, high = bracket
+        inside = low <= value <= high
+        print(
+            f"\nPREDICTION (declared before the run, descriptive): the depth-3 "
+            f"{label} is in [{low:+.6f}, {high:+.6f}] -> measured {value:+.6f} "
+            f"-> inside: {inside}"
+        )
+        if not inside:
+            print(
+                "PREDICTION miss names the regime: the "
+                f"{label} is "
+                + (
+                    "below its lower neighbour's reading - the maximum was "
+                    "already reached below this dose"
+                    if value < low
+                    else "above its upper neighbour's reading - the rise continued "
+                    "past the bracket"
+                )
+            )
+    if p1:
+        print("PREDICTION missed: the gate is open at this dose, so the width price is below it")
+
+    # Descriptive: the width ladder at both depths, which the window is read off.
+    for label, profile in (
+        ("depth 3  width 24 (0.76x)", "depth3"),
+        ("depth 3  width 28 (1.02x)", "width-d3-equal"),
+        ("depth 3  width 48 (2.87x)", DOSE4_BELOW_LOWER),
+        ("depth 3  width 57 (4.01x, this arm)", DOSE4_BELOW),
+        ("depth 3  width 68 (5.66x)", DOSE4_BELOW_UPPER),
+        ("depth 3  width 96 (11.15x)", "width-d3-dose2"),
+        ("depth 4  width 24 (1.00x)", DEPTH_DOSE_REFERENCE),
+        ("depth 4  width 28 (1.34x)", "width-d4-equal"),
+        ("depth 4  width 48 (3.80x)", DOSE4_ABOVE_REFERENCE),
+        ("depth 4  width 57 (5.32x, this arm)", DOSE4_ABOVE),
+        ("depth 4  width 68 (7.52x)", DOSE3_ABOVE),
         ("depth 4  width 96 (14.82x)", "width-d4-dose2"),
     ):
         try:
@@ -2277,6 +2477,12 @@ def main() -> int:
     )
     dose3_p.add_argument("--shards", type=int, required=True)
     dose3_p.add_argument("--alpha", type=float, default=ALPHA)
+    dose4_p = sub.add_parser(
+        "dose4-verdict",
+        help="section 5.61: the second bisection, and where the edge's maximum is reached",
+    )
+    dose4_p.add_argument("--shards", type=int, required=True)
+    dose4_p.add_argument("--alpha", type=float, default=ALPHA)
     sum_p = sub.add_parser("summary", help="write the committed study summary")
     sum_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
     sum_p.add_argument("--alpha", type=float, default=ALPHA)
@@ -2323,6 +2529,8 @@ def main() -> int:
         return depth9_verdict(args.shards, args.alpha)
     if args.command == "dose3-verdict":
         return dose3_verdict(args.shards, args.alpha)
+    if args.command == "dose4-verdict":
+        return dose4_verdict(args.shards, args.alpha)
     if args.command == "depth8-verdict":
         return depth8_verdict(args.shards, args.alpha)
     if args.command == "depth7-verdict":
