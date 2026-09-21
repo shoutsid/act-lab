@@ -781,12 +781,17 @@ def mode_restoreprobe() -> None:
     """
     import time
 
-    from act.ops.kaggle_remote import default_client, restore_latest
-    from act.training.session_plan import working_dir_headroom_gb
-
     queue = QUEUES["session"]
     _log("=== ACT lab: startup-restore probe (CPU, no quota) ===")
     work, env = _bootstrap()
+    # Imported *after* the bootstrap, which is what puts the mounted ``src/`` on
+    # sys.path. This process imports act directly instead of only configuring the
+    # subprocesses, so an import above that line dies with ModuleNotFoundError -
+    # the failure mode `_bootstrap` records, measured 2026-09-15 on the dtype
+    # probe and again on this probe's first push.
+    from act.ops.kaggle_remote import default_client, restore_latest
+    from act.training.session_plan import working_dir_headroom_gb
+
     report_resources()
     root = Path(queue.dataset_root)
     _log(f"dataset root: {root}")

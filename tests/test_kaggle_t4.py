@@ -10,6 +10,7 @@ runbook says, since a drifted flag is a protocol change, not a typo.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -298,6 +299,30 @@ def test_selfcheck_metadata_wants_a_gpu_and_is_pushed() -> None:
     assert metadata["id"] == "sid123123234/act-t4-selfcheck"
     assert metadata["enable_gpu"] is True
     assert "selfcheck" in kaggle_t4.PUSH_MODES
+
+
+def test_a_mode_that_imports_act_in_this_process_bootstraps_first() -> None:
+    """`import act` above `_bootstrap()` dies, because bootstrap sets sys.path.
+
+    The kernel body only configures the *subprocess* environment at bootstrap;
+    a mode that imports the package directly in the parent process must
+    therefore bootstrap first. Measured twice - 2026-09-15 on the dtype probe
+    and 2026-09-21 on the startup-restore probe's first push, which died
+    `ModuleNotFoundError: No module named 'act'` before it measured anything.
+    Checked by reading the source, because the failure only appears on Kaggle.
+    """
+    text = (ROOT / "scripts" / "kaggle_t4.py").read_text(encoding="utf-8")
+    offenders: list[str] = []
+    for match in re.finditer(r"^def (mode_\w+)", text, re.M):
+        end = text.find("\ndef ", match.start() + 1)
+        body = text[match.start() : end if end != -1 else len(text)]
+        act_import = re.search(r"^\s+(?:from act|import act)", body, re.M)
+        if act_import is None:
+            continue
+        bootstrap = body.find("_bootstrap()")
+        if bootstrap == -1 or bootstrap > act_import.start():
+            offenders.append(match.group(1))
+    assert offenders == []
 
 
 def test_restoreprobe_is_registered_cpu_only_and_pushed() -> None:
