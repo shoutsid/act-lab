@@ -340,6 +340,18 @@ PROFILES: dict[str, dict] = {
         "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/depth7-dose-576.json",
     },
+    # Section 5.58: the fifth rung. 5.57's value forecast missed by 1.5x, and one
+    # point past a flat series cannot separate an acceleration from a wobble - so
+    # this arm is registered against the fourth increment itself.
+    "depth8-dose": {
+        "seeds": tuple(range(94384, 94960)),
+        "overrides": {"depth": 8},
+        "run_revision": None,
+        "report_section": "5.58",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 2.0,
+        "summary": "artifacts/study-summaries/depth8-dose-576.json",
+    },
 }
 REGISTERED = dict(
     hidden_size=24,
@@ -420,6 +432,14 @@ DEPTH6_REFERENCE = DEPTH_DOSE_PROFILE
 # better", and a pre-registered band is what makes it falsifiable.
 DEPTH7_PROFILE = "depth7-dose"
 DEPTH7_REFERENCE = DEPTH6_PROFILE
+# The fifth rung (section 5.58). 5.57's declaration was a miss on the *value*: the
+# fourth increment came in at -0.0635 against a band of (-0.047, -0.033), 1.5x the
+# three before it. One point past a flat series cannot say whether that is an
+# acceleration or a noisy step, so this arm re-asks the same question with the
+# fourth increment as the model - which is the only way the miss becomes either
+# a finding or a wobble.
+DEPTH8_PROFILE = "depth8-dose"
+DEPTH8_REFERENCE = DEPTH7_PROFILE
 # The model's forecast, declared before the run. The gradient band is the
 # *measured* range of the three existing increments (0.0382..0.0422, i.e. about
 # 0.040) widened by a flat 0.005 on each side, so the forecast is the model's own
@@ -428,6 +448,14 @@ DEPTH7_REFERENCE = DEPTH6_PROFILE
 # model says the edge does not move and 0.020 is the upper ladder's own spread.
 DEPTH7_GRADIENT_BAND = (-0.047, -0.033)
 DEPTH7_EDGE_BAND = 0.020
+# The forecast this arm is registered against, declared before it runs: the
+# *fourth* increment (-0.0635) with the same flat 0.005 margin on each side, so
+# the band is the measurement the miss produced rather than a tolerance fitted to
+# whatever comes back. It is the acceleration reading, and the flat-0.04 reading
+# it replaces is a miss one full band away - which is the point of declaring it.
+# The edge band stays the upper ladder's own 0.020 around the depth-7 reading.
+DEPTH8_GRADIENT_BAND = (-0.069, -0.059)
+DEPTH8_EDGE_BAND = 0.020
 
 
 def run_shard(shard: int, shards: int, profile: str) -> Path:
@@ -997,6 +1025,126 @@ def long_d3_verdict(shards: int, alpha: float) -> int:
         print(
             f"  {label:<26} collapse {sum(collapse) / len(collapse):+.6f}  "
             f"value {sum(value) / len(value):+.6f}  "
+            f"edge {sum(edge) / len(edge):+.6f}  ({profile})"
+        )
+    return 0
+
+
+def depth8_verdict(shards: int, alpha: float) -> int:
+    """Section 5.58's primaries, prediction and branches: the fifth rung.
+
+    One fresh cell of the registered config with ``depth`` 7 -> 8 and nothing
+    else changed - 60,240 total / 21,840 active parameters. 5.57 asked the
+    constant-gradient model for a number and the number came back 1.5x too
+    small (``-0.063548`` against ``(-0.047, -0.033)``), so the axis is either
+    accelerating or that one step was noise, and a single point past a flat
+    series cannot tell those apart. This arm asks the same question with the
+    *fourth* increment as the model.
+
+    Two primaries at alpha/2 (bar 313/576), unchanged from the sibling rungs:
+
+    - P1 (the gate is still open): the family's per-cell conjunction.
+    - P2 (an eighth layer creates more value than a seventh): one-sided
+      rank-sum of the depth-7 cell's adaptive-vs-null deltas against this
+      cell's.
+
+    And one **pre-registered numeric prediction**, declared before the run and
+    reported as the descriptive secondary rather than dressed as a third
+    primary (cross-cell levels are descriptive in this family):
+
+    - the increment is in `DEPTH8_GRADIENT_BAND` = `(-0.069, -0.058)`, i.e. the
+      fourth increment with the same flat 0.005 margin on each side; and
+    - the controller's own edge stays within `DEPTH8_EDGE_BAND` = `0.020` of the
+      depth-7 reading (`-0.086622`), because the model says the gain is the
+      churn term and the edge does not move.
+
+    Branches, fixed before the run:
+
+    - P1 and P2: **the slope continues** - the ladder is monotone across all
+      five rungs above the onset.
+    - P1 only: **the axis saturates at depth 7** - an eighth layer keeps the
+      gate open but buys nothing more than a seventh.
+    - P2 only: an eighth layer creates more value than a seventh and still does
+      not clear the bar on its own - a fragile upper reading.
+    - neither: **the ladder is not monotone past depth 7** - an eighth layer
+      fails where a seventh passes.
+
+    The prediction is reported either way, including when it misses: two
+    forecasts read against two measurements is what turns one arm's miss into
+    a statement about the axis rather than about one cell.
+    """
+    level = alpha / 2
+    cell = _cell_stats(DEPTH8_PROFILE, shards, level)
+    p1 = bool(cell["creates_value"])
+    new = _cell_deltas(DEPTH8_PROFILE, shards, "adaptive", "null")
+    reference = _cell_deltas(DEPTH8_REFERENCE, shards, "adaptive", "null")
+    u, p2 = _rank_sum_one_sided(new, reference)
+    p2_passes = p2 <= level
+    print(
+        f"\nP2 (deeper still creates more value): rank-sum "
+        f"{DEPTH8_PROFILE} vs {DEPTH8_REFERENCE} on adaptive-vs-null: "
+        f"U {u:.1f}, one-sided p {p2:.2e} (bar alpha/2 = {level:.4f}; means "
+        f"{sum(new) / len(new):+.6f} vs {sum(reference) / len(reference):+.6f})"
+        f" -> deeper is better: {p2_passes}"
+    )
+    branches = {
+        (True, True): (
+            "P1+P2 PASS: the slope continues - the ladder is monotone across all "
+            "five rungs above the onset"
+        ),
+        (True, False): (
+            "P1 only: the axis saturates at depth 7 - an eighth layer keeps the "
+            "gate open but buys nothing more than a seventh"
+        ),
+        (False, True): (
+            "P2 only: an eighth layer creates more value than a seventh and still "
+            "does not clear the bar on its own - a fragile upper reading"
+        ),
+        (False, False): (
+            "both FAIL: the ladder is not monotone past depth 7 - an eighth layer "
+            "fails where a seventh passes"
+        ),
+    }
+    print(f"BRANCH: {branches[(p1, p2_passes)]}")
+
+    # The declared prediction, evaluated as a descriptive secondary.
+    new_value = sum(new) / len(new)
+    ref_value = sum(reference) / len(reference)
+    increment = new_value - ref_value
+    low, high = DEPTH8_GRADIENT_BAND
+    gradient_hit = low <= increment <= high
+    new_edge = sum(_cell_deltas(DEPTH8_PROFILE, shards, "adaptive", "random")) / len(new)
+    ref_edge = sum(_cell_deltas(DEPTH8_REFERENCE, shards, "adaptive", "random")) / len(
+        _cell_deltas(DEPTH8_REFERENCE, shards, "adaptive", "random")
+    )
+    edge_hit = abs(new_edge - ref_edge) <= DEPTH8_EDGE_BAND
+    print(
+        f"\nPREDICTION (declared before the run, descriptive): accelerating "
+        f"increment in [{low:+.3f}, {high:+.3f}] -> measured {increment:+.6f} "
+        f"-> hit: {gradient_hit}"
+    )
+    print(
+        f"PREDICTION: controller's edge within {DEPTH8_EDGE_BAND:.3f} of the "
+        f"depth-7 reading ({ref_edge:+.6f}) -> measured {new_edge:+.6f} "
+        f"-> hit: {edge_hit}"
+    )
+
+    # Descriptive: the ladder to depth 8.
+    for label, profile in (
+        ("depth 2 (committed)", "depth2"),
+        ("depth 3 (committed)", "depth3"),
+        ("depth 4 (committed)", DEPTH_DOSE_REFERENCE),
+        ("depth 5 (committed)", DEPTH6_REFERENCE),
+        ("depth 6 (committed)", DEPTH7_REFERENCE),
+        ("depth 7 (committed)", DEPTH8_REFERENCE),
+        ("depth 8 (this arm)", DEPTH8_PROFILE),
+    ):
+        value = _cell_deltas(profile, shards, "adaptive", "null")
+        collapse = _cell_deltas(profile, shards, "null", "random")
+        edge = _cell_deltas(profile, shards, "adaptive", "random")
+        print(
+            f"  {label:<22} value {sum(value) / len(value):+.6f}  "
+            f"collapse {sum(collapse) / len(collapse):+.6f}  "
             f"edge {sum(edge) / len(edge):+.6f}  ({profile})"
         )
     return 0
@@ -1757,6 +1905,12 @@ def main() -> int:
     )
     d7_p.add_argument("--shards", type=int, required=True)
     d7_p.add_argument("--alpha", type=float, default=ALPHA)
+    d8_p = sub.add_parser(
+        "depth8-verdict",
+        help="section 5.58: the fifth rung, against the fourth increment itself",
+    )
+    d8_p.add_argument("--shards", type=int, required=True)
+    d8_p.add_argument("--alpha", type=float, default=ALPHA)
     sum_p = sub.add_parser("summary", help="write the committed study summary")
     sum_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
     sum_p.add_argument("--alpha", type=float, default=ALPHA)
@@ -1799,6 +1953,8 @@ def main() -> int:
         return depth_dose_verdict(args.shards, args.alpha)
     if args.command == "depth6-verdict":
         return depth6_verdict(args.shards, args.alpha)
+    if args.command == "depth8-verdict":
+        return depth8_verdict(args.shards, args.alpha)
     if args.command == "depth7-verdict":
         return depth7_verdict(args.shards, args.alpha)
     return verdict(args.shards, args.profile)
