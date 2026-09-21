@@ -80,6 +80,121 @@ OUTPUT = Path(os.environ.get("TPU_PROBE_OUTPUT", "/kaggle/working/tpu-probe.json
 #: can be read against the thing it would have to beat without re-reading the runbook.
 T4_PAIR_TOKENS_PER_SECOND = 5_083.4
 
+#: The pre-registered decision rule, declared *before* the probe was pushed so the go/no-go
+#: cannot be fitted to whatever the hardware returned - the same discipline the study
+#: family applies to every arm. Two conditions, both required:
+#:
+#: 1. **Throughput.** The 8 independent seeds must run at least `PORT_THRESHOLD_MULTIPLE`
+#:    times the T4 pair aggregate. A port is only worth its cost if the TPU is not merely
+#:    comparable but decisively faster per week, since it also carries a bf16 protocol
+#:    amendment and a re-verified resume contract. At 2x, the three-queue campaign's ~2
+#:    weeks of GPU wall clock becomes ~1 week of TPU work *beside* the GPU campaign rather
+#:    than instead of it.
+#: 2. **Recompiles.** A mutation event rebuilds the model and each probed candidate is a
+#:    separate graph, so each is a recompile. The overhead is computed per core (seeds
+#:    spread across cores), against the per-core training time of the primary queue, and
+#:    must stay under `RECOMPILE_OVERHEAD_LIMIT` of it - above that the port is trading
+#:    training for compilation and the headline throughput is not the rate a
+#:    session would actually see.
+PORT_THRESHOLD_MULTIPLE = 2.0
+RECOMPILE_OVERHEAD_LIMIT = 0.10
+
+#: The declared primary queue, for the overhead arithmetic: 12 seeds x 2 arms x 24,576,000
+#: tokens, with 3 mutation events per arm and a candidate cap of 4, so each arm pays
+#: 3 + 3x4 = 15 rebuilds.
+DECLARED_SEEDS_PER_QUEUE = 12
+DECLARED_ARMS_PER_SEED = 2
+DECLARED_TOKENS_PER_ARM = 24_576_000
+MUTATION_EVENTS_PER_ARM = 3
+PROBED_CANDIDATES_PER_EVENT = 4
+REBUILDS_PER_ARM = MUTATION_EVENTS_PER_ARM * (1 + PROBED_CANDIDATES_PER_EVENT)
+
+
+def evaluate(record: dict[str, Any]) -> dict[str, Any]:
+    """Apply the pre-registered rule to a probe record, and say what it decides.
+
+    Returns the verdict, both measured quantities and both thresholds, so the report of the
+    decision is the arithmetic rather than a summary of it. A record missing either
+    measurement is `INCONCLUSIVE` - never a pass, because the fields a port depends on are
+    exactly the ones whose absence would otherwise read as "no problem found".
+    """
+    parallel = record.get("independent_seeds") or {}
+    aggregate = parallel.get("aggregate_tokens_per_second")
+    workers = parallel.get("workers") or 0
+    bf16 = record.get("bf16") or {}
+    rebuild = bf16.get("rebuild") or {}
+    first = rebuild.get("first_step_seconds_including_compile")
+    steady = rebuild.get("steady_step_seconds_mean")
+
+    result: dict[str, Any] = {
+        "thresholds": {
+            "aggregate_tokens_per_second": PORT_THRESHOLD_MULTIPLE
+            * T4_PAIR_TOKENS_PER_SECOND,
+            "recompile_overhead_fraction": RECOMPILE_OVERHEAD_LIMIT,
+        },
+        "measured": {},
+        "verdict": "INCONCLUSIVE",
+        "why": "",
+    }
+    missing = [
+        name
+        for name, value in (
+            ("independent_seeds.aggregate_tokens_per_second", aggregate),
+            ("independent_seeds.workers", workers),
+            ("bf16.rebuild.first_step_seconds_including_compile", first),
+            ("bf16.rebuild.steady_step_seconds_mean", steady),
+        )
+        if value in (None, 0)
+    ]
+    if missing:
+        result["why"] = f"the record is missing {', '.join(missing)}"
+        return result
+
+    per_core = aggregate / workers
+    # The primary queue's tokens per core, and the training seconds that buys at the rate
+    # one core sustains - the recompiles are paid per core, not in aggregate.
+    queue_tokens = DECLARED_SEEDS_PER_QUEUE * DECLARED_ARMS_PER_SEED * DECLARED_TOKENS_PER_ARM
+    per_core_tokens = queue_tokens / workers
+    training_seconds = per_core_tokens / per_core
+    compile_seconds = max(0.0, first - steady)
+    rebuilds_per_core = (DECLARED_SEEDS_PER_QUEUE / workers) * DECLARED_ARMS_PER_SEED * REBUILDS_PER_ARM
+    overhead = rebuilds_per_core * compile_seconds / training_seconds
+
+    throughput_ok = aggregate >= result["thresholds"]["aggregate_tokens_per_second"]
+    overhead_ok = overhead <= RECOMPILE_OVERHEAD_LIMIT
+    result["measured"] = {
+        "aggregate_tokens_per_second": aggregate,
+        "per_core_tokens_per_second": round(per_core, 1),
+        "multiple_of_t4_pair": round(aggregate / T4_PAIR_TOKENS_PER_SECOND, 2),
+        "rebuild_compile_seconds": round(compile_seconds, 2),
+        "rebuilds_per_core": round(rebuilds_per_core, 1),
+        "per_core_training_hours": round(training_seconds / 3600, 2),
+        "recompile_overhead_fraction": round(overhead, 4),
+    }
+    result["throughput_ok"] = throughput_ok
+    result["recompile_overhead_ok"] = overhead_ok
+    if throughput_ok and overhead_ok:
+        result["verdict"] = "PORT"
+        result["why"] = (
+            f"{aggregate:,.0f} tokens/s is {aggregate / T4_PAIR_TOKENS_PER_SECOND:.2f}x the "
+            f"T4 pair, and recompiles cost {overhead:.1%} of the per-core training time"
+        )
+    else:
+        result["verdict"] = "DO-NOT-PORT"
+        failed = []
+        if not throughput_ok:
+            failed.append(
+                f"throughput is {aggregate / T4_PAIR_TOKENS_PER_SECOND:.2f}x the T4 pair, "
+                f"below the declared {PORT_THRESHOLD_MULTIPLE:.1f}x"
+            )
+        if not overhead_ok:
+            failed.append(
+                f"recompiles would cost {overhead:.1%} of the per-core training time, "
+                f"above the declared {RECOMPILE_OVERHEAD_LIMIT:.0%}"
+            )
+        result["why"] = "; ".join(failed)
+    return result
+
 
 def _device_report(torch, xm, xr) -> dict[str, Any]:
     """What the runtime actually gave us: device count, type, and per-core memory."""
@@ -234,7 +349,20 @@ def main() -> int:
     )
     parser.add_argument("--dtype", choices=("fp32", "bf16", "both"), default="both")
     parser.add_argument("--output", type=Path, default=OUTPUT)
+    parser.add_argument(
+        "--evaluate", type=Path, default=None,
+        help="apply the pre-registered rule to a fetched record (needs no TPU); "
+        "exits 0 for PORT and 1 for anything else",
+    )
     args = parser.parse_args()
+
+    if args.evaluate is not None:
+        # The decision runs where the record is, not where the hardware is: this mode is
+        # deliberately before the torch import so it can be applied on a laptop, by CI, or
+        # by anyone re-reading the record later.
+        decision = evaluate(json.loads(args.evaluate.read_text(encoding="utf-8")))
+        print(json.dumps(decision, indent=1, sort_keys=True))
+        return 0 if decision["verdict"] == "PORT" else 1
 
     import torch
     import torch_xla.core.xla_model as xm
