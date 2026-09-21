@@ -317,6 +317,18 @@ PROFILES: dict[str, dict] = {
         "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/depth5-dose-576.json",
     },
+    # Section 5.56: the confirmation rung. Same one-gene dose as 5.55, one layer
+    # further up - so a plateau or a reversal both have to be read as bounds on
+    # the monotone-ladder claim rather than as noise.
+    "depth6-dose": {
+        "seeds": tuple(range(92384, 92960)),
+        "overrides": {"depth": 6},
+        "run_revision": None,
+        "report_section": "5.56",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 2.0,
+        "summary": "artifacts/study-summaries/depth6-dose-576.json",
+    },
 }
 REGISTERED = dict(
     hidden_size=24,
@@ -383,6 +395,13 @@ LONG_D3_ABOVE_SHORT = "depth4-prefix"
 # se" currently rests on a single step with nothing measured above it.
 DEPTH_DOSE_PROFILE = "depth5-dose"
 DEPTH_DOSE_REFERENCE = "depth4-prefix"
+# The *second* depth dose (section 5.56): one rung further up the ladder, asked
+# as a confirmation rather than as an extension. 5.55 found the depth axis
+# monotone with the whole 4 -> 5 gain in the churn term, but "the axis keeps
+# paying" is a two-point slope above the gate; this arm makes it a three-point
+# one, and its failure modes (a plateau, or a reversal) both bound the claim.
+DEPTH6_PROFILE = "depth6-dose"
+DEPTH6_REFERENCE = DEPTH_DOSE_PROFILE
 
 
 def run_shard(shard: int, shards: int, profile: str) -> Path:
@@ -957,6 +976,122 @@ def long_d3_verdict(shards: int, alpha: float) -> int:
     return 0
 
 
+def depth6_verdict(shards: int, alpha: float) -> int:
+    """Section 5.56's primaries and branches: the confirmation rung at depth 6.
+
+    One fresh cell of the registered config with ``depth`` 5 -> 6 and nothing
+    else changed - 45,456 total / 16,656 active parameters. Same one-gene dose
+    as 5.55, one layer further up, and the same two primaries at alpha/2 (bar
+    313/576):
+
+    - P1 (the gate is still open): the family's per-cell conjunction. Its
+      failure at the *third* rung above the onset is the strongest fragility
+      reading this family can produce.
+    - P2 (a sixth layer creates more value than a fifth): a one-sided rank-sum
+      of the depth-5 cell's adaptive-vs-null deltas against this cell's. 5.55
+      established the step from 4 to 5; this asks whether the slope continues
+      or flattens, and a failure is a real bound either way - a plateau means
+      5.55's "the axis pays" is a one-step statement, and a reversal means the
+      ladder is not monotone past 5.
+
+    P2's ruler is 5.55's, rehearsed on a measured instance of the same
+    comparison shape before that arm ran (`depth4-prefix` ->
+    `width-d4-long-w24`, U 41829, p 2.6e-60).
+
+    Branches, fixed before the run:
+
+    - P1 and P2: **the slope continues** - the ladder is monotone across all
+      three rungs above the onset (4, 5 and 6), so the axis keeps paying and
+      the depth-4 gate is a point on a rising curve rather than a first step
+      that flattens.
+    - P1 only: **the axis saturates at depth 5** - depth 6 keeps the gate open
+      but buys nothing more than depth 5, so the rising part of the curve is
+      the gate itself and one step past it.
+    - P2 only: a sixth layer creates more value than a fifth and still does not
+      clear the bar on its own - recorded as a fragile upper reading rather
+      than as either of the two above.
+    - neither: **the ladder is not monotone past depth 5** - a sixth layer fails
+      where a fifth passes, bounding the monotone claim to depths 2..5.
+
+    The ladder's levels (depths 2, 3, 4, 5 and this cell), the arm that moves
+    between rungs and the controller's own edge are reported descriptively, as
+    every cross-cell reading in this family is.
+    """
+    level = alpha / 2
+    cell = _cell_stats(DEPTH6_PROFILE, shards, level)
+    p1 = bool(cell["creates_value"])
+    new = _cell_deltas(DEPTH6_PROFILE, shards, "adaptive", "null")
+    reference = _cell_deltas(DEPTH6_REFERENCE, shards, "adaptive", "null")
+    # `_rank_sum_one_sided(a, b)` answers whether b is stochastically larger, so
+    # the new cell comes first for the claim "deeper creates more value".
+    u, p2 = _rank_sum_one_sided(new, reference)
+    p2_passes = p2 <= level
+    print(
+        f"\nP2 (deeper still creates more value): rank-sum "
+        f"{DEPTH6_PROFILE} vs {DEPTH6_REFERENCE} on adaptive-vs-null: "
+        f"U {u:.1f}, one-sided p {p2:.2e} (bar alpha/2 = {level:.4f}; means "
+        f"{sum(new) / len(new):+.6f} vs {sum(reference) / len(reference):+.6f}) "
+        f"-> deeper is better: {p2_passes}"
+    )
+    branches = {
+        (True, True): (
+            "P1+P2 PASS: the slope continues - the ladder is monotone across all "
+            "three rungs above the onset, so a depth-4 pass is a point on a "
+            "rising curve rather than a first step that flattens"
+        ),
+        (True, False): (
+            "P1 only: the axis saturates at depth 5 - a sixth layer keeps the "
+            "gate open but buys nothing more than a fifth, so the rising part of "
+            "the curve is the gate itself and one step past it"
+        ),
+        (False, True): (
+            "P2 only: a sixth layer creates more value than a fifth and still "
+            "does not clear the bar on its own - a fragile upper reading"
+        ),
+        (False, False): (
+            "both FAIL: the ladder is not monotone past depth 5 - a sixth layer "
+            "fails where a fifth passes, bounding the monotone claim to depths "
+            "2..5"
+        ),
+    }
+    print(f"BRANCH: {branches[(p1, p2_passes)]}")
+    # Descriptive: the ladder to depth 6, and which arm moves between the two
+    # top rungs (5.55 found the whole 4 -> 5 gain in the churn term).
+    for label, profile in (
+        ("depth 2 (committed)", "depth2"),
+        ("depth 3 (committed)", "depth3"),
+        ("depth 4 (committed)", DEPTH_DOSE_REFERENCE),
+        ("depth 5 (committed)", DEPTH6_REFERENCE),
+        ("depth 6 (this arm)", DEPTH6_PROFILE),
+    ):
+        value = _cell_deltas(profile, shards, "adaptive", "null")
+        collapse = _cell_deltas(profile, shards, "null", "random")
+        edge = _cell_deltas(profile, shards, "adaptive", "random")
+        print(
+            f"  {label:<22} value {sum(value) / len(value):+.6f}  "
+            f"collapse {sum(collapse) / len(collapse):+.6f}  "
+            f"edge {sum(edge) / len(edge):+.6f}  ({profile})"
+        )
+    # Which term moves between the two top rungs - the decomposition 5.55 used,
+    # where the whole 4 -> 5 gain was the churn term and the controller's edge
+    # was flat. `adaptive - null = (adaptive - random) - (null - random)`.
+    print("  rungs 5 -> 6, decomposed (descriptive; negative = better arm):")
+    for label, left, right in (
+        ("controller's edge (adaptive-vs-random)", "adaptive", "random"),
+        ("churn term (null-vs-random)", "null", "random"),
+    ):
+        short = _cell_deltas(DEPTH6_REFERENCE, shards, left, right)
+        long_ = _cell_deltas(DEPTH6_PROFILE, shards, left, right)
+        ua, pa = _rank_sum_one_sided(short, long_)
+        _, reverse = _rank_sum_one_sided(long_, short)
+        print(
+            f"    {label:<38} {sum(short) / len(short):+.6f} -> "
+            f"{sum(long_) / len(long_):+.6f}   U {ua:.1f}, p {pa:.3e} "
+            f"(reversed {reverse:.3e})"
+        )
+    return 0
+
+
 def depth_dose_verdict(shards: int, alpha: float) -> int:
     """Section 5.55's primaries and branches: the depth dose above the onset.
 
@@ -1466,6 +1601,12 @@ def main() -> int:
     )
     d5_p.add_argument("--shards", type=int, required=True)
     d5_p.add_argument("--alpha", type=float, default=ALPHA)
+    d6_p = sub.add_parser(
+        "depth6-verdict",
+        help="section 5.56: the confirmation rung above the depth dose",
+    )
+    d6_p.add_argument("--shards", type=int, required=True)
+    d6_p.add_argument("--alpha", type=float, default=ALPHA)
     sum_p = sub.add_parser("summary", help="write the committed study summary")
     sum_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
     sum_p.add_argument("--alpha", type=float, default=ALPHA)
@@ -1506,6 +1647,8 @@ def main() -> int:
         return long_d3_verdict(args.shards, args.alpha)
     if args.command == "depth5-verdict":
         return depth_dose_verdict(args.shards, args.alpha)
+    if args.command == "depth6-verdict":
+        return depth6_verdict(args.shards, args.alpha)
     return verdict(args.shards, args.profile)
 
 

@@ -7276,6 +7276,75 @@ against a 576-seed cell descriptively; no cross-cell arithmetic enters either pr
 learning rate, step count, interval and policy are the registered ones at every rung, and the
 toy path's fidelity bounds are unchanged from the rest of the family.
 
+### 5.56 Pre-registration: the confirmation rung above the depth dose (RAN - summary `depth6-dose-576.json`)
+
+5.55 established that the depth axis keeps paying past the gate, and it did so with a **two-point
+slope**: depth 4 creates value and depth 5 creates more. Two points fit a rising line and they also
+fit a line that has already turned over between them, so the claim "the axis keeps paying" is
+currently an extrapolation. This arm is the third point, and it is registered as a *confirmation*:
+either outcome bounds the claim rather than only one of them doing so.
+
+| cell | depth | steps | total / active params | adaptive-vs-null | collapse |
+|---|---|---|---|---|---|
+| `depth2` (5.15) | 2 | 48 | 15,888 / 6,288 | 161/384, `+0.020811` | `-0.099659` |
+| `depth3` (5.15) | 3 | 48 | 23,280 / 8,880 | 188/384, `+0.004643` | `-0.106794` |
+| `depth4-prefix` (5.12) | 4 | 48 | 30,672 / 11,472 | 225/384, `-0.037147` | `-0.070072` |
+| `depth5-dose` (5.55) | 5 | 48 | 38,064 / 14,064 | 375/576, `-0.075335` | `-0.029226` |
+| **`depth6-dose`** | **6** | **48** | **45,456 / 16,656** | *this arm* | *this arm* |
+
+**Design.** One fresh cell of the registered config with `depth` 5 -> 6 and **nothing else
+changed** - the same one-gene dose as 5.55, one layer further up. Every rung of the ladder adds
+exactly 7,392 total / 2,592 active parameters, so this remains the depth axis *as a package*
+rather than a matched-parameter contrast, deliberately, for the reasons 5.55 records.
+
+**And the candidate pool does not move with depth, which is what keeps the dose single.** At
+`probe_candidate_cap` 4 the pool is `[grow L0, prune L0E0, prune L0E1, prune L0E2]` at depths 3,
+4, 5 and 6 alike, because the cap binds at every rung (15, 20, 25 and 30 feasible candidates).
+Pinned by a test over the whole ladder, so the treatment is the substrate and not the set the
+policy chooses from - the check 5.53 had to make for the expert dose, made here for depth.
+
+**Primaries.** Two, at the sibling arms' level: `alpha/2 = 0.025`, bar **313/576**.
+
+1. **P1 (the gate is still open).** The depth-6 cell's adaptive-vs-null conjunction. Its failure
+   at the *third* rung above the onset is the strongest fragility reading this family can produce.
+2. **P2 (a sixth layer creates more value than a fifth).** One-sided rank-sum of the depth-5
+   cell's adaptive-vs-null deltas against this cell's, smaller meaning deeper is better. It asks
+   whether the slope continues or flattens, and its ruler is 5.55's - rehearsed on a measured
+   instance of the same comparison shape before that arm ran (U `41829`, p `2.6e-60`) - so a
+   failure here is a real plateau rather than a ruler that cannot see a step.
+
+**Pre-registered interpretation (fixed before running).**
+
+- **P1 and P2:** **the slope continues** - the ladder is monotone across all three rungs above the
+  onset (4, 5 and 6), so a depth-4 pass is a point on a rising curve rather than a first step that
+  flattens, and the axis has shown no sign of saturation over 2 of its 3 steps.
+- **P1 only:** **the axis saturates at depth 5** - a sixth layer keeps the gate open but buys
+  nothing more than a fifth, so the rising part of the curve is the gate itself and one step past
+  it. That bounds what deepening buys without weakening the Gate 4 reading.
+- **P2 only:** a sixth layer creates more value than a fifth *and* still does not clear the bar on
+  its own - recorded as a fragile upper reading rather than as either of the two above.
+- **Neither:** **the ladder is not monotone past depth 5** - a sixth layer fails where a fifth
+  passes. The monotone claim is then bounded to depths 2..5, and since 5.55's own result is the
+  one being bounded, that is recorded against 5.55's scoping as well as here.
+
+**Descriptive secondaries.** The ladder to depth 6 with value, collapse, the controller's own edge
+and the best arm at each rung; and **which term moves** between the two top rungs, decomposed as
+5.55 decomposed 4 -> 5 (`adaptive - null = (adaptive - random) - (null - random)`), where the
+whole 4 -> 5 gain was the churn term (edge rank-sum p `0.418`, churn rank-sum p `1.1e-04`). The
+absolute arm levels are quoted only as cross-cell descriptives, which is this family's convention.
+
+**Scope.** The 384-seed rungs at depths 2-4 are read against the 576-seed rungs at 5 and 6
+descriptively; no cross-cell arithmetic enters either primary. P2 compares two 576-seed cells and
+is non-paired (different blocks), as 5.54's and 5.55's rank-sums are. The learning rate, step
+count, interval, cap and policy are the registered ones at every rung.
+
+**Cost.** Measured on this cell's own config before registering: ~1.77 s/seed at four threads
+(against depth 5's ~1.51 s/seed on the same machine), so 576 seeds is ~17 min of single-thread CPU
+across 20 shards - about five minutes of wall clock, no GPU quota, run while the corrected Gate 4
+session trains. The block is 92384-92959, the first free 576-window at or after 92000, checked by a
+test against every other profile *and* every committed summary's recorded seeds. Registered before
+the run; the running revision is recorded in the summary's `code_revision`.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
