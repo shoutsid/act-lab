@@ -668,11 +668,17 @@ def active_status(kernel: str) -> str:
 def parse_quota(payload: str, resource: str = QUOTA_RESOURCE) -> dict[str, object] | None:
     """One resource's line from ``kaggle quota --format json``.
 
-    Returns ``{"remaining_hours": float, "refresh_at": str}``, or ``None`` when
-    the resource is absent or the payload is not the expected shape. ``None``
+    Returns ``{"remaining_hours": float, "used_hours": float|None,
+    "total_hours": float|None, "refresh_at": str}``, or ``None`` when the
+    resource is absent or the payload is not the expected shape. ``None``
     means "cannot tell", and the caller must treat it as *do not block*: an
     unreadable quota line is not a reason to stall a run that is otherwise
     ready to go.
+
+    ``used_hours`` and ``total_hours`` are reported for context - a health
+    report that shows 6 h left without showing 24 of 30 already spent invites
+    the wrong decision - and are ``None`` rather than absent when the payload
+    omits them, so nothing has to guess whether a missing number is zero.
     """
     try:
         rows = json.loads(payload)
@@ -688,8 +694,17 @@ def parse_quota(payload: str, resource: str = QUOTA_RESOURCE) -> dict[str, objec
             remaining = float(raw)
         except ValueError:
             return None
+        def hours(key: str) -> float | None:
+            raw = str(row.get(key, "")).strip().rstrip("hH").strip()
+            try:
+                return float(raw)
+            except ValueError:
+                return None
+
         return {
             "remaining_hours": remaining,
+            "used_hours": hours("used"),
+            "total_hours": hours("total"),
             "refresh_at": str(row.get("refreshAt", "")),
         }
     return None

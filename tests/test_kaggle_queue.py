@@ -305,6 +305,10 @@ def test_parse_quota_reads_the_resource_line() -> None:
 
     assert quota == {
         "remaining_hours": 28.76,
+        # Context, not a gate: the campaign's health report shows how much of the week is
+        # already spent, because "6 h left" means something different at 1/30 and 24/30.
+        "used_hours": 1.24,
+        "total_hours": 30.0,
         "refresh_at": "2026-09-19T00:00:00",
     }
     # The TPU line is a different accelerator and must not be read as the GPU.

@@ -801,3 +801,35 @@ pairs from scratch, and the driver stops rather than re-pushing so the cause is
 fixed first. Watch the `remote publish:` line and the push duration in the
 exit log; if a push ever takes longer than the pairs it protects, revisit this
 choice with that number rather than an assumption.
+
+### Is the campaign alive? (one command, read from the durable side)
+
+Both 2026-09 session losses were expensive partly because nothing said the
+campaign had stopped. The driver runs on a workstation, so it dies with the
+terminal, the shell or the machine - and a watchdog process dies with it, which
+is why this is a report rather than a daemon:
+
+```bash
+PYTHONPATH=src python scripts/campaign_health.py           # human report
+PYTHONPATH=src python scripts/campaign_health.py --json    # for a script or cron
+PYTHONPATH=src python scripts/campaign_health.py --queue control
+```
+
+It reads the published dataset (the queue's real progress - which seeds are
+complete at the *registered* step count, so a part-way snapshot does not read as
+done), the kernel's status, the weekly quota, and whether a driver holds the
+queue's lock. The verdict is the exit code:
+
+| verdict | exit | what it means |
+|---|---|---|
+| `RUNNING` | 0 | a session is live; nothing to do |
+| `STALLED` | 1 | no session live, quota available, **lock unheld**: relaunch the campaign |
+| `WAITING_ON_QUOTA` | 2 | the week cannot fit a window; `--wait-for-quota` covers this, and hours left at the refresh are lost |
+| `FAILED` | 3 | the last session ended in ERROR: read the cause before pushing again |
+| `COMPLETE` | 4 | every declared seed is published; drive the next queue |
+
+`STALLED` is the one that matters, and it is also the state a driver leaves
+behind when it exits 1 (a session failed) or is killed with its terminal - it
+stops there deliberately rather than re-pushing a session whose cause has not
+been read, so something has to notice. `scripts/run_gate4_campaign.sh` prints
+this report at every queue boundary for exactly that reason.

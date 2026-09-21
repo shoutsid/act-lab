@@ -50,6 +50,12 @@ fi
 echo "$(stamp) campaign start: queues ${QUEUES[*]}"
 
 for queue in "${QUEUES[@]}"; do
+  # Print the durable state at every queue boundary. The campaign's two 2026-09 losses were
+  # expensive partly because nothing said where it had got to, and this report reads the
+  # published dataset, the kernel status and the quota rather than anything local - so the
+  # campaign's own log carries a record of what it was doing even when a driver dies.
+  PYTHONPATH="$REPO_ROOT/src" "$PYTHON" "$REPO_ROOT/scripts/campaign_health.py" \
+    --queue "$queue" 2>&1 | sed 's/^/  /' || true
   attempt=0
   while :; do
     attempt=$((attempt + 1))
