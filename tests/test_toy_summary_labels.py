@@ -127,20 +127,22 @@ def test_a_summary_cannot_be_written_at_a_level_its_registration_does_not_state(
     assert "missing shard" not in str(excinfo.value)
 
 
-def test_every_frozen_profile_has_a_committed_summary() -> None:
-    """The registration/run boundary: a frozen revision means the arm has run.
+def test_an_unfrozen_profile_has_no_summary_and_a_missing_one_fails() -> None:
+    """The registration/run boundary, in the direction that always holds.
 
-    Without this, tolerating an unrun profile would also tolerate a summary
-    whose path is simply wrong.
+    A profile is registered with ``run_revision: None`` before it runs, so an
+    unfrozen profile cannot already have a summary. The reverse does *not*
+    hold: the freeze commit sets the revision and the shards run after it, so
+    frozen-without-a-summary is a legitimate intermediate state - which is why
+    ``_committed`` fails loudly (rather than skipping) for a frozen profile
+    whose summary is missing, catching a summary path that is simply wrong.
     """
-    unrun = []
     for profile, spec in study.PROFILES.items():
         path = summaries_dir() / Path(spec["summary"]).name
         if spec["run_revision"] is None:
-            unrun.append(profile)
-        else:
-            assert path.exists(), f"{profile} is frozen at {spec['run_revision']} but has no summary"
-    assert unrun in ([], ["experts-d3-dose", "experts-d4-dose"]), unrun
+            assert not path.exists(), f"{profile} is unfrozen but has a summary"
+        elif path.exists():
+            assert json.loads(path.read_text())["code_revision"] == spec["run_revision"]
 
 
 def test_the_label_style_is_the_arms_own_declaration() -> None:

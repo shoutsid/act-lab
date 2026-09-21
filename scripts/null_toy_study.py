@@ -261,7 +261,7 @@ PROFILES: dict[str, dict] = {
     "experts-d3-dose": {
         "seeds": tuple(range(88176, 88752)),
         "overrides": {"depth": 3, "expert_count": 6},
-        "run_revision": None,
+        "run_revision": "76d2134",
         "report_section": "5.53",
         "per_cell_primary": True,
         "bonferroni_divisor": 2.0,
@@ -270,7 +270,7 @@ PROFILES: dict[str, dict] = {
     "experts-d4-dose": {
         "seeds": tuple(range(89384, 89960)),
         "overrides": {"depth": 4, "expert_count": 6},
-        "run_revision": None,
+        "run_revision": "76d2134",
         "report_section": "5.53",
         "per_cell_primary": True,
         "bonferroni_divisor": 2.0,
