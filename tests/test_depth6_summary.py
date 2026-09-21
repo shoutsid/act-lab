@@ -153,6 +153,26 @@ def test_the_gain_is_the_churn_term_and_not_the_controller() -> None:
     assert edge_part > 0, "the controller's contribution is not a gain at all"
 
 
+def test_the_reports_ladder_row_is_the_recorded_cell() -> None:
+    """The outcome table's own row, not only the fragments quoted around it.
+
+    Pinning the numbers as prose fragments leaves the table itself free: the
+    values also appear in the paragraphs, so a row could be edited and every
+    fragment would still be present. The row is one line of markdown and gets
+    pinned whole.
+    """
+    rows = [
+        line
+        for line in (ROOT / "docs" / "RESEARCH_REPORT.md").read_text().splitlines()
+        if line.startswith("| **`depth6-dose`** | **6** | **576**")
+    ]
+    assert len(rows) == 1, f"the outcome ladder row is missing or duplicated: {rows}"
+    assert rows[0] == (
+        "| **`depth6-dose`** | **6** | **576** | **`-0.117494`** | `-0.089482` | "
+        "**`+0.028013`** | **adaptive** | **`10.5882 / 10.7057 / 10.6777`** |"
+    ), rows[0]
+
+
 def test_the_report_quotes_the_recorded_cell() -> None:
     """The prose's own numbers, normalized so wrapping cannot hide a drift."""
     report = " ".join((ROOT / "docs" / "RESEARCH_REPORT.md").read_text().split())

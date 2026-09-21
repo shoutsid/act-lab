@@ -102,6 +102,11 @@ def test_every_section_5_subsection_falls_in_exactly_one_declared_group() -> Non
     covered = {n for start, end in groups for n in range(start, end + 1)}
     missing = [n for n in numbers if n not in covered]
     assert not missing, f"section-5 subsections outside every group: {missing}"
+    # And the other direction, which is what makes an over-claimed range fail:
+    # the groups must cover exactly the subsections that exist. A group that
+    # reaches past the newest section is claiming a section nobody wrote.
+    extra = sorted(covered - set(numbers))
+    assert not extra, f"the groups claim subsections that do not exist: {extra}"
 
 
 def test_every_registered_arm_is_inside_a_declared_group() -> None:
