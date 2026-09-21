@@ -10,6 +10,7 @@ runbook says, since a drifted flag is a protocol change, not a typo.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -299,6 +300,61 @@ def test_selfcheck_metadata_wants_a_gpu_and_is_pushed() -> None:
     assert metadata["id"] == "sid123123234/act-t4-selfcheck"
     assert metadata["enable_gpu"] is True
     assert "selfcheck" in kaggle_t4.PUSH_MODES
+
+
+def test_a_step_streams_its_output_instead_of_holding_it(capsys) -> None:
+    """A pair runs for ~1.5 h; its account must not arrive only at the end.
+
+    ``subprocess.run(capture_output=True)`` held every line of the child in this
+    process's memory and released it only on exit, so a session that died mid-pair
+    had printed nothing about itself - and the live stream the driver captures on
+    the platform's behalf is the only account such a session leaves.
+    """
+    import sys as _sys
+
+    # The mark is passed in the environment rather than written into the source,
+    # because the command echo prints the source: a literal in ``-c`` would appear
+    # in the output whether or not the child's stream was ever read, which is
+    # exactly how the first version of this test passed a mutant that never
+    # streamed anything.
+    env = dict(os.environ, ACT_PROBE_MARK="streamed-mark-4711")
+    code = kaggle_t4._run(
+        [
+            _sys.executable,
+            "-c",
+            "import os, sys; print(os.environ['ACT_PROBE_MARK']); "
+            "print(os.environ['ACT_PROBE_MARK'] + '-err', file=sys.stderr)",
+        ],
+        env,
+    )
+    out = capsys.readouterr().out
+    assert code == 0
+    # Both streams, as they arrive: no ``capture_output`` anywhere on this path.
+    assert "streamed-mark-4711" in out
+    assert "streamed-mark-4711-err" in out
+
+
+def test_a_failed_step_raises_but_still_prints_its_tail(capsys) -> None:
+    """A failure has to be readable, and an allowed code must not raise.
+
+    The verdict's exit codes are decisions rather than faults, so ``allowed`` keeps
+    its meaning across the change.
+    """
+    import sys as _sys
+
+    bad = [
+        _sys.executable,
+        "-c",
+        "import os, sys; print(os.environ['ACT_PROBE_MARK']); sys.exit(3)",
+    ]
+    env = dict(os.environ, ACT_PROBE_MARK="failure-tail-4711")
+    with pytest.raises(SystemExit, match="failed with exit 3"):
+        kaggle_t4._run(bad, env)
+    assert "failure-tail-4711" in capsys.readouterr().out
+
+    # An allowed code is a decision, not a fault: the verdict's exit codes must
+    # not raise.
+    assert kaggle_t4._run(bad, env, allowed=(3,)) == 3
 
 
 def test_a_mode_that_imports_act_in_this_process_bootstraps_first() -> None:

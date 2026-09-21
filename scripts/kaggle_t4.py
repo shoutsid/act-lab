@@ -65,6 +65,7 @@ import shutil
 import subprocess
 import sys
 import time
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -459,15 +460,50 @@ def _log(message: str) -> None:
     print(message, flush=True)
 
 
+#: Lines of a child's output kept for the failure block. The output has already
+#: been streamed, so this is for a reader who arrives at the error, not the only
+#: copy.
+TAIL_LINES = 400
+
+
 def _run(argv: list[str], env: dict[str, str], allowed: tuple[int, ...] = (0,)) -> int:
+    """Run a step, streaming its output instead of holding it.
+
+    The pair session runs for ~1.5 h and this used to ``subprocess.run(...
+    capture_output=True)`` it, which had three consequences, all of them bad on
+    the one path where an account of the run matters most: the output reached the
+    kernel log only *after* the child exited, so a session that died mid-pair had
+    printed nothing about it; the buffered text lived in this process's memory for
+    the whole run; and a hard kill discarded it entirely. Measured 2026-09-21: a
+    session ended ERROR after 1.32 h and the platform kept no log, so the live
+    stream the driver captures is the only available account - and there was
+    nothing in it but this side's own lines.
+
+    Everything is echoed as it arrives, and the tail is kept so a failure still
+    prints a readable block. ``allowed`` is unchanged: the verdict's exit codes
+    are decisions rather than faults, and they must not raise.
+    """
     _log(f"$ {' '.join(argv)}")
-    proc = subprocess.run(argv, env=env, capture_output=True, text=True)
-    _log(proc.stdout[-8000:])
-    if proc.returncode not in allowed:
-        _log("--- stderr ---")
-        _log(proc.stderr[-6000:])
-        raise SystemExit(f"command failed with exit {proc.returncode}: {argv[1:3]}")
-    return proc.returncode
+    process = subprocess.Popen(
+        argv,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    tail: deque[str] = deque(maxlen=TAIL_LINES)
+    stream = process.stdout
+    if stream is not None:
+        for line in stream:
+            print(line, end="", flush=True)
+            tail.append(line)
+    process.wait()
+    if process.returncode not in allowed:
+        _log(f"--- last {len(tail)} line(s) ---")
+        _log("".join(tail))
+        raise SystemExit(f"command failed with exit {process.returncode}: {argv[1:3]}")
+    return process.returncode
 
 
 def _bootstrap() -> tuple[Path, dict[str, str]]:

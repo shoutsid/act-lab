@@ -12,7 +12,7 @@
 | **Verified live, and free** | The same CPU probe re-run against the fixed reader: `restored 4 seed version(s) from sid123123234/act-v0-5-1: [15000, 15001, 15002, 15003]`, **8.5 min, 25.42 GiB written** - 4 of 4 where it was 1 of 4. The measurement is on the artifact trail as `artifacts/restore-probe.json`. A session now skips the four completed seeds instead of re-training three of them, and the campaign was relaunched on a fitted **4.5 h window** (two whole pairs, so seeds 15004-15005) rather than letting the remaining hours expire. |
 | **Also measured, free of charge** | The host overlay is `7.9T, 6.9T used, 1.1T free` (**88% full, shared with other tenants**) while `/kaggle/working` is `19.5 GiB` - confirming the handoff roots belong in `/tmp` as designed, and that the shared overlay is the only disk that scales. |
 | **Still not claimed** | The **1.32 h session death remains unexplained**. What is now true is that a failure of that kind is *readable* (the log fix), that the clock it is judged against is honest (`window_left`), and that a real source of silent waste has been removed. |
-| **Result** | **1590 tests pass**; 283/283 claims agree; campaign still stopped, **4.9 GPU-h** left this week. |
+| **Result** | **1593 tests pass**; 283/283 claims agree; campaign still stopped, **4.9 GPU-h** left this week. |
 
 ## A third session died with nothing to read, because the driver never asked for the log (2026-09-21)
 
