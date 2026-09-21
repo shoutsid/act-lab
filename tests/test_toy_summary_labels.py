@@ -67,8 +67,18 @@ PSTDEV_VINTAGE = {
 
 
 def _committed(profile: str) -> dict:
+    """The profile's committed summary, or a skip if it is registered but unrun.
+
+    An arm is *registered* before it runs (that is the point of a
+    pre-registration), so a profile carries ``run_revision: None`` until its
+    registration commit exists. A profile that HAS a frozen revision but no
+    committed summary is a failure, not a skip - which is what
+    ``test_every_frozen_profile_has_a_committed_summary`` enforces.
+    """
     path = summaries_dir() / Path(study.PROFILES[profile]["summary"]).name
     if not path.exists():
+        if study.PROFILES[profile]["run_revision"] is None:
+            pytest.skip(f"{profile} is registered but has not run yet")
         pytest.fail(f"missing committed study summary: {path}")
     return json.loads(path.read_text())
 
@@ -79,7 +89,7 @@ def test_every_profile_declares_its_bonferroni_divisor() -> None:
     A missing key is a failure rather than a fallback: the fallback is exactly
     how the 5.50 cells were nearly rewritten at bar 313.
     """
-    assert len(study.PROFILES) == 14
+    assert len(study.PROFILES) == 16
     for profile, spec in study.PROFILES.items():
         assert "bonferroni_divisor" in spec, f"{profile} declares no divisor"
         declared = float(spec["bonferroni_divisor"])
@@ -115,6 +125,22 @@ def test_a_summary_cannot_be_written_at_a_level_its_registration_does_not_state(
         study.summarize("width-d3-dose2", study.ALPHA, 2.0)
     assert "declares Bonferroni divisor" in str(excinfo.value)
     assert "missing shard" not in str(excinfo.value)
+
+
+def test_every_frozen_profile_has_a_committed_summary() -> None:
+    """The registration/run boundary: a frozen revision means the arm has run.
+
+    Without this, tolerating an unrun profile would also tolerate a summary
+    whose path is simply wrong.
+    """
+    unrun = []
+    for profile, spec in study.PROFILES.items():
+        path = summaries_dir() / Path(spec["summary"]).name
+        if spec["run_revision"] is None:
+            unrun.append(profile)
+        else:
+            assert path.exists(), f"{profile} is frozen at {spec['run_revision']} but has no summary"
+    assert unrun in ([], ["experts-d3-dose", "experts-d4-dose"]), unrun
 
 
 def test_the_label_style_is_the_arms_own_declaration() -> None:
@@ -164,6 +190,8 @@ def test_the_committed_summary_regenerates(profile: str) -> None:
     """
     name = Path(study.PROFILES[profile]["summary"]).name
     path = summaries_dir() / name
+    if not path.exists() and study.PROFILES[profile]["run_revision"] is None:
+        pytest.skip(f"{profile} is registered but has not run yet")
     fresh = study.summarize(profile, study.ALPHA)
     committed = json.loads(path.read_text())
     if name not in PSTDEV_VINTAGE:

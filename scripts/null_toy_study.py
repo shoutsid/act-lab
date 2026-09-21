@@ -233,6 +233,49 @@ PROFILES: dict[str, dict] = {
         "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/width-d4-long-w24-576.json",
     },
+    # Section 5.53: the **expert-count** covariate at the onset - the second of
+    # the two candidates 10.3(ii) names ("expert count, total compute"), and the
+    # one that matters most here because expert grow/prune is the ONLY operation
+    # the V0 search space can reach. The dose-response brackets the onset to
+    # (3, 4] at width 24 and expert_count 4; these two fresh cells raise the
+    # expert count to 6 at each depth, holding width and active_experts.
+    #
+    # The depth-3 cell is the family's tightest equal-parameter partner yet:
+    # 30,624 total parameters against the committed above-onset cell's 30,672
+    # (-0.156%, where the width-28 partner was +1.695%) - and it buys *no*
+    # compute, because a token still routes to two experts. Its active
+    # (per-token) parameter count is 9,024, 21.3% BELOW the above-onset cell's
+    # 11,472, where the width-28 partner matched both (+1.7% total, +2.0%
+    # active). So this cell separates stored capacity from per-token compute for
+    # the first time in the family.
+    #
+    # The probe's candidate pool does not move with the cell: at cap 4 with the
+    # prefix policy the pool is [grow L0, prune L0E0, prune L0E1, prune L0E2] at
+    # expert count 4 and at 6 alike (the cap binds in both - 12 and 18 feasible
+    # candidates), so the treatment is the substrate's expert count and not the
+    # candidate set the controller sees. Pinned by a test.
+    #
+    # See `experts_verdict` for the four fixed branches. Blocks 88176 and 89384:
+    # the first free 576-windows at or after 88000 that no other profile and no
+    # committed summary claims.
+    "experts-d3-dose": {
+        "seeds": tuple(range(88176, 88752)),
+        "overrides": {"depth": 3, "expert_count": 6},
+        "run_revision": None,
+        "report_section": "5.53",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 2.0,
+        "summary": "artifacts/study-summaries/experts-d3-dose-576.json",
+    },
+    "experts-d4-dose": {
+        "seeds": tuple(range(89384, 89960)),
+        "overrides": {"depth": 4, "expert_count": 6},
+        "run_revision": None,
+        "report_section": "5.53",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 2.0,
+        "summary": "artifacts/study-summaries/experts-d4-dose-576.json",
+    },
 }
 REGISTERED = dict(
     hidden_size=24,
@@ -275,6 +318,14 @@ DOSE2_LONG_REFERENCE = "width-d4-dose2"
 LONG_W24_PROFILE = "width-d4-long-w24"
 LONG_W24_SAME_WIDTH = "depth4-prefix"
 LONG_W24_SAME_BUDGET = DOSE2_LONG_PROFILE
+# The expert-count arm (section 5.53): the second candidate covariate 10.3(ii)
+# names, and the only gene the V0 search space can actually move
+# (`feasible_expert_mutations` yields grow/prune and nothing else, section
+# 10.4). The two cells and the committed cells they are read against.
+EXPERTS_PROFILES = ("experts-d3-dose", "experts-d4-dose")
+EXPERTS_BELOW_BASELINE = "depth3"
+EXPERTS_ABOVE_BASELINE = "depth4-prefix"
+EXPERTS_WIDTH_PARTNER = "width-d3-equal"
 
 
 def run_shard(shard: int, shards: int, profile: str) -> Path:
@@ -753,6 +804,97 @@ def long_w24_verdict(shards: int, alpha: float) -> int:
     return 0
 
 
+def experts_verdict(shards: int, alpha: float) -> int:
+    """Section 5.53's primaries and branches: the expert-count covariate.
+
+    Two fresh cells at width 24 with ``expert_count`` 4 -> 6, holding
+    ``active_experts`` at 2: depth 3 is 30,624 total / 9,024 active parameters
+    (-0.156% total, -21.3% active against the committed above-onset cell) and
+    depth 4 is 40,464 / 11,664 (+31.9%, +1.7%). The depth-3 cell is therefore
+    the family's tightest equal-parameter partner *and* the first that buys its
+    parameters without buying any per-token compute - a token still routes to
+    two experts. Same test, same conjunction, same bar as the sibling
+    two-cell arms (alpha/2, bar 313/576).
+
+    Why this covariate: 10.3(ii) names "expert count, total compute" as what is
+    left after 5.48 closed the matched-parameter width form, and expert
+    grow/prune is the only operation the V0 search space can reach, so whether
+    expert count moves the onset decides whether the reachable gene is the one
+    the ontology reads. Branches, fixed before the run:
+
+    - P1 and P2: capacity is the covariate even when bought with experts, and it
+      is *stored* capacity rather than compute - the gate falls at an
+      equal-parameter partner whose active parameter count is 21.3% lower, which
+      no width cell could separate. Read with 5.48, the matched-parameter form
+      of (ii) is then answered in favour of capacity rather than depth per se.
+    - P1 only: the expert dose buys value below the onset and destroys it above
+      - a depth x expert-capacity interaction, and the reachable gene is
+      capacity-like only where there was no value to lose.
+    - P2 only: the gate does not move for expert count either, so at this scale
+      the onset is depth per se against two measured covariates and the
+      remaining candidate is total compute. Recorded beside the fact that the
+      search space's only reachable gene is a covariate that does not read here.
+    - neither: expert capacity is harmful at both depths; the reachable axis is
+      closed as a covariate too.
+
+    The four cells' levels and their churn readings (null-vs-random, the axis
+    the width line showed flipping sign) are reported descriptively, as every
+    cross-cell reading in this family is.
+    """
+    level = alpha / 2
+    cells = {profile: _cell_stats(profile, shards, level) for profile in EXPERTS_PROFILES}
+    p1 = bool(cells[EXPERTS_PROFILES[0]]["creates_value"])
+    p2 = bool(cells[EXPERTS_PROFILES[1]]["creates_value"])
+    print(
+        f"\nOUTCOME (alpha={alpha}, Bonferroni alpha/2={level}): "
+        f"P1 (depth 3 x expert_count 6, the equal-parameter partner) "
+        f"{'PASS' if p1 else 'FAIL'}, P2 (depth 4 x expert_count 6, the same "
+        f"dose above the gate) {'PASS' if p2 else 'FAIL'}"
+    )
+    branches = {
+        (True, True): (
+            "P1+P2 PASS: capacity is the covariate when bought with experts, "
+            "and it is stored capacity rather than per-token compute - the gate "
+            "falls at an equal-parameter partner whose active parameter count "
+            "is 21.3% lower, where 5.48's width partner matched both"
+        ),
+        (True, False): (
+            "P1 only: the expert dose buys value below the onset and destroys "
+            "it above - a depth x expert-capacity interaction"
+        ),
+        (False, True): (
+            "P2 only: the gate does not move for expert count either - with "
+            "5.48 the onset is depth per se against two measured covariates, "
+            "and the search space's only reachable gene is one that does not "
+            "read here"
+        ),
+        (False, False): (
+            "both FAIL: expert capacity is harmful at both depths; the "
+            "reachable axis is closed as a covariate too"
+        ),
+    }
+    print(f"BRANCH: {branches[(p1, p2)]}")
+    # Descriptive: the four cells of the covariate, and the churn reading at
+    # each (the axis that flipped sign with width in 5.49/5.50).
+    for label, profile in (
+        ("depth 3, E=4 (committed below-onset)", EXPERTS_BELOW_BASELINE),
+        ("depth 3, E=6 (this arm, equal parameters)", EXPERTS_PROFILES[0]),
+        ("depth 4, E=4 (committed above-onset)", EXPERTS_ABOVE_BASELINE),
+        ("depth 4, E=6 (this arm, same dose above)", EXPERTS_PROFILES[1]),
+    ):
+        collapse = _cell_deltas(profile, shards, "null", "random")
+        edge = _cell_deltas(profile, shards, "adaptive", "random")
+        print(
+            f"  {label:<40} collapse {sum(collapse) / len(collapse):+.6f}  "
+            f"controller's edge {sum(edge) / len(edge):+.6f}  ({profile})"
+        )
+    print(
+        "  width-28 partner for reference (5.48, depth 3): "
+        f"{EXPERTS_WIDTH_PARTNER}"
+    )
+    return 0
+
+
 def width_verdict(shards: int, alpha: float) -> int:
     """Section 5.48's pre-registered primaries and four fixed branches.
 
@@ -1050,6 +1192,12 @@ def main() -> int:
     )
     w24_p.add_argument("--shards", type=int, required=True)
     w24_p.add_argument("--alpha", type=float, default=ALPHA)
+    experts_p = sub.add_parser(
+        "experts-verdict",
+        help="section 5.53: the expert-count covariate at the onset",
+    )
+    experts_p.add_argument("--shards", type=int, required=True)
+    experts_p.add_argument("--alpha", type=float, default=ALPHA)
     sum_p = sub.add_parser("summary", help="write the committed study summary")
     sum_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
     sum_p.add_argument("--alpha", type=float, default=ALPHA)
@@ -1084,6 +1232,8 @@ def main() -> int:
         return dose2_long_verdict(args.shards, args.alpha)
     if args.command == "long-w24-verdict":
         return long_w24_verdict(args.shards, args.alpha)
+    if args.command == "experts-verdict":
+        return experts_verdict(args.shards, args.alpha)
     return verdict(args.shards, args.profile)
 
 

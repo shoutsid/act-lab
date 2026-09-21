@@ -6850,6 +6850,82 @@ gone unnoticed.
 Mutants: restoring the hard-coded section list fails 5 (exactly the five corrected summaries);
 letting the divisor fall back to `2.0` fails 3, including the refusal itself.
 
+### 5.53 Pre-registration: the *expert-count* covariate at the onset (RAN - summaries `experts-d3-dose-576.json`, `experts-d4-dose-576.json`)
+
+Section 10.3(ii) named what the width line left open: the onset is bracketed to (3, 4], and the
+covariates that could separate *depth* from *capacity* are "parameter count, layer width,
+expert count". Parameter count and layer width are now measured - 5.48's equal-parameter width
+partner does not move the gate, and neither do 5.49's or 5.50's doses until 14.8x - so **expert
+count is the one that remains**, and it is not merely the last candidate: expert grow/prune is
+the *only* operation the V0 search space can reach (section 10.4, pinned by
+`tests/test_topology_transactions.py`), so whether expert count reads at the onset decides
+whether the gene the search can actually move is the gene the ontology reads.
+
+**Design.** Two fresh cells of the registered config with only `expert_count` changed, 4 -> 6,
+holding `hidden_size` 24 and `active_experts` 2:
+
+| cell | section | block | n | depth | width | E | total params | active params |
+|---|---|---|---|---|---|---|---|---|
+| `depth3` (committed, below onset) | 5.15 | 72000-73383 | 384 | 3 | 24 | 4 | 23,280 | 8,880 |
+| `experts-d3-dose` | **5.53** | **88176-88751** | 576 | 3 | 24 | **6** | **30,624** | **9,024** |
+| `depth4-prefix` (committed, above onset) | 5.12 | 73000-73383 | 384 | 4 | 24 | 4 | 30,672 | 11,472 |
+| `experts-d4-dose` | **5.53** | **89384-89959** | 576 | 4 | 24 | **6** | **40,464** | **11,664** |
+
+**The depth-3 cell is the family's tightest equal-parameter partner yet, and the first that buys
+its parameters without buying any compute.** 30,624 total against the above-onset cell's 30,672
+is **-0.156%**, where 5.48's width-28 partner was +1.695%. But a token still routes to two
+experts, so its active (per-token) parameter count is **9,024 against 11,472: 21.3% lower** -
+where the width partner matched *both* axes (+1.7% total, +2.0% active). The two arms therefore
+ask different questions at the same parameter count: 5.48 asked whether **wider** is what depth
+buys (matching everything), and this arm asks whether **stored capacity** is what the onset
+reads while per-token compute goes *down*. No earlier cell in this program separates the two axes.
+
+The depth-4 cell is the same dose above the gate (40,464 / 11,664, +31.9% / +1.7%), so the arm
+reads the dose at both depths the way 5.49 did for width - and, as in 5.49, the below-gate cell
+is the equal-parameter one and the above-gate cell is the continuation.
+
+**The probe's candidate pool does not move with the cell** (pinned by a test). At
+`probe_candidate_cap` 4 with the prefix policy the pool is
+`[grow L0, prune L0E0, prune L0E1, prune L0E2]` at expert count 4 and at 6 alike, because the cap
+binds at both counts (12 and 18 feasible candidates). So the treatment is the substrate's expert
+count and not the candidate set the controller sees - without which the arm would move two
+things at once.
+
+**Primaries.** Two, at the sibling arms' level: `alpha/2 = 0.025`, bar **313/576**.
+
+1. **P1 (the equal-parameter partner creates value).** The depth-3 depth-6 cell's
+   adaptive-vs-null wins clear the bar **and** the mean delta is negative - the family's per-cell
+   conjunction.
+2. **P2 (the same dose above the gate creates value).** The depth-4 depth-6 cell's conjunction.
+
+**Pre-registered interpretation (fixed before running).**
+
+- **P1 and P2:** capacity is the covariate even when it is bought with experts, and it is
+  *stored* capacity rather than per-token compute - the gate falls at an equal-parameter partner
+  whose active parameter count is 21.3% **lower**, which no width cell could separate. Read with
+  5.48, the matched-parameter form of open question (ii) is then answered in favour of capacity
+  rather than depth per se, and depth's own contribution to the onset is what remains to be shown.
+- **P1 only:** the expert dose buys value below the onset and destroys it above - a depth x
+  expert-capacity interaction, with the reachable gene capacity-like only where there was no
+  value to lose.
+- **P2 only:** the gate does not move for expert count either, so at this scale the onset is
+  depth per se against two measured covariates and the remaining candidate is total compute -
+  recorded beside the fact that the search space's only reachable gene is one that does not read
+  at the onset.
+- **Neither:** expert capacity is harmful at both depths; the reachable axis is closed as a
+  covariate too.
+
+**Descriptive secondaries.** The four cells' arm levels and their churn readings
+(null-vs-random, the axis the width line showed flipping sign: harm at <=1.34x, absent at 3.8x,
+paying at 14.8x) and the controller's own edge (adaptive-vs-random) at each cell.
+
+**Cost.** Measured at the new cells: ~1.95 s/seed (depth 3) and ~1.55 s/seed (depth 4) at four
+threads, so two cells x 576 seeds is ~34 min of single-thread CPU across 40 shards - minutes of
+wall clock, no GPU quota, run while the corrected Gate 4 session trains. The two cells' blocks are
+the first free 576-windows at or after 88000 (5.52 holds 87600-88175), checked by a test against
+every other profile and every committed summary. Registered before the run; the running revision
+is recorded in each summary's `code_revision`.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
