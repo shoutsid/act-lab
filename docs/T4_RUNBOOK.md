@@ -388,12 +388,26 @@ remove the parallelism by training the arms sequentially - the pair-time
 arithmetic follows the placement automatically (`arm_slots`), so the plan cannot
 describe more concurrency than the run performs.
 
-Pass `--hours 9` (the registered usable window): at the fp16 rate the deadline
-rules then place **two** completed pairs per session sequentially, or **five**
-with one arm per device. Both are one pair below the registered
-`floor(9 h / pair time)` because rule 1 adds the 45-minute publish reserve to
-every start; plan from the artifact's `_rule1` fields (§3) rather than from the
-registered ones.
+Pass `--hours 7` (the **declared window**: the measured 8 h platform cap less the
+45-minute publish reserve and a 15-minute boot/prep allowance - see
+`session_plan.PLATFORM_SESSION_CAP_HOURS`). At the fp16 rate the deadline rules
+then place **two** completed pairs per session sequentially, or **four** with
+one arm per device. Both are below the registered `floor(9 h / pair time)`
+because rule 1 adds the publish reserve to every start; plan from the artifact's
+`_rule1` fields (§3) rather than from the registered ones.
+
+**Why 7 h and not the registered 9 h (amended 2026-09-21).** Section 5.2's
+window was written against Kaggle's *documented* GPU limit - 12 h, per the
+2022-01-24 product update that raised it from 9 h. The platform measured 8: Gate
+4's session 1, pushed 2026-09-20 10:39:54Z, was killed with `ERROR` exactly 8 h
+00 m later, before its own 9 h deadline. The kill was total - an empty kernel
+log, no output files, nothing published - and it cost 8.05 GPU-h plus every pair
+the session had trained, because a session spends its last hour on a pair and
+the published dataset is its only durable copy. A 7 h declaration packs four
+pairs and refuses a fifth, ending its last pair at ~5.8 h and publishing with
+over an hour in hand, and it gives up nothing: 12 seeds need three sessions at
+either packing, so the campaign is still nine sessions and a ~52 h training
+floor.
 
 A kernel that requests a GPU accelerator queues when no T4 is free (status
 `QUEUED`, which consumes no quota); the queue clears on its own.
@@ -426,7 +440,10 @@ Read from the printed JSON and record:
 | `schedule_tokens_per_second` | the rate the schedule was derived from: the **decided dtype's**, measured in that dtype (equal to the fp32 rate when fp32 is decided, or on a device with no fp16 path) |
 | `tokens_per_second_by_dtype` | both measured rates, so the two can never be confused after the fact |
 | `schedule.pair_time_hours` | time per random+adaptive pair at `schedule_tokens_per_second` |
-| `schedule.full_pairs_per_session` | pairs a 12-hour clock fits per the deadline rules |
+| `schedule.full_pairs_per_session` | section 5.2's registered arithmetic: pairs the *documented* 12-hour clock fits |
+| `schedule.pairs_per_session_rule1` / `sessions_for_primary_rule1` | what the runner's start gate will actually do inside the **declared window** (4 pairs / 3 sessions at the measured rate) - plan from these, not from the registered row above |
+| `schedule.declared_session_hours` / `platform_session_cap_hours` | the window the session is given (7 h) and the measured platform cap it is derived from (8 h) |
+| `schedule.three_queue_sessions` / `three_queue_training_hours` | the whole campaign: nine sessions, a ~52 h training floor |
 | `schedule.sessions_for_primary` / `sessions_total` | expected number of sessions for the 12-seed queue |
 | `schedule.working_dir_headroom_gb` | must be positive (20 GB limit − steady state) |
 
@@ -478,9 +495,10 @@ PYTHONPATH=src python -m act.training.cli --mode pair-session \
   --kaggle-dataset <owner>/<slug>
 ```
 
-- `--hours`: the remaining session clock at entry — Kaggle's 12-hour GPU limit
-  minus boot and restore time. The deadline rules only start pairs that fit
-  `pair_time + 45-min publish reserve`.
+- `--hours`: the remaining session clock at entry — the platform's measured
+  8-hour cap (not the 12 hours Kaggle documents) minus boot, restore and the
+  45-min publish reserve, i.e. `--hours 7`. The deadline rules only start pairs
+  that fit `pair_time + 45-min publish reserve`.
 - `--seeds 15000-15011`, `--probe-candidate-policy spread` and the two build
   flags (`--preserve-router-on-rebuild`, `--new-expert clone`) are **not
   optional**: they are the adopted protocol (§5.5 and, for the rebuild, the

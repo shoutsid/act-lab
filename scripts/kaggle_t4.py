@@ -82,9 +82,17 @@ SLUG_ENV = "ACT_T4_SLUG"
 
 DEFAULT_OWNER = "sid123123234"
 DEFAULT_SLUG = "act-v0-5-1"
-# Section 5.2 session model: a 12 h Kaggle clock less boot, restore and the
-# 45 min publish reserve leaves ~9 h of usable work.
-DEFAULT_HOURS = 9.0
+# The declared session clock. Section 5.2's model assumes a 12 h Kaggle clock
+# (~9 h of usable work once boot, restore and the publish reserve are paid for),
+# but the T4 x2 shape measured 8 h: session 1, pushed 2026-09-20 10:39:54Z, was
+# killed with ERROR exactly 8 h later, before its own 9 h deadline, with no
+# kernel log and nothing published. `session_plan.DECLARED_SESSION_HOURS` is
+# that cap less the reserve and the prep allowance (7.0 h); at the measured
+# 1.443 h pair time it packs 4 pairs instead of 5 and still needs three sessions
+# for the 12-seed block, so the correction costs the campaign no session. Tested
+# equal to the constant it is derived from
+# (`tests/test_kaggle_t4.py::test_the_declared_window_is_the_measured_cap_less_the_reserve`).
+DEFAULT_HOURS = 7.0
 BENCHMARK_STEPS = 50
 # The adopted section 5.5 revision: queue moved off the spent 9000-9011
 # block, primary candidate policy is ``spread``.
@@ -1005,11 +1013,15 @@ def dtypeprobe_report(
     Both session counts are printed: the registered section 5.2 arithmetic and
     the one the runner's own start gate will honour, because a reader planning
     from the registered field alone expects one session too few whenever the
-    45-minute publish reserve binds.
+    45-minute publish reserve binds. The rule-1 numbers are priced at the window
+    a session is *declared* (the measured 8 h platform cap less its reserve, not
+    the documented 12 h clock section 5.2 was written for), so the line states
+    the plan the launch will actually run.
     """
     import math
 
     from act.training.session_plan import (
+        DECLARED_SESSION_HOURS,
         PairSchedule,
         session_pair_capacity,
         three_queue_plan,
@@ -1018,7 +1030,9 @@ def dtypeprobe_report(
     lines: list[str] = []
     for dtype, rate in rates.items():
         schedule = probe_pair_schedule(rate, arms, device)
-        capacity = session_pair_capacity(schedule.pair_time_hours)
+        capacity = session_pair_capacity(
+            schedule.pair_time_hours, DECLARED_SESSION_HOURS
+        )
         # The declared null seed is a single arm, so its pair time is one wave;
         # the campaign total is what the driver's re-push loop and the quota
         # gate care about, and it prices the null queue at full rate.
@@ -1026,11 +1040,13 @@ def dtypeprobe_report(
         campaign = three_queue_plan(
             schedule.pair_time_hours,
             null_pair_time_hours=null_schedule.pair_time_hours,
+            hours=DECLARED_SESSION_HOURS,
         )
         lines.append(
             f"{dtype}: {rate:.1f} tokens/s -> pair "
             f"{schedule.pair_time_hours:.3f} h, "
-            f"{capacity} pairs/session by rule 1 "
+            f"{capacity} pairs/session by rule 1 at the declared "
+            f"{DECLARED_SESSION_HOURS:g} h window "
             f"({schedule.full_pairs_per_session} registered), "
             f"{math.ceil(12 / capacity) if capacity else 0} sessions for the "
             f"primary queue ({schedule.sessions_for_primary} registered); "

@@ -12,10 +12,13 @@ import math
 import pytest
 
 from act.training.session_plan import (
+    BOOT_AND_PREP_HOURS,
     CHECKPOINT_STEADY_STATE_GB,
     CHECKPOINT_PAYLOAD_GB,
+    DECLARED_SESSION_HOURS,
     FP32_FLOOR_TOKENS_PER_SECOND,
     MAX_CHECKPOINTS,
+    PLATFORM_SESSION_CAP_HOURS,
     PUBLISH_RESERVE_MINUTES,
     SEED_TOKENS_PER_ARM,
     USABLE_HOURS,
@@ -202,6 +205,71 @@ def test_the_declared_campaign_is_three_symmetric_queues() -> None:
     assert schedule.full_pairs_per_session == 6
     assert math.ceil(12 / schedule.full_pairs_per_session) * 3 == 6
     assert campaign.sessions == 9
+
+
+def test_the_declared_window_is_the_measured_cap_less_its_reserve() -> None:
+    """The 2026-09-20 amendment: the window a session is *given*, from the cap.
+
+    Section 5.2's 12 h clock / 9 h usable window was written against Kaggle's
+    *documented* GPU session limit (the 2022-01-24 product update). The first
+    Gate 4 session measured the platform, and it disagreed: pushed 2026-09-20
+    10:39:54Z, `act-t4-session` was killed with ERROR exactly 8 h later, before
+    its own 9 h deadline, with an empty kernel log and no output files - a
+    control check against the same account retrieves 24,973 characters of log
+    and 288 output files for `act-t4-archzoo`, so the emptiness belongs to the
+    session and not to the query. 8.05 GPU-h burned and not one pair published:
+    a session spends its last hour on a pair, and the published dataset is its
+    only durable copy, which a killed session never reaches.
+    """
+    assert PLATFORM_SESSION_CAP_HOURS == 8.0
+    # The declared clock pays for the publish reserve and the prep allowance out
+    # of the cap rather than out of the platform's patience.
+    assert math.isclose(
+        DECLARED_SESSION_HOURS
+        + PUBLISH_RESERVE_MINUTES / 60
+        + BOOT_AND_PREP_HOURS,
+        PLATFORM_SESSION_CAP_HOURS,
+        abs_tol=1e-9,
+    )
+    assert DECLARED_SESSION_HOURS == 7.0
+
+    # At the T4's measured placement rate it packs four pairs and refuses a
+    # fifth - and the fifth is exactly what the killed session was spending when
+    # it died. The registered 9 h window still reads five, which is the number
+    # the plan had been quoting.
+    schedule = PairSchedule(tokens_per_second=5_083.4, arms=2, arm_slots=2)
+    assert math.isclose(schedule.pair_time_hours, 1.443, abs_tol=5e-4)
+    capacity = session_pair_capacity(schedule.pair_time_hours, DECLARED_SESSION_HOURS)
+    assert capacity == 4
+    assert session_pair_capacity(schedule.pair_time_hours) == 5
+    # Four pairs, the prep allowance and the reserve all finish inside the cap.
+    # That is the amendment's whole content, and it is what that fifth pair did
+    # not do: 0.25 h + 5 x 1.443 h + 0.75 h = 8.2 h > 8.0 h.
+    assert (
+        BOOT_AND_PREP_HOURS
+        + capacity * schedule.pair_time_hours
+        + PUBLISH_RESERVE_MINUTES / 60
+        <= PLATFORM_SESSION_CAP_HOURS
+    )
+    assert (
+        BOOT_AND_PREP_HOURS
+        + 5 * schedule.pair_time_hours
+        + PUBLISH_RESERVE_MINUTES / 60
+        > PLATFORM_SESSION_CAP_HOURS
+    )
+
+    # And it gives up nothing: 12 seeds need three sessions at either capacity,
+    # so the campaign's session count and its training floor are unchanged - the
+    # correction moves the publish inside the cap for free.
+    assert (
+        math.ceil(12 / capacity)
+        == math.ceil(12 / session_pair_capacity(schedule.pair_time_hours))
+        == 3
+    )
+    campaign = three_queue_plan(schedule.pair_time_hours, hours=DECLARED_SESSION_HOURS)
+    assert campaign.sessions == 9
+    assert campaign.primary.pairs_per_session == 4
+    assert math.isclose(campaign.training_hours, 51.95, abs_tol=5e-2)
 
 
 def test_a_one_device_host_keeps_the_null_queue_at_one_wave() -> None:

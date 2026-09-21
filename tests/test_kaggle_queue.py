@@ -389,6 +389,85 @@ def test_drive_still_pushes_when_the_week_can_cover_the_session(monkeypatch) -> 
     assert code == kaggle_queue.EXIT_SESSION_FAILED
 
 
+def test_a_failed_session_reports_the_loss_instead_of_going_silent(
+    monkeypatch, capsys
+) -> None:
+    """A killed session must say so, and say what survived.
+
+    Measured 2026-09-20: session 1 was pushed into a 9 h window and killed with
+    ERROR 8 h later. The driver printed "kernel log follows" and then nothing at
+    all, because `kaggle kernels output` had returned no files - so an operator
+    could not tell an empty log from a missing one, on a session that had burned
+    8.05 GPU-h. The elapsed time, the quota burned and the emptiness are now all
+    named, and the (un)survival of the queue is stated rather than implied.
+    """
+    calls: list[list[str]] = []
+
+    def fake_run(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        calls.append(list(argv))
+        if argv[1] == "quota":
+            return subprocess.CompletedProcess(argv, 0, QUOTA_PAYLOAD, "")
+        if argv[1:3] == ["kernels", "status"]:
+            # Terminal before the push, so the driver adopts nothing and pushes;
+            # then the session itself ends in ERROR.
+            return subprocess.CompletedProcess(
+                argv, 0, 'has status "KernelWorkerStatus.ERROR"', ""
+            )
+        if argv[1:3] == ["kernels", "output"]:
+            target = Path(argv[argv.index("-p") + 1])
+            target.mkdir(parents=True, exist_ok=True)
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(kaggle_queue, "_run", fake_run)
+    monkeypatch.setattr(kaggle_queue, "ensure_code_dataset", lambda *a, **k: "")
+
+    code = kaggle_queue.drive("session", hours=9.0, poll=0.0, timeout=1.0, max_sessions=1)
+
+    assert code == kaggle_queue.EXIT_SESSION_FAILED
+    assert [argv for argv in calls if argv[1:3] == ["kernels", "push"]]
+    out = capsys.readouterr().out
+    assert "session ended with ERROR after 0.00 h" in out
+    assert "no kernel log and no output files at all" in out
+    assert "restarts from its last published seed" in out
+    # And it must not claim a log it does not have: the banner that promised one
+    # and then printed nothing is the defect this pins.
+    assert "kernel log follows" not in out
+
+
+def test_a_failed_session_names_what_the_platform_did_return(
+    monkeypatch, capsys
+) -> None:
+    """A partial survival is reported as partial, not as a total loss.
+
+    When the platform keeps some files but no log, the session got far enough to
+    write its audit trail, and an operator reading the driver's output should be
+    able to tell that from the session that left nothing at all.
+    """
+
+    def fake_run(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        if argv[1] == "quota":
+            return subprocess.CompletedProcess(argv, 0, QUOTA_PAYLOAD, "")
+        if argv[1:3] == ["kernels", "status"]:
+            return subprocess.CompletedProcess(
+                argv, 0, 'has status "KernelWorkerStatus.ERROR"', ""
+            )
+        if argv[1:3] == ["kernels", "output"]:
+            target = Path(argv[argv.index("-p") + 1])
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "session-log.json").write_text("{}")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(kaggle_queue, "_run", fake_run)
+    monkeypatch.setattr(kaggle_queue, "ensure_code_dataset", lambda *a, **k: "")
+
+    code = kaggle_queue.drive("session", hours=9.0, poll=0.0, timeout=1.0, max_sessions=1)
+
+    assert code == kaggle_queue.EXIT_SESSION_FAILED
+    out = capsys.readouterr().out
+    assert "no kernel log; what it did return: session-log.json" in out
+    assert "no output files at all" not in out
+
+
 def _fake_kaggle(calls: list[list[str]], session_logs: list[dict], publish_logs=None):
     """A ``_run`` that reports COMPLETE and writes the i-th session log.
 

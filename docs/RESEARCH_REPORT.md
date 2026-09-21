@@ -381,7 +381,8 @@ plan section 57's Model and Training metric lists is reported per arm
 (parameters, active parameters, FLOPs/token, tokens, steps, wall time,
 GPU-hours, training/search/evaluation/total FLOPs). Checkpoints persist
 optimizer state, genome, and mutation history at every event (existing
-checkpoint contract), so runs resume across the 12-hour Kaggle session limit.
+checkpoint contract), so runs resume across the Kaggle session limit (12 hours
+as documented; 8 h measured on the T4 x2 shape - see section 5.2's amendment).
 Feasibility (declared): per-arm training ~= 0.7 h at 10k tokens/s on T4;
 12 pairs x 2 arms x ~1.5 h ~= 36 h ~= two Kaggle sessions; fp32 AdamW ~=
 4.6 GB plus activations within 16 GB.
@@ -419,10 +420,11 @@ decision contract is unit-pinned in `tests/test_v0_verdict.py` (exit codes 0,
 `gate_4_authorized`, stray-seed exclusion, and the abort conditions), so the
 registered rules cannot drift before the T4 run.
 
-### 5.2 GPU execution plan: session budgeting and checkpoint handoff (12-hour Kaggle limit)
+### 5.2 GPU execution plan: session budgeting and checkpoint handoff (Kaggle session limit)
 
 Operational companion to section 5.1, pre-committed before launch. Kaggle
-facts per plan sections 5 and 40: 12-hour GPU sessions, 20 GB auto-saved
+facts per plan sections 5 and 40: 12-hour GPU sessions as documented (8 h on
+this shape - see the amendment under the schedule table below), 20 GB auto-saved
 `/kaggle/working`, additional scratch that does not survive the session,
 notebook outputs publishable as versioned datasets, and the rule that a
 session must never contain irreplaceable state.
@@ -467,6 +469,28 @@ started unless it fits entirely, and pairs are never split across sessions
 | 10,000 tokens/s (declared optimistic) | 0.78 h | 11 | 2 | 4 |
 | 5,000 tokens/s | 1.47 h | 6 | 2 | 4 |
 | 2,500 tokens/s (fp32 floor) | 2.83 h | 3 | 4 | 8 |
+
+**Amended 2026-09-21: the platform grants 8 hours on this shape, not 12.** The
+window above was written against Kaggle's *documented* GPU session limit (the
+2022-01-24 product update raised it from 9 h to 12 h for CPU and GPU, and this
+section's "~9.0 h of usable work" is that 12 h less boot, restore and the
+publish reserve). The first Gate 4 session measured the platform instead of the
+documentation. Pushed 2026-09-20 10:39:54Z, it was killed with `ERROR` exactly
+8 h 00 m later, before its own 9 h deadline, and it left no kernel log and no
+output files at all - a control check on the same account retrieves 24,973
+characters of log and 288 output files for the arch-zoo arm and 5,157/249 for
+the self-check, so the emptiness belongs to the session and not to the query.
+The loss was total: 8.05 GPU-hours and every pair the session had trained,
+because a session spends its last hour on a pair and the published dataset is
+its only durable copy. The clock a session is *declared* is therefore the
+measured cap less the publish reserve and a boot/prep allowance
+(`session_plan.DECLARED_SESSION_HOURS`, 7.0 h). The table above is unchanged -
+it is the registered arithmetic and its rates are assumptions, not
+measurements - but it reads as the plan at the *documented* window. The plan at
+the measured one packs one pair fewer per session (four against five at the T4's
+measured 1.443 h placement rate) and still needs three sessions for the 12-seed
+block, so nothing about the campaign changes: nine sessions, ~52 h training
+floor.
 
 The fp16 dtype rule exists to keep the measured point in the upper rows: at
 the T4's 65 TFLOPS fp16 tensor peak, 10k tokens/s is ~12% utilization. There

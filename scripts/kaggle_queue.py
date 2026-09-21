@@ -681,15 +681,50 @@ def drive(
             if push.returncode != 0:
                 return EXIT_SESSION_FAILED
 
+        session_started = time.monotonic()
         status = _wait_for_terminal(queue.kernel_id, poll, timeout)
         output_dir.mkdir(parents=True, exist_ok=True)
         _run(["kaggle", "kernels", "output", queue.kernel_id, "-p", str(output_dir)])
 
         if status != SUCCESS_STATUS:
-            print(f"session ended with {status}; kernel log follows", flush=True)
+            elapsed = (time.monotonic() - session_started) / 3600.0
+            print(
+                f"session ended with {status} after {elapsed:.2f} h"
+                f"{burned_note(quota_before, active_quota())}",
+                flush=True,
+            )
             log = output_dir / f"{queue.kernel_id.split('/')[-1]}.log"
+            kept = (
+                sorted(path.name for path in output_dir.iterdir())
+                if output_dir.is_dir()
+                else []
+            )
             if log.is_file():
                 print(log.read_text(encoding="utf-8")[-4000:], flush=True)
+            elif kept:
+                # The session kept its audit trail but the platform kept no
+                # log: worth naming, because it means the run got far enough to
+                # write output and the loss is partial.
+                print(
+                    "  the platform returned no kernel log; what it did return: "
+                    + ", ".join(kept),
+                    flush=True,
+                )
+            else:
+                # Silence here is what made the 2026-09-20 loss undiagnosable:
+                # the driver printed "kernel log follows" and then nothing, so
+                # an operator could not tell an empty log from a missing one.
+                print(
+                    "  the platform returned no kernel log and no output files "
+                    "at all, so the session's own account of itself is lost with "
+                    "it. Nothing it trained is durable (the exit publish is the "
+                    "only copy and the session never reached it), so the queue "
+                    "restarts from its last published seed. Measured 2026-09-20: "
+                    "this is what the platform's 8 h kill looks like - a session "
+                    "declared a 9 h window died at 8 h 00 m, before its own "
+                    "deadline, with 8.05 GPU-h burned and every pair it trained.",
+                    flush=True,
+                )
             return EXIT_SESSION_FAILED
 
         session_log = load_session_log(output_dir)

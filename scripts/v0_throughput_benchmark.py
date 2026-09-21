@@ -29,8 +29,10 @@ import torch
 from act.model import V0MoECausalLM, estimated_parameter_count
 from act.training.runtime import _autocast_context, gpu_inventory, resolve_device
 from act.training.session_plan import (
+    DECLARED_SESSION_HOURS,
     FP32_FLOOR_TOKENS_PER_SECOND,
     MAX_CHECKPOINTS,
+    PLATFORM_SESSION_CAP_HOURS,
     PairSchedule,
     decide_dtype,
     deadline_decision,
@@ -73,6 +75,13 @@ def campaign_plan_fields(schedule: PairSchedule) -> dict[str, float | int]:
     (2026-09-20 correction, see `session_plan.three_queue_plan`). It is a
     single arm, so its time is derived rather than inherited: one wave even
     where the pair queues pay two.
+
+    Priced at the declared session window, not at section 5.2's registered
+    ``USABLE_HOURS``: sessions are pushed with that clock (2026-09-20 amendment,
+    see ``session_plan.PLATFORM_SESSION_CAP_HOURS``), so a plan composed at the
+    older window describes sessions that will not be run. ``declared_*`` fields
+    state the window this arithmetic used, beside the measured cap it came from,
+    so an artifact's plan can be read without knowing which constants were live.
     """
     null_schedule = PairSchedule(
         tokens_per_second=schedule.tokens_per_second, arms=1, arm_slots=1
@@ -80,12 +89,15 @@ def campaign_plan_fields(schedule: PairSchedule) -> dict[str, float | int]:
     campaign = three_queue_plan(
         schedule.pair_time_hours,
         null_pair_time_hours=null_schedule.pair_time_hours,
+        hours=DECLARED_SESSION_HOURS,
     )
     return {
         "three_queue_sessions": campaign.sessions,
         "three_queue_training_hours": campaign.training_hours,
         "three_queue_sessions_primary": campaign.primary.sessions,
         "three_queue_sessions_null": campaign.null.sessions,
+        "declared_session_hours": DECLARED_SESSION_HOURS,
+        "platform_session_cap_hours": PLATFORM_SESSION_CAP_HOURS,
     }
 
 
@@ -316,13 +328,19 @@ def main() -> int:
             "sessions_for_primary": schedule.sessions_for_primary,
             # The registered field above is section 5.2's arithmetic; these two
             # are what the runner's own start gate (rule 1, with the 45-minute
-            # publish reserve) will do, which is the number a launch should
-            # expect. They differ whenever that reserve binds - measured
-            # 2026-09-20: 6 registered vs 5 started per session, i.e. 2 sessions
-            # for the primary queue registered against 3 needed.
-            "pairs_per_session_rule1": session_pair_capacity(schedule.pair_time_hours),
+            # publish reserve) will do *inside the declared window*, which is
+            # the number a launch should expect. They differ whenever that
+            # reserve binds - measured 2026-09-20: 6 registered vs 4 started per
+            # session at the 7 h declared clock (5 at the registered 9 h, which
+            # no session gets: the platform killed the first one at 8 h).
+            "pairs_per_session_rule1": session_pair_capacity(
+                schedule.pair_time_hours, DECLARED_SESSION_HOURS
+            ),
             "sessions_for_primary_rule1": math.ceil(
-                12 / session_pair_capacity(schedule.pair_time_hours)
+                12
+                / session_pair_capacity(
+                    schedule.pair_time_hours, DECLARED_SESSION_HOURS
+                )
             ),
             "sessions_total": schedule.sessions_total,
             # The campaign's own plan, across all three declared queues, from

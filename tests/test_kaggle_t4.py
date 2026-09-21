@@ -382,6 +382,20 @@ def test_benchmark_argv_is_the_registered_step_count() -> None:
     ]
 
 
+def test_the_declared_window_is_the_measured_cap_less_the_reserve() -> None:
+    """The kernel's default window is the amendment's, not a second number.
+
+    ``DEFAULT_HOURS`` is what a session declares (the driver passes it into the
+    kernel), and ``DECLARED_SESSION_HOURS`` is what the plan and the artifact
+    price. They are one decision, so they are one value: measured 2026-09-20, a
+    session given the registered 9 h window was killed by the platform at 8 h,
+    before its exit publish, and lost every pair it had trained.
+    """
+    from act.training.session_plan import DECLARED_SESSION_HOURS
+
+    assert kaggle_t4.DEFAULT_HOURS == DECLARED_SESSION_HOURS == 7.0
+
+
 def test_dtypeprobe_prices_the_placement_the_runner_will_use(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -405,9 +419,13 @@ def test_dtypeprobe_prices_the_placement_the_runner_will_use(
     # And the line the probe logs is the one priced here, not a second spelling -
     # carrying both the registered section 5.2 arithmetic and the capacity the
     # runner's own gate honours (one pair fewer per session here, so one session
-    # more for the primary queue).
+    # more for the primary queue). The gate is read at the *declared* window
+    # (2026-09-20: the measured 8 h platform cap, not the documented 12 h clock),
+    # which costs this 1.486 h pair its fifth slot and still leaves three
+    # sessions and the same 53.5 h training floor.
     assert (
-        "pair 1.486 h, 5 pairs/session by rule 1 (6 registered), "
+        "pair 1.486 h, 4 pairs/session by rule 1 at the declared 7 h window "
+        "(6 registered), "
         "3 sessions for the primary queue (2 registered); "
         "three queues 9 sessions / 53.5 h training floor"
     ) in kaggle_t4.dtypeprobe_report({"fp16": rate}, 2, torch.device("cuda"))
@@ -419,7 +437,7 @@ def test_dtypeprobe_prices_the_placement_the_runner_will_use(
         4,
     )
     assert (
-        "2 pairs/session by rule 1 (3 registered), "
+        "2 pairs/session by rule 1 at the declared 7 h window (3 registered), "
         "6 sessions for the primary queue (4 registered); "
         # The null queue is one arm and therefore one wave: on a one-device host
         # it keeps the device-per-arm capacity while the pair queues halve, so

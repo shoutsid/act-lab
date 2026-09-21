@@ -1,5 +1,18 @@
 # ACT Implementation Status
 
+## The platform's 8-hour cap: session 1 died inside a 9-hour window the plan had declared (2026-09-21)
+
+| | |
+|---|---|
+| **What happened** | Gate 4's primary-queue session 1 (`sid123123234/act-t4-session`) was pushed 2026-09-20 10:39:54Z and ended `ERROR` after **8 h 00 m** - the driver, polling every 60 s, observed it at 18:43Z - which is *before* its own 9-hour deadline. The weekly GPU quota fell 25.11 h -> 17.06 h across it, so it billed **8.05 GPU-hours** and published nothing: the queue sits exactly where it was before the session started. |
+| **The kill was total, and the emptiness is measured rather than inferred** | The platform returned an empty kernel log and no output files. That is a fact about the session and not about the query, which a control check settles: the same call against the same account returns 24,973 characters of log and 288 output files for `act-t4-archzoo`, and 5,157/249 for `act-t4-selfcheck`. So nothing of the session's own account of itself survives, and because a session publishes only at exit - the published dataset is its only durable copy - the pairs it had already finished went with the container. |
+| **Why this was a plan defect and not a run of bad luck** | §5.2's session model is built on Kaggle's *documented* GPU limit: 12 h, per the 2022-01-24 product update that raised it from 9 h. `--hours 9` was therefore the registered "usable" window, and `USABLE_HOURS` still is. Rule 1 then starts a pair whenever `pair_time + 45 min` fits the remaining clock, which spends a session's *last hour* on a pair and its exit publish. At the T4's measured 1.443 h pair time a 9 h window starts a fifth pair at 5.77 h that ends at 7.2 h, leaving the publish to race the cap - and the cap is 8 h. The platform's limit is not ours to set; the declaration was, and it sat above the limit. |
+| **The amendment** | `session_plan.PLATFORM_SESSION_CAP_HOURS = 8.0` records the measurement, `BOOT_AND_PREP_HOURS = 0.25` the non-training part of the window, and `DECLARED_SESSION_HOURS = 7.0` is what remains after the publish reserve (8.0 - 0.75 - 0.25). The kernel's own default window (`kaggle_t4.DEFAULT_HOURS`) and every plan-composition site move with it - the launch artifact's `_rule1` and `three_queue_*` fields and the dtype probe's plan lines - so the artifact a session writes and the command it runs are one decision again rather than two that can drift. |
+| **And it is free, which is why it is not a trade-off** | At the T4's measured placement rate a 7 h window packs **4** pairs and refuses a fifth - exactly the pair the killed session was spending when it died - ending its last pair at ~5.8 h and publishing with over an hour in hand. Twelve seeds need **three sessions either way**, because `ceil(12/4) == ceil(12/5) == 3`, so the amendment gives up no session, no training hour and no quota: the campaign stays nine sessions over a 51.95 h training floor, which is the same nine the corrected plan already recorded. |
+| **A second defect: the driver made the loss undiagnosable** | On a failed session `kaggle_queue.py` printed `session ended with ERROR; kernel log follows` and then *nothing at all*, because `kaggle kernels output` had returned no files - so an operator could not tell an empty log from a missing one, on a session that had just burned 8 GPU-hours. It now reports the elapsed wall clock and the quota burned, says explicitly when the platform returned nothing and that the queue restarts from its last published seed, and names what it did return when that is a partial survival rather than a total loss. |
+| **Pinned** | `test_the_declared_window_is_the_measured_cap_less_its_reserve` (the plan's window and the kernel's default are one value), `test_the_artifact_plans_at_the_declared_window` (the artifact prices the campaign at the window it will be given), and two driver tests (a total loss is reported; a partial survival reads as partial). Mutants: restoring the registered 9 h window fails 1; setting `DEFAULT_HOURS` back to 9 fails 1; pricing the artifact at the registered window fails 4; and **restoring the driver's original silent path verbatim fails 2**, so the test would have caught the failure that actually happened. |
+| **Result** | **1262 tests pass · 254/254 quick claims agree · 9/9 records reproduce**; the campaign is relaunched at the corrected window. |
+
 ## The 14.8x collapse against the budget: half of it was the budget, and the controller's edge is what 4x training takes away (2026-09-20)
 
 | | |
@@ -1727,7 +1740,11 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   device is available on the two-T4 shape (2x). At the measured fp16 rate with
   one arm per device a pair is 1.36 h, so each of the three queues is ~16
   GPU-hours (12 pairs) and two sessions each at `--hours 9` (the registered
-  usable window) place six completed pairs. Both queues and the null queue bill
+  usable window) place six completed pairs. (**Corrected 2026-09-21**: the
+  declared window is now 7 h and packs four pairs per session over the same
+  three sessions, because the platform kills this shape at 8 h - see the entry
+  at the top of this file. The 9 h reading is kept as the historical record.)
+  Both queues and the null queue bill
   only the time they actually train: the deadline rules stop a session early
   rather than fill the window.
 - **The section 4 verdict is reachable after a Kaggle run, and its exit codes

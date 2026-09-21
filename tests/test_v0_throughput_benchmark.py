@@ -21,7 +21,11 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import v0_throughput_benchmark  # noqa: E402
 
-from act.training.session_plan import PairSchedule  # noqa: E402
+from act.training.session_plan import (  # noqa: E402
+    DECLARED_SESSION_HOURS,
+    PairSchedule,
+    session_pair_capacity,
+)
 
 
 def test_the_artifact_campaign_is_three_symmetric_queues() -> None:
@@ -41,6 +45,29 @@ def test_the_artifact_campaign_is_three_symmetric_queues() -> None:
     assert fields["three_queue_sessions"] == 9
     assert math.isclose(fields["three_queue_training_hours"], 51.95, abs_tol=5e-2)
     assert fields["three_queue_training_hours"] > 47.0
+
+
+def test_the_artifact_plans_at_the_declared_window() -> None:
+    """The artifact's plan is the window sessions are given (2026-09-20).
+
+    Section 5.2's registered 9 h window stays the registered arithmetic the
+    schedule table is pinned to, but a plan composed at it describes sessions
+    that will not be run: the platform killed session 1 at 8 h, before its own
+    9 h deadline, and took every pair it had trained. The artifact therefore
+    prices the campaign at the declared clock - four pairs per session instead
+    of five - and records both the window and the measured cap it came from, so
+    a plan can be read without knowing which constants were live on the day.
+    """
+    schedule = PairSchedule(tokens_per_second=5_083.4, arms=2, arm_slots=2)
+    fields = v0_throughput_benchmark.campaign_plan_fields(schedule)
+    assert fields["declared_session_hours"] == DECLARED_SESSION_HOURS == 7.0
+    assert fields["platform_session_cap_hours"] == 8.0
+    assert session_pair_capacity(schedule.pair_time_hours, DECLARED_SESSION_HOURS) == 4
+    # A pair per session less, and the same campaign: ceil(12/4) == ceil(12/5)
+    # == 3 sessions for each of the three queues, over the same 51.95 h floor.
+    assert fields["three_queue_sessions_primary"] == 3
+    assert fields["three_queue_sessions"] == 9
+    assert math.isclose(fields["three_queue_training_hours"], 51.95, abs_tol=5e-2)
 
 
 def test_the_artifact_campaign_keeps_the_null_queue_at_one_wave() -> None:

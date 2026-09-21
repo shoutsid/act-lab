@@ -25,7 +25,10 @@ DECLARED_EVENTS = 3
 DECLARED_CANDIDATES = 4
 
 # Session model (section 5.2). A Kaggle GPU session offers 12 hours; after
-# boot, restore, and the publish reserve, ~9.0 h of usable work remain.
+# boot, restore, and the publish reserve, ~9.0 h of usable work remain. That is
+# the *documented* limit and stays the registered model; the shape the Gate 4
+# sessions run on measured 8 h, which is why the clock a session is actually
+# declared is derived separately below (:data:`DECLARED_SESSION_HOURS`).
 SESSION_HOURS = 12.0
 USABLE_HOURS = 9.0
 # Fixed per-pair overhead of event/rebuild work (section 5.2's "+ ~0.1 h").
@@ -34,6 +37,40 @@ PAIR_OVERHEAD_HOURS = 0.1
 PUBLISH_RESERVE_MINUTES = 45.0
 BOUNDARY_STOP_MINUTES = 60.0
 PUBLISH_ONLY_MINUTES = 15.0
+
+# --- The declared session clock (amended 2026-09-20) ------------------------
+# The constants above are section 5.2's *registered* model, written against
+# Kaggle's *documented* GPU session limit (the 2022-01-24 product update raised
+# notebook sessions from 9 h to 12 h for CPU and GPU). The first Gate 4 session
+# measured the platform rather than the documentation and the two disagreed:
+# `sid123123234/act-t4-session`, pushed 2026-09-20 10:39:54Z, was killed with
+# ERROR exactly 8 h later, before its own 9 h deadline. The kill was total - an
+# empty kernel log, no output files, and nothing published. The emptiness is
+# the session's and not the query's, which a control check settles: the same
+# call returns 24,973 characters of log and 288 output files for
+# `act-t4-archzoo`, and 5,157/249 for `act-t4-selfcheck`.
+#
+# It cost 8.05 GPU-hours and every pair the session trained, because a session
+# spends its last hour on a pair (rule 1 starts one whenever the pair time plus
+# the 45-minute reserve fits) and the published dataset is its only durable
+# copy, which a killed session never reaches. So the clock a session is
+# *declared* is taken from the measured cap instead of the documented one, and
+# is short enough that the session's last pair ends and its exit publish
+# completes inside the window the platform actually grants.
+PLATFORM_SESSION_CAP_HOURS = 8.0
+# The part of the window that is neither training nor the exit publish: boot,
+# the queue restore, the in-session throughput benchmark, and the import.
+BOOT_AND_PREP_HOURS = 0.25
+# The declared clock: the measured cap less the publish reserve and the prep
+# allowance (8.0 - 0.75 - 0.25 = 7.0 h). At the T4's measured 1.443 h placement
+# rate that packs 4 pairs and refuses a fifth - and the fifth is exactly what
+# the killed session was spending when it died. It gives up nothing: 12 seeds
+# need three sessions either way, because ceil(12/4) == ceil(12/5) == 3, so no
+# session, training hour or quota is lost, and the publish moves ~1.5 h inside
+# the cap. Read a plan composed at this window, not at ``USABLE_HOURS``.
+DECLARED_SESSION_HOURS = PLATFORM_SESSION_CAP_HOURS - (
+    PUBLISH_RESERVE_MINUTES / 60.0 + BOOT_AND_PREP_HOURS
+)
 # Working-directory ledger (20 GB auto-saved): a checkpoint payload is
 # parameters + AdamW moments = 3.19 GB per arm, and pairs are atomic, so
 # an in-flight pair holds 2 checkpoints x 2 arms x payload + 2 finals.
