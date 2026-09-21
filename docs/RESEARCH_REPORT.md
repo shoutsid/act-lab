@@ -7135,6 +7135,82 @@ ran, which is what licenses reading p `0.706` as an absence rather than as a bli
 comparable, so the claim this arm licenses is the one it registered for - 4x training is inert
 below the onset and not inert above it - and not a statement about the budget as such.
 
+### 5.55 Pre-registration: the *depth dose* above the onset (RAN - summary `depth5-dose-576.json`)
+
+The covariate programme closed with 5.54, and it closed on the axis it began from. Width was
+dosed (24 -> 28 in 5.48, -> 96 in 5.49/5.50), expert count was dosed (4 -> 6 in 5.53), the
+budget was dosed (48 -> 192 in 5.51/5.52/5.54). **Depth - the one covariate that actually moves
+the gate - has only ever had its bracket measured**, and the bracket is one step wide:
+
+| cell | depth | steps | total / active params | adaptive-vs-null | collapse |
+|---|---|---|---|---|---|
+| `depth2` (5.15) | 2 | 48 | 15,888 / 6,288 | 161/384, `+0.020811` | `-0.099659` |
+| `depth3` (5.15) | 3 | 48 | 23,280 / 8,880 | 188/384, `+0.004643` | `-0.106794` |
+| `depth4-prefix` (5.12) | 4 | 48 | 30,672 / 11,472 | 225/384, `-0.037147` | `-0.070072` |
+| **`depth5-dose`** | **5** | **48** | **38,064 / 14,064** | *this arm* | *this arm* |
+
+So the project's central statement - the gate is depth per se, at every covariate this search
+space can measure or vary - currently rests on a comparison between depth 3 and depth 4 with
+**nothing measured above the upper cell**. Above the onset at depth 4 there may be a slope (deeper
+keeps paying, and a depth-4 pass is a point on an axis) or a cliff edge (depth 4 is the only depth
+that works, and the pass is a knife-edge). Nothing in the program distinguishes the two.
+
+**Design.** One fresh cell of the registered config with `depth` 4 -> 5 and **nothing else
+changed** - same width 24, same expert count 4, same 48 steps, same 12-step interval, same cap,
+same policy. This is the family's **cleanest dose**: 5.48 moved width, 5.53 moved experts, 5.54
+moved the budget, and this moves one key. It is deliberately **not** a matched-parameter contrast,
+and that is the right reading rather than a limitation: every rung of the ladder adds exactly
+7,392 total / 2,592 active parameters, so a fifth layer carries its parameters irreducibly - and
+5.48 and 5.53 already measured that buying parameters with width or with experts does not move the
+gate. So this arm reads the depth axis **as a package**, which is the form the claim "the gate is
+depth" takes on the substrate the search actually runs.
+
+**Primaries.** Two, at the sibling arms' level: `alpha/2 = 0.025`, bar **313/576**.
+
+1. **P1 (the gate stays open above the onset).** The depth-5 cell's adaptive-vs-null wins clear
+   the bar **and** the mean delta is negative - the family's per-cell conjunction. Its failure
+   would mean the gate is a narrow window at depth 4 rather than a threshold.
+2. **P2 (a fifth layer creates *more* value than a fourth).** One-sided rank-sum of the depth-5
+   cell's adaptive-vs-null deltas against the committed above-onset cell's, smaller meaning
+   deeper is better. Non-paired, two independent cells, as 5.54's regime primary is.
+
+**P2's sensitivity was rehearsed on a measured instance of the same comparison shape before this
+arm ran.** The shape is "two independent cells of this family, same depth and width, one given a
+strictly better substrate, and the test has to see that on the value deltas". The measured
+instance is the budget dose at depth 4: `depth4-prefix` -> `width-d4-long-w24` moves the value
+reading from `-0.037147` to `-0.204292`, and the comparison returns U `41829`, p `2.6e-60` in the
+direction this primary registers. So P2 is a test known to detect a substrate that creates more
+value where the records say one exists - without which its failure here would be uninformative -
+and its direction is pinned (the reversed call reads as a dead null, p > 0.999).
+
+**Pre-registered interpretation (fixed before running).**
+
+- **P1 and P2:** **the gate stays open above the onset and the axis pays** - a fifth layer clears
+  the bar *and* creates more value than a fourth. The onset is then a slope on both sides, and a
+  Gate 4 pass at depth 4 is a point on a scaling axis rather than a knife-edge.
+- **P1 only:** **the onset is a threshold at depth 4** - deeper keeps the gate open but buys
+  nothing more. The step is real and the slope is not, which is the reading that matters most for
+  Gate 4: the pass generalises in the sense of not being fragile, and there is nothing to gain by
+  deepening either.
+- **P2 only:** the layer creates more value than a fourth *and* still does not clear the bar on
+  its own, so the upper edge of the gate is fragile - recorded as a fragile-upper-edge reading
+  rather than as either of the two above.
+- **Neither:** **the gate is not monotone in depth** - a fifth layer fails where a fourth passes,
+  so the onset is a narrow window at depth 4. That is the strongest statement this family could
+  make about Gate 4's fragility and it is recorded as such, with the consequence that nothing here
+  licenses reading a depth-4 pass as a property of "more depth".
+
+**Descriptive secondaries.** The full depth ladder (depths 2, 3, 4 and this cell) with value,
+collapse and the controller's own edge at each, so the ladder can be read as a curve rather than
+as a pair of cells.
+
+**Cost.** Measured on this cell's own config before registering: ~1.51 s/seed at four threads
+(against depth 4's ~1.23 s/seed on the same machine), so 576 seeds is ~14.5 min of single-thread
+CPU across 20 shards - roughly four minutes of wall clock, no GPU quota, run while the corrected
+Gate 4 session trains. The block is 91384-91959, the first free 576-window at or after 91000,
+checked by a test against every other profile *and* every committed summary's recorded seeds.
+Registered before the run; the running revision is recorded in the summary's `code_revision`.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

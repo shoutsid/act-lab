@@ -305,6 +305,18 @@ PROFILES: dict[str, dict] = {
         "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/depth3-long-576.json",
     },
+    # Section 5.55: the depth dose above the onset. One gene changed and nothing
+    # else - the family's cleanest dose, and the only covariate that has never
+    # been dosed on the axis that moves the gate.
+    "depth5-dose": {
+        "seeds": tuple(range(91384, 91960)),
+        "overrides": {"depth": 5},
+        "run_revision": None,
+        "report_section": "5.55",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 2.0,
+        "summary": "artifacts/study-summaries/depth5-dose-576.json",
+    },
 }
 REGISTERED = dict(
     hidden_size=24,
@@ -363,6 +375,14 @@ LONG_D3_PROFILE = "depth3-long"
 LONG_D3_SAME_DEPTH = "depth3"
 LONG_D3_ABOVE_LONG = "width-d4-long-w24"
 LONG_D3_ABOVE_SHORT = "depth4-prefix"
+# The *depth dose* above the onset (section 5.55): the one covariate that moves
+# the gate, and the only one this family has never dosed. Width (24 -> 28 -> 96),
+# expert count (4 -> 6) and budget (48 -> 192) each got a dose; depth has only
+# its bracket - `depth2` (161/384, no gate) and `depth3` (188/384, no gate)
+# below, `depth4-prefix` (225/384, gate) at the top - so "the gate is depth per
+# se" currently rests on a single step with nothing measured above it.
+DEPTH_DOSE_PROFILE = "depth5-dose"
+DEPTH_DOSE_REFERENCE = "depth4-prefix"
 
 
 def run_shard(shard: int, shards: int, profile: str) -> Path:
@@ -937,6 +957,109 @@ def long_d3_verdict(shards: int, alpha: float) -> int:
     return 0
 
 
+def depth_dose_verdict(shards: int, alpha: float) -> int:
+    """Section 5.55's primaries and branches: the depth dose above the onset.
+
+    One fresh cell of the registered config with ``depth`` 4 -> 5 and nothing
+    else changed - 38,064 total / 14,064 active parameters against the committed
+    above-onset cell's 30,672 / 11,472. That is deliberately *not* a
+    matched-parameter contrast: a fifth layer carries its parameters
+    irreducibly, and 5.48 and 5.53 already measured that neither buying
+    parameters with width nor buying them with experts moves the gate. So this
+    arm reads the depth axis as a package, which is the reading "the gate is
+    depth per se" needs - not a third matched-parameter probe. Two primaries at
+    the sibling arms' alpha/2 (bar 313/576):
+
+    - P1 (the gate stays open above the onset): the family's per-cell
+      conjunction. Its failure would mean the gate is a narrow window at depth 4
+      rather than a threshold.
+    - P2 (a fifth layer creates *more* value than a fourth): a one-sided
+      rank-sum of `depth4-prefix`'s adaptive-vs-null deltas against this cell's,
+      smaller meaning deeper is better - so P1 without P2 is a threshold (a step,
+      not a slope) and P1 with P2 is an axis that pays.
+
+    P2's ruler was rehearsed on a measured instance of the same comparison shape
+    before this arm ran: two independent cells at the same depth of the same
+    family, one substrate strictly better - `depth4-prefix` against
+    `width-d4-long-w24` (the same width and depth at 4x the budget) gives U
+    41829, p 2.6e-60 in the direction this primary registers. So the test detects
+    a substrate that creates more value where the records say one exists.
+
+    Branches, fixed before the run:
+
+    - P1 and P2: **the gate stays open above the onset and the axis pays** - a
+      fifth layer clears the bar and creates more value than a fourth, so the
+      depth axis is a slope below the gate and above it, and a Gate 4 pass at
+      depth 4 is a point on that axis rather than a knife-edge.
+    - P1 only: **the onset is a threshold at depth 4** - deeper keeps the gate
+      open but buys nothing more, so the step is real and the slope is not.
+    - P2 only: the fifth layer creates more value than the fourth and still does
+      not clear the bar on its own, so the upper edge of the gate is fragile.
+    - neither: **the gate is not monotone in depth** - a fifth layer fails where
+      a fourth passes, and the onset is a narrow window at depth 4. That is the
+      strongest statement this family could make about Gate 4's fragility, and
+      it is recorded as such.
+
+    The depth ladder's levels (depths 2, 3, 4 and this cell) and the controller's
+    own edge are reported descriptively, as every cross-cell reading here is.
+    """
+    level = alpha / 2
+    cell = _cell_stats(DEPTH_DOSE_PROFILE, shards, level)
+    p1 = bool(cell["creates_value"])
+    new = _cell_deltas(DEPTH_DOSE_PROFILE, shards, "adaptive", "null")
+    reference = _cell_deltas(DEPTH_DOSE_REFERENCE, shards, "adaptive", "null")
+    # `_rank_sum_one_sided(a, b)` answers whether b is stochastically *larger*
+    # than a, so the new cell comes first for the claim "deeper creates more
+    # value" (a smaller delta is a better one).
+    u, p2 = _rank_sum_one_sided(new, reference)
+    p2_passes = p2 <= level
+    print(
+        f"\nP2 (deeper creates more value than the onset cell): rank-sum "
+        f"{DEPTH_DOSE_PROFILE} vs {DEPTH_DOSE_REFERENCE} on adaptive-vs-null: "
+        f"U {u:.1f}, one-sided p {p2:.2e} (bar alpha/2 = {level:.4f}; means "
+        f"{sum(new) / len(new):+.6f} vs {sum(reference) / len(reference):+.6f}) "
+        f"-> deeper is better: {p2_passes}"
+    )
+    branches = {
+        (True, True): (
+            "P1+P2 PASS: the gate stays open above the onset and the depth axis "
+            "pays - a fifth layer clears the bar and creates more value than a "
+            "fourth, so the onset is a slope on both sides and a depth-4 pass is "
+            "a point on that axis rather than a knife-edge"
+        ),
+        (True, False): (
+            "P1 only: the onset is a threshold at depth 4 - deeper keeps the gate "
+            "open but buys nothing more, so the step is real and the slope is not"
+        ),
+        (False, True): (
+            "P2 only: a fifth layer creates more value than a fourth and still "
+            "does not clear the bar on its own - the upper edge of the gate is "
+            "fragile"
+        ),
+        (False, False): (
+            "both FAIL: the gate is not monotone in depth - a fifth layer fails "
+            "where a fourth passes, so the onset is a narrow window at depth 4"
+        ),
+    }
+    print(f"BRANCH: {branches[(p1, p2_passes)]}")
+    # Descriptive: the depth ladder at the registered width and budget.
+    for label, profile in (
+        ("depth 2 (committed)", "depth2"),
+        ("depth 3 (committed)", "depth3"),
+        ("depth 4 (committed)", DEPTH_DOSE_REFERENCE),
+        ("depth 5 (this arm)", DEPTH_DOSE_PROFILE),
+    ):
+        value = _cell_deltas(profile, shards, "adaptive", "null")
+        collapse = _cell_deltas(profile, shards, "null", "random")
+        edge = _cell_deltas(profile, shards, "adaptive", "random")
+        print(
+            f"  {label:<22} value {sum(value) / len(value):+.6f}  "
+            f"collapse {sum(collapse) / len(collapse):+.6f}  "
+            f"edge {sum(edge) / len(edge):+.6f}  ({profile})"
+        )
+    return 0
+
+
 def experts_verdict(shards: int, alpha: float) -> int:
     """Section 5.53's primaries and branches: the expert-count covariate.
 
@@ -1337,6 +1460,12 @@ def main() -> int:
     )
     d3long_p.add_argument("--shards", type=int, required=True)
     d3long_p.add_argument("--alpha", type=float, default=ALPHA)
+    d5_p = sub.add_parser(
+        "depth5-verdict",
+        help="section 5.55: the depth dose above the onset",
+    )
+    d5_p.add_argument("--shards", type=int, required=True)
+    d5_p.add_argument("--alpha", type=float, default=ALPHA)
     sum_p = sub.add_parser("summary", help="write the committed study summary")
     sum_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
     sum_p.add_argument("--alpha", type=float, default=ALPHA)
@@ -1375,6 +1504,8 @@ def main() -> int:
         return experts_verdict(args.shards, args.alpha)
     if args.command == "depth3-long-verdict":
         return long_d3_verdict(args.shards, args.alpha)
+    if args.command == "depth5-verdict":
+        return depth_dose_verdict(args.shards, args.alpha)
     return verdict(args.shards, args.profile)
 
 
