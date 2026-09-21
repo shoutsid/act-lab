@@ -43,7 +43,7 @@ taking first - 9 is the audit that changed the interpretation, and 10 is the cur
 | **5.21-5.34** | The mid-training penalty and the prune-target chain: the penalty's arm-genericity (§5.22), optimizer history against the architecture change (§5.23), the discarded routing head (§5.24), prune against grow (§5.25), the freshly drawn expert (§5.26), cloning's two effects (§5.27-§5.28), the discovery path (§5.29-§5.30), and the powered prune-target studies (§5.31-§5.34). |
 | **5.35-5.40** | The declared path: defects found by reading rather than by a study (§5.35), dev-scale evidence on the real token stream (§5.36), the measured liveness contract (§5.37), whether the rebuild treatment transfers (§5.38), churn harm as a property of churn (§5.39), and the deployed configuration against the do-nothing arm (§5.40). |
 | **5.41-5.47** | Audit-derived corrections and the Gate 4 registration: the tolerance band's scale (§5.41), the clause a partial run made unfireable (§5.42), the verdict-path rehearsal (§5.43), the one-directional quality clause (§5.44), the suite's cost (§5.45), the launch path's missing rebuild treatment (§5.46), and the amendment that registers it (§5.47). |
-| **5.48-5.64** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), the two width bisections that halve the gate window the width programme left open and then test where the edge's maximum is reached (§5.60-§5.61), the crossing dose under the family's other candidate policy (§5.62), the Gate-5 transfer path with its fresh-versus-resumed check (§5.63), and the gate chain itself, declared while gates 5-7 are still prose (§5.64). |
+| **5.48-5.65** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), the two width bisections that halve the gate window the width programme left open and then test where the edge's maximum is reached (§5.60-§5.61), the crossing dose under the family's other candidate policy (§5.62), the Gate-5 transfer path with its fresh-versus-resumed check (§5.63), the gate chain itself, declared while gates 5-7 are still prose (§5.64), and the re-reservation of the declared block after its first four seeds were found to have run the pre-amendment rebuild (§5.65). |
 | **6-10** | Reproducibility (§6), the deliverables checklist (§7), figures (§8), the substrate audit (§9), and the synthesis (§10) - which reads this track against the architecture-search track. |
 
 Reproducibility at notebook fidelity (plan sections 39 and 104) now ships with
@@ -348,7 +348,7 @@ mutation the search can actually reach (5.53). Section 10.4 is the bound in full
 |---|---|---|---|---|---|---|
 | Horizon replication | study 3 config at steps=144 | cap4/2-batch, 3 events, steps=144 | fresh 8000-8383 | binomial sign test, alpha=0.05 | PASS -> pass generalizes; FAIL -> pass was horizon-specific | **DONE: PASS** (231/384, p 4.04e-05, t p 1.07e-08, cost 14.0%) |
 | Richness | candidate set size at fixed probe tokens | cap4/1-batch (A) vs cap2/2-batch (B), 3 events, steps=144 | fresh 7000-7383 | binomial sign test, alpha=0.05; factor claim: paired A-vs-B, one-tailed "rich better" | PASS & A>B -> richness is the active axis; B passes & B>=A -> probe quality is; neither -> both jointly necessary | **DONE: PASS for richness** (A 228/384, p 1.4e-04, t p 5.0e-05, cost 7.3%; B 193/384, p 0.48, cost 8.1%; paired A better 225/384, z = 3.37, p 8e-04) |
-| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config, **`probe_candidate_policy=spread`** (see 5.1/5.5) | **15000-15011** (adopted 5.5 change 4; the declared 9000-9011 was spent by the 5.3 diagnostic) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] + **pool-matched control clause** | cost + band + harm guard clear **and the loss-blind control arm must not clear its own gate** -> Gate 4 authorized; control passes, control missing, band miss or harm guard -> Gate 4 withheld at exit 2 | **REGISTERED as revised (section 5.5, adopted); IN FLIGHT** - the campaign has been running on Kaggle since 2026-09-20 with all three queues (primary, pool-matched control, null clause), and had published 4 of the block's 12 seeds at this writing; section 5.47 records the launch amendment and `docs/T4_RUNBOOK.md` is the operational record |
+| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config, **`probe_candidate_policy=spread`** (see 5.1/5.5) | **15024-15035** (adopted 5.5 change 4 to 15000-15011, then re-reserved by 5.65: that block's first four seeds ran the pre-5.47 rebuild and their harm numbers had been read) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] + **pool-matched control clause** | cost + band + harm guard clear **and the loss-blind control arm must not clear its own gate** -> Gate 4 authorized; control passes, control missing, band miss or harm guard -> Gate 4 withheld at exit 2 | **REGISTERED as revised (sections 5.5, 5.47, 5.65); IN FLIGHT** - the campaign has been running on Kaggle since 2026-09-20 with all three queues (primary, pool-matched control, null clause); block 15000-15011 was re-reserved with 4 of its 12 seeds published **at this writing**, and the live block is 15024-15035 in dataset `act-v0-5-2`. `docs/T4_RUNBOOK.md` is the operational record |
 | Depth-4 Gate 3 confirmation | substrate expressiveness + selection value, with the arm-RNG fix | cap4/2-batch, `spread`, `independent_arm_rng`, 3 events, steps=48, depth 4 | fresh 60000-60383 (384 pairs) | argmin vs uniform churn, alpha/3 = 0.01667 (>= 214/384); paired argmin vs pool-matched control | PASS -> Gate 3 established on a non-degenerate substrate, 5.5 adopted; POOL-DRIVEN -> withdraw the selection claim; NOT REPRODUCED -> Gate 3 open, 5.1 must not launch | **DONE: PASS** (argmin vs uniform 255/384, p `6.1e-11`; paired increment 236/384, p `4.1e-06`; pool-matched control 209/384, p `0.046`; validity control does not pass). Section 9.9 |
 
 ### 5.1 Protocol: real-scale compute-efficiency measurement (pre-registered; gates Gate 4)
@@ -8413,6 +8413,72 @@ exactly one gate is implemented; and every unimplemented gate must name its open
 itself - `declared_but_unimplemented()` returns `(5, 6, 7)` so that "the chain is declared" and
 "the chain runs" cannot be read as the same statement. What exists today is gate 4's verdict and
 gate 5's transfer path.
+
+### 5.65 Amendment: the declared block is re-reserved to 15024-15035, because its first four seeds ran the pre-amendment rebuild
+
+**Decision.** The declared block moves from **15000-15011** to **15024-15035**, and the
+primary dataset root moves from `act-v0-5-1` to **`act-v0-5-2`**. All three queues
+re-reserve together, because section 2c requires them to cover the same block.
+Delegated and recorded here with its reasoning and its reversibility, like 5.47.
+
+**Grounds, in order of weight.**
+
+1. **The block was not the registered configuration, and it said so itself.** The launch
+   path (`scripts/kaggle_t4.py::session_argv`) never passed the two flags the runbook
+   prints, so the published summaries record `preserve_router_on_rebuild: false` and
+   `new_expert_initialization: "random"` while the registration, the runbook and the
+   verdict all name the treated one. The verdict's conformance block is descriptive and
+   withholds nothing, so a Gate 4 verdict over that block would be a PASS whose own text
+   reads *"the published run is not the registered configuration, so the verdict describes
+   a different protocol than the one it names"*. For a pre-registered protocol the artifact
+   has to be the protocol.
+2. **The block was no longer blind.** Its first four seeds' harm numbers were read and
+   reported while the campaign was stopped (adaptive 2 of 4; mean adaptive-minus-random
+   +0.000041 nats). Section 5.5 change 4 re-reserved a block for exactly this reason - the
+   harm guard is one of the three verdict branches and its power is a property of not
+   having seen the data. Amending the *registration* to match what the buggy launch did,
+   after those numbers existed, is the one move this project does not make.
+3. **The alternative, priced.** Finishing 15000-15011 untreated costs ~6.6 GPU-h less (the
+   four seeds are already trained) and produces a flagged verdict. Restarting the same
+   seeds treated would cost the same as this amendment and would still reuse four seeds
+   whose outcomes are known, so it loses on ground 2. The delta here is one block's worth
+   of already-spent hours against the one artifact the whole protocol exists to produce.
+
+**What changes.** The seed block, the dataset root, and the constants that name them
+(`v0_runner.DECLARED_SEEDS`, `v0_verdict.DECLARED_SEEDS`, `kaggle_t4.SEED_BLOCK`,
+`kaggle_t4.DEFAULT_SLUG`), plus the runbook. **Nothing else**: shape, tokens per arm, event
+count and cadence, dtype, arms, the adopted probe regime (`spread`, `argmin`, cap 4,
+1-batch), the 5% criterion, the tolerance band, the harm guard, the pool-matched and
+quality clauses, the section 5.14 do-nothing clause and the queue-completeness requirement
+all stand exactly as registered. The four untreated seeds are **not discarded**: they keep
+their own versions in `act-v0-5-1` as a measured untreated block, and their numbers are in
+the operational record.
+
+**A fresh root, not only fresh seeds.** A session now refuses to train a pair whose
+rebuild treatment differs from what the versions already in its dataset root record
+(`v0_runner.check_block_treatment_uniform`), which is what stops two treatments sharing one
+root after the fact. So one root is one block, and a re-reservation has to move the root
+with the seeds. That guard is the part of this amendment that would have caught the whole
+incident before the first seed: it fails closed, names both fields and both values, and
+chooses neither remedy. The second half is a **doc/code agreement pin** - the runbook's
+`pair-session` commands and `session_argv` must carry the same rebuild flags - because this
+defect was invisible to a doc-only check (the doc was right) and to a code-only check (the
+code, and the test named *"the registered one"*, agreed with each other).
+
+**What this is not.** Not a change to section 5.47: the adopted protocol for the declared
+run remains the treated configuration, and the launch path now implements it. Not a claim
+that the treatment decides Gate 4 - 5.47's position (small, right-skewed, 69% of the churn
+harm survives) stands unchanged. And not a finding that any *number* moves: no parameter
+count, no probe FLOPs and no criterion depends on the two fields.
+
+**15012-15023 is skipped deliberately.** 15012 is the benchmark's reserved data seed; the
+reservation is one line in `v0_runner.DECLARED_SEEDS` and the skip is stated there so the
+gap is not read as an oversight.
+
+**Reversible.** Before the first session of the new block, returning to 15000-15011 and
+finishing it untreated is a constant change plus the conformance block reporting what the
+artifact already says. After the new block's first seed is published the re-reservation is
+the less costly direction, for the reason in ground 3.
 
 ## 6. Reproducibility
 

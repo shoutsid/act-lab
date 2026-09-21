@@ -171,7 +171,7 @@ def test_primary_launch_command_is_the_registered_one() -> None:
         "--hours",
         "9",
         "--seeds",
-        "15000-15011",
+        "15024-15035",
         "--probe-candidate-policy",
         "spread",
         # The section 5.47 amendment. This literal used to omit them, so the test
@@ -187,7 +187,7 @@ def test_primary_launch_command_is_the_registered_one() -> None:
         "--session-dir",
         "artifacts/v0-sessions",
         "--kaggle-dataset",
-        "sid123123234/act-v0-5-1",
+        "sid123123234/act-v0-5-2",
     ]
 
 
@@ -237,7 +237,7 @@ def test_the_runbook_and_the_launch_builder_carry_the_same_rebuild_flags() -> No
 
 def test_control_queue_isolates_the_decision_rule() -> None:
     argv = kaggle_t4.session_argv(kaggle_t4.QUEUES["control"])
-    assert argv[-1] == "sid123123234/act-v0-5-1-control"
+    assert argv[-1] == "sid123123234/act-v0-5-2-control"
     # Same candidate pool as the primary, so the only difference is the rule.
     assert argv[argv.index("--probe-candidate-policy") + 1] == "spread"
     assert argv[argv.index("--probe-selection") + 1] == "random"
@@ -252,7 +252,7 @@ def test_null_queue_is_policy_free_and_never_shares_roots() -> None:
     assert "--probe-candidate-policy" not in argv
     assert "--probe-selection" not in argv
     assert argv[argv.index("--dataset-root") + 1] == "artifacts/datasets-null"
-    assert argv[-1] == "sid123123234/act-v0-5-1-null"
+    assert argv[-1] == "sid123123234/act-v0-5-2-null"
 
 
 def test_handoff_roots_are_repo_relative_outside_a_kernel() -> None:

@@ -217,7 +217,7 @@ def test_staged_kernel_pins_the_declared_window(tmp_path: Path) -> None:
         'if __name__ == "__main__":\n'
         "    os.environ.setdefault(MODE_ENV, 'session')\n"
         "    os.environ.setdefault(OWNER_ENV, 'sid123123234')\n"
-        "    os.environ.setdefault(SLUG_ENV, 'act-v0-5-1')\n"
+        "    os.environ.setdefault(SLUG_ENV, 'act-v0-5-2')\n"
         "    os.environ.setdefault(HOURS_ENV, '6.5')\n"
         "    raise SystemExit(main())\n"
     )

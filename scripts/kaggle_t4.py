@@ -82,7 +82,13 @@ OWNER_ENV = "ACT_T4_OWNER"
 SLUG_ENV = "ACT_T4_SLUG"
 
 DEFAULT_OWNER = "sid123123234"
-DEFAULT_SLUG = "act-v0-5-1"
+# act-v0-5-1 holds the first four seeds of the 15000-15011 block, published before this
+# module carried the section 5.47 rebuild treatment. The re-reservation to 15024-15035
+# (section 5.65) needs a **fresh root** as well as fresh seeds: a session refuses to train
+# a pair whose treatment differs from the versions already in its dataset root
+# (`v0_runner.check_block_treatment_uniform`), which is what stops two treatments sharing
+# one root - so one root is one block, and the superseded block keeps its own artifact.
+DEFAULT_SLUG = "act-v0-5-2"
 # The declared session clock. Section 5.2's model assumes a 12 h Kaggle clock
 # (~9 h of usable work once boot, restore and the publish reserve are paid for),
 # but the T4 x2 shape measured 8 h: session 1, pushed 2026-09-20 10:39:54Z, was
@@ -96,8 +102,9 @@ DEFAULT_SLUG = "act-v0-5-1"
 DEFAULT_HOURS = 7.0
 BENCHMARK_STEPS = 50
 # The adopted section 5.5 revision: queue moved off the spent 9000-9011
-# block, primary candidate policy is ``spread``.
-SEED_BLOCK = "15000-15011"
+# block, primary candidate policy is ``spread``. Re-reserved to 15024-15035 by
+# section 5.65; see ``DECLARED_SEEDS`` in ``act.training.v0_runner`` for why.
+SEED_BLOCK = "15024-15035"
 PRIMARY_POLICY = "spread"
 #: The section 5.47 amendment: the declared run carries the section 5.28 rebuild
 #: treatment on **every** arm, so all three queues launch with this pair. It lives in
@@ -1305,7 +1312,7 @@ def mode_dtypeprobe() -> None:
     )
 
     def measure(dtype: str) -> float:
-        torch.manual_seed(15012)  # outside the reserved 15000-15011 block
+        torch.manual_seed(15012)  # outside every reserved block (15000-15011, 15024-15035)
         model = V0MoECausalLM(config.model_config()).to("cuda")
         # The declared config trains with checkpointed activations, so the
         # comparison must too - otherwise it measures a loop nobody runs.

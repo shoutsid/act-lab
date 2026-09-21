@@ -200,7 +200,7 @@ def _run_pair_session(args: argparse.Namespace) -> None:
         seeds = DECLARED_SEEDS
     elif "-" in args.seeds and "," not in args.seeds:
         # The runbook's documented 'A-B' range form (the section 5.2 command
-        # passes --seeds 15000-15011); also accepted by the verdict script.
+        # passes the declared block); also accepted by the verdict script.
         start, end = args.seeds.split("-", 1)
         if not (start.strip().isdigit() and end.strip().isdigit()):
             raise SystemExit(
@@ -423,7 +423,7 @@ def main() -> None:
     parser.add_argument(
         "--seeds", default=None,
         help="comma-separated seeds or an inclusive 'A-B' range (pair-session "
-        "default the declared queue 15000-15011)",
+        "defaults to the declared queue, v0_runner.DECLARED_SEEDS)",
     )
     parser.add_argument("--probe-batch-count", type=int, default=1)
     # Adopted section 5.5 protocol knobs. Defaults are the registered ones, so

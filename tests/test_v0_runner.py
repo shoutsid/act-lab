@@ -54,11 +54,16 @@ def _config(**overrides) -> V0SessionConfig:
 
 
 def test_declared_seed_block_matches_the_adopted_revision() -> None:
-    # Re-reserved from 9000-9011 by the adopted section 5.5 change 4: the
-    # original block was spent by the section 5.3 diagnostic, so the harm
-    # guard was no longer blind. See RESEARCH_REPORT.md section 5.5 point 3.
-    assert DECLARED_SEEDS == tuple(range(15000, 15012))
+    # Re-reserved twice, for the same reason both times: the block must be blind and it
+    # must be the registered configuration. 9000-9011 -> 15000-15011 (section 5.5 change
+    # 4: the original block was spent by the section 5.3 diagnostic, so the harm guard was
+    # no longer blind); 15000-15011 -> 15024-15035 (section 5.65: its first four seeds ran
+    # before the launch path carried the 5.47 rebuild treatment, and their harm numbers
+    # had been read). See RESEARCH_REPORT.md sections 5.5, 5.47, 5.65 and 9.9.
+    assert DECLARED_SEEDS == tuple(range(15024, 15036))
     assert 9000 not in DECLARED_SEEDS
+    assert 15000 not in DECLARED_SEEDS  # the superseded block keeps its own artifact
+    assert 15012 not in DECLARED_SEEDS  # the benchmark's reserved data seed
 
 
 def test_failed_local_publish_stops_the_queue_without_losing_earlier_seeds(
@@ -582,7 +587,7 @@ def test_cli_default_queue_is_the_declared_block(tmp_path: Path, monkeypatch) ->
         )
     )
     cli.main()
-    assert captured["seeds"] == tuple(range(15000, 15012))
+    assert captured["seeds"] == tuple(range(15024, 15036))
     assert captured["code_revision"]  # captured from git, not 'unknown'
     assert captured["config"].dtype == "fp32"
     assert captured["config"].max_checkpoints == 2  # registered pin
@@ -1165,7 +1170,7 @@ def test_cli_session_arms_null_builds_a_declared_null_session(
         _cli_argv(
             [
                 "--tokens-per-second", "50000",
-                "--seeds", "15000-15011",
+                "--seeds", "15024-15035",
                 "--session-arms", "null",
                 "--session-dir", str(tmp_path / "sessions"),
                 "--dataset-root", str(tmp_path / "dataset"),
@@ -1182,11 +1187,11 @@ def test_cli_session_arms_null_builds_a_declared_null_session(
     assert config.total_steps == 6_000
     assert config.probe_batch_count == 1
     # The runbook's documented range form must parse, not crash.
-    assert captured["seeds"] == tuple(range(15000, 15012))
+    assert captured["seeds"] == tuple(range(15024, 15036))
 
 
 def test_cli_seeds_accepts_the_runbook_range_form(tmp_path: Path, monkeypatch) -> None:
-    """The runbook documents '--seeds 15000-15011'; the CLI must honor it.
+    """The runbook documents '--seeds 15024-15035'; the CLI must honor it.
 
     Regression pin for a latent parser bug the 5.14 null-queue tests exposed:
     the pair-session seed parser only handled comma lists, so the documented
@@ -1218,7 +1223,7 @@ def test_cli_seeds_accepts_the_runbook_range_form(tmp_path: Path, monkeypatch) -
         _cli_argv(
             [
                 "--tokens-per-second", "50000",
-                "--seeds", "15000-15011",
+                "--seeds", "15024-15035",
                 "--session-dir", str(tmp_path / "sessions"),
                 "--dataset-root", str(tmp_path / "dataset"),
                 "--output", str(tmp_path / "log.json"),
@@ -1228,7 +1233,7 @@ def test_cli_seeds_accepts_the_runbook_range_form(tmp_path: Path, monkeypatch) -
     )
     cli.main()
 
-    assert captured["seeds"] == tuple(range(15000, 15012))
+    assert captured["seeds"] == tuple(range(15024, 15036))
 
 
 def test_cli_session_arms_rejects_unknown_and_empty(tmp_path: Path, monkeypatch) -> None:

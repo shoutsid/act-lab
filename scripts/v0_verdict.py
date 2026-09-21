@@ -66,9 +66,10 @@ from act.training.session_plan import (
 )
 from act.training.v0_handoff import HANDOFF_DATASET, published_seed_status
 
-# Re-reserved from 9000-9011 by the adopted section 5.5 revision (change 4);
-# see RESEARCH_REPORT.md sections 5.5 and 9.9.
-DECLARED_SEEDS = tuple(range(15000, 15012))
+# Re-reserved twice: 9000-9011 -> 15000-15011 by the adopted section 5.5 revision
+# (change 4), and 15000-15011 -> 15024-15035 by section 5.65 (which is what a launch
+# command must name). See RESEARCH_REPORT.md sections 5.5, 5.47, 5.65 and 9.9.
+DECLARED_SEEDS = tuple(range(15024, 15036))
 PRIMARY_COST_PERCENT = 5.0
 HARM_GUARD_LOSS_LIMIT = 10  # adaptive worse in >= 10 of 12 pairs rejects
 # The loss-blind pool-matched arm winning >= 10 of 12 pairs means a

@@ -63,13 +63,20 @@ from act.training.v0_session import (
     run_v0_session,
 )
 
-# The declared section 5.1 queue. Re-reserved to 15000-15011 by the adopted
-# section 5.5 revision (change 4): the original block 9000-9011 was spent by
-# the section 5.3 real-data diagnostic, which ran the whole queue through this
-# same runner at reduced fidelity, and a section 5.1 verdict already exists
-# over it - so the harm guard, one of the three verdict branches, was no
-# longer blind. See RESEARCH_REPORT.md sections 5.5 and 9.9.
-DECLARED_SEEDS = tuple(range(15000, 15012))
+# The declared section 5.1 queue. Re-reserved twice, for the same reason both times:
+# the block must be blind and it must be the registered configuration.
+#
+# 9000-9011 -> 15000-15011 (section 5.5 change 4): the original block was spent by the
+# section 5.3 real-data diagnostic, which ran the whole queue through this same runner at
+# reduced fidelity, and a section 5.1 verdict already existed over it - so the harm guard,
+# one of the three verdict branches, was no longer blind.
+#
+# 15000-15011 -> 15024-15035 (section 5.65): its first four seeds were published before
+# the launch path carried the section 5.47 rebuild treatment, and their harm numbers were
+# read and reported while the campaign was stopped - so that block is neither the
+# registered configuration nor blind over the seeds already seen. See sections 5.47 and
+# 5.65. 15012-15023 is skipped deliberately: 15012 is the benchmark's reserved data seed.
+DECLARED_SEEDS = tuple(range(15024, 15036))
 
 
 def _make_log(log: Callable[[str], None] | None) -> Callable[[str], None]:

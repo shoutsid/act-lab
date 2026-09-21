@@ -5,8 +5,10 @@ Gate 4 is withheld when the adaptive arm "loses-or-ties" against the null arm on
 ``>= NULL_WIN_LIMIT = 10`` of 12 seeds. The mirror of the registered harm guard, and
 deliberately so - but it is a *rule*, and how much a rule decides is a property of the
 rule and the noise, not of the run. This script computes that property, and it is
-deliberately run **before** block 15000-15011's null queue exists, so the reading of
-whichever verdict lands is fixed in advance rather than chosen afterwards.
+deliberately run **before** the declared block's null queue exists (it was computed while
+block 15000-15011 was training, and section 5.65 has since re-reserved the block to
+15024-15035 for reasons unrelated to this rule), so the reading of whichever verdict lands
+is fixed in advance rather than chosen afterwards.
 
 What it reports:
 

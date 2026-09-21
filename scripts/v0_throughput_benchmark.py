@@ -57,7 +57,7 @@ def build_declared_model(device: torch.device) -> tuple[V0MoECausalLM, int, int]
     """Construct the declared 285M model and return it with (total, active) counts."""
     config = declared_session_config().model_config()
     total, active = estimated_parameter_count(config)
-    torch.manual_seed(15012)  # outside the reserved 15000-15011 seed block
+    torch.manual_seed(15012)  # outside every reserved block (15000-15011, 15024-15035)
     model = V0MoECausalLM(config).to(device)
     return model, total, active
 
@@ -361,7 +361,7 @@ def main() -> int:
         },
         "tolerance_band_primary": tolerance_band(1),
         "example_deadline_check": deadline_decision(2.0, schedule.pair_time_hours).reason,
-        "seed_block": "15000-15011 (reserved, untouched by this benchmark)",
+        "seed_block": "15000-15011 and 15024-15035 (reserved, untouched by this benchmark)",
     }
     output = args.output or Path("artifacts/v0-benchmark.json")
     output.parent.mkdir(parents=True, exist_ok=True)

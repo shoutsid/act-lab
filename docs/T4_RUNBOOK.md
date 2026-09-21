@@ -11,8 +11,10 @@ tolerance band are fixed in code and in §5.1/§5.2, as amended by the **adopted
 §5.5 revision** (signed off 2026-09-14). The verdict is machine-checked.
 
 **What §5.5 changed, and only this:** the primary controller uses the `spread`
-candidate policy; the declared queue is **15000-15011** (the registered
-9000-9011 was spent by the §5.3 diagnostic); a **pool-matched loss-blind control
+candidate policy; the declared queue is **15024-15035** (re-reserved twice -
+§5.5 change 4 moved it off the spent 9000-9011, and §5.65 off 15000-15011, whose
+first four seeds were published before the launch path carried the §5.47 rebuild
+treatment); a **pool-matched loss-blind control
 session** runs over the same seeds; and the verdict withholds Gate 4 if that
 control clears its own gate, or if it was never run. The 5% criterion, the
 tolerance band, the harm guard, the declared model, the budget and the
@@ -70,7 +72,7 @@ no-re-tuning rule are all untouched.
    anything other than `failed` (the durable copy is the published dataset).
 
 3. **Remote dataset name.** Choose one `owner/slug` for the whole run (e.g.
-   `<your-account>/act-v0-5-1`) and use it identically in every session. The
+   `<your-account>/act-v0-5-2`) and use it identically in every session. The
    first publish bootstraps dataset creation; you do not need to create it by
    hand. If you do create it, `kaggle datasets create -p <dir> -r private`.
 
@@ -88,9 +90,16 @@ no-re-tuning rule are all untouched.
    1.0077%, `PASS_COST_ONLY_HARM_GUARD_REJECTS`, `gate_4_authorized: false`,
    adaptive losing 11 of 12 pairs). The harm guard is one of the branches that
    decide this verdict, so a run on that queue would not be blind. The adopted
-   §5.5 change 4 re-reserves the queue to the unused block **15000–15011**,
-   which is now the code default (`v0_runner.DECLARED_SEEDS`), so the §2
-   command passes `--seeds 15000-15011` explicitly and never the old block.
+   §5.5 change 4 re-reserved the queue to the unused block **15000–15011**, and
+   **§5.65 re-reserved it again to 15024-15035**: the first four seeds of
+   15000-15011 were published before the launch path carried the §5.47 rebuild
+   treatment **and their harm numbers were read and reported** while the campaign
+   was stopped, so that block is neither the registered configuration nor blind
+   over the seeds already seen. The live block is the code default
+   (`v0_runner.DECLARED_SEEDS`), so the §2 command passes `--seeds 15024-15035`
+   explicitly and never a spent block. A re-reservation needs a **fresh dataset
+   root** as well as fresh seeds - one root is one block - which is why the slug
+   above moved from `act-v0-5-1` to `act-v0-5-2`.
    Likewise, publish under **fresh** roots — never point a session at
    `artifacts/real-proof/datasets`, whose completed reduced-fidelity seed
    versions the skip-completed idempotence rule would treat as finished work.
@@ -513,7 +522,7 @@ is part of the trail; the launch command refuses a stale or hand-edited one.
 PYTHONPATH=src python -m act.training.cli --mode pair-session \
   --device cuda \
   --hours <remaining-clock-hours> \
-  --seeds 15000-15011 \
+  --seeds 15024-15035 \
   --probe-candidate-policy spread \
   --preserve-router-on-rebuild \
   --new-expert clone \
@@ -524,7 +533,7 @@ PYTHONPATH=src python -m act.training.cli --mode pair-session \
   8-hour cap (not the 12 hours Kaggle documents) minus boot, restore and the
   45-min publish reserve, i.e. `--hours 7`. The deadline rules only start pairs
   that fit `pair_time + 45-min publish reserve`.
-- `--seeds 15000-15011`, `--probe-candidate-policy spread` and the two build
+- `--seeds 15024-15035`, `--probe-candidate-policy spread` and the two build
   flags (`--preserve-router-on-rebuild`, `--new-expert clone`) are **not
   optional**: they are the adopted protocol (§5.5 and, for the rebuild, the
   §5.47 amendment). The code defaults are still the historical
@@ -551,11 +560,13 @@ PYTHONPATH=src python -m act.training.cli --mode pair-session \
   nothing - it prints the two remedies and stops. This matters because the seeds of a block
   are compared *within* the block: an untreated seed and a treated seed in one root are two
   experiments sharing a seed range, and no per-seed field partitions them afterwards.
-  **The declared block is currently in that position**: seeds `15000`-`15003` are published
-  under the historical untreated rebuild, so resuming on the amended command above will
-  (correctly) refuse. Either finish the block under the configuration it already records,
-  or start a fresh block on an unspent seed range - see the disposition note in
-  `docs/IMPLEMENTATION_STATUS.md`.
+  **Its one live incident is resolved by re-reservation.** Blocks `15000`-`15011`'s first
+  four seeds are published under the historical untreated rebuild in `act-v0-5-1`, and the
+  disposition recorded in `docs/IMPLEMENTATION_STATUS.md` is **§5.65's re-reservation**
+  rather than finishing that block: its harm numbers had been read, so it could not be the
+  blind registered block either way. Those four seeds keep their own artifact; the live
+  block is `15024`-`15035` in `act-v0-5-2`, and the guard's job from here is to stop a
+  *future* session from mixing treatments inside a root that is meant to hold one block.
 - **Verify the run was the registered one.** Every seed summary records its whole
   config, and the verdict's `config_conformance` block compares it field by field against
   the registered protocol (`REGISTERED_RUN_CONFIG` in `scripts/v0_verdict.py`). It is
@@ -607,7 +618,7 @@ primary measurement:
 PYTHONPATH=src python -m act.training.cli --mode pair-session \
   --device cuda \
   --hours <remaining-clock-hours> \
-  --seeds 15000-15011 \
+  --seeds 15024-15035 \
   --probe-candidate-policy spread \
   --probe-selection random \
   --preserve-router-on-rebuild \
@@ -645,7 +656,7 @@ so the null queue is a full-rate third of the campaign, not an afterthought):
 PYTHONPATH=src python -m act.training.cli --mode pair-session \
   --device cuda \
   --hours <remaining-clock-hours> \
-  --seeds 15000-15011 \
+  --seeds 15024-15035 \
   --session-arms null \
   --preserve-router-on-rebuild \
   --new-expert clone \
@@ -668,7 +679,7 @@ zero-mutation counters the §5.14 built-in checks read.
 
 ## 3. Running the queue to completion
 
-The queue is 12 declared seeds (15000–15011), one atomic pair each. Schedule
+The queue is 12 declared seeds (15024–15035), one atomic pair each. Schedule
 expectations come from the benchmark artifact, and it now carries both readings:
 `sessions_for_primary` / `sessions_total` are section 5.2's registered
 arithmetic (`floor(usable hours / pair time)`), while

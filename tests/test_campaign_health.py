@@ -120,7 +120,33 @@ def test_a_seed_is_complete_only_with_every_arm_at_the_declared_step() -> None:
     assert progress["complete"] == [15000]
     assert progress["partial"] == [15002]
     assert progress["complete_count"] == 1
-    assert progress["next_seed"] == 15001  # the lowest declared seed not complete
+    # ``LISTING`` stays the 2026-09-21 capture of the superseded 15000-15011 block - it is
+    # the evidence for the doubled upload layout, and section 5.65 re-reserved the block
+    # rather than rewriting what was observed. ``next_seed`` is therefore about the *live*
+    # block, none of which is complete, so it is the live block's first seed. The gap
+    # semantics inside a partly-complete block are pinned separately, below.
+    assert progress["next_seed"] == campaign_health.DECLARED_SEEDS[0]
+    assert progress["declared"] == list(campaign_health.DECLARED_SEEDS)
+
+
+def test_next_seed_is_the_lowest_live_block_seed_not_complete() -> None:
+    """Built from the live block, so a re-reservation cannot leave this stale."""
+    first, second, third = campaign_health.DECLARED_SEEDS[:3]
+    listing = "\n".join(
+        f"seed-{seed}/seed-{seed}/checkpoints/{arm}/checkpoint-{step:06d}.pt"
+        f"  1  2026-09-21 08:05:15.249000"
+        for seed, step, arm in (
+            (first, 6000, "random"),
+            (first, 6000, "adaptive"),
+            (third, 6000, "random"),  # the middle seed was never published at all
+        )
+    )
+
+    progress = campaign_health.seed_progress(campaign_health.parse_seed_listing(listing))
+
+    assert progress["complete"] == [first]
+    assert progress["next_seed"] == second
+    assert progress["missing"] == list(campaign_health.DECLARED_SEEDS[1:])
 
 
 def test_the_completeness_threshold_comes_from_the_registered_config() -> None:
