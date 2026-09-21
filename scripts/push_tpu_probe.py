@@ -38,6 +38,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import kaggle_queue  # noqa: E402
+import kaggle_t4  # noqa: E402
 
 KERNEL_SLUG = "act-tpu-probe"
 ENTRY_NAME = "run-tpu-probe.py"
@@ -142,6 +143,46 @@ def stage(*, owner: str, steps: int, workers: int, dtype: str) -> Path:
     return WORK
 
 
+def live_campaign_kernel() -> str | None:
+    """The Gate-4 kernel training right now, if any.
+
+    Publishing the code dataset while a session has it mounted is the other half of the
+    2026-09-21 loss. A session kernel's body and its mounted ``src/`` have to be one
+    revision, and the dataset is republished in place - so a publish under a live session
+    can leave that session mounting a tree its own body was not staged from. The probe is
+    the tool that republishes here, so the probe checks: it can wait, it is not the
+    critical path, and the campaign is.
+    """
+    for mode in sorted(kaggle_t4.QUEUES):
+        kernel = str(kaggle_t4.metadata_for(mode)["id"])
+        status = kaggle_queue.active_status(kernel)
+        if kaggle_queue.should_adopt(status):
+            return f"{kernel} is {status}"
+    return None
+
+
+def publish_code_dataset() -> int | None:
+    """Publish the code dataset unless a session is live. Returns an exit code to abort with.
+
+    Split out from ``main`` so the refusal is testable without a Kaggle account: the thing
+    worth pinning is not the message but that ``ensure_code_dataset`` is never reached.
+    """
+    live = live_campaign_kernel()
+    if live is not None:
+        print(
+            f"refusing to publish the code dataset while {live}.\n"
+            "  Republishing under a live mount can leave a session on a tree its body was "
+            "not staged from, and the session is the thing that costs GPU hours. Re-run "
+            "this when the campaign is between sessions.",
+            file=sys.stderr,
+            flush=True,
+        )
+        return 5
+    revision = kaggle_queue.ensure_code_dataset(ROOT)
+    print(f"code dataset at {revision}")
+    return None
+
+
 def _kaggle(argv: list[str]) -> int:
     print(f"$ {' '.join(argv)}", flush=True)
     proc = subprocess.run(argv, capture_output=True, text=True)
@@ -180,9 +221,12 @@ def main() -> int:
     if args.stage_only:
         return 0
 
-    # The code dataset has to carry the probe before the kernel that runs it is pushed.
-    revision = kaggle_queue.ensure_code_dataset(ROOT)
-    print(f"code dataset at {revision}")
+    # The code dataset has to carry the probe before the kernel that runs it is pushed,
+    # and publishing it is the one step here that can disturb a live session - so it is
+    # the step that waits for one to finish rather than the step that races it.
+    blocked = publish_code_dataset()
+    if blocked is not None:
+        return blocked
     return _kaggle(["kaggle", "kernels", "push", "-p", str(folder)])
 
 

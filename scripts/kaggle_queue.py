@@ -34,6 +34,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import fcntl
 import io
 import json
 import os
@@ -46,6 +47,7 @@ import sys
 import tempfile
 import time
 from collections.abc import Mapping
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -58,11 +60,26 @@ COMPLETE_ACTIONS = ("completed", "skipped_complete")
 TERMINAL_STATUSES = ("COMPLETE", "ERROR", "CANCEL_ACKNOWLEDGED", "CANCEL_REQUESTED")
 SUCCESS_STATUS = "COMPLETE"
 
+#: Where the per-queue driver locks live. Inside ``artifacts/`` (git-ignored) so a
+#: lock can never be mistaken for a result.
+LOCK_DIR_NAME = ".locks"
+
+#: A log-less failure at or above this many hours is the platform's own session
+#: window (measured 2026-09-20: a 9 h window died at 8 h 00 m). Below it, the
+#: session died at or before startup, which is a different failure with a
+#: different cause and must not be reported as the window.
+PLATFORM_KILL_HOURS = 7.5
+
 EXIT_COMPLETE = 0
 EXIT_SESSION_FAILED = 1
 EXIT_BUDGET_EXHAUSTED = 2
 EXIT_QUOTA_INSUFFICIENT = 3
 EXIT_NO_PROGRESS = 4
+# A second driver for the same queue: refused rather than raced. Added after
+# 2026-09-21, when two drivers drove one queue, both found "nothing live", both
+# pushed, and the second push replaced the running kernel's version - which the
+# platform reports as an ERROR with no log and no output at all.
+EXIT_ALREADY_RUNNING = 6
 # scripts/v0_verdict.py's distinct code for "no verdict was produced". It is
 # deliberately not 1, which means a real cost FAIL, so an operator error can
 # never be recorded as the hypothesis being false.
@@ -804,6 +821,96 @@ def _wait_for_terminal(kernel: str, poll: float, timeout: float) -> str:
         time.sleep(poll)
 
 
+class QueueLockedError(RuntimeError):
+    """Another driver already holds this queue's kernel."""
+
+
+def logless_failure_note(elapsed_hours: float) -> str:
+    """Explain a session that ended with no kernel log and no output files.
+
+    The reading depends on how long it ran, and the two readings are different failures
+    with different causes. This text used to be one hardcoded paragraph asserting the
+    platform's 8 h kill and "8.05 GPU-h burned" for *any* log-less ending, so a 0.29 h
+    launch failure was reported to an operator as an eight-hour platform loss - quoting
+    hours this run never spent, at the moment they are deciding whether to spend more.
+    """
+    if elapsed_hours >= PLATFORM_KILL_HOURS:
+        return (
+            f"  At {elapsed_hours:.2f} h it ran into the platform's session window: "
+            "measured 2026-09-20, a session declared a 9 h window died at 8 h 00 m "
+            "before its own deadline. The quota cost is the "
+            f"{elapsed_hours:.2f} GPU-h reported above."
+        )
+    return (
+        f"  At {elapsed_hours:.2f} h it died at or before startup, not in training: "
+        f"the quota cost is the {elapsed_hours:.2f} GPU-h reported above, not a full "
+        "window. The launch path is what to read, and its candidates are (a) a second "
+        "driver pushing this same kernel while this one ran - a push replaces the "
+        "running version, which is exactly a logless early ERROR, and why the driver "
+        "now takes a per-queue lock (exit 6 if it is held), (b) the code dataset being "
+        "republished under a live mount, which breaks the one-revision rule the "
+        "kernel body depends on, or (c) no accelerator being available."
+    )
+
+
+def lock_directory() -> Path:
+    """Where per-queue locks live, overridable for callers that are not a campaign.
+
+    The default sits in the repository's git-ignored ``artifacts/``. ``ACT_QUEUE_LOCK_DIR``
+    exists for the test suite, where two workers calling ``main(["--queue", "session"])``
+    look exactly like two drivers to a real lock - which is what the lock is for, and also
+    what would serialize the suite.
+    """
+    override = os.environ.get("ACT_QUEUE_LOCK_DIR")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parent.parent / "artifacts" / LOCK_DIR_NAME
+
+
+@contextmanager
+def queue_lock(kernel_id: str):
+    """Hold an exclusive lock for one queue's kernel, and record who holds it.
+
+    Two drivers on one queue is not a theoretical race. On 2026-09-21 both checked
+    ``active_status``, both found no live session, both pushed, and the second push
+    replaced the running kernel's version - which the platform reports as an ERROR
+    with no kernel log and no output files at all, after 0.29 h and the loss of
+    everything that session had trained. The adopt-instead-of-push rule cannot close
+    it, because the gap between the status check and the push is exactly where the
+    second driver arrives, so the exclusion has to be mutual rather than a check.
+
+    The lock is per kernel, not global: driving one queue must not block another's
+    work. The code dataset is the resource they share, and it is guarded where it is
+    published instead.
+    """
+    lock_dir = lock_directory()
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    path = lock_dir / f"{kernel_id.split('/')[-1]}.lock"
+    handle = os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError as error:
+        os.lseek(handle, 0, os.SEEK_SET)
+        holder = os.read(handle, 4096).decode("utf-8", "replace").strip()
+        os.close(handle)
+        raise QueueLockedError(holder or "an unidentified process") from error
+    stamp = json.dumps(
+        {
+            "pid": os.getpid(),
+            "kernel": kernel_id,
+            "since": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+    )
+    os.truncate(handle, 0)
+    os.lseek(handle, 0, os.SEEK_SET)
+    os.write(handle, stamp.encode("utf-8"))
+    try:
+        yield
+    finally:
+        fcntl.flock(handle, fcntl.LOCK_UN)
+        os.close(handle)
+
+
 def drive(
     queue_mode: str,
     *,
@@ -901,12 +1008,10 @@ def drive(
                     "at all, so the session's own account of itself is lost with "
                     "it. Nothing it trained is durable (the exit publish is the "
                     "only copy and the session never reached it), so the queue "
-                    "restarts from its last published seed. Measured 2026-09-20: "
-                    "this is what the platform's 8 h kill looks like - a session "
-                    "declared a 9 h window died at 8 h 00 m, before its own "
-                    "deadline, with 8.05 GPU-h burned and every pair it trained.",
+                    "restarts from its last published seed.",
                     flush=True,
                 )
+                print(logless_failure_note(elapsed), flush=True)
             return EXIT_SESSION_FAILED
 
         session_log = load_session_log(output_dir)
@@ -1151,8 +1256,6 @@ def main(argv: list[str] | None = None) -> int:
                         help="refreshes to wait through before giving up (default 2)")
     args = parser.parse_args(argv)
 
-    if args.queue in ONE_SHOT_MODES:
-        return run_once(args.queue, poll=args.poll, timeout=args.timeout)
     # Deliberately *not* set in this process's environment: the kernel runs on
     # Kaggle and would never see it. ``drive`` pins it into the staged body.
     def attempt() -> int:
@@ -1164,18 +1267,43 @@ def main(argv: list[str] | None = None) -> int:
             max_sessions=args.max_sessions,
         )
 
-    if not args.wait_for_quota:
-        return attempt()
-    # One wait per weekly refresh. ``drive`` reads the quota before every push,
-    # so this loop only decides whether to sleep between attempts - the
-    # scheduling rules stay where they already are.
-    for waited in range(args.max_waits + 1):
-        code = attempt()
-        if code != EXIT_QUOTA_INSUFFICIENT or waited == args.max_waits:
-            return code
-        if not wait_for_refresh(active_quota()):
-            return code
-    return EXIT_QUOTA_INSUFFICIENT
+    def campaign() -> int:
+        if not args.wait_for_quota:
+            return attempt()
+        # One wait per weekly refresh. ``drive`` reads the quota before every
+        # push, so this loop only decides whether to sleep between attempts -
+        # the scheduling rules stay where they already are.
+        for waited in range(args.max_waits + 1):
+            code = attempt()
+            if code != EXIT_QUOTA_INSUFFICIENT or waited == args.max_waits:
+                return code
+            if not wait_for_refresh(active_quota()):
+                return code
+        return EXIT_QUOTA_INSUFFICIENT
+
+    # One driver per kernel, held for the whole run including the quota waits - a
+    # waiter that released its lock would be exactly the second driver this
+    # prevents. One-shot jobs take the lock too, so two of them cannot race each
+    # other's push.
+    kernel = str(kaggle_t4.metadata_for(args.queue)["id"])
+    try:
+        with queue_lock(kernel):
+            if args.queue in ONE_SHOT_MODES:
+                return run_once(args.queue, poll=args.poll, timeout=args.timeout)
+            return campaign()
+    except QueueLockedError as locked:
+        print(
+            f"another driver already holds {kernel}: {locked}",
+            flush=True,
+        )
+        print(
+            "  refusing to race it. Two drivers on one queue both find no live "
+            "session and both push, and the second push replaces the running "
+            "kernel's version - a logless early ERROR that costs the session that "
+            "was training. Wait for it, or stop it first.",
+            flush=True,
+        )
+        return EXIT_ALREADY_RUNNING
 
 
 if __name__ == "__main__":

@@ -26,9 +26,17 @@ import kaggle_t4  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
-def _default_mount_env(monkeypatch: pytest.MonkeyPatch) -> None:
+def _default_mount_env(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     monkeypatch.delenv("ACT_T4_OWNER", raising=False)
     monkeypatch.delenv("ACT_T4_SLUG", raising=False)
+    # The driver now takes an exclusive per-queue lock, so two workers calling
+    # ``main(["--queue", "session"])`` look exactly like two drivers - which is the thing
+    # the lock prevents, and also what would otherwise serialise this file or refuse its
+    # second test. Each test gets its own lock directory; the lock's own behaviour is
+    # pinned separately by the contention test below.
+    monkeypatch.setenv("ACT_QUEUE_LOCK_DIR", str(tmp_path / "queue-locks"))
 
 
 @pytest.mark.parametrize(
@@ -1313,3 +1321,58 @@ def test_archzoo_is_a_one_shot_and_its_output_is_imported_whole(tmp_path: Path) 
     assert any("complete=True" in line for line in lines)
     # An output with no experiment directory is reported, not crashed on.
     assert kaggle_queue.import_archzoo_output(tmp_path / "empty", repo, log=lambda m, **_: None) is None
+
+
+def test_a_second_driver_is_refused_rather_than_racing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The 2026-09-21 loss: two drivers, one kernel, the second push replacing the first.
+
+    The adopt-instead-of-push rule cannot close this - both drivers check the status, both
+    find nothing live, and both push. Only mutual exclusion can, so this pins that the
+    second driver exits 6 instead of pushing, and that the lock is released afterwards so
+    the campaign can continue.
+    """
+    monkeypatch.setenv("ACT_QUEUE_LOCK_DIR", str(tmp_path / "locks"))
+    monkeypatch.setattr(kaggle_queue, "drive", lambda *a, **k: kaggle_queue.EXIT_COMPLETE)
+    kernel = str(kaggle_t4.metadata_for("session")["id"])
+
+    with kaggle_queue.queue_lock(kernel):
+        assert kaggle_queue.main(["--queue", "session"]) == kaggle_queue.EXIT_ALREADY_RUNNING
+
+    # Released: the next driver runs rather than being locked out for good.
+    assert kaggle_queue.main(["--queue", "session"]) == kaggle_queue.EXIT_COMPLETE
+
+
+def test_the_lock_says_who_holds_it(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A refusal that names the holder is actionable; "locked" alone is not."""
+    monkeypatch.setenv("ACT_QUEUE_LOCK_DIR", str(tmp_path / "locks"))
+    kernel = "owner/act-t4-session"
+    with kaggle_queue.queue_lock(kernel):
+        path = tmp_path / "locks" / "act-t4-session.lock"
+        holder = json.loads(path.read_text())
+        assert holder["pid"] > 0
+        assert holder["kernel"] == kernel
+        assert holder["since"]
+    # The record is advisory and the exclusion is the flock: a refusal reads this file only
+    # while somebody holds the lock, so a leftover record cannot mislead anyone, and the
+    # next acquire overwrites it. What matters - that the lock is genuinely released - is
+    # pinned by the second-driver test above.
+
+
+def test_a_fast_logless_failure_is_not_reported_as_the_platform_window() -> None:
+    """A 0.29 h launch failure must not be explained as an 8 h platform kill.
+
+    The old text did exactly that, printing "8.05 GPU-h burned" for a run that spent
+    0.27 - to an operator deciding whether to spend more.
+    """
+    assert kaggle_queue.PLATFORM_KILL_HOURS == 7.5
+    fast = kaggle_queue.logless_failure_note(0.29)
+    assert "startup" in fast
+    assert "0.27" not in fast and "0.29" in fast
+    assert "8.05 GPU-h" not in fast
+    assert "session window" not in fast
+
+    long = kaggle_queue.logless_failure_note(8.0)
+    assert "session window" in long
+    assert "8 h 00 m" in long
