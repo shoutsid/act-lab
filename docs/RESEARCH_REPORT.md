@@ -7454,8 +7454,79 @@ the depth axis *as a package*; every rung is otherwise the registered config, an
 is identical at every depth (pinned by a test). The rungs mix 384-seed committed cells with 576-seed
 cells and are read against each other **descriptively** - the `0.04`-per-layer gradient is a
 descriptive statement about cross-cell levels, in this family's convention, while both primaries are
-tests on their own cells. The increments are measured at the registered 48 steps and the registered
-schedule; the ladder is not bounded from above by anything measured here.
+tests on their own cells. The increments are measured atthe registered 48 steps and the registered schedule; the ladder is not bounded from above by
+anything measured here.
+
+### 5.57 Pre-registration: the fourth rung, against the constant-gradient model (RAN - summary `depth7-dose-576.json`)
+
+5.56 turned the depth axis from a direction into a model. Three rungs above the gate give
+increments of `-0.0418`, `-0.0382` and `-0.0422` - about `0.04` per layer, with no decay - and the
+controller's own edge is flat across all three. **A model that predicts a number is testable in a
+way a direction is not**, so this arm is registered against the model's own forecast rather than
+against one more "deeper is better".
+
+| cell | depth | steps | total / active params | adaptive-vs-null | collapse |
+|---|---|---|---|---|---|
+| `depth2` (5.15) | 2 | 48 | 15,888 / 6,288 | 161/384, `+0.020811` | `-0.099659` |
+| `depth3` (5.15) | 3 | 48 | 23,280 / 8,880 | 188/384, `+0.004643` | `-0.106794` |
+| `depth4-prefix` (5.12) | 4 | 48 | 30,672 / 11,472 | 225/384, `-0.037147` | `-0.070072` |
+| `depth5-dose` (5.55) | 5 | 48 | 38,064 / 14,064 | 375/576, `-0.075335` | `-0.029226` |
+| `depth6-dose` (5.56) | 6 | 48 | 45,456 / 16,656 | 442/576, `-0.117494` | `+0.028013` |
+| **`depth7-dose`** | **7** | **48** | **52,848 / 19,248** | *this arm* | *this arm* |
+
+**Design.** One fresh cell of the registered config with `depth` 6 -> 7 and **nothing else changed** -
+the same one-gene dose as 5.55/5.56, one rung further up. The candidate pool is identical
+(`[grow L0, prune L0E0, prune L0E1, prune L0E2]` at depths 3 through 7, pinned by a test over the
+whole ladder), so only the substrate moves, and every rung adds exactly 7,392 total / 2,592 active
+parameters, so this remains the depth axis as a package.
+
+**Primaries.** Two, at the sibling rungs' level: `alpha/2 = 0.025`, bar **313/576**.
+
+1. **P1 (the gate is still open):** the family's per-cell conjunction.
+2. **P2 (a seventh layer creates more value than a sixth):** one-sided rank-sum of the depth-6
+   cell's adaptive-vs-null deltas against this cell's.
+
+**The declared prediction, made before the run and reported either way.** Cross-cell levels are
+*descriptive* in this family, so a numerical forecast is not dressed as a third primary - but it is
+written down before the measurement, which is what makes it falsifiable:
+
+- **the increment** in `adaptive - null` from depth 6 to depth 7 falls in `(-0.047, -0.033)`: the
+  measured range of the three existing increments (`0.0382`-`0.0422`, i.e. about `0.040`) widened by
+  a flat `0.005` at each end, so the band is the model's number with a stated margin rather than a
+  tolerance fitted to the result; and
+- **the controller's own edge** stays within `0.020` of the depth-6 reading (`-0.089482`), because
+  the model says the gain is the churn term and the edge does not move.
+
+A miss is as reportable as a hit. A forecast that is checked and fails tells this program more than
+one that was never asked, and the second prediction is the sharper of the two: it is the model's
+central claim (the axis pays through the substrate, not the controller) stated as a number.
+
+**Pre-registered interpretation (fixed before running).**
+
+- **P1 and P2:** **the slope continues** - the ladder is monotone across all four rungs above the
+  onset, and a depth-4 pass sits on a curve with four measured points.
+- **P1 only:** **the axis saturates at depth 6** - a seventh layer keeps the gate open but buys
+  nothing more than a sixth, so the rising part of the curve is the gate and two steps past it.
+- **P2 only:** a seventh layer creates more value than a sixth *and* still does not clear the bar on
+  its own - a fragile upper reading.
+- **Neither:** **the ladder is not monotone past depth 6** - a seventh layer fails where a sixth
+  passes.
+
+**Descriptive secondaries.** The ladder to depth 7 (value, collapse, the controller's edge and the
+best arm at each rung), the decomposition of the 6 -> 7 step into the edge and the churn term as
+5.55-5.56 decomposed theirs, and the two declared predictions above.
+
+**Scope.** The rungs mix 384-seed committed cells with 576-seed cells and are read against each
+other descriptively; both primaries are tests on their own cells, and the two predictions are
+descriptive readings of cross-cell levels, stated as such. The learning rate, step count, interval,
+cap and policy are the registered ones at every rung.
+
+**Cost.** Measured on this cell's own config before registering: ~2.09 s/seed at four threads,
+so 576 seeds is ~20 min of single-thread CPU across 20 shards - minutes of wall clock, no GPU
+quota, run while the corrected Gate 4 session trains. The block is 93384-93959, the first free
+576-window at or after 93000, checked by a test against every other profile *and* every committed
+summary's recorded seeds. Registered before the run; the running revision is recorded in the
+summary's `code_revision`.
 
 ## 6. Reproducibility
 
