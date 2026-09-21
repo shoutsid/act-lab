@@ -430,7 +430,7 @@ PROFILES: dict[str, dict] = {
             "hidden_size": 68,
             "probe_candidate_policy": "spread",
         },
-        "run_revision": None,
+        "run_revision": "969a251",
         "report_section": "5.62",
         "per_cell_primary": True,
         "bonferroni_divisor": 2.0,
