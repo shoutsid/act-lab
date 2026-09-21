@@ -6664,6 +6664,11 @@ the shards exactly.
   (pinned by a test), so no cross-width absolute claim can be made at the longer budget
   either. The learning rate was deliberately left at the registered value, so this is not
   a tuned longer run.
+  **Closed 2026-09-21 by 5.52**, which registered and ran exactly that control: the
+  collapse that survives 4x training is the wide substrate's, and the absolute-level
+  ordering *inverts* with the budget (`15.13`/`15.29`/`16.86` at width 96 against
+  `12.44`/`12.55`/`12.48` at width 24 at 48 steps, and `3.83`/`3.84`/`4.55` against
+  `5.46`/`5.50`/`5.66` at 192). The learning-rate caveat stands at both widths.
 
 **What this changes.** Open question (ii)'s answer keeps its mechanism and loses its
 fixed-budget framing: the crossing at 14.8x is real at both budgets (5.50 and 5.51), the
@@ -6730,6 +6735,59 @@ sibling cells - the width-96 long cell measures 4.6 s/seed too, so it is the lon
 not the width, that this cost is). 576 seeds is ~44 min of single-thread CPU across 20
 shards: minutes of wall clock, no GPU quota, run while the corrected Gate 4 session trains.
 Registered before the run; the running revision is recorded in the summary's `code_revision`.
+
+**Outcome (run 2026-09-21, revision `f636990`, 20 shards; committed summary
+`width-d4-long-w24-576.json`). Registered branch 1: P1+P2 PASS.**
+
+P1: the width-24 long cell's collapse is `+0.163809` against the width-96 long cell's
+`+0.708276` - rank-sum U `34.0`, one-sided p `5.73e-190` - so **the collapse that survives 4x
+training belongs to the wide substrate**, and 5.51's relief is a *capacity* effect rather
+than a property of training. P2: the narrow cell creates value in the family's own
+conjunction - `550/576` wins against the bar of `313`, mean `-0.204292`, p `3.50e-129`,
+adaptive `5.4605` < random `5.5010` < null `5.6648` - so the longer budget is enough for the
+*narrow* substrate to clear the bar too (it already did at 48 steps, `225/384`).
+
+**The 2x2 is the finding, and its two halves point opposite ways.** Collapse is
+null-vs-random (positive = the do-nothing arm is the worse one):
+
+| cell | width | steps | collapse | adaptive-vs-null | own edge | arms (adaptive / random / null) |
+|---|---|---|---|---|---|---|
+| `depth4-prefix` | 24 | 48 | `-0.0701` | `225/384`, `-0.0371` | `-0.1072` | `12.4413 / 12.5485 / 12.4785` |
+| `width-d4-dose2` | 96 | 48 | `+1.5739` | `576/576`, `-1.7330` | `-0.1591` | `15.1273 / 15.2864 / 16.8603` |
+| `width-d4-long-w24` | 24 | **192** | `+0.1638` | `550/576`, `-0.2043` | `-0.0405` | `5.4605 / 5.5010 / 5.6648` |
+| `width-d4-dose2-long` | 96 | **192** | `+0.7083` | `576/576`, `-0.7149` | `-0.0066` | `3.8333 / 3.8399 / 4.5482` |
+
+4x training *relieves* the wide substrate's collapse by 55% (`+1.5739` -> `+0.7083`) and
+*raises* the narrow one's (`-0.0701` -> `+0.1638`) - from a baseline where there was nothing
+to relieve, because at width 24 the churn harm is already absent at 48 steps. So "more
+training repairs the collapse" is not a property of training: it is the repair of a collapse
+only capacity produces. (The within-width relief is the difference in differences,
+`+0.2339` at width 24 against `-0.8656` at width 96 - descriptive, not a pre-registered test,
+since it is a statistic on four independent cells.)
+
+**And the absolute levels reverse with the budget** (descriptive, as every cross-cell level
+reading in this family is): at 48 steps the wide substrate is the worse one (arms
+`15.13`/`15.29`/`16.86` against `12.44`/`12.55`/`12.48`), and at 192 steps it is the better one
+(`3.83`/`3.84`/`4.55` against `5.46`/`5.50`/`5.66`). That closes the limit 5.51 registered:
+its "no cross-width absolute claim at the longer budget" now has the control it named, and
+the claim the control supports is the strongest available form of 5.50's limit - *capacity is
+a liability at the fixed 48-step budget, and given 4x the training the ordering inverts*.
+
+**The controller's own edge is where the narrow substrate's value comes from** (descriptive).
+At 192 steps the width-24 cell's adaptive-vs-random edge is `-0.0405` (`390/576`, p `6.2e-18`)
+against the width-96 cell's `-0.0066` (`335/576`, p `5.2e-5`), a rank-sum at p `3.85e-16` that
+the *narrow* cell's edge is the larger. So the value decomposes differently at each width: at
+96 it is almost entirely the mutational package (the controller contributes ~1% of
+`-0.7149`), at 24 the controller contributes ~20% of `-0.2043`. 5.51's "the value at 14.8x is
+the mutational package" is a *wide-substrate* reading too.
+
+**Scrutiny before write-up.** Built-in checks 576/576 (mutations 3/3/0, zero null search
+FLOPs); three replays of committed seeds exact at `OMP_NUM_THREADS=1`; and the collapse, the
+value and the edge were all computed before any of them appeared in prose. Scoped: the
+learning rate is still the registered one at both widths, so this is not a tuned longer run,
+and the two widths differ in parameter count by 14.8x - the control completes the 2x2 the
+width line reads, it does not turn width into a matched-budget contrast (that is 5.48's
+equal-parameter arm, at 48 steps).
 
 ## 6. Reproducibility
 
