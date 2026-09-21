@@ -1,14 +1,15 @@
 # Adaptive Computational Topology — Research Report
 
 Status: the narrative report for the whole program to date - the factor map (section 3, Gate 3),
-the pre-registered study series (section 5, 92 subsections), the substrate audit (section 9) and
+the pre-registered study series (section 5, 93 subsections), the substrate audit (section 9) and
 the synthesis (section 10). **Updated: 2026-09-21** - sections 5.48-5.59 close the covariate
 programme (parameter count, layer width, expert count and total compute) and then measure the
 depth axis itself, out to six rungs above its onset, 5.60 and 5.61 bisect the one window
 that closure left open (the width axis's gate between 2.87x and 11.15x) to 1.97x and then 1.41x, 5.62
 tests the crossing's mechanism under the family's other candidate policy, 5.63 builds the transfer
 path gate 5 will need and pins that a fresh initialization is distinguishable from a resumed one,
-and section 10 is re-read
+5.64 declares the whole gate chain (with the questions each gate still leaves open), and section 10
+is re-read
 against them. Gate 4 is declared and running: 4 of
 its 12 declared seeds are published **at this writing**, on the corrected 7-hour session window
 (section 5.2 and `docs/T4_RUNBOOK.md`).
@@ -42,7 +43,7 @@ taking first - 9 is the audit that changed the interpretation, and 10 is the cur
 | **5.21-5.34** | The mid-training penalty and the prune-target chain: the penalty's arm-genericity (§5.22), optimizer history against the architecture change (§5.23), the discarded routing head (§5.24), prune against grow (§5.25), the freshly drawn expert (§5.26), cloning's two effects (§5.27-§5.28), the discovery path (§5.29-§5.30), and the powered prune-target studies (§5.31-§5.34). |
 | **5.35-5.40** | The declared path: defects found by reading rather than by a study (§5.35), dev-scale evidence on the real token stream (§5.36), the measured liveness contract (§5.37), whether the rebuild treatment transfers (§5.38), churn harm as a property of churn (§5.39), and the deployed configuration against the do-nothing arm (§5.40). |
 | **5.41-5.47** | Audit-derived corrections and the Gate 4 registration: the tolerance band's scale (§5.41), the clause a partial run made unfireable (§5.42), the verdict-path rehearsal (§5.43), the one-directional quality clause (§5.44), the suite's cost (§5.45), the launch path's missing rebuild treatment (§5.46), and the amendment that registers it (§5.47). |
-| **5.48-5.63** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), the two width bisections that halve the gate window the width programme left open and then test where the edge's maximum is reached (§5.60-§5.61), the crossing dose under the family's other candidate policy (§5.62), and the Gate-5 transfer path with its fresh-versus-resumed check (§5.63). |
+| **5.48-5.64** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), the two width bisections that halve the gate window the width programme left open and then test where the edge's maximum is reached (§5.60-§5.61), the crossing dose under the family's other candidate policy (§5.62), the Gate-5 transfer path with its fresh-versus-resumed check (§5.63), and the gate chain itself, declared while gates 5-7 are still prose (§5.64). |
 | **6-10** | Reproducibility (§6), the deliverables checklist (§7), figures (§8), the substrate audit (§9), and the synthesis (§10) - which reads this track against the architecture-search track. |
 
 Reproducibility at notebook fidelity (plan sections 39 and 104) now ships with
@@ -8370,6 +8371,48 @@ it fails a test rather than passing one - the gate's own bar (which comparison, 
 baselines, at what tolerance) is declared with the artifact it will be applied to. Gate 6 would need
 the same primitive applied across seeds, which it inherits; gate 7 would additionally need the
 genome's capacities carried at another scale, which this rehearsal does not touch.
+
+### 5.64 The gate chain, declared while gates 5-7 are still prose (RAN - `src/act/training/gate_chain.py`)
+
+**Why this exists.** Section 99 states its gates in one line each: *Adaptive > static MoE*,
+*Fresh architecture remains competitive*, *Architecture transfers across seeds*,
+*Architecture transfers across scale*, and then *only after Gate 7 should serious compute be
+invested*. Gate 4 has a pre-registered verdict, a rehearsal of that verdict and knobs nobody may
+move against a measured result - because it is the gate that was reached. The rest are sentences.
+Defining them *after* their artifacts exist means defining them against the numbers that came back,
+which is the same failure the study family spends pre-registration avoiding, one level up: a gate
+whose measurement is chosen once the measurement is known is not a gate.
+
+**What is declared.** `src/act/training/gate_chain.py` gives each gate its artifact, comparison,
+bar, and the gate it requires:
+
+| gate | the plan's line | artifact it reads | requires |
+|---|---|---|---|
+| 4 | Adaptive > static MoE. | the declared 12-seed block with its control and null queues, read by `scripts/v0_verdict.py` | - |
+| 5 | Fresh architecture remains competitive. | the winning genome transferred **topology-only** (§5.63's primitive), trained at the declared protocol | 4 |
+| 6 | Architecture transfers across seeds. | the same genome by `genome_hash` equality, freshly initialized at **held-out** seeds | 5 |
+| 7 | Architecture transfers across scale. | a **declared scale map** plus a baseline parameter-matched at the new scale | 6 |
+
+**The open questions are the deliverable, not a caveat on it.** Each unimplemented gate names what
+its own line does not decide, and a test requires it to: whether gate 5's "competitive" means the
+same win threshold Gate 4 applies to its harm guard or a non-inferiority margin against the
+*searched* arm (different claims, and the line does not choose); whether gate 6's held-out block
+must clear the bar seed by seed or in aggregate, and whether it should reuse the architecture
+track's fresh-seed convention (the finalist re-ranking used 45-47); and - the one with the most
+riding on it and the least written about it - whether gate 7's scale map is allowed to move
+**depth**, because scaling width keeps a topology and scaling depth replaces it, so that choice
+decides which claim the gate is testing. Declaring these now is what stops them being resolved
+later, with the numbers in view.
+
+**Scrutiny.** The plan's own text is read back out of `docs/complete_implementation_plan.md` and
+each declaration must match it verbatim, so a plan change fails the suite instead of leaving this
+module describing something else; the chain must be gapless, each gate requiring its predecessor;
+exactly one gate is implemented; and every unimplemented gate must name its open questions.
+
+**Scoped.** This declares **reads**; it does not make gates 5-7 runnable, and the module says so
+itself - `declared_but_unimplemented()` returns `(5, 6, 7)` so that "the chain is declared" and
+"the chain runs" cannot be read as the same statement. What exists today is gate 4's verdict and
+gate 5's transfer path.
 
 ## 6. Reproducibility
 

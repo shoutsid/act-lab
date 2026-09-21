@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## The gate chain is declared, and what each remaining gate leaves open is now on the record (2026-09-21)
+
+| | |
+|---|---|
+| **Why** | Section 99 states gates 5-7 in one line each. Gate 4 is instrumented - a pre-registered verdict, a rehearsal of it, knobs nobody may move against a measured result - because it is the gate that was reached. The rest are sentences, so they would be *defined* when their artifacts arrive, i.e. against the numbers that came back. |
+| **What** | `src/act/training/gate_chain.py`: each gate's artifact, comparison, bar and required predecessor. Gate 6 requires **identity by `genome_hash`** at **held-out** seeds (a transfer that only works at the seed that found it is a seed effect); gate 7 requires a **declared scale map** and a baseline parameter-matched at the new scale. |
+| **The open questions, named rather than hidden** | Gate 5: does "competitive" mean the same win threshold Gate 4 applies to its harm guard, or non-inferiority against the *searched* arm? Gate 6: must every held-out seed clear the bar, or the block in aggregate? Gate 7: **may the scale map move depth** - scaling width keeps a topology and scaling depth replaces it, so that single choice decides which claim the gate tests. A test requires each unimplemented gate to declare its own. |
+| **Pinned** | The plan's text is read back out of `docs/complete_implementation_plan.md` and each declaration must match it **verbatim**, so a plan change fails the suite rather than leaving this module describing something else; the chain must be gapless with each gate requiring its predecessor; exactly one gate is implemented; every unimplemented gate must name its open questions. |
+| **Scoped** | It declares **reads**, not machinery, and says so itself: `declared_but_unimplemented()` returns `(5, 6, 7)` so "the chain is declared" and "the chain runs" cannot be conflated. What exists is gate 4's verdict and gate 5's transfer path (§5.63). |
+| **Result** | **§5.64** in the report; **1578 tests** pass; 283/283 claims agree. |
+
 ## Two blind spots in the campaign launcher, and a failure report that was wrong about the cost (2026-09-21)
 
 | | |
