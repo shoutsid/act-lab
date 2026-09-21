@@ -70,10 +70,10 @@ def test_the_cell_changes_one_gene_and_only_one() -> None:
     spec = study.PROFILES[study.DEPTH8_PROFILE]
     assert spec["overrides"] == {"depth": 8}
     assert spec["report_section"] == "5.58"
-    # Registered but not yet frozen: the revision is set from the commit the
-    # shards actually run at, and ``None`` is what keeps the summary tests honest
-    # while the arm is only declared.
-    assert spec["run_revision"] is None
+    # The revision the summary cites: the registration commit, frozen before the
+    # shards run - a profile carries ``None`` until this is set, which is what
+    # keeps the summary tests honest while the arm is only declared.
+    assert spec["run_revision"] == "a21c4a9"
     assert spec["per_cell_primary"] is True
     assert spec["bonferroni_divisor"] == 2.0
     assert len(spec["seeds"]) == 576
