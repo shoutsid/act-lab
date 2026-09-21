@@ -2,9 +2,9 @@
 
 Status: the narrative report for the whole program to date - the factor map (section 3, Gate 3),
 the pre-registered study series (section 5, 91 subsections), the substrate audit (section 9) and
-the synthesis (section 10). **Updated: 2026-09-21** - sections 5.48-5.58 close the covariate
+the synthesis (section 10). **Updated: 2026-09-21** - sections 5.48-5.59 close the covariate
 programme (parameter count, layer width, expert count and total compute) and then measure the
-depth axis itself, out to five rungs above its onset, and section 10 is re-read against them. Gate 4 is declared and running: 4 of
+depth axis itself, out to six rungs above its onset, and section 10 is re-read against them. Gate 4 is declared and running: 4 of
 its 12 declared seeds are published **at this writing**, on the corrected 7-hour session window
 (section 5.2 and `docs/T4_RUNBOOK.md`).
 
@@ -37,7 +37,7 @@ taking first - 9 is the audit that changed the interpretation, and 10 is the cur
 | **5.21-5.34** | The mid-training penalty and the prune-target chain: the penalty's arm-genericity (§5.22), optimizer history against the architecture change (§5.23), the discarded routing head (§5.24), prune against grow (§5.25), the freshly drawn expert (§5.26), cloning's two effects (§5.27-§5.28), the discovery path (§5.29-§5.30), and the powered prune-target studies (§5.31-§5.34). |
 | **5.35-5.40** | The declared path: defects found by reading rather than by a study (§5.35), dev-scale evidence on the real token stream (§5.36), the measured liveness contract (§5.37), whether the rebuild treatment transfers (§5.38), churn harm as a property of churn (§5.39), and the deployed configuration against the do-nothing arm (§5.40). |
 | **5.41-5.47** | Audit-derived corrections and the Gate 4 registration: the tolerance band's scale (§5.41), the clause a partial run made unfireable (§5.42), the verdict-path rehearsal (§5.43), the one-directional quality clause (§5.44), the suite's cost (§5.45), the launch path's missing rebuild treatment (§5.46), and the amendment that registers it (§5.47). |
-| **5.48-5.58** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), and the depth dose with its three rungs above it (§5.55-§5.58). |
+| **5.48-5.59** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), and the depth dose with its four rungs above it (§5.55-§5.59). |
 | **6-10** | Reproducibility (§6), the deliverables checklist (§7), figures (§8), the substrate audit (§9), and the synthesis (§10) - which reads this track against the architecture-search track. |
 
 Reproducibility at notebook fidelity (plan sections 39 and 104) now ships with
@@ -7742,6 +7742,78 @@ The band and both predictions were committed at `a21c4a9`, before the first shar
 the depth axis *as a package*; the candidate pool is identical at every rung (pinned by a test); and
 the increments are cross-cell descriptives in this family's convention, while both primaries are
 tests on their own cells.
+
+### 5.59 Pre-registration: the sixth rung, against the regime the two misses bracketed (RAN - summary `depth9-dose-576.json`)
+
+Two registered forecasts have now missed from **opposite sides of the same series**: the flat model
+at the fourth increment (`-0.063548` against `(-0.047, -0.033)`) and the accelerating model at the
+fifth (`-0.054124` against `(-0.069, -0.059)`). That is a stronger position than either prediction
+alone: the two misses bracket the axis, and what they bracket has three live readings - flat, the
+mild rise the last two increments show, and something steeper than the fourth. This arm declares the
+middle one, and the band is constructed so that the two it excludes are a miss.
+
+| cell | depth | steps | total / active params | adaptive-vs-null | collapse |
+|---|---|---|---|---|---|
+| `depth2` (5.15) | 2 | 48 | 15,888 / 6,288 | 161/384, `+0.020811` | `-0.099659` |
+| `depth3` (5.15) | 3 | 48 | 23,280 / 8,880 | 188/384, `+0.004643` | `-0.106794` |
+| `depth4-prefix` (5.12) | 4 | 48 | 30,672 / 11,472 | 225/384, `-0.037147` | `-0.070072` |
+| `depth5-dose` (5.55) | 5 | 48 | 38,064 / 14,064 | 375/576, `-0.075335` | `-0.029226` |
+| `depth6-dose` (5.56) | 6 | 48 | 45,456 / 16,656 | 442/576, `-0.117494` | `+0.028013` |
+| `depth7-dose` (5.57) | 7 | 48 | 52,848 / 19,248 | 503/576, `-0.181042` | `+0.094421` |
+| `depth8-dose` (5.58) | 8 | 48 | 60,240 / 21,840 | 544/576, `-0.235166` | `+0.165053` |
+| **`depth9-dose`** | **9** | **48** | **67,632 / 24,432** | *this arm* | *this arm* |
+
+**Design.** One fresh cell of the registered config with `depth` 8 -> 9 and **nothing else changed** -
+the same one-gene dose as 5.55-5.58. Every rung adds exactly 7,392 total / 2,592 active parameters.
+The candidate pool is identical across the whole ladder - 45 feasible expert mutations at depth 9
+truncated to the same four by `probe_candidate_cap` 4, pinned by a test over depths 3 through 9 - so
+only the substrate moves.
+
+**Primaries.** Two, at the sibling rungs' level: `alpha/2 = 0.025`, bar **313/576**.
+
+1. **P1 (the gate is still open):** the family's per-cell conjunction.
+2. **P2 (a ninth layer creates more value than an eighth):** one-sided rank-sum of the depth-8
+   cell's adaptive-vs-null deltas against this cell's.
+
+**The declared prediction, made before the run and reported either way.**
+
+- **the increment** in `adaptive - null` falls in `(-0.069, -0.049)`: **the last two increments
+  (`-0.0635` and `-0.0541`) widened by the same flat `0.005` at each end** that produced the two
+  bands before it. The flat reading sits *above* this band and a step steeper than the fourth by
+  more than the declared margin sits *below* it, so a hit says the axis is in the mild-rise regime
+  and a miss says which of the two refuted readings it is in - and `--depth9-verdict` prints that
+  sentence on a miss rather than only disconfirming a number; and
+- **the controller's own edge** stays within `0.020` of the depth-8 reading (`-0.070113`) - the same
+  declared claim for a fourth rung in a row, and now the reading 5.58's own ladder first showed
+  moving at all (its decline reaching p `0.0244` over 3 -> 8, descriptive and unregistered).
+
+**Pre-registered interpretation (fixed before running).**
+
+- **P1 and P2:** **the slope continues** - the ladder is monotone across all six rungs above the
+  onset.
+- **P1 only:** **the axis saturates at depth 8** - a ninth layer keeps the gate open but buys
+  nothing more than an eighth, bounding the monotone claim to depths 2..8.
+- **P2 only:** a ninth layer creates more value than an eighth *and* still does not clear the bar on
+  its own - a fragile upper reading.
+- **Neither:** **the ladder is not monotone past depth 8** - a ninth layer fails where an eighth
+  passes.
+
+**Descriptive secondaries.** The ladder to depth 9 (value, collapse, the controller's edge and the
+best arm at each rung), the decomposition of the 8 -> 9 step into the edge and the churn term, and
+the two declared predictions above - read together with 5.57's and 5.58's, so the ladder's gradient
+is bracketed by three forecasts rather than one.
+
+**Scope.** The rungs mix 384-seed committed cells with 576-seed cells and are read against each other
+descriptively; both primaries are tests on their own cells, and the two predictions are descriptive
+readings of cross-cell levels, stated as such. The learning rate, step count, interval, cap and
+policy are the registered ones at every rung.
+
+**Cost.** Measured on this cell's own config before registering: ~2.77 s/seed at four threads, so 576
+seeds is ~27 min of single-thread CPU across 20 shards - about seven minutes of wall clock, no GPU
+quota, run while the corrected Gate 4 session trains. The block is 95384-95959, the first free
+576-window at or after 95000, checked by a test against every other profile *and* every committed
+summary's recorded seeds. Registered before the run; the running revision is recorded in the
+summary's `code_revision`.
 
 ## 6. Reproducibility
 
