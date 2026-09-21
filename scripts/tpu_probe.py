@@ -179,6 +179,19 @@ def evaluate(record: dict[str, Any]) -> dict[str, Any]:
             f"{aggregate:,.0f} tokens/s is {aggregate / T4_PAIR_TOKENS_PER_SECOND:.2f}x the "
             f"T4 pair, and recompiles cost {overhead:.1%} of the per-core training time"
         )
+    elif throughput_ok:
+        # Recompiles are the *only* blocker, and they are a property of the session path:
+        # a mutation event and a probed candidate each rebuild the model. A fixed-graph arm
+        # - the architecture-zoo sweeps, which train one sampled architecture to a horizon
+        # - has no mid-run rebuild, so the accelerator's throughput is what it would get.
+        # This branch is declared here, before the numbers, so it cannot be discovered
+        # afterwards as a consolation.
+        result["verdict"] = "PORT_FIXED_GRAPH_ONLY"
+        result["why"] = (
+            f"throughput clears the bar ({aggregate / T4_PAIR_TOKENS_PER_SECOND:.2f}x the "
+            f"T4 pair) but recompiles would cost {overhead:.1%} of the per-core training "
+            f"time: the session path is out, fixed-graph arms are not"
+        )
     else:
         result["verdict"] = "DO-NOT-PORT"
         failed = []
@@ -352,17 +365,23 @@ def main() -> int:
     parser.add_argument(
         "--evaluate", type=Path, default=None,
         help="apply the pre-registered rule to a fetched record (needs no TPU); "
-        "exits 0 for PORT and 1 for anything else",
+        "exits 0 PORT, 2 PORT_FIXED_GRAPH_ONLY, 1 DO-NOT-PORT, 3 INCONCLUSIVE",
     )
     args = parser.parse_args()
 
     if args.evaluate is not None:
         # The decision runs where the record is, not where the hardware is: this mode is
         # deliberately before the torch import so it can be applied on a laptop, by CI, or
-        # by anyone re-reading the record later.
+        # by anyone re-reading the record later. The exit codes are distinct so a script can
+        # tell "port" from "port only the fixed-graph work" from "neither" from "the probe
+        # did not measure what the decision needs".
         decision = evaluate(json.loads(args.evaluate.read_text(encoding="utf-8")))
         print(json.dumps(decision, indent=1, sort_keys=True))
-        return 0 if decision["verdict"] == "PORT" else 1
+        return {
+            "PORT": 0,
+            "PORT_FIXED_GRAPH_ONLY": 2,
+            "DO-NOT-PORT": 1,
+        }.get(decision["verdict"], 3)
 
     import torch
     import torch_xla.core.xla_model as xm

@@ -66,14 +66,20 @@ def test_fast_and_cheap_to_rebuild_ports() -> None:
 
 
 def test_a_fast_accelerator_does_not_save_an_expensive_rebuild() -> None:
-    """The failure this rule exists for: great tokens/s, compiles that eat the session."""
+    """Great tokens/s, compiles that eat the session: the session path is out.
+
+    The fixed-graph branch is *not* a consolation invented afterwards - it is declared
+    with the rule, because the recompile cost is a property of the session path
+    (a mutation event and each probed candidate rebuild the model) and not of an arm that
+    trains one sampled architecture to a horizon.
+    """
     decision = tpu_probe.evaluate(
         _record(aggregate=6 * T4, workers=8, first=601.0, steady=1.0)
     )
-    assert decision["verdict"] == "DO-NOT-PORT"
+    assert decision["verdict"] == "PORT_FIXED_GRAPH_ONLY"
     assert decision["throughput_ok"] is True
     assert decision["recompile_overhead_ok"] is False
-    assert "recompiles" in decision["why"]
+    assert "the session path is out" in decision["why"]
 
 
 def test_slow_throughput_does_not_port_even_with_trivial_compiles() -> None:
@@ -84,6 +90,17 @@ def test_slow_throughput_does_not_port_even_with_trivial_compiles() -> None:
     assert decision["throughput_ok"] is False
     assert decision["recompile_overhead_ok"] is True
     assert "below the declared" in decision["why"]
+
+
+def test_slow_and_expensive_ports_nothing() -> None:
+    """Neither branch: the throughput bar is the one condition both uses share."""
+    decision = tpu_probe.evaluate(
+        _record(aggregate=1.5 * T4, workers=8, first=601.0, steady=1.0)
+    )
+    assert decision["verdict"] == "DO-NOT-PORT"
+    assert decision["throughput_ok"] is False
+    assert decision["recompile_overhead_ok"] is False
+    assert "below the declared" in decision["why"] and "recompiles" in decision["why"]
 
 
 def test_the_boundary_is_inclusive_on_both_conditions() -> None:
