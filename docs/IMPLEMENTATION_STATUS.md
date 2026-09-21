@@ -1,5 +1,19 @@
 # ACT Implementation Status
 
+## Off-policy: the crossing survives the other candidate policy, its decomposition does not (2026-09-21)
+
+| | |
+|---|---|
+| **The gap the arm was placed at** | Every width dose and every depth rung in this family runs the **prefix** candidate policy - invisible while the arms reported gates and prices, and load-bearing the moment they claim a *mechanism*. 5.12's 2x2 is the only policy evidence and it covers depths 1 and 4 at the registered width, i.e. exactly not the dose where the gate crosses. |
+| **The arm** | One fresh cell: 5.60's crossing dose (depth 3, width 68, 173,672 params) with `probe_candidate_policy: spread` and nothing else changed. |
+| **Registered outcome** | **Branch 1 - P1 and both declared predictions pass: the crossing is policy-robust.** P1: `387/576` against the bar of `313`, mean `-0.126482`, p `5.63e-17`. The ratio is **1.64** (edge `-0.323944`, pool `+0.197462`) - edge-dominated again, with the pool term still positive. And the value is `0.001510` from the prefix cell's reading, inside the declared `0.10` band by a factor of 66. |
+| **On the level the two policies are indistinguishable** | Rank-sum on the per-seed value deltas: p `0.472` in one direction and p `0.528` in the other. So which dose opens the gate, and that it is edge-dominated with a positive pool, hold under both policies. |
+| **But the components move - this is the finding** | The edge shifts `+0.035826` and the pool term `-0.034316` across the policy change (prefix edge larger at p `0.032`, spread pool smaller at p `0.041`): opposite directions, nearly equal magnitudes, cancelling to `+0.001510` in the contrast. So the **two-term split is a description of the balance at a dose, not an invariant of the mechanism** - a caveat every decomposition from 5.50 to 5.61 inherits, since all of them were read off prefix-policy cells. Reporting only the agreement would make the split look invariant; reporting only the moving parts would make the crossing look policy-specific. The report states both. |
+| **Absolute levels move far more than the contrast** | The spread arms sit `0.31`-`0.35` nats worse in absolute loss with the arm order unchanged (`adaptive < null < random` in both). So the policy changes the level the comparison is taken at - and the comparison survives it. |
+| **Pinned** | `tests/test_width_dose3_spread_summary.py` recomputes the cell, both declared predictions, **both rank-sums in both directions** for the value, the significant component shifts with their signs, the cancellation arithmetic and the absolute-level shifts; `tests/test_width_dose3_spread.py` pins the one-gene design against the prefix cell, the fresh block, the single-cell bar and the branches. `tests/test_report_navigation.py` requires the out-of-policy sentence and the caveat it produced. |
+| **Mutants** | Four, all biting after one fix: replacing the caveat with "the mechanism itself" fails **1**; a perturbed edge p fails **1**; calling the agreement "marginally separated" fails **1** (my first version of that fragment was unpinned - now asserted); the earlier round's mutants still bite. |
+| **Result** | **1523 tests pass** · 254/254 quick · 274/274 full claims agree; registration and frozen revision `969a251`; summary `width-d3-dose3-spread-576.json` (`study_778e4fb4004254c7`). |
+
 ## The crossing rule: my own staging claim was half wrong, and the committed ladders say so (2026-09-21)
 
 | | |

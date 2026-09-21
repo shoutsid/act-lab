@@ -8209,7 +8209,7 @@ gate's own. The window is now narrow enough that the next dose would be measurin
 what remains open is not the price but *why* 4.01x is a near miss: the mean has crossed and the win
 rate has not.
 
-### 5.62 Pre-registration: the crossing dose under the other candidate policy (REGISTERED; summary `width-d3-dose3-spread-576.json`)
+### 5.62 Pre-registration: the crossing dose under the other candidate policy (RAN - summary `width-d3-dose3-spread-576.json`)
 
 Every width dose and every rung of the depth ladder in this family runs the **prefix** candidate policy
 (`probe_candidate_policy: prefix`, the registered default). That was invisible while the arms were
@@ -8275,6 +8275,49 @@ block is 100000-100575, the first free 576-window at or after 100000, checked by
 other profile *and* every committed summary's recorded seeds. The cost probe ran seed 100000 of that
 block for timing only (the family's usual cost declaration); both declared predictions are anchored to
 5.60's committed cell rather than to it.
+
+**Outcome (run 2026-09-21, revision `969a251`, 20 shards; committed summary
+`width-d3-dose3-spread-576.json`). Registered branch 1: P1 and both declared predictions pass - the
+crossing is policy-robust. And the *mixture* underneath it is not, in a way worth stating.**
+
+The cell creates value at the single-cell level (`387/576` against the bar of `313`, mean `-0.126482`,
+p `5.63e-17`), the ratio is **1.64** (`edge -0.323944`, `pool +0.197462` - edge-dominated again, with
+the pool term still positive), and the value lands `0.001510` from the prefix cell's reading, inside
+the declared `0.10` band by a factor of sixty-six. On the level the two policies are not merely
+close, they are indistinguishable: rank-sum on the per-seed value deltas reads p `0.472` in one
+direction and p `0.528` in the other.
+
+**The components do not agree, and the total does - which is the finding.** Where the two policies
+differ is in the mixture, and the differences are real:
+
+| term | prefix (5.60) | spread (this arm) | rank-sum |
+|---|---|---|---|
+| value | `-0.127992` | `-0.126482` | p `0.472` / `0.528` - indistinguishable |
+| controller's edge | `-0.359770` | `-0.323944` | prefix larger at p `0.032` |
+| pool term | `+0.231778` | `+0.197462` | spread smaller at p `0.041` |
+
+The edge moves by `+0.035826` and the pool term by `-0.034316` across the policy change - opposite
+directions, nearly equal magnitudes, cancelling to `+0.001510` in the contrast the family reports. So
+the robust object is the **crossing**: which dose opens the gate, and that it is edge-dominated with a
+positive pool, hold under both policies. The split between the two terms is *not* robust at the ~0.03
+level, which means the two-term decomposition is a description of the balance rather than an
+invariant of the mechanism - a caveat 5.50-5.61's readings inherit, since every one of them was read
+off a prefix-policy cell.
+
+**Absolute levels move far more than the contrast does.** The spread arms sit at `22.03`-`22.35`
+against the prefix cell's `21.68`-`22.04`: the candidate policy is worth `0.31`-`0.35` nats in absolute
+loss (per arm) and `0.0015` nats in what the gate measures. The arm order is unchanged (`adaptive < null <
+random` in both), so this is not the policy changing who wins - it is the policy changing the level
+the comparison is taken at, and the comparison surviving it.
+
+**Scrutiny before write-up.** Built-in checks held in 576/576 seeds (mutations 3/3/0, zero null search
+FLOPs); the summary is at the frozen revision `969a251`; both declared predictions, the three rank-sums
+and the value difference were computed before any entered prose.
+
+**Scoped.** One dose, one policy pair: `spread` against `prefix` at the crossing, not a policy sweep,
+and the two policies' agreement at the *other* measured cells is still 5.12's result at depths 1 and 4
+rather than this arm's. The reading carries the same fixed-48-step trainability limit as every width
+arm above.
 
 ## 6. Reproducibility
 
@@ -8986,6 +9029,16 @@ pool-only is that every rung at the registered width except the onset itself sit
 that transition. This is a descriptive reading of committed cells, made after both arms rather than
 predicted by either, and the interval `[1.10, 1.37]` was bracketed by the doses rather than derived -
 the test it invites is a dose placed to land inside it on a ladder that has not been swept.
+
+**And it has had its first out-of-policy test (5.62, added 2026-09-21).** Every cell in the table
+above is prefix-policy, so the crossing dose was re-run under `spread`: the gate opens again
+(`387/576`), the ratio is again above 1 (`1.64`, pool positive), and the value is `0.001510` from the
+prefix reading - indistinguishable by rank-sum (p `0.472` / `0.528`). So the crossing is
+**policy-robust**. The *decomposition* underneath it is not, and the same arm is what shows it: the
+edge and the pool term move `+0.035826` and `-0.034316` across the policy change - opposite
+directions, nearly equal magnitudes, cancelling in the contrast. The two-term split is therefore a
+description of the balance at a dose rather than an invariant of the mechanism, and every
+decomposition above inherits that caveat, since all of them were read off prefix-policy cells.
 
 ### 10.2 What this means for the gates
 

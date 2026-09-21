@@ -358,6 +358,14 @@ def test_the_crossing_rule_is_read_from_the_committed_ladders() -> None:
     assert "bracketed by construction to `[1.10, 1.37]`" in text
     assert "corrects a reading sections 5.60 and 5.61 gave" in text
     assert "tracks the mechanism is the *dose*, not the side" in text
+    # The rule's out-of-policy test, and the caveat it produced.
+    assert "it has had its first out-of-policy test (5.62" in text
+    assert "the crossing is **policy-robust**" in text
+    assert "indistinguishable by rank-sum (p `0.472` / `0.528`)" in text
+    assert (
+        "The two-term split is therefore a description of the balance at a dose rather"
+        " than an invariant of the mechanism"
+    ) in text
 
 
 def test_the_cross_axis_claims_the_bisection_added_are_live() -> None:
