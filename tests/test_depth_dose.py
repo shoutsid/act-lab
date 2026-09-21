@@ -57,6 +57,9 @@ def test_the_cell_changes_one_gene_and_only_one() -> None:
     spec = study.PROFILES[study.DEPTH_DOSE_PROFILE]
     assert spec["overrides"] == {"depth": 5}
     assert spec["report_section"] == "5.55"
+    # The registration commit is the revision the summary cites, frozen before
+    # the shards run so it cannot be chosen after the numbers are known.
+    assert spec["run_revision"] == "5fb7bd3"
     assert spec["per_cell_primary"] is True
     assert spec["bonferroni_divisor"] == 2.0
     assert len(spec["seeds"]) == 576
