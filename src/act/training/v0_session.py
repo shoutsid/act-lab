@@ -564,6 +564,70 @@ def _state_from_payload(
     )
 
 
+def genome_from_checkpoint(path: str | Path) -> ArchitectureGenome:
+    """Read a V0 session checkpoint's architecture genome, and nothing else.
+
+    Gate 5 (plan section 99) reads *fresh architecture remains competitive*: the
+    claim is that the topology a search discovered is worth carrying, not the
+    training it accumulated. Every checkpoint carries both - the payload holds
+    ``training.genome`` beside ``model`` - but before this reader the only code
+    that consumed a checkpoint's genome was :func:`_train_arms`' resume branch,
+    which rebuilds a model from the genome and then immediately restores
+    ``model``, ``optimizer``, RNG and scaler state through
+    :func:`_state_from_payload`. So an architecture could only ever be
+    transferred *with* its training, and a Gate 5 run had no path to take. This
+    is that path's first half: it returns the genome and touches nothing else.
+
+    Raises on a payload that is not a version-4/5 V0 session checkpoint, and on
+    one whose ``training.genome`` is absent or ``None`` - a payload written
+    before the field existed records ``None``, and ``ArchitectureGenome.from_dict``
+    would otherwise be handed an empty mapping.
+    """
+    payload = torch.load(Path(path), map_location="cpu", weights_only=False)
+    if not isinstance(payload, dict):
+        raise ValueError(f"checkpoint {path} is not a V0 session payload")
+    if payload.get("version") not in {4, 5}:
+        raise ValueError(
+            f"checkpoint {path} is not a version-4/5 V0 session payload"
+        )
+    training = payload.get("training")
+    genome_dict = training.get("genome") if isinstance(training, dict) else None
+    if not genome_dict:
+        raise ValueError(
+            f"checkpoint {path} carries no genome; architecture transfer needs "
+            "the training.genome field"
+        )
+    return ArchitectureGenome.from_dict(genome_dict)
+
+
+def fresh_init_from_checkpoint(
+    path: str | Path,
+    config: V0SessionConfig,
+    *,
+    device: str | torch.device = "cpu",
+) -> tuple[V0MoECausalLM, ArchitectureGenome]:
+    """Build a *freshly initialized* model from a checkpoint's genome.
+
+    The counterpart to :func:`_train_arms`' resume branch, and the reason the
+    two are distinguishable: resume applies the payload's ``model``,
+    ``optimizer``, RNG and scaler state over a model rebuilt from the same
+    genome, so a resumed arm's parameters *equal* the ones it stopped with,
+    while this seeds a fresh initialization at ``config.seed`` and leaves the
+    optimizer and the token generator untouched. The returned model therefore
+    matches the published arm in topology - same parameter names, same shapes,
+    same parameter count - and differs in every trained value. That pair is
+    what Gate 5 has to read, and is what a rehearsal pins.
+
+    ``config`` supplies the run shape (context, batch, learning rate, cadence);
+    the genome supplies the architecture, and wins where the two disagree,
+    since the architecture is the thing being carried.
+    """
+    genome = genome_from_checkpoint(path)
+    torch.manual_seed(config.seed)
+    model = _prepare_model(v0_moe_model_from_genome(genome).to(torch.device(device)), config)
+    return model, genome
+
+
 def _prepare_model(model: V0MoECausalLM, config: V0SessionConfig) -> V0MoECausalLM:
     """Apply the declared session mode to a (fresh or rebuilt) model."""
     model.activation_checkpointing = config.activation_checkpointing

@@ -1937,6 +1937,68 @@ def check_horizon_10x(root: Path, audit: Audit) -> None:
     )
 
 
+def check_gate5_transfer(root: Path, audit: Audit) -> None:
+    """§5.63's transfer rehearsal, read against the record it wrote.
+
+    The section claims a *relationship* between two models - the fresh path keeps the
+    topology and replaces every trained value, the restore path does not - and the
+    rehearsal's own tests recompute that from a real checkpoint. What the audit pins here is
+    that the numbers the report quotes are the numbers in the record, because the failure
+    this section exists to prevent is a number being read as a fresh-architecture result
+    when it came through the weights-carrying path.
+    """
+    record = json.loads(
+        (root / "study-summaries" / "gate5-transfer-rehearsal.json").read_text()
+    )
+    session = record["session"]
+    transferred = record["transferred"]
+    paths = record["paths"]
+    audit.check("§5.63: the rehearsal session's parameters", 20_768, session["parameter_count"], "§5.63")
+    audit.check("§5.63: parameters transferred", 20, transferred["parameters"], "§5.63")
+    audit.check(
+        "§5.63: parameters differing from the published ones",
+        20,
+        transferred["parameters_differing"],
+        "§5.63",
+    )
+    audit.check(
+        "§5.63: seed-sensitive parameters",
+        15,
+        transferred["seed_sensitive_parameters"],
+        "§5.63",
+    )
+    audit.check(
+        "§5.63: normalization scales a seed cannot move",
+        5,
+        len(transferred["seed_insensitive_parameters"]),
+        "§5.63",
+    )
+    audit.check(
+        "§5.63: largest difference from the published weights",
+        0.125166,
+        transferred["max_abs_difference"],
+        "§5.63",
+    )
+    audit.check(
+        "§5.63: the restore path reproduces the published weights exactly",
+        True,
+        paths["restore_reproduces_published_exactly"],
+        "§5.63",
+    )
+    audit.check(
+        "§5.63: the fresh and restored paths are distinguishable",
+        True,
+        paths["paths_are_distinguishable"],
+        "§5.63",
+    )
+    audit.check(
+        "§5.63: every built-in rehearsal check holds",
+        True,
+        all(record["built_in_checks"].values()),
+        "§5.63",
+    )
+
+
 #: The audit's checks in record order. Each is a pure function of the artifacts root
 #: that appends to the audit it is handed, so they can run in separate processes and
 #: have their claims concatenated in this order - the output is identical to running
@@ -1956,6 +2018,7 @@ CHECKS: tuple[str, ...] = (
     "check_head_paired_confirm",
     "check_finalist_order",
     "check_horizon_10x",
+    "check_gate5_transfer",
 )
 
 

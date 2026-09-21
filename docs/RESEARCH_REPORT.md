@@ -1,12 +1,14 @@
 # Adaptive Computational Topology — Research Report
 
 Status: the narrative report for the whole program to date - the factor map (section 3, Gate 3),
-the pre-registered study series (section 5, 91 subsections), the substrate audit (section 9) and
+the pre-registered study series (section 5, 92 subsections), the substrate audit (section 9) and
 the synthesis (section 10). **Updated: 2026-09-21** - sections 5.48-5.59 close the covariate
 programme (parameter count, layer width, expert count and total compute) and then measure the
 depth axis itself, out to six rungs above its onset, 5.60 and 5.61 bisect the one window
 that closure left open (the width axis's gate between 2.87x and 11.15x) to 1.97x and then 1.41x, 5.62
-tests the crossing's mechanism under the family's other candidate policy, and section 10 is re-read
+tests the crossing's mechanism under the family's other candidate policy, 5.63 builds the transfer
+path gate 5 will need and pins that a fresh initialization is distinguishable from a resumed one,
+and section 10 is re-read
 against them. Gate 4 is declared and running: 4 of
 its 12 declared seeds are published **at this writing**, on the corrected 7-hour session window
 (section 5.2 and `docs/T4_RUNBOOK.md`).
@@ -14,7 +16,7 @@ its 12 declared seeds are published **at this writing**, on the corrected 7-hour
 This report is the narrative companion to `IMPLEMENTATION_STATUS.md` (the
 implementation tracker, newest entry first) and the append-only study records under
 `artifacts/study-summaries/`. Every number in it is machine-checked rather than transcribed:
-`scripts/verify_record.py` audits the report's claims against the committed artifacts (274 of
+`scripts/verify_record.py` audits the report's claims against the committed artifacts (283 of
 them), and the pytest suite pins each arm's recorded result against its own summary - a claim
 that drifts from the record fails the suite.
 
@@ -40,7 +42,7 @@ taking first - 9 is the audit that changed the interpretation, and 10 is the cur
 | **5.21-5.34** | The mid-training penalty and the prune-target chain: the penalty's arm-genericity (§5.22), optimizer history against the architecture change (§5.23), the discarded routing head (§5.24), prune against grow (§5.25), the freshly drawn expert (§5.26), cloning's two effects (§5.27-§5.28), the discovery path (§5.29-§5.30), and the powered prune-target studies (§5.31-§5.34). |
 | **5.35-5.40** | The declared path: defects found by reading rather than by a study (§5.35), dev-scale evidence on the real token stream (§5.36), the measured liveness contract (§5.37), whether the rebuild treatment transfers (§5.38), churn harm as a property of churn (§5.39), and the deployed configuration against the do-nothing arm (§5.40). |
 | **5.41-5.47** | Audit-derived corrections and the Gate 4 registration: the tolerance band's scale (§5.41), the clause a partial run made unfireable (§5.42), the verdict-path rehearsal (§5.43), the one-directional quality clause (§5.44), the suite's cost (§5.45), the launch path's missing rebuild treatment (§5.46), and the amendment that registers it (§5.47). |
-| **5.48-5.62** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), the two width bisections that halve the gate window the width programme left open and then test where the edge's maximum is reached (§5.60-§5.61), and the crossing dose under the family's other candidate policy (§5.62). |
+| **5.48-5.63** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), the two width bisections that halve the gate window the width programme left open and then test where the edge's maximum is reached (§5.60-§5.61), the crossing dose under the family's other candidate policy (§5.62), and the Gate-5 transfer path with its fresh-versus-resumed check (§5.63). |
 | **6-10** | Reproducibility (§6), the deliverables checklist (§7), figures (§8), the substrate audit (§9), and the synthesis (§10) - which reads this track against the architecture-search track. |
 
 Reproducibility at notebook fidelity (plan sections 39 and 104) now ships with
@@ -8318,6 +8320,56 @@ and the value difference were computed before any entered prose.
 and the two policies' agreement at the *other* measured cells is still 5.12's result at depths 1 and 4
 rather than this arm's. The reading carries the same fixed-48-step trainability limit as every width
 arm above.
+
+### 5.63 The Gate-5 transfer path, and the two paths a reader could not tell apart (RAN - summary `gate5-transfer-rehearsal.json`)
+
+**Why this exists.** Section 99's gate 5 reads *fresh architecture remains competitive*: the claim
+is that the topology a search discovered is worth carrying **without** the training that produced
+it. Every checkpoint already carries both - the payload holds `training.genome` beside `model` -
+but the only code that read a checkpoint's genome was the resume branch, which rebuilds a model
+from that genome and then immediately restores `model`, `optimizer`, RNG and scaler state over it.
+So an architecture could only ever travel *with* its training, and gate 5 had no path to take: Gate
+4 passing would have left the next gate with nothing to run.
+
+**What was added.** Two functions in `src/act/training/v0_session.py`.
+`genome_from_checkpoint` reads the genome and nothing else, raising on a payload that is not a
+version-4/5 session checkpoint and on one whose `training.genome` is absent or `None`.
+`fresh_init_from_checkpoint` rebuilds a model from that genome, freshly initialized at the config
+seed, leaving the optimizer and the token generator untouched. `scripts/gate5_rehearsal.py` runs
+both against one real tiny session (seed 16000, depth 2, two steps, 20,768 parameters) and writes
+`artifacts/study-summaries/gate5-transfer-rehearsal.json`, pinned by `tests/test_gate5_transfer.py`.
+
+**The property the read depends on is that the two paths are distinguishable**, and the rehearsal
+measures it on the published checkpoint:
+
+| path | parameter names | shapes | trained values |
+|---|---|---|---|
+| fresh init from the genome | same | same | **all 20 differ** (largest `0.125166`) |
+| restore `payload["model"]` | same | same | identical, every tensor |
+
+Topology transfers; training does not. If those two rows were the same object, a number produced by
+the weights-carrying path could be read as a fresh-architecture number and nothing would notice -
+the same shape as the stale-header and universal-claim defects section 10 records, one layer down.
+
+**And one thing the first version of that check got wrong.** It asserted that a different config
+seed moves *every* parameter. It does not: 15 of the 20 are seed-sensitive and the other five are
+the normalization scales, which initialize to exactly `1.0` and so cannot be moved by any seed. The
+check is now that the only parameters a seed cannot move are the normalization scales - a weight
+matrix that stopped responding to the seed would be a real defect, and the assertion fails on it
+rather than tolerating it.
+
+**Scrutiny.** Ten built-in checks, all holding, and the negatives are among them: a payload whose
+`training.genome` is `None` raises, a payload with an unknown version raises, two fresh inits at one
+seed agree parameter-for-parameter, and a restore of the published weights is exact. The only
+session the rehearsal spends is the two-step one that produces the checkpoint.
+
+**Scoped.** This is not a Gate-5 result. The genome transferred is a two-step dev-shape one rather
+than a discovered architecture, and nothing here says any architecture is competitive. What the
+section establishes is that the read *exists*, that its guarantee is observable, and that violating
+it fails a test rather than passing one - the gate's own bar (which comparison, against which
+baselines, at what tolerance) is declared with the artifact it will be applied to. Gate 6 would need
+the same primitive applied across seeds, which it inherits; gate 7 would additionally need the
+genome's capacities carried at another scale, which this rehearsal does not touch.
 
 ## 6. Reproducibility
 

@@ -1,0 +1,50 @@
+{
+ "built_in_checks": {
+  "a_non_session_payload_raises": true,
+  "a_payload_without_a_genome_raises": true,
+  "every_trained_parameter_differs_from_published": true,
+  "fresh_init_is_deterministic_at_a_fixed_seed": true,
+  "fresh_weights_are_not_the_published_weights": true,
+  "genome_round_trips": true,
+  "only_normalization_scales_ignore_the_seed": true,
+  "restore_path_reproduces_published_exactly": true,
+  "the_config_seed_controls_the_fresh_init": true,
+  "transfer_preserves_names_and_shapes": true
+ },
+ "kind": "gate5-transfer-rehearsal",
+ "paths": {
+  "fresh_weights_equal_published": false,
+  "paths_are_distinguishable": true,
+  "restore_reproduces_published_exactly": true
+ },
+ "record_type": "transfer-rehearsal",
+ "report_section": "5.63",
+ "session": {
+  "arms": [
+   "adaptive"
+  ],
+  "depth": 2,
+  "parameter_count": 20768,
+  "seed": 16000,
+  "total_steps": 2
+ },
+ "synthetic": true,
+ "transferred": {
+  "genome_depth": 2,
+  "genome_layers": 2,
+  "max_abs_difference": 0.1251664161682129,
+  "max_active_params": 1000000000,
+  "max_params": 1000000000,
+  "parameters": 20,
+  "parameters_differing": 20,
+  "seed_insensitive_parameters": [
+   "blocks.0.norm_attn.weight",
+   "blocks.0.norm_moe.weight",
+   "blocks.1.norm_attn.weight",
+   "blocks.1.norm_moe.weight",
+   "final_norm.weight"
+  ],
+  "seed_sensitive_parameters": 15
+ },
+ "what_this_is": "A rehearsal of the Gate-5 transfer path on one real tiny session checkpoint. The architecture transferred is a 2-step dev-shape genome, not a discovered one: this pins that topology can travel without its training and that the fresh and resumed paths are distinguishable. It is not a Gate-5 result and says nothing about any architecture being competitive."
+}
