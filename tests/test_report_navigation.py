@@ -168,6 +168,7 @@ def test_the_synthesis_depth_claims_match_the_committed_summaries() -> None:
         "depth5-dose",
         "depth6-dose",
         "depth7-dose",
+        "depth8-dose",
     )
     values, collapses = [], []
     for profile in rungs:
@@ -184,18 +185,27 @@ def test_the_synthesis_depth_claims_match_the_committed_summaries() -> None:
     assert all(c < 0 for c in collapses[:4]) and all(c > 0 for c in collapses[4:]), collapses
     text = " ".join(_text().split())
     assert "churn harm (null < random) holds at every measured depth **up to 5**" in text
-    chain = "mean delta +0.0508 > +0.0208 > +0.0046 > -0.0371 > -0.0753 > -0.1175 > -0.1810"
+    chain = (
+        "mean delta +0.0508 > +0.0208 > +0.0046 > -0.0371 > -0.0753 > -0.1175 > -0.1810"
+        " > -0.2352"
+    )
     assert chain in text
-    # The gradient claim is read off the increments themselves: three flat steps
-    # and a fourth that is 1.5x them. A report that calls the series constant
-    # again fails here as well as on the chain above.
+    # The gradient claim is read off the increments themselves, and it has now been
+    # wrong twice in opposite directions: the flat reading (three steps at ~0.04)
+    # was refuted by the fourth, and the accelerating reading (the fourth repeated)
+    # by the fifth. A report that commits to either model again fails here as well
+    # as on the chain above.
     # The last three steps, as magnitudes of value improvement (deeper is better):
-    # 4 -> 5, 5 -> 6 and the rung this test was extended for, 6 -> 7.
+    # 5 -> 6, 6 -> 7 and 7 -> 8.
     steps = [values[i] - values[i + 1] for i in range(len(values) - 4, len(values) - 1)]
-    assert all(0.03 < step < 0.05 for step in steps[:2]), steps
-    assert steps[2] > 0.06, steps
-    assert "the gradient is flat at roughly 0.04 per layer for three rungs and then steepens" in text
-    assert "-0.0162, -0.0418, -0.0382, -0.0422, -0.0635" in text
+    assert 0.03 < steps[0] < 0.05, steps
+    assert steps[1] > 0.06, steps
+    assert 0.05 < steps[2] < steps[1], steps
+    assert (
+        "The gradient above the gate is mildly rising, and two registered forecasts"
+        " each missed it from one side"
+    ) in text
+    assert "-0.0162, -0.0418, -0.0382, -0.0422, -0.0635, -0.0541" in text
     assert "stops being so at depth 6" in text
 
 
