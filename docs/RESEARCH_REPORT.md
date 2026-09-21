@@ -5,8 +5,9 @@ the pre-registered study series (section 5, 91 subsections), the substrate audit
 the synthesis (section 10). **Updated: 2026-09-21** - sections 5.48-5.59 close the covariate
 programme (parameter count, layer width, expert count and total compute) and then measure the
 depth axis itself, out to six rungs above its onset, 5.60 and 5.61 bisect the one window
-that closure left open (the width axis's gate between 2.87x and 11.15x) to 1.97x and then 1.41x, and
-section 10 is re-read against them. Gate 4 is declared and running: 4 of
+that closure left open (the width axis's gate between 2.87x and 11.15x) to 1.97x and then 1.41x, 5.62
+tests the crossing's mechanism under the family's other candidate policy, and section 10 is re-read
+against them. Gate 4 is declared and running: 4 of
 its 12 declared seeds are published **at this writing**, on the corrected 7-hour session window
 (section 5.2 and `docs/T4_RUNBOOK.md`).
 
@@ -39,7 +40,7 @@ taking first - 9 is the audit that changed the interpretation, and 10 is the cur
 | **5.21-5.34** | The mid-training penalty and the prune-target chain: the penalty's arm-genericity (§5.22), optimizer history against the architecture change (§5.23), the discarded routing head (§5.24), prune against grow (§5.25), the freshly drawn expert (§5.26), cloning's two effects (§5.27-§5.28), the discovery path (§5.29-§5.30), and the powered prune-target studies (§5.31-§5.34). |
 | **5.35-5.40** | The declared path: defects found by reading rather than by a study (§5.35), dev-scale evidence on the real token stream (§5.36), the measured liveness contract (§5.37), whether the rebuild treatment transfers (§5.38), churn harm as a property of churn (§5.39), and the deployed configuration against the do-nothing arm (§5.40). |
 | **5.41-5.47** | Audit-derived corrections and the Gate 4 registration: the tolerance band's scale (§5.41), the clause a partial run made unfireable (§5.42), the verdict-path rehearsal (§5.43), the one-directional quality clause (§5.44), the suite's cost (§5.45), the launch path's missing rebuild treatment (§5.46), and the amendment that registers it (§5.47). |
-| **5.48-5.61** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), and the two width bisections that halve the gate window the width programme left open, and then test where the edge's maximum is reached (§5.60-§5.61). |
+| **5.48-5.62** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), the two width bisections that halve the gate window the width programme left open and then test where the edge's maximum is reached (§5.60-§5.61), and the crossing dose under the family's other candidate policy (§5.62). |
 | **6-10** | Reproducibility (§6), the deliverables checklist (§7), figures (§8), the substrate audit (§9), and the synthesis (§10) - which reads this track against the architecture-search track. |
 
 Reproducibility at notebook fidelity (plan sections 39 and 104) now ships with
@@ -8207,6 +8208,73 @@ own cells; both brackets are descriptive, and the registered prediction that did
 gate's own. The window is now narrow enough that the next dose would be measuring a 1.4x interval -
 what remains open is not the price but *why* 4.01x is a near miss: the mean has crossed and the win
 rate has not.
+
+### 5.62 Pre-registration: the crossing dose under the other candidate policy (REGISTERED; summary `width-d3-dose3-spread-576.json`)
+
+Every width dose and every rung of the depth ladder in this family runs the **prefix** candidate policy
+(`probe_candidate_policy: prefix`, the registered default). That was invisible while the arms were
+reporting prices and gates - a dose is a dose - and it becomes the load-bearing caveat the moment the
+programme starts making claims about the *mechanism*: 5.60's finding that the gate is crossed by the
+controller's edge at the crossing dose, and 10.1's ratio rule (`|adaptive - random| / (random - null)`,
+open where it clears 1), both rest on one candidate-selection policy.
+
+Section 5.12's 2x2 is the only evidence that the policy does not matter, and it is exactly the wrong
+evidence for this question: it showed `prefix` and `spread` agree at **depths 1 and 4 at the
+registered width** - the churn-suppression and already-open cells - and said nothing about the dose
+where the gate crosses, which is the only place the mechanism has been claimed to differ. So this arm
+runs *the crossing dose itself*, one gene changed:
+
+| cell | depth | width | params | policy | measured |
+|---|---|---|---|---|---|
+| `width-d3-dose3` (5.60) | 3 | 68 | 173,672 | `prefix` | `389/576`, value `-0.127992`, edge `-0.359770`, pool `+0.231778` |
+| **`width-d3-dose3-spread`** | **3** | **68** | **173,672** | **`spread`** | *this arm* |
+
+**Design.** One fresh cell, identical to 5.60's crossing cell in every registered knob except
+`probe_candidate_policy`. There is deliberately no depth-4 companion: the claim under test is about the
+below-onset crossing, and above the onset the pool term dominates at every measured dose, so a
+companion would test a mechanism the arm is not about.
+
+**Primary.** One, at the single-cell level (`alpha/2 = 0.025`, bar **313/576**):
+
+1. **P1 (the gate still opens under the other policy):** the family's per-cell conjunction.
+
+**The declared predictions, made before the run and reported either way.**
+
+- **the mechanism, as a number:** the ratio `|adaptive - random| / (random - null)` exceeds `1.0` -
+  the crossing is again *edge-dominated*, with the pool term positive and smaller than the edge. This
+  is the first arm in the family registered against the ratio rather than against a level, and it
+  fails in a specific and informative way if the other policy reaches the gate through the pool term;
+  and
+- **the dose's identity:** the mean value lies within `0.10` of the prefix cell's reading
+  (`-0.127992`), so the same dose under a different candidate policy is the same experiment within a
+  stated margin rather than a different one.
+
+**Pre-registered interpretation (fixed before running).**
+
+- **P1 and the ratio:** **the crossing is policy-robust** - the edge-dominated stage is a property of
+  the dose rather than of the prefix policy, and 10.1's rule has survived its first out-of-policy test.
+- **P1 without the ratio:** the gate opens under both policies but through a different mixture, so the
+  ratio rule is scoped to the prefix ladder and 10.1 has to say so.
+- **the ratio without P1:** a second near miss with the same mechanism - the boundary between the
+  mean's crossing and the bar's is about the distribution rather than about the policy.
+- **neither:** **the crossing is prefix-specific** - this dose under the other policy votes with the
+  closed set, and 5.60's edge-dominated stage is a prefix artefact.
+
+**Descriptive secondaries.** The crossing dose under both policies, and the ratio table's neighbouring
+doses (2.87x, 4.01x, 11.15x), so the policy comparison is read against the ladder it sits in rather
+than in isolation.
+
+**Scope.** One cell, one policy pair: this tests `spread` against `prefix` at one dose, not a policy
+sweep, and the two policies' *agreement* at the other measured cells is 5.12's result rather than this
+arm's. The reading carries the same fixed-48-step trainability limit as every width arm above
+(5.50-5.61). Both declared predictions are descriptive in this family's convention; P1 is the test.
+
+**Cost.** Measured on this cell's own config before registering: ~1.57 s/seed, so 576 seeds is ~15.1
+min of single-thread CPU across 20 shards - no GPU quota, run while the Gate 4 campaign trains. The
+block is 100000-100575, the first free 576-window at or after 100000, checked by a test against every
+other profile *and* every committed summary's recorded seeds. The cost probe ran seed 100000 of that
+block for timing only (the family's usual cost declaration); both declared predictions are anchored to
+5.60's committed cell rather than to it.
 
 ## 6. Reproducibility
 

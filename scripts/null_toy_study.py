@@ -415,6 +415,27 @@ PROFILES: dict[str, dict] = {
         "bonferroni_divisor": 3.0,
         "summary": "artifacts/study-summaries/width-d4-dose4-576.json",
     },
+    # Section 5.62: the crossing under the family's *other* candidate policy. Every
+    # width dose and every rung of the depth ladder is prefix-policy, so "the gate
+    # opens where the controller's edge overtakes the pool term" (§10.1's ratio
+    # rule) and the edge-dominated stage 5.60 found both rest on one policy. This is
+    # the same dose that crosses (depth 3, width 68) with `probe_candidate_policy`
+    # set to the `spread` policy 5.12's 2x2 used, so the test is of the mechanism's
+    # policy-independence rather than of a new dose. See
+    # `dose3_spread_verdict` for the branches.
+    "width-d3-dose3-spread": {
+        "seeds": tuple(range(100000, 100576)),
+        "overrides": {
+            "depth": 3,
+            "hidden_size": 68,
+            "probe_candidate_policy": "spread",
+        },
+        "run_revision": None,
+        "report_section": "5.62",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 2.0,
+        "summary": "artifacts/study-summaries/width-d3-dose3-spread-576.json",
+    },
 }
 REGISTERED = dict(
     hidden_size=24,
@@ -551,6 +572,20 @@ DOSE4_ABOVE_REFERENCE = DOSE3_ABOVE_REFERENCE  # 3.80x, the nearest lower dose a
 # term is still positive and below its 2.87x peak (the decline has begun).
 DOSE4_EDGE_BRACKET = (-0.359770, -0.243801)
 DOSE4_POOL_BRACKET = (0.0, 0.305267)
+# The crossing under the other candidate policy (section 5.62). Every width dose
+# and every depth rung in this family is `prefix`-policy, so both of the newest
+# claims - the edge-dominated stage 5.60 found, and 10.1's ratio rule - rest on a
+# single candidate-selection policy. 5.12's 2x2 showed `prefix` and `spread` agree
+# on the arms at depths 1 and 4 at the registered width; this arm asks whether they
+# agree at the dose where the gate crosses.
+DOSE3_SPREAD_PROFILE = "width-d3-dose3-spread"
+DOSE3_SPREAD_REFERENCE = DOSE3_BELOW  # the same dose under the prefix policy
+# The declared band on the value, descriptive: the same dose under a different
+# candidate policy should land within this of the prefix reading (-0.127992).
+DOSE3_SPREAD_VALUE_BAND = 0.10
+# The declared boundary, descriptive: the crossing's mechanism is the ratio, so
+# the same dose under the other policy should still have the edge ahead.
+DOSE3_SPREAD_RATIO_FLOOR = 1.0
 # The model's forecast, declared before the run. The gradient band is the
 # *measured* range of the three existing increments (0.0382..0.0422, i.e. about
 # 0.040) widened by a flat 0.005 on each side, so the forecast is the model's own
@@ -1584,6 +1619,112 @@ def dose4_verdict(shards: int, alpha: float) -> int:
     return 0
 
 
+def dose3_spread_verdict(shards: int, alpha: float) -> int:
+    """Section 5.62's primary, predictions and branches: the crossing off-policy.
+
+    One fresh cell: the dose that crosses (depth 3, width 68 - 5.60's cell) with
+    `probe_candidate_policy` set to `spread`, the other policy 5.12's 2x2 used.
+    Every width dose and depth rung in this family is prefix-policy, so the
+    edge-dominated stage and 10.1's ratio rule both rest on one policy; this arm
+    asks whether they survive the other one.
+
+    One primary at ``alpha/2`` (bar 313/576), the single-cell level:
+
+    - P1 (the gate still opens under the other policy): the family's per-cell
+      conjunction.
+
+    And two **declared predictions**, fixed before the run and reported either way:
+
+    - the ratio ``|adaptive - random| / (random - null)`` exceeds
+      `DOSE3_SPREAD_RATIO_FLOOR` - i.e. the crossing is again edge-dominated, with
+      the pool term positive and smaller than the edge; and
+    - the cell's mean value is within `DOSE3_SPREAD_VALUE_BAND` of the prefix cell's
+      reading (`-0.127992`), so the same dose under a different policy is the same
+      experiment within a stated margin rather than a different one.
+
+    Branches, fixed before the run:
+
+    - P1 and the ratio: **the crossing is policy-robust** - the edge-dominated stage
+      is a property of the dose rather than of the prefix policy, and 10.1's rule
+      has survived its first out-of-policy test.
+    - P1 without the ratio: the gate opens under both policies but through a
+      different mixture, so the ratio rule is scoped to the prefix ladder.
+    - the ratio without P1: a second near miss with the same mechanism - the
+      boundary between the mean's crossing and the bar's is about the distribution
+      rather than about the policy.
+    - neither: **the crossing is prefix-specific**, and the cell votes with the
+      closed set rather than with the crossing it was placed at.
+    """
+    level = alpha / 2
+    cell = _cell_stats(DOSE3_SPREAD_PROFILE, shards, level)
+    p1 = bool(cell["creates_value"])
+    edge = sum(_cell_deltas(DOSE3_SPREAD_PROFILE, shards, "adaptive", "random")) / len(
+        _cell_deltas(DOSE3_SPREAD_PROFILE, shards, "adaptive", "random")
+    )
+    pool = sum(_cell_deltas(DOSE3_SPREAD_PROFILE, shards, "random", "null")) / len(
+        _cell_deltas(DOSE3_SPREAD_PROFILE, shards, "random", "null")
+    )
+    value = sum(_cell_deltas(DOSE3_SPREAD_PROFILE, shards, "adaptive", "null")) / len(
+        _cell_deltas(DOSE3_SPREAD_PROFILE, shards, "adaptive", "null")
+    )
+    ratio = abs(edge) / pool if pool > 0 else float("inf")
+    ratio_passes = pool > 0 and ratio > DOSE3_SPREAD_RATIO_FLOOR
+    print(
+        f"\nPREDICTION (declared before the run, descriptive): the crossing is "
+        f"edge-dominated again, |edge| / pool > {DOSE3_SPREAD_RATIO_FLOOR:.2f} -> "
+        f"edge {edge:+.6f}, pool {pool:+.6f} -> ratio {ratio:.2f} -> hit: {ratio_passes}"
+    )
+    reference = sum(
+        _cell_deltas(DOSE3_SPREAD_REFERENCE, shards, "adaptive", "null")
+    ) / len(_cell_deltas(DOSE3_SPREAD_REFERENCE, shards, "adaptive", "null"))
+    band_hit = abs(value - reference) <= DOSE3_SPREAD_VALUE_BAND
+    print(
+        f"PREDICTION: the value is within {DOSE3_SPREAD_VALUE_BAND:.2f} of the prefix "
+        f"cell's reading ({reference:+.6f}) -> measured {value:+.6f} "
+        f"-> hit: {band_hit}"
+    )
+    branches = {
+        (True, True): (
+            "P1 and the ratio: the crossing is policy-robust - the edge-dominated "
+            "stage is a property of the dose, not of the prefix policy"
+        ),
+        (True, False): (
+            "P1 without the ratio: the gate opens under both policies but through "
+            "a different mixture - the ratio rule is scoped to the prefix ladder"
+        ),
+        (False, True): (
+            "the ratio without P1: a second near miss with the same mechanism - the "
+            "mean has crossed and the bar has not"
+        ),
+        (False, False): (
+            "neither: the crossing is prefix-specific - this dose under the other "
+            "policy votes with the closed set"
+        ),
+    }
+    print(f"BRANCH: {branches[(p1, ratio_passes)]}")
+
+    # Descriptive: the crossing dose under both policies, and the ratio table's
+    # neighbours, so the policy comparison is read against the ladder it sits in.
+    for label, profile in (
+        ("depth 3 width 48 (2.87x, prefix)", DOSE4_BELOW_LOWER),
+        ("depth 3 width 57 (4.01x, prefix)", DOSE4_BELOW),
+        ("depth 3 width 68 (5.66x, prefix)", DOSE3_BELOW),
+        ("depth 3 width 68 (5.66x, spread)", DOSE3_SPREAD_PROFILE),
+        ("depth 3 width 96 (11.15x, prefix)", "width-d3-dose2"),
+    ):
+        try:
+            v = _cell_deltas(profile, shards, "adaptive", "null")
+            e = _cell_deltas(profile, shards, "adaptive", "random")
+            p = _cell_deltas(profile, shards, "random", "null")
+        except Exception:  # a committed 384-seed cell read at this arm's n
+            continue
+        print(
+            f"  {label:<34} value {sum(v) / len(v):+.6f}  edge {sum(e) / len(e):+.6f}  "
+            f"pool {sum(p) / len(p):+.6f}"
+        )
+    return 0
+
+
 def depth8_verdict(shards: int, alpha: float) -> int:
     """Section 5.58's primaries, prediction and branches: the fifth rung.
 
@@ -2483,6 +2624,12 @@ def main() -> int:
     )
     dose4_p.add_argument("--shards", type=int, required=True)
     dose4_p.add_argument("--alpha", type=float, default=ALPHA)
+    spread_p = sub.add_parser(
+        "dose3-spread-verdict",
+        help="section 5.62: the crossing dose under the other candidate policy",
+    )
+    spread_p.add_argument("--shards", type=int, required=True)
+    spread_p.add_argument("--alpha", type=float, default=ALPHA)
     sum_p = sub.add_parser("summary", help="write the committed study summary")
     sum_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
     sum_p.add_argument("--alpha", type=float, default=ALPHA)
@@ -2531,6 +2678,8 @@ def main() -> int:
         return dose3_verdict(args.shards, args.alpha)
     if args.command == "dose4-verdict":
         return dose4_verdict(args.shards, args.alpha)
+    if args.command == "dose3-spread-verdict":
+        return dose3_spread_verdict(args.shards, args.alpha)
     if args.command == "depth8-verdict":
         return depth8_verdict(args.shards, args.alpha)
     if args.command == "depth7-verdict":

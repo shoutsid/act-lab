@@ -114,7 +114,7 @@ def test_every_profile_declares_its_bonferroni_divisor() -> None:
     """
     # A tripwire, not a contract: if a new arm is added to the table and this
     # test has not been revisited, the count here is what says so.
-    assert len(study.PROFILES) == 26
+    assert len(study.PROFILES) == 27
     for profile, spec in study.PROFILES.items():
         assert "bonferroni_divisor" in spec, f"{profile} declares no divisor"
         declared = float(spec["bonferroni_divisor"])
