@@ -1118,10 +1118,16 @@ def logless_failure_note(elapsed_hours: float) -> str:
     moved (its publish time was 15 minutes before the push) and the queue lock
     was held, so no second driver could have replaced the running version. So the
     branch below names what is *known* to cost a session that long instead of
-    asserting a cause: the startup restore, which downloads the whole published
-    dataset before any training (22.7 GiB at four seeds, growing ~6.4 GiB per
-    seed, and never priced anywhere), and a hard kill, which is what an ERROR
-    with nothing flushed and no log retained looks like.
+    asserting a cause.
+
+    That branch has since been corrected twice by measurement, which is why it now
+    reads as exclusions rather than suspects: the startup restore is **priced and
+    short** (measured 2026-09-21, 8.5 min and 25.42 GiB at four seeds), so it cannot
+    occupy a run of hours; and the third of the three sessions' deaths is now
+    attributable to a child whose buffered output starved the platform's log stream,
+    which the launcher's `PYTHONUNBUFFERED` removes. What is left is a hard kill -
+    and the run duration against the pair time, which is what bounds how much work
+    it took with it, since the whole session rides on one exit-path publish.
     """
     if elapsed_hours >= PLATFORM_KILL_HOURS:
         return (
@@ -1133,17 +1139,18 @@ def logless_failure_note(elapsed_hours: float) -> str:
     return (
         f"  At {elapsed_hours:.2f} h of run it died with nothing flushed, so the "
         "quota cost is the "
-        f"{elapsed_hours:.2f} GPU-h reported above, not a full window. Read the "
-        "startup path before the training path, and note that two causes are "
-        "already excluded for this failure whatever the last one was: a second "
-        "driver pushing this same kernel is impossible while the queue lock is "
-        "held (exit 6), and the code dataset cannot move under a live mount "
-        "without the launch re-checking it. What remains is the session's own "
-        "startup restore - it downloads the entire published dataset "
-        "(~22.7 GiB and growing) before training one token, so its cost grows "
-        "with every seed the queue publishes - and a hard kill that flushed "
-        "nothing, which is what an ERROR with no log and no output looks like "
-        "and which /kaggle/working (19.5 GiB) is too small to explain."
+        f"{elapsed_hours:.2f} GPU-h reported above, not a full window. Bound what "
+        "that took with it by comparing it against the pair time in the "
+        "benchmark artifact: publishing is **one exit-path step**, so every pair "
+        "this session completed locally dies with it. Three causes are already "
+        "excluded. A second driver pushing this kernel is impossible while the "
+        "queue lock is held (exit 6). The code dataset cannot move under a live "
+        "mount without the launch re-checking it. And a child whose buffered "
+        "output starved the platform's log stream cannot do it any more, because "
+        "the launcher now unbuffers it - so if the run that produced this note "
+        "carried that fix, a hard kill that flushed nothing is what remains. The "
+        "startup restore is priced and short (8.5 min, 25.42 GiB at four seeds) "
+        "and does not occupy a run of hours."
     )
 
 

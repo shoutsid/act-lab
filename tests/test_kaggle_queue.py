@@ -1606,6 +1606,23 @@ def test_a_fast_logless_failure_is_not_reported_as_the_platform_window() -> None
     assert "8 h 00 m" in long
 
 
+def test_a_logless_note_now_reads_as_exclusions_and_says_how_to_bound_the_loss() -> None:
+    """The note's suspects were wrong twice, so they are exclusions now.
+
+    It named the startup restore as what occupies a run of hours; measured 2026-09-21,
+    that restore is 8.5 min and 25.42 GiB, so it cannot be. It also had no way to say
+    how much work a death took with it - and since the whole session rides on one
+    exit-path publish, the run duration against the pair time is exactly that bound.
+    """
+    note = kaggle_queue.logless_failure_note(3.48)
+
+    assert "pair time" in note, "the note does not say how to bound the loss"
+    assert "one exit-path step" in note
+    assert "unbuffers it" in note, "the buffered-child cause is not in the exclusions"
+    assert "hard kill" in note
+    assert "8.5 min" in note and "does not occupy a run of hours" in note
+
+
 class _Attempt:
     """One ``kaggle kernels logs -f`` connection, as the tailer sees it."""
 
