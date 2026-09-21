@@ -174,6 +174,14 @@ def test_primary_launch_command_is_the_registered_one() -> None:
         "15000-15011",
         "--probe-candidate-policy",
         "spread",
+        # The section 5.47 amendment. This literal used to omit them, so the test
+        # named "the registered one" was pinning a command the runbook does not
+        # describe - and the four published seeds recorded the untreated
+        # configuration as a result. It is now the same assertion the runbook agrees
+        # with, in both directions (see test_every_runbook_launch_command_carries_...).
+        "--preserve-router-on-rebuild",
+        "--new-expert",
+        "clone",
         "--dataset-root",
         "artifacts/datasets",
         "--session-dir",
@@ -181,6 +189,50 @@ def test_primary_launch_command_is_the_registered_one() -> None:
         "--kaggle-dataset",
         "sid123123234/act-v0-5-1",
     ]
+
+
+def _runbook_launch_commands() -> list[list[str]]:
+    """The token list of every ``pair-session`` command the runbook prints."""
+    text = (ROOT / "docs" / "T4_RUNBOOK.md").read_text()
+    commands = []
+    for block in re.findall(r"```bash\n(.*?)```", text, flags=re.DOTALL):
+        if "--mode pair-session" not in block:
+            continue
+        commands.append(
+            [
+                token
+                for line in block.splitlines()
+                for token in line.replace("\\", " ").split()
+            ]
+        )
+    return commands
+
+
+def _carries(tokens: list[str], flags: tuple[str, ...]) -> bool:
+    return any(
+        tokens[index : index + len(flags)] == list(flags)
+        for index in range(len(tokens) - len(flags) + 1)
+    )
+
+
+def test_the_runbook_and_the_launch_builder_carry_the_same_rebuild_flags() -> None:
+    """The doc and the code are one protocol, and only agreement can see a drift.
+
+    They were two. The runbook printed ``--preserve-router-on-rebuild --new-expert
+    clone`` in all three sections, and ``session_argv`` never passed them - so the
+    declared block's first four seeds recorded the *untreated* configuration while the
+    runbook, the registration (section 5.47) and the verdict all named the treated one.
+    A doc-only assertion passed (the doc was right) and a code-only assertion passed too
+    (the code was self-consistent), which is exactly why the check that matters compares
+    them, and why this test exists in this shape.
+    """
+    commands = _runbook_launch_commands()
+    assert len(commands) == len(kaggle_t4.QUEUES)  # sections 2, 2b and 2c
+    for tokens in commands:
+        assert _carries(tokens, kaggle_t4.REBUILD_TREATMENT_FLAGS), tokens
+    for name in kaggle_t4.QUEUES:
+        argv = kaggle_t4.session_argv(kaggle_t4.QUEUES[name])
+        assert _carries(argv, kaggle_t4.REBUILD_TREATMENT_FLAGS), (name, argv)
 
 
 def test_control_queue_isolates_the_decision_rule() -> None:

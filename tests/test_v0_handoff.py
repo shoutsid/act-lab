@@ -20,6 +20,7 @@ from act.training.v0_handoff import (
     load_seed_summary,
     latest_published_seed,
     publish_seed,
+    published_seeds,
     restore_seed,
     seed_directory,
     session_checkpoint_root,
@@ -226,3 +227,60 @@ def test_load_seed_summary_round_trips(tmp_path: Path) -> None:
 
 def test_session_checkpoint_root_layout(tmp_path: Path) -> None:
     assert session_checkpoint_root(tmp_path, 42) == tmp_path / "seed-42"
+
+
+def test_published_seeds_lists_the_versions_that_carry_a_summary(tmp_path: Path) -> None:
+    """The block's membership is what is *present*, not what an invocation asked for.
+
+    ``check_block_treatment_uniform`` reads this instead of its own seed queue, because a
+    resumed campaign is launched ``--seeds 15004-15011`` and the versions that disagree
+    with it are the ones already finished - the case a reader of the requested queue is
+    blind to by construction.
+    """
+    dataset_root = tmp_path / "dataset"
+    session_dir = tmp_path / "sessions"
+    for seed in (42, 7):  # published newest-first, so membership is not the write order
+        publish_seed(
+            dataset_root,
+            run_v0_session(_config(tmp_path, seed=seed), checkpoint_dir=session_dir),
+            session_dir=session_dir,
+            code_revision="rev",
+        )
+    handoff = dataset_root / HANDOFF_DATASET
+    # Decoys: a seed directory with no summary is not a version, and neither is a
+    # directory that is not named like a seed.
+    (handoff / "seed-0043").mkdir(parents=True)
+    (handoff / "seed-notanumber").mkdir(parents=True)
+    (handoff / "notes").mkdir(parents=True)
+
+    assert sorted(published_seeds(dataset_root)) == [7, 42]
+    assert published_seeds(tmp_path / "nothing-here") == []
+
+
+def test_published_seeds_is_ascending_whatever_the_filesystem_returns(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``Path.glob`` returns the filesystem's order, so the reader has to impose one.
+
+    Stated separately from membership because the first version of the membership test
+    asserted ``[7, 42]`` and *passed a mutant that removed the sort* - the directory
+    happened to be walked in the right order, which is exactly the kind of assertion that
+    looks like a pin and is not one. Here glob is forced to hand the seeds back in
+    descending order, so the sort is the only thing that can produce the answer.
+    """
+    dataset_root = tmp_path / "dataset"
+    for seed in (42, 7, 13):
+        reports = seed_directory(dataset_root, seed) / "reports"
+        reports.mkdir(parents=True)
+        (reports / "seed-summary.json").write_text("{}")
+
+    real_glob = Path.glob
+    monkeypatch.setattr(
+        Path,
+        "glob",
+        lambda self, pattern: iter(
+            sorted(real_glob(self, pattern), reverse=True)
+        ),
+    )
+
+    assert published_seeds(dataset_root) == [7, 13, 42]

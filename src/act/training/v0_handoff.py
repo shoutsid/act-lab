@@ -275,6 +275,25 @@ def load_seed_summary(dataset_root: str | Path, seed: int) -> dict:
     return json.loads(path.read_text())
 
 
+def published_seeds(dataset_root: str | Path) -> list[int]:
+    """Every seed version present under the dataset root that carries a summary, ascending.
+
+    The block's membership is the set of versions *present*, not the set of seeds one
+    invocation was asked for: a session launched with ``--seeds 15004-15011`` appends to
+    the same block as one launched with the full declared queue, so a reader that looked
+    only at its own queue would miss exactly the seeds that disagree with it.
+    """
+    root = Path(dataset_root) / HANDOFF_DATASET
+    if not root.is_dir():
+        return []
+    seeds = []
+    for path in root.glob("seed-*"):
+        stem = path.stem.split("-")[-1]
+        if stem.isdigit() and (path / "reports" / SUMMARY_NAME).is_file():
+            seeds.append(int(stem))
+    return sorted(seeds)
+
+
 def published_seed_status(dataset_root: str | Path, seed: int) -> str | None:
     """Return a seed's publish status, or None when it has no version."""
     path = seed_directory(dataset_root, seed) / "reports" / SUMMARY_NAME

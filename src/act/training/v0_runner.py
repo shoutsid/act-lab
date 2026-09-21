@@ -50,10 +50,12 @@ from act.training.v0_handoff import (
     COMPLETE_STATUS,
     IN_PROGRESS_STATUS,
     latest_published_seed,
+    load_seed_summary,
     newest_arm_checkpoint,
     publish_seed,
     publish_seed_state,
     published_seed_status,
+    published_seeds,
 )
 from act.training.v0_session import (
     V0SessionConfig,
@@ -72,6 +74,101 @@ DECLARED_SEEDS = tuple(range(15000, 15012))
 
 def _make_log(log: Callable[[str], None] | None) -> Callable[[str], None]:
     return log if log is not None else (lambda message: None)
+
+
+#: The two configuration fields the section 5.47 amendment fixes, and the only ones the
+#: treated and untreated declared runs disagree on. Named here rather than imported from
+#: the verdict because the question this answers is "does the block I am about to extend
+#: agree with itself", not "does it match the registration" - the second is the verdict's,
+#: and its conformance block is descriptive by design.
+TREATMENT_FIELDS = ("preserve_router_on_rebuild", "new_expert_initialization")
+
+
+class BlockTreatmentMismatch(RuntimeError):
+    """A session would append seeds under a treatment the published block does not record."""
+
+
+def check_block_treatment_uniform(
+    *,
+    dataset_root: str | Path,
+    config: V0SessionConfig,
+    log: Callable[[str], None] | None = None,
+) -> None:
+    """Refuse to extend a published block with seeds trained under a different treatment.
+
+    A block is the unit the verdict judges: its seeds are compared *within* the block, so
+    a block whose seeds disagree on the rebuild treatment is not a block but two
+    experiments sharing a seed range - and no per-seed field records which half a seed
+    belongs to, so the split could only be reconstructed by hand. Nothing prevented it. The
+    treated and untreated configurations differ on exactly the two fields below, both are
+    valid, neither is a gate input, and neither is rejected by an assertion - so a session
+    launched either way would run to completion and publish.
+
+    Measured, on the declared block itself: seeds 15000-15003 recorded the *untreated*
+    configuration, because the Kaggle launch builder never passed the two flags the runbook
+    prints. The block is therefore untreated, and a resumed campaign on the amended command
+    would have appended treated seeds 15004 onward to it. This raises before the first pair
+    instead - the cheap failure. The block can still be finished uniformly, and *which*
+    uniform configuration it finishes under stays a registration decision rather than
+    becoming an accident of when the next session ran.
+
+    The published *versions* are read, not the seeds this invocation was handed: the
+    conflict is with the block, and a narrower ``--seeds`` appends to the same block.
+
+    A field no published seed recorded is skipped, matching the verdict's ``not_recorded``
+    treatment, so artifacts from before these fields existed are not read as conflicts.
+    """
+    logger = _make_log(log)
+    recorded: dict[str, dict[str, list[int]]] = {}
+    for seed in published_seeds(dataset_root):
+        block = load_seed_summary(dataset_root, seed).get("config")
+        if not isinstance(block, dict):
+            continue
+        for field in TREATMENT_FIELDS:
+            if field in block:
+                recorded.setdefault(field, {}).setdefault(repr(block[field]), []).append(seed)
+    conflicts = []
+    for field in TREATMENT_FIELDS:
+        observed = recorded.get(field)
+        if not observed:
+            continue
+        mine = repr(getattr(config, field))
+        if set(observed) != {mine}:
+            conflicts.append((field, mine, observed))
+    if conflicts:
+        lines = [
+            "this session would train under a rebuild treatment the published block "
+            "does not record, and the block cannot be split after the fact:",
+        ]
+        for field, mine, observed in conflicts:
+            published = "; ".join(
+                f"{value} (seed(s) {', '.join(str(s) for s in seeds_at)})"
+                for value, seeds_at in sorted(observed.items())
+            )
+            lines.append(f"  {field}: this session {mine}, published {published}")
+        lines.append(
+            "Either finish the block under the configuration it already records (drop the "
+            "section 5.47 flags from the launch command), or start a fresh block on an "
+            "unspent seed range so the treatment is uniform. Refusing rather than mixing."
+        )
+        raise BlockTreatmentMismatch("\n".join(lines))
+    agreed = {
+        field: repr(getattr(config, field))
+        for field in TREATMENT_FIELDS
+        if recorded.get(field)
+    }
+    if agreed:
+        logger(
+            "block treatment matches the published seed(s): "
+            + ", ".join(f"{field}={value}" for field, value in agreed.items())
+        )
+    else:
+        logger(
+            "no published seed records a rebuild treatment yet; this session sets it: "
+            + ", ".join(
+                f"{field}={getattr(config, field)!r}" for field in TREATMENT_FIELDS
+            )
+        )
 
 
 def run_pair_session(
@@ -137,6 +234,13 @@ def run_pair_session(
         f"{PAIR_OVERHEAD_HOURS} h event overhead)"
     )
 
+    # The block must be single-treatment - its seeds are compared within the block and
+    # the treatment is not a field the verdict can partition on - but the check runs
+    # where it protects a *write*: immediately before the first pair starts, and never
+    # on a run whose queue is gated shut. A session that trains nothing cannot mix
+    # treatments, so it must not fail either. See check_block_treatment_uniform.
+    treatment_checked = False
+
     pair_results: list[dict[str, object]] = []
     for seed in seeds:
         # Skip-completed is checked before any gating: re-running the same
@@ -164,6 +268,12 @@ def run_pair_session(
         if remaining < pair_time + PUBLISH_RESERVE_MINUTES / 60.0:
             logger(f"seed {seed}: {decision.reason}")
             break
+
+        if not treatment_checked:
+            check_block_treatment_uniform(
+                dataset_root=dataset_root, config=seed_config, log=logger
+            )
+            treatment_checked = True
 
         # Start (or restart) this pair from scratch on this session's clock.
         # A stale in-progress snapshot is discarded by the restart semantics.

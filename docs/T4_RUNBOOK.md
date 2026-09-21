@@ -533,13 +533,38 @@ PYTHONPATH=src python -m act.training.cli --mode pair-session \
 - Everything else defaults correctly: benchmark artifact
   `artifacts/v0-benchmark.json`, `--probe-batch-count 1` (the primary config),
   dataset root `artifacts/datasets`, session dir `artifacts/v0-sessions`.
+- **The driver builds this same command.** `scripts/kaggle_t4.py::session_argv` is the
+  launch path for all three queues and it carries the two rebuild flags from one constant
+  (`REBUILD_TREATMENT_FLAGS`), so the command above and the one that actually runs are one
+  protocol rather than two. That is now pinned in **both** directions by
+  `test_the_runbook_and_the_launch_builder_carry_the_same_rebuild_flags`: every
+  `pair-session` command printed here, and the builder, must carry the pair. Until
+  2026-09-21 only this document carried them - the builder did not - and the first four
+  published seeds therefore recorded the untreated configuration while the verdict, the
+  registration (§5.47) and this runbook all named the treated one. Neither a doc-only nor
+  a code-only check can see that: each side was individually consistent, and the test named
+  "the registered one" was asserting the drifted argv.
+- **A session will refuse to mix treatments, so do not fight the guard.** Before the first
+  pair starts, the runner compares the treatment it is about to use against what the
+  **published versions in the dataset root** record and raises `BlockTreatmentMismatch` if
+  they differ, naming both fields, both values and the seeds that disagree. It chooses
+  nothing - it prints the two remedies and stops. This matters because the seeds of a block
+  are compared *within* the block: an untreated seed and a treated seed in one root are two
+  experiments sharing a seed range, and no per-seed field partitions them afterwards.
+  **The declared block is currently in that position**: seeds `15000`-`15003` are published
+  under the historical untreated rebuild, so resuming on the amended command above will
+  (correctly) refuse. Either finish the block under the configuration it already records,
+  or start a fresh block on an unspent seed range - see the disposition note in
+  `docs/IMPLEMENTATION_STATUS.md`.
 - **Verify the run was the registered one.** Every seed summary records its whole
   config, and the verdict's `config_conformance` block compares it field by field against
   the registered protocol (`REGISTERED_RUN_CONFIG` in `scripts/v0_verdict.py`). It is
   descriptive - it changes no label and withholds nothing - so read it deliberately: if it
   reports `differs` on `preserve_router_on_rebuild`, the session ran without the §5.47
   treatment and its result is the untreated configuration, which must be said in the
-  write-up rather than discovered later.
+  write-up rather than discovered later. **This is the check that reported the divergence
+  after the fact, not one that prevents it**; the two bullets above are what prevent it, and
+  the conformance block remains the audit that says the write-up was honest.
 - Do **not** pass `--dtype` (it must equal the measured decision and is only
   there to catch operator error), `--tokens-per-second` (overrides the
   artifact), or `--probe-selection` (that is the control session in §2b).

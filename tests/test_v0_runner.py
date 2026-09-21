@@ -19,7 +19,12 @@ from act.training.v0_handoff import (
     published_seed_status,
     seed_directory,
 )
-from act.training.v0_runner import DECLARED_SEEDS, run_pair_session
+from act.training.v0_runner import (
+    DECLARED_SEEDS,
+    BlockTreatmentMismatch,
+    check_block_treatment_uniform,
+    run_pair_session,
+)
 from act.training.v0_session import V0SessionInterrupted
 
 
@@ -1260,3 +1265,138 @@ def test_cli_session_arms_rejects_unknown_and_empty(tmp_path: Path, monkeypatch)
     )
     with pytest.raises(SystemExit, match="--session-arms resolved to an empty tuple"):
         cli.main()
+
+
+# --- Single-treatment blocks (section 5.47) -----------------------------------
+#
+# A block is what the verdict judges, and its seeds are compared *within* the block,
+# so a block whose seeds disagree on the rebuild treatment is two experiments sharing
+# a seed range. The treated and untreated declared runs differ on exactly two fields,
+# both valid, neither a gate input - so nothing downstream would have refused the mix.
+
+
+def _publish_tiny_seed(
+    dataset_root: Path,
+    tmp_path: Path,
+    seed: int,
+    log=None,
+    **overrides,
+):
+    """Publish one complete tiny seed, recording `overrides` in its summary config."""
+    return run_pair_session(
+        config=_config(**overrides),
+        session_dir=tmp_path / "sessions",
+        dataset_root=dataset_root,
+        code_revision="rev",
+        remaining_hours=8.0,
+        measured_tokens_per_second=1e9,
+        seeds=(seed,),
+        output=tmp_path / f"summary-{seed}.json",
+        log=log,
+    )
+
+
+def test_a_session_refuses_to_append_a_seed_under_a_different_treatment(
+    tmp_path: Path,
+) -> None:
+    """The declared block's own failure, in miniature.
+
+    Seeds 15000-15003 were published under the historical rebuild because the Kaggle
+    launch builder never passed the two flags the runbook prints, so the block is
+    untreated and the amended command would have appended treated seeds to it.
+    """
+    dataset_root = tmp_path / "dataset"
+    _publish_tiny_seed(dataset_root, tmp_path, 9000)  # the CLI default: untreated
+    log: list[str] = []
+
+    with pytest.raises(BlockTreatmentMismatch) as excinfo:
+        _publish_tiny_seed(
+            dataset_root,
+            tmp_path,
+            9001,
+            log=log.append,
+            preserve_router_on_rebuild=True,
+            new_expert_initialization="clone",
+        )
+
+    message = str(excinfo.value)
+    # Both fields, both values, and which published seeds hold the other value.
+    assert "preserve_router_on_rebuild: this session True, published False" in message
+    assert "new_expert_initialization: this session 'clone', published 'random'" in message
+    assert "seed(s) 9000" in message
+    # The refusal is before the pair, not after it: nothing trained, nothing published.
+    assert published_seed_status(dataset_root, 9001) is None
+    assert not any("starting pair" in line for line in log)
+
+
+def test_a_narrower_queue_still_sees_the_seeds_it_would_be_appended_to(
+    tmp_path: Path,
+) -> None:
+    """The first version of this guard read only the seeds it was handed, and missed it.
+
+    A resumed campaign can be launched ``--seeds 15004-15011`` - the queue is a flag
+    precisely so a block can be advanced in pieces - and that session appends to the same
+    block. Reading the requested seeds instead of the published versions made the check
+    silent in exactly the case it exists for, because the seeds that disagree are the ones
+    already finished.
+    """
+    dataset_root = tmp_path / "dataset"
+    _publish_tiny_seed(dataset_root, tmp_path, 9000)  # untreated, as published
+
+    with pytest.raises(BlockTreatmentMismatch, match="9000"):
+        _publish_tiny_seed(
+            dataset_root,
+            tmp_path,
+            9001,
+            preserve_router_on_rebuild=True,
+            new_expert_initialization="clone",
+        )
+
+
+def test_a_matching_block_treatment_is_stated_in_the_log_and_the_pair_still_runs(
+    tmp_path: Path,
+) -> None:
+    """The guard is not only a refusal - it is how the log says which run this is."""
+    dataset_root = tmp_path / "dataset"
+    _publish_tiny_seed(dataset_root, tmp_path, 9000)
+    log: list[str] = []
+
+    summary = _publish_tiny_seed(dataset_root, tmp_path, 9001, log=log.append)
+
+    assert [entry["action"] for entry in summary["pairs"]] == ["completed"]
+    assert any("block treatment matches the published seed(s)" in line for line in log)
+    assert any("preserve_router_on_rebuild=False" in line for line in log)
+
+
+def test_the_first_session_states_the_treatment_it_sets(tmp_path: Path) -> None:
+    """The session that opens a block defines its treatment, and says so."""
+    log: list[str] = []
+    _publish_tiny_seed(tmp_path / "dataset", tmp_path, 9000, log=log.append)
+
+    assert any(
+        "no published seed records a rebuild treatment yet" in line for line in log
+    )
+
+
+def test_a_summary_without_a_recorded_config_is_not_read_as_a_conflict(
+    tmp_path: Path,
+) -> None:
+    """Artifacts from before the fields existed carry no record, not a disagreement.
+
+    The verdict's conformance block already reads that case as ``not_recorded`` so no
+    spent block is re-read as non-conforming; the runner's guard has to agree, or it
+    would refuse to extend a block that recorded nothing to disagree with.
+    """
+    dataset_root = tmp_path / "dataset"
+    reports = seed_directory(dataset_root, 9000) / "reports"
+    reports.mkdir(parents=True)
+    (reports / "seed-summary.json").write_text(
+        json.dumps({"seed": 9000, "status": "complete"})
+    )
+
+    check_block_treatment_uniform(
+        dataset_root=dataset_root,
+        config=_config(
+            preserve_router_on_rebuild=True, new_expert_initialization="clone"
+        ),
+    )

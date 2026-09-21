@@ -99,6 +99,18 @@ BENCHMARK_STEPS = 50
 # block, primary candidate policy is ``spread``.
 SEED_BLOCK = "15000-15011"
 PRIMARY_POLICY = "spread"
+#: The section 5.47 amendment: the declared run carries the section 5.28 rebuild
+#: treatment on **every** arm, so all three queues launch with this pair. It lives in
+#: one place because the runbook's section 2/2b/2c commands and this builder are one
+#: protocol; for the campaign's first four seeds they were two. The runbook printed
+#: the flags and this builder never passed them, so every published seed recorded the
+#: *untreated* configuration (``preserve_router_on_rebuild: false``,
+#: ``new_expert_initialization: 'random'``) while the verdict, the registration and
+#: the runbook all named the treated one - and nothing refused it, because the
+#: verdict's config-conformance block is descriptive and gates nothing. Both
+#: directions are now pinned (`tests/test_kaggle_t4.py`): the builder carries the
+#: pair, and every launch command in the runbook carries it too.
+REBUILD_TREATMENT_FLAGS = ("--preserve-router-on-rebuild", "--new-expert", "clone")
 # v0_verdict.py exit codes are the pre-registered verdict, not failures.
 VERDICT_EXIT_CODES = {0: "PASS", 1: "FAIL", 2: "PASS with qualification"}
 
@@ -246,10 +258,12 @@ def benchmark_argv(python: str, steps: int = BENCHMARK_STEPS) -> list[str]:
 def session_argv(queue: Queue, hours: float = DEFAULT_HOURS) -> list[str]:
     """The registered launch command for one queue (runbook 2 / 2b / 2c).
 
-    The primary queue restates the code defaults (``--seeds`` and
-    ``--probe-candidate-policy``) rather than changing them; the control adds
-    only the loss-blind ``--probe-selection random``; the null queue is
-    policy-free by construction, so it carries no probe flag at all.
+    The primary queue restates the code defaults (``--seeds``,
+    ``--probe-candidate-policy`` and the section 5.47 rebuild pair) rather than
+    changing them; the control adds only the loss-blind ``--probe-selection
+    random``; the null queue is policy-free by construction, so it carries no
+    probe flag at all. The rebuild pair is not a probe setting - section 5.47
+    applies it to every arm of every queue - so it goes in unconditionally.
     """
     argv = [
         sys.executable,
@@ -270,6 +284,8 @@ def session_argv(queue: Queue, hours: float = DEFAULT_HOURS) -> list[str]:
         argv += ["--probe-selection", "random"]
     if queue.mode == "null":
         argv += ["--session-arms", "null"]
+    # The section 5.47 amendment, on every arm: see REBUILD_TREATMENT_FLAGS.
+    argv += list(REBUILD_TREATMENT_FLAGS)
     argv += [
         "--dataset-root",
         queue.dataset_root,
