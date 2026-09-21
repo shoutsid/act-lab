@@ -53,6 +53,10 @@ def test_the_cell_changes_one_gene_and_only_one() -> None:
     spec = study.PROFILES[study.DEPTH7_PROFILE]
     assert spec["overrides"] == {"depth": 7}
     assert spec["report_section"] == "5.57"
+    # The revision the summary cites: the registration commit, frozen before the
+    # shards run. It is 18ae507 rather than the registration commit itself
+    # because the Contents index had to be extended first - the tripwire worked.
+    assert spec["run_revision"] == "18ae507"
     assert spec["per_cell_primary"] is True
     assert spec["bonferroni_divisor"] == 2.0
     assert len(spec["seeds"]) == 576

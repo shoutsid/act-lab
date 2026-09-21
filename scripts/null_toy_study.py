@@ -334,7 +334,7 @@ PROFILES: dict[str, dict] = {
     "depth7-dose": {
         "seeds": tuple(range(93384, 93960)),
         "overrides": {"depth": 7},
-        "run_revision": None,
+        "run_revision": "18ae507",
         "report_section": "5.57",
         "per_cell_primary": True,
         "bonferroni_divisor": 2.0,
