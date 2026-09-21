@@ -183,6 +183,28 @@ class PairSchedule:
         return MAX_CHECKPOINTS * self.arms * CHECKPOINT_PAYLOAD_GB + 2 * 1.06
 
 
+def window_left(declared_hours: float, spent_hours: float) -> float:
+    """The session clock at entry: the declared window less what startup spent.
+
+    ``v0_runner.run_pair_session``'s contract is explicit that the window it is
+    handed is the platform limit "minus boot/restore", and both halves of that
+    subtraction happen *outside* it: the launcher subtracts boot, the repo copy
+    and the throughput benchmark, and ``act.training.cli`` subtracts the startup
+    restore, which downloads the whole published dataset before a token is
+    trained and grows with every seed the queue publishes.
+
+    Both call sites used to pass the declared window unchanged, so a session
+    believed it had the full window at entry, scheduled pairs against time it did
+    not have, and reached its deadline stop that much late. Measured 2026-09-20: a
+    session declared a 9 h window and the platform killed it at 8 h 00 m, before
+    its own deadline. One spelling of the subtraction, so the clock the deadline
+    rules act on cannot drift from the clock the window was declared with.
+    """
+    if spent_hours < 0:
+        raise ValueError("spent_hours must be non-negative")
+    return declared_hours - spent_hours
+
+
 def working_dir_headroom_gb() -> float:
     """Headroom under the 20 GB auto-saved working directory at steady state."""
     return WORKING_DIR_GB - CHECKPOINT_STEADY_STATE_GB

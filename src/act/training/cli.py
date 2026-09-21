@@ -9,6 +9,7 @@ benchmark artifact, applies the pre-committed dtype rule, and runs
 import argparse
 import json
 import subprocess
+import time
 from pathlib import Path
 
 import torch
@@ -22,7 +23,7 @@ from act.training.runtime import (
     save_checkpoint,
     train_steps,
 )
-from act.training.session_plan import MAX_CHECKPOINTS, decide_dtype
+from act.training.session_plan import MAX_CHECKPOINTS, decide_dtype, window_left
 from act.training.v0_protocol import aggregate_arm_cost_ratio, harm_guard_rejects, sign_pairs
 from act.training.v0_runner import DECLARED_SEEDS, run_pair_session
 from act.training.v0_session import (
@@ -272,6 +273,17 @@ def _run_pair_session(args: argparse.Namespace) -> None:
             checkpoint_interval=4,
             max_checkpoints=2,
         )
+    # The clock the runner is given has to be what is *left* of the declared
+    # window, and the restore below is the largest part of what has been spent:
+    # it downloads the whole published dataset before a token is trained, and it
+    # grows with every seed the queue publishes. Passing the declared window
+    # unchanged told the runner it had the full window at entry, so a session
+    # that spent 40 minutes restoring then scheduled pairs against time it did
+    # not have and stopped that much late - which is exactly what
+    # ``run_pair_session``'s own contract excludes ("the session clock at entry"
+    # is the window minus boot and restore). The boot-and-benchmark half of that
+    # subtraction is done by the launcher before it starts this process.
+    entry_started = time.monotonic()
     if args.kaggle_dataset is not None:
         # Session start: restore the newest remote version before training
         # (fail-fast - a session that cannot get its requested remote state
@@ -292,13 +304,29 @@ def _run_pair_session(args: argparse.Namespace) -> None:
                 f"{type(error).__name__}: {error}; session not started "
                 "(no training ran, nothing published)"
             ) from error
+    entry_minutes = (time.monotonic() - entry_started) / 60.0
+    if entry_minutes / 60.0 >= args.hours:
+        raise SystemExit(
+            f"the declared {args.hours:g} h window was spent before training: "
+            f"startup took {entry_minutes:.1f} min, so this session has nothing "
+            "left to run and nothing was trained or published"
+        )
+    remaining_hours = window_left(args.hours, entry_minutes / 60.0)
+    if args.kaggle_dataset is not None:
+        # Stated rather than implied: this is the number the deadline rules act
+        # on, and it is no longer the number the window was declared with.
+        print(
+            f"session clock: {remaining_hours:.2f} h of the declared "
+            f"{args.hours:g} h remain after {entry_minutes:.1f} min of startup",
+            flush=True,
+        )
     summary = run_pair_session(
         seeds=seeds,
         config=config,
         session_dir=args.session_dir,
         dataset_root=args.dataset_root,
         code_revision=_git_revision(),
-        remaining_hours=args.hours,
+        remaining_hours=remaining_hours,
         measured_tokens_per_second=schedule_rate,
         output=args.output,
         log=print,

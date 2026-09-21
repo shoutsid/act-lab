@@ -852,6 +852,7 @@ def mode_session(queue: Queue) -> None:
     work, env = _bootstrap()
 
     from act.training.runtime import gpu_inventory
+    from act.training.session_plan import window_left
 
     if not torch.cuda.is_available():
         raise SystemExit("no CUDA device on this kernel - enable a GPU accelerator")
@@ -873,8 +874,25 @@ def mode_session(queue: Queue) -> None:
     )
     _keep(artifact_path)
 
-    _log(f"--- {queue.mode} queue (--hours {hours:g}) ---")
-    _run(session_argv(queue, hours), env)
+    # The window handed to the runner excludes what this side has already spent:
+    # boot, the repo copy and the throughput benchmark all come out of the
+    # session clock, and the child subtracts the startup restore it does itself.
+    # Declaring the full window here told the runner it had all of it at entry,
+    # so the session planned pairs against time it did not have and its deadline
+    # stop landed late - the overrun `run_pair_session` already excludes by
+    # contract, since its window is "the 12-hour limit minus boot/restore".
+    startup_minutes = (time.time() - started) / 60.0
+    if startup_minutes / 60.0 >= hours:
+        raise SystemExit(
+            f"{queue.mode} session: the {hours:g} h window was spent on boot and "
+            f"the benchmark ({startup_minutes:.1f} min); nothing to run"
+        )
+    remaining = window_left(hours, startup_minutes / 60.0)
+    _log(
+        f"--- {queue.mode} queue (--hours {remaining:.2f} h: {startup_minutes:.1f} "
+        f"min of the declared {hours:g} h spent on startup) ---"
+    )
+    _run(session_argv(queue, remaining), env)
 
     # Runbook 6: keep the audit trail in the kernel output, so the per-pair
     # actions and the publish outcome survive without the dataset API.

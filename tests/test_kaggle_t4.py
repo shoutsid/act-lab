@@ -323,6 +323,11 @@ def test_a_mode_that_imports_act_in_this_process_bootstraps_first() -> None:
         if bootstrap == -1 or bootstrap > act_import.start():
             offenders.append(match.group(1))
     assert offenders == []
+    # And nothing may import it at *module* level either. That is worse than an
+    # early import inside a mode: it breaks every mode at once, because the
+    # kernel body is imported before any bootstrap has run.
+    module_level = re.findall(r"^(?:from act|import act)[^\n]*", text, re.M)
+    assert module_level == []
 
 
 def test_restoreprobe_is_registered_cpu_only_and_pushed() -> None:

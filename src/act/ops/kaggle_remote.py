@@ -82,6 +82,55 @@ def _manifest_seeds(folder: Path) -> list[Path]:
     )
 
 
+def _seed_dirname(seed: int) -> str:
+    """The handoff's own name for a seed directory, imported lazily (cycle).
+
+    The name does not depend on the root, which is the point of asking for it
+    rather than formatting it here: a restore that spelled the name itself could
+    place a seed somewhere the handoff's own readers never look, and the seed
+    would read as missing and be trained again.
+    """
+    from act.training.v0_handoff import seed_directory
+
+    return seed_directory(Path("."), seed).name
+
+
+def published_seed_dirs(extracted: str | Path) -> dict[int, Path]:
+    """Every complete seed version anywhere under an extracted dataset.
+
+    Found by search rather than by locating one tree and globbing its children.
+    Measured 2026-09-21 by the startup-restore probe: the published dataset's
+    seeds sit one level *deeper* than the handoff layout names them
+    (``seed-15000/seed-15000/checkpoints/...``), because each seed is uploaded
+    as ``seed-NNNN.tar`` whose members already carry the ``seed-NNNN/`` prefix
+    and the service keeps both. So the handoff parent's children have no
+    ``manifests/manifest.json`` at all, ``_locate_handoff_tree`` fell through to
+    matching a single *seed* directory, and the probe restored **1 of the 4**
+    published seeds. A session that treats three completed seeds as missing
+    re-trains them at ~1.5 h each, and the queue still reports 4/12 either way.
+
+    A manifest-less directory is a partial publish and is not a version, and
+    where a seed matches at more than one depth the shallowest match wins (a
+    seed nested inside another seed's directory must not shadow the real one).
+    """
+    found: dict[int, Path] = {}
+    root = Path(extracted)
+    if not root.is_dir():
+        return found
+    for manifest in root.rglob("manifest.json"):
+        if manifest.parent.name != "manifests":
+            continue
+        seed_dir = manifest.parent.parent
+        stem = seed_dir.name.split("-")[-1]
+        if not seed_dir.name.startswith("seed-") or not stem.isdigit():
+            continue
+        seed = int(stem)
+        existing = found.get(seed)
+        if existing is None or len(seed_dir.parts) < len(existing.parts):
+            found[seed] = seed_dir
+    return found
+
+
 def dataset_metadata(dataset: str) -> dict[str, object]:
     """The ``dataset-metadata.json`` payload the Kaggle API requires.
 
@@ -425,23 +474,25 @@ def restore_latest(
             f"{(time.monotonic() - download_started) / 60.0:.1f} min "
             f"({_tree_gib(extracted):.2f} GiB on disk)"
         )
-        source = _locate_handoff_tree(extracted, handoff_name)
-        if source is None:
+        seeds = published_seed_dirs(extracted)
+        if not seeds:
             # Defense in depth: if the service ever stops auto-extracting
             # uploaded archives, the blobs arrive as files - extract them
-            # ourselves into the expected tree.
-            source = _extract_archive_blobs(extracted)
-        if source is None:
+            # ourselves, then look again.
+            _extract_archive_blobs(extracted)
+            seeds = published_seed_dirs(extracted)
+        if not seeds:
             logger(f"remote dataset {dataset} carries no seed versions; nothing restored")
             return []
         restored: list[int] = []
-        for seed_dir in _manifest_seeds(source):
-            seed = int(seed_dir.name.split("-")[-1])
-            target = local / seed_dir.name
+        for seed in sorted(seeds):
+            # Named by the handoff, not by whatever the extraction called it, so
+            # the local tree the handoff's own readers expect is what comes out.
+            target = local / _seed_dirname(seed)
             if target.exists():
                 shutil.rmtree(target)
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copytree(seed_dir, target)
+            shutil.copytree(seeds[seed], target)
             restored.append(seed)
     restored.sort()
     logger(

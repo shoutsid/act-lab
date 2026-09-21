@@ -1,5 +1,18 @@
 # ACT Implementation Status
 
+## Every session could see one of its four completed seeds, and re-trained the others (2026-09-21)
+
+| | |
+|---|---|
+| **How it was found** | The startup-restore probe - **CPU-only, so it cost no GPU quota** - eliminated its own hypothesis in 7 minutes and found something worse. The restore is **6.7 min / 25.42 GiB on disk**, so it is not why a session died after 1.32 h. But it reported `restored 1 seed version(s) from sid123123234/act-v0-5-1: [15003]` against **4 published seeds**. |
+| **Why** | The live dataset stores each seed one level *deeper* than the handoff layout names it: `seed-15000/seed-15000/checkpoints/...`. A seed is uploaded as `seed-NNNN.tar` whose members already carry the `seed-NNNN/` prefix, and the service keeps both. So the handoff parent's children have no `manifests/manifest.json`, `_locate_handoff_tree` fell through to matching a single *seed* directory, and the restore returned one of four. |
+| **What that cost** | The handoff's own readers (`seed_directory`, `published_seed_status`, `restore_seed`) look where the handoff *writes* seeds, and the restore put back one. Every other completed seed therefore read as **missing** and was **trained again - ~1.5 h each** - while the driver's progress read (the session log's cumulative labels) reported the same 4 of 12 either way. That is the worst shape a defect can have: real hours, no visible symptom. |
+| **Fix** | `published_seed_dirs` searches the extraction for **every** seed carrying a complete manifest, at any depth (shallowest wins, so a nested seed cannot shadow a real one), and `restore_latest` places each at the name the handoff itself supplies (`_seed_dirname` asks `seed_directory` rather than spelling it, so a restore cannot put a seed where the handoff's readers will not look). Pinned by a test that models the depth the **live service returned**, not the depth we asked for. |
+| **Why the suite never caught it** | The round-trip test's fake client modelled the service as extracting tar *members only* - single nesting - so the fake and the locator shared one assumption, and the pair agreed with itself. The new test is the first that models what the service actually did. |
+| **Also measured, free of charge** | The host overlay is `7.9T, 6.9T used, 1.1T free` (**88% full, shared with other tenants**) while `/kaggle/working` is `19.5 GiB` - confirming the handoff roots belong in `/tmp` as designed, and that the shared overlay is the only disk that scales. |
+| **Still not claimed** | The **1.32 h session death remains unexplained**. What is now true is that a failure of that kind is *readable* (the log fix), that the clock it is judged against is honest (`window_left`), and that a real source of silent waste has been removed. |
+| **Result** | **1587 tests pass**; 283/283 claims agree; campaign still stopped, **4.9 GPU-h** left this week. |
+
 ## A third session died with nothing to read, because the driver never asked for the log (2026-09-21)
 
 | | |

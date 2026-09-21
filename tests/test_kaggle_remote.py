@@ -399,6 +399,53 @@ def test_restore_latest_merges_remote_over_local(tmp_path: Path) -> None:
     assert (handoff / "seed-9999").is_dir()  # local-only seed kept
 
 
+def test_restore_finds_every_seed_at_the_depth_the_service_actually_returns(
+    tmp_path: Path,
+) -> None:
+    """The published tree's depth is the *service's* choice, not ours to assume.
+
+    Measured 2026-09-21 by the startup-restore probe: the live dataset stores
+    each seed at ``seed-15000/seed-15000/...`` (a seed is uploaded as
+    ``seed-NNNN.tar`` whose members already carry that prefix, and the service
+    keeps both), so the handoff parent's children have no manifest at all and
+    the old locator fell through to matching a single *seed* directory. The
+    probe restored **1 of the 4** published seeds, and a session that cannot see
+    three completed seeds re-trains them - ~1.5 h each - while the queue reports
+    the same 4/12 either way. This pins the reader rather than the writer:
+    whatever depth the service returns, every complete seed comes back.
+    """
+    dataset_root = tmp_path / "dataset"
+    handoff = dataset_root / HANDOFF_DATASET
+    staging = tmp_path / "staging"
+    for seed in (42, 43):
+        name = f"seed-{seed:04d}"
+        (handoff / name / "manifests").mkdir(parents=True)
+        (handoff / name / "manifests" / "manifest.json").write_text(
+            json.dumps({"seed": seed, "artifacts": [], "checksums": {}}) + "\n"
+        )
+        (handoff / name / "reports").mkdir()
+        (handoff / name / "reports" / "seed-summary.json").write_text("{}\n")
+        shutil.copytree(handoff / name, staging / name / name)
+    shutil.rmtree(handoff)  # nothing local: everything below comes from remote
+
+    class DoubledClient:
+        """The nesting the live service returned, not the layout we asked for."""
+
+        def download_files(self, dataset: str, target: Path) -> None:
+            shutil.copytree(staging, target, dirs_exist_ok=True)
+
+        def create_version(self, folder: Path, version_notes: str) -> str:
+            raise AssertionError("a restore must never publish")
+
+    restored = restore_latest(
+        dataset_root, dataset="owner/ds", client=DoubledClient(), log=lambda m: None
+    )
+
+    assert restored == [42, 43]
+    for seed in (42, 43):
+        assert (handoff / f"seed-{seed:04d}" / "manifests" / "manifest.json").is_file()
+
+
 def test_restore_latest_prices_its_own_download(tmp_path: Path) -> None:
     """The startup restore is the one cost that grows with the queue: name it.
 
