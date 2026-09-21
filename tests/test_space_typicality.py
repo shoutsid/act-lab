@@ -10,9 +10,20 @@ budget check - whether the matched draw is really the closest one on offer.
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import pytest
 
-from scripts.space_typicality import (
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+
+# Imported by module name rather than as ``scripts.space_typicality``: ``scripts``
+# is not a package and the repository root is not on ``sys.path`` under a plain
+# ``pytest`` run, so the dotted form made this whole module uncollectable - the
+# suite reported an error it could not attribute to a test, and none of the tests
+# below had run at all.
+from space_typicality import (  # noqa: E402
     DRIVER_RANDOM_TOLERANCE,
     random_arm_command,
     GENES,
