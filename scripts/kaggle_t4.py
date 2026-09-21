@@ -466,7 +466,12 @@ def _log(message: str) -> None:
 TAIL_LINES = 400
 
 
-def _run(argv: list[str], env: dict[str, str], allowed: tuple[int, ...] = (0,)) -> int:
+def _run(
+    argv: list[str],
+    env: dict[str, str],
+    allowed: tuple[int, ...] = (0,),
+    tee: Path | None = None,
+) -> int:
     """Run a step, streaming its output instead of holding it.
 
     The pair session runs for ~1.5 h and this used to ``subprocess.run(...
@@ -482,28 +487,50 @@ def _run(argv: list[str], env: dict[str, str], allowed: tuple[int, ...] = (0,)) 
     Everything is echoed as it arrives, and the tail is kept so a failure still
     prints a readable block. ``allowed`` is unchanged: the verdict's exit codes
     are decisions rather than faults, and they must not raise.
+
+    ``tee`` writes the same lines to a file under the kernel's output as they
+    arrive, which is a second copy on a different channel: ``kaggle kernels
+    output`` is the one command that still answers for a run the platform killed,
+    and the captured log stream is not (measured: the stream gave up for good 4.1
+    min into a 3.50 h session, and the kernel output was empty). Written line by
+    line rather than at exit, so a hard kill - which runs no ``finally`` anywhere -
+    still leaves the account so far.
     """
     _log(f"$ {' '.join(argv)}")
-    process = subprocess.Popen(
-        argv,
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-    )
-    tail: deque[str] = deque(maxlen=TAIL_LINES)
-    stream = process.stdout
-    if stream is not None:
-        for line in stream:
-            print(line, end="", flush=True)
-            tail.append(line)
-    process.wait()
-    if process.returncode not in allowed:
+    handle = None
+    if tee is not None:
+        tee.parent.mkdir(parents=True, exist_ok=True)
+        handle = open(tee, "a", encoding="utf-8")  # noqa: SIM115 - closed in finally
+        handle.write(f"$ {' '.join(argv)}\n")
+        handle.flush()
+    try:
+        process = subprocess.Popen(
+            argv,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        tail: deque[str] = deque(maxlen=TAIL_LINES)
+        stream = process.stdout
+        if stream is not None:
+            for line in stream:
+                print(line, end="", flush=True)
+                tail.append(line)
+                if handle is not None:
+                    handle.write(line)
+                    handle.flush()
+        process.wait()
+        returncode = process.returncode
+    finally:
+        if handle is not None:
+            handle.close()
+    if returncode not in allowed:
         _log(f"--- last {len(tail)} line(s) ---")
         _log("".join(tail))
-        raise SystemExit(f"command failed with exit {process.returncode}: {argv[1:3]}")
-    return process.returncode
+        raise SystemExit(f"command failed with exit {returncode}: {argv[1:3]}")
+    return returncode
 
 
 def _bootstrap() -> tuple[Path, dict[str, str]]:
@@ -928,16 +955,22 @@ def mode_session(queue: Queue) -> None:
         f"--- {queue.mode} queue (--hours {remaining:.2f} h: {startup_minutes:.1f} "
         f"min of the declared {hours:g} h spent on startup) ---"
     )
-    _run(session_argv(queue, remaining), env)
-
-    # Runbook 6: keep the audit trail in the kernel output, so the per-pair
-    # actions and the publish outcome survive without the dataset API.
-    _keep(work / queue.session_dir / "session-log.json")
+    # The child's own account, teed into the kernel output as it is produced.
+    stream_log = Path("/kaggle/working") / "session-stream.log"
     publish_log = work / queue.dataset_root / "remote-publish-log.json"
-    _keep(publish_log)
-    # And the per-seed payloads the verdict reads, because the publish above is the
-    # step that can fail after the hours are already spent.
-    _keep_seed_summaries(work / queue.dataset_root)
+    try:
+        _run(session_argv(queue, remaining), env, tee=stream_log)
+    finally:
+        # Runbook 6, and on the failure path too. These copies used to sit after the
+        # child's exit, so a session that died kept nothing: measured 2026-09-21, a
+        # session ended ERROR after 3.50 h and its kernel output was **empty** - no
+        # session log, no publish log, no seed summaries - while `kaggle kernels
+        # output` is precisely the command that still answers for a killed run. The
+        # audit trail is only worth keeping if it outlives the run that needs
+        # explaining, so it is kept here rather than on the success path.
+        _keep(work / queue.session_dir / "session-log.json")
+        _keep(publish_log)
+        _keep_seed_summaries(work / queue.dataset_root)
     report_resources()
     _reclaim(publish_log)
 

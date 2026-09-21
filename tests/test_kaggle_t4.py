@@ -357,6 +357,117 @@ def test_a_failed_step_raises_but_still_prints_its_tail(capsys) -> None:
     assert kaggle_t4._run(bad, env, allowed=(3,)) == 3
 
 
+def test_the_stream_is_teed_into_the_kernel_output_as_it_arrives(tmp_path: Path) -> None:
+    """A second copy, on the one channel that still answers for a killed run.
+
+    Measured 2026-09-21: a session ended ERROR after 3.50 h and ``kaggle kernels output``
+    returned **nothing at all**, while the captured platform log stream had given up for
+    good 4.1 min in. The tee is what survives both.
+    """
+    import sys as _sys
+
+    tee = tmp_path / "session-stream.log"
+    env = dict(os.environ, ACT_PROBE_MARK="tee-mark-4711")
+    kaggle_t4._run(
+        [_sys.executable, "-c", "import os; print(os.environ['ACT_PROBE_MARK'])"],
+        env,
+        tee=tee,
+    )
+    assert "tee-mark-4711" in tee.read_text(encoding="utf-8")
+
+
+def test_the_tee_survives_a_child_that_fails(tmp_path: Path) -> None:
+    """Written line by line, so a failure keeps the lines it did produce."""
+    import sys as _sys
+
+    tee = tmp_path / "session-stream.log"
+    env = dict(os.environ, ACT_PROBE_MARK="tee-failure-4711")
+    with pytest.raises(SystemExit, match="failed with exit 3"):
+        kaggle_t4._run(
+            [
+                _sys.executable,
+                "-c",
+                "import os, sys; print(os.environ['ACT_PROBE_MARK']); sys.exit(3)",
+            ],
+            env,
+            tee=tee,
+        )
+    assert "tee-failure-4711" in tee.read_text(encoding="utf-8")
+
+
+def _function(tree, name: str):
+    """The named function definition in a module's parsed source."""
+    import ast
+
+    return next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == name
+    )
+
+
+def test_a_session_keeps_its_audit_trail_when_the_child_fails() -> None:
+    """Structure, because the defect was structural.
+
+    Measured 2026-09-21: a session ended ERROR after 3.50 h with an **empty** kernel
+    output - no session log, no publish log, no seed summaries - because every ``_keep``
+    ran only once the child had returned, and ``kaggle kernels output`` is precisely the
+    command that still answers for a run the platform killed. So the assertion is *where*
+    the keeps sit - a ``finally`` block - because a string-order check cannot tell an
+    indented keep from a dedented one (the first version of this test passed a mutant
+    that had moved all three back onto the success path).
+    """
+    import ast
+
+    tree = ast.parse((ROOT / "scripts" / "kaggle_t4.py").read_text(encoding="utf-8"))
+    session = _function(tree, "mode_session")
+
+    guarded = [
+        ast.unparse(statement)
+        for node in ast.walk(session)
+        if isinstance(node, ast.Try)
+        for statement in node.finalbody
+    ]
+    assert guarded, "mode_session has no finally block"
+    # Quoted as ``ast.unparse`` writes it, which normalizes to single quotes.
+    for expected in (
+        "_keep(work / queue.session_dir / 'session-log.json')",
+        "_keep(publish_log)",
+        "_keep_seed_summaries(work / queue.dataset_root)",
+    ):
+        assert expected in "\n".join(guarded), f"{expected} is not kept on the failure path"
+
+    assert [
+        node
+        for node in ast.walk(session)
+        if isinstance(node, ast.Call)
+        and any(keyword.arg == "tee" for keyword in node.keywords)
+    ], "the child's output is not teed into the kernel output"
+
+
+def test_the_tee_writes_during_the_stream_not_after_it() -> None:
+    """A hard kill - the platform's timeout - runs no ``finally`` anywhere.
+
+    So the copy that has to survive one is written as the lines arrive, and the assertion
+    is that the write sits inside the loop over the child's stream rather than after it.
+    (The behavioural test above cannot see the difference: a child that exits non-zero
+    still returns control, so writing after the loop still passes it - which is exactly
+    what the first version of this test let through.)
+    """
+    import ast
+
+    tree = ast.parse((ROOT / "scripts" / "kaggle_t4.py").read_text(encoding="utf-8"))
+    run = _function(tree, "_run")
+
+    writing_loops = [
+        ast.unparse(node.target)
+        for node in ast.walk(run)
+        if isinstance(node, ast.For)
+        and any("handle.write" in ast.unparse(statement) for statement in node.body)
+    ]
+    assert writing_loops, "the tee is written after the stream loop, not during it"
+
+
 def test_a_mode_that_imports_act_in_this_process_bootstraps_first() -> None:
     """`import act` above `_bootstrap()` dies, because bootstrap sets sys.path.
 
