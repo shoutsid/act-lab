@@ -63,9 +63,10 @@ def test_the_control_changes_only_the_width() -> None:
 def test_the_cell_is_the_pre_registered_one() -> None:
     spec = study.PROFILES[study.LONG_W24_PROFILE]
     assert spec["report_section"] == "5.52"
-    # Registered with no run revision: the frozen revision is the *registration*
-    # commit, which cannot be named before it exists. The freeze commit sets it.
-    assert spec["run_revision"] is None
+    # The frozen revision is the *registration* commit - it cannot be named
+    # before it exists, so it is set by the freeze commit that follows. The
+    # summary's `code_revision` is checked against it once the shards run.
+    assert spec["run_revision"] == "f636990"
     assert len(spec["seeds"]) == 576
     assert spec["seeds"][0] == 87600
     assert spec["summary"].endswith("width-d4-long-w24-576.json")

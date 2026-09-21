@@ -201,7 +201,7 @@ PROFILES: dict[str, dict] = {
             "steps": 192,
             "mutation_interval": 48,
         },
-        "run_revision": None,
+        "run_revision": "f636990",
         "report_section": "5.52",
         "summary": "artifacts/study-summaries/width-d4-long-w24-576.json",
     },
