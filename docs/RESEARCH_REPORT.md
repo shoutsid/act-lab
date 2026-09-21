@@ -5,8 +5,8 @@ the pre-registered study series (section 5, 91 subsections), the substrate audit
 the synthesis (section 10). **Updated: 2026-09-21** - sections 5.48-5.56 close the covariate
 programme (parameter count, layer width, expert count and total compute) and then measure the
 depth axis itself, and section 10 is re-read against them. Gate 4 is declared and running: 4 of
-its 12 declared seeds are published, on the corrected 7-hour session window (section 5.2 and
-`docs/T4_RUNBOOK.md`).
+its 12 declared seeds are published **at this writing**, on the corrected 7-hour session window
+(section 5.2 and `docs/T4_RUNBOOK.md`).
 
 This report is the narrative companion to `IMPLEMENTATION_STATUS.md` (the
 implementation tracker, newest entry first) and the append-only study records under
@@ -322,9 +322,19 @@ withheld until a real-scale measurement shows the cost becomes negligible -
 which is the plan's deferred compute-efficiency milestone - after which Gate 4
 (adaptive > static MoE) is the next universal gate. That measurement is no
 longer a vague milestone: it is pre-registered as a protocol with declared
-config, predicted cost, and decision rules (section 5.1), now amended by the
-do-nothing clause of section 5.14. The controller
+config, predicted cost, and decision rules (section 5.1), amended by the
+do-nothing clause of section 5.14 and by the launch amendment of section 5.47,
+and **it is now in flight** - the three-queue campaign has been running on Kaggle
+since 2026-09-20 and had published 4 of its 12 declared seeds at this writing
+(`docs/T4_RUNBOOK.md` is the operational record). The controller
 default remains cap-4/2-batch; cap-4/1-batch is the validated cheaper option.
+
+**What the 5.48-5.56 arms say about reading that measurement when it lands.**
+The covariate programme closed the question of what separates depth from
+capacity and then dosed the depth axis itself (section 10.3), so a Gate 4 pass is
+a statement about *selection on the declared block* - not about a controller whose
+skill grows with the substrate (5.55-5.56) and not about expert growth, the one
+mutation the search can actually reach (5.53). Section 10.4 is the bound in full.
 
 ## 5. Pre-registered next studies
 
@@ -332,7 +342,7 @@ default remains cap-4/2-batch; cap-4/1-batch is the validated cheaper option.
 |---|---|---|---|---|---|---|
 | Horizon replication | study 3 config at steps=144 | cap4/2-batch, 3 events, steps=144 | fresh 8000-8383 | binomial sign test, alpha=0.05 | PASS -> pass generalizes; FAIL -> pass was horizon-specific | **DONE: PASS** (231/384, p 4.04e-05, t p 1.07e-08, cost 14.0%) |
 | Richness | candidate set size at fixed probe tokens | cap4/1-batch (A) vs cap2/2-batch (B), 3 events, steps=144 | fresh 7000-7383 | binomial sign test, alpha=0.05; factor claim: paired A-vs-B, one-tailed "rich better" | PASS & A>B -> richness is the active axis; B passes & B>=A -> probe quality is; neither -> both jointly necessary | **DONE: PASS for richness** (A 228/384, p 1.4e-04, t p 5.0e-05, cost 7.3%; B 193/384, p 0.48, cost 8.1%; paired A better 225/384, z = 3.37, p 8e-04) |
-| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config, **`probe_candidate_policy=spread`** (see 5.1/5.5) | **15000-15011** (adopted 5.5 change 4; the declared 9000-9011 was spent by the 5.3 diagnostic) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] + **pool-matched control clause** | cost + band + harm guard clear **and the loss-blind control arm must not clear its own gate** -> Gate 4 authorized; control passes, control missing, band miss or harm guard -> Gate 4 withheld at exit 2 | **REGISTERED as revised (section 5.5, adopted); execution planned (section 5.2); not yet run** |
+| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config, **`probe_candidate_policy=spread`** (see 5.1/5.5) | **15000-15011** (adopted 5.5 change 4; the declared 9000-9011 was spent by the 5.3 diagnostic) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] + **pool-matched control clause** | cost + band + harm guard clear **and the loss-blind control arm must not clear its own gate** -> Gate 4 authorized; control passes, control missing, band miss or harm guard -> Gate 4 withheld at exit 2 | **REGISTERED as revised (section 5.5, adopted); IN FLIGHT** - the campaign has been running on Kaggle since 2026-09-20 with all three queues (primary, pool-matched control, null clause), and had published 4 of the block's 12 seeds at this writing; section 5.47 records the launch amendment and `docs/T4_RUNBOOK.md` is the operational record |
 | Depth-4 Gate 3 confirmation | substrate expressiveness + selection value, with the arm-RNG fix | cap4/2-batch, `spread`, `independent_arm_rng`, 3 events, steps=48, depth 4 | fresh 60000-60383 (384 pairs) | argmin vs uniform churn, alpha/3 = 0.01667 (>= 214/384); paired argmin vs pool-matched control | PASS -> Gate 3 established on a non-degenerate substrate, 5.5 adopted; POOL-DRIVEN -> withdraw the selection claim; NOT REPRODUCED -> Gate 3 open, 5.1 must not launch | **DONE: PASS** (argmin vs uniform 255/384, p `6.1e-11`; paired increment 236/384, p `4.1e-06`; pool-matched control 209/384, p `0.046`; validity control does not pass). Section 9.9 |
 
 ### 5.1 Protocol: real-scale compute-efficiency measurement (pre-registered; gates Gate 4)
@@ -1693,7 +1703,7 @@ unspent). The toy factor map (5.9-5.12) stands on its own: depth-driven
 value creation exists at depth 4 there, and closing the real-text leg
 removes the transfer assumption, not the toy result.
 
-### 5.14 Pre-registration: the do-nothing clause for Gate 4 (designed, not yet run)
+### 5.14 Pre-registration: the do-nothing clause for Gate 4 (IMPLEMENTED as the campaign's null queue; running)
 
 **Motivation.** The section 5.1/5.5 verdict structure predates the null
 arm. Its harm guard (adaptive worse in >= 10 of 12 pairs vs RANDOM) and
@@ -8115,8 +8125,8 @@ growing dependence on being mutated (5.56).
   do-nothing clause: a null queue at declared fidelity runs alongside the
   primary and pool-matched control queues, and Gate 4 is withheld unless
   the adaptive arm beats doing nothing on the declared block. The
-  campaign is live on Kaggle and has published 4 of the block's 12 seeds
-  (sections 5.2 and 5.47 record the session window and the rebuild
+  campaign is live on Kaggle and had published 4 of the block's 12 seeds at
+  this writing (sections 5.2 and 5.47 record the session window and the rebuild
   treatment; `docs/T4_RUNBOOK.md` is the operational record). The
   *read* of a pass, when it comes, is bounded by section 10.4: the block
   trains the one gene the search can move, and 5.53-5.56 measure that gene
@@ -8146,6 +8156,15 @@ real-text ordering at declared fidelity and closes the 5.1 program's
 selection premise at its own scale; (ii) the depth-3/4 boundary - the
 onset is bracketed to (3, 4], and a finer covariate (parameter count,
 layer width, expert count) would separate depth per se from capacity.
+
+**Where these stand at this writing: (ii) is closed and (i) is in flight.**
+The covariate programme (5.48-5.53) measured every candidate (ii) named, and
+sections 5.54-5.56 then dosed the depth axis itself; the answer is that only
+depth moves the gate and that the axis keeps paying past it. (i) is the three-
+queue campaign on Kaggle, 4 of its 12 declared seeds published at this writing. What follows is
+that closing in the order it happened, kept as the audit trail of how (ii) was
+settled rather than as a list of things still open.
+
 Section 5.40 sharpens (ii) without settling it: at depth 6, where the toy
 cell says selection should create value, real text still puts the null
 0.136 nats ahead, so what (ii) is missing is not a deeper substrate but a
@@ -8203,7 +8222,6 @@ first time (`+0.028013`, and the arm order becomes adaptive < random < null), an
 upper ladder the controller's edge is flat to slightly worse (p `0.266`) while **all** of the
 `0.122`-nat improvement is the churn term. So what the program's value tracks is the substrate's
 need for mutation, which selection neither creates nor enlarges;
-(ii) a real-text scale run above the diagnostic fidelity (the closed
 (iii) a real-text scale run above the diagnostic fidelity (the closed
 program says nothing about longer horizons or larger models). Nothing in
 the current picture depends on re-tuning an existing cell, and no knob
@@ -8247,6 +8265,16 @@ different covariate from the one the ontology reads: it is a covariate that read
 selection value when it is raised. A V0 search that grows experts is asking a question this
 program has now measured a negative answer to - the bound 10.4 drew from the architecture track,
 restated on the second track's own terms.
+
+**(And the two tracks disagree about depth's sign, which is worth naming rather than
+smoothing over.)** The table's depth row is the architecture phase's *loss* reading on real text:
+at 10x the horizon, shallow wins (`+0.0209` nats, at its own floor). This track's depth
+measurement is a *selection-value* reading on the toy substrate, and there it is monotone
+increasing (5.55-5.56). Those are different quantities on different substrates, so they are not in
+contradiction - but they are also not the same claim, and nothing in either program licenses
+reading one as the other. What they jointly support is narrower and still useful: depth is the axis
+on which *both* tracks find a real, non-zero effect, while the reachable gene is the one on which a
+track finds none.
 
 **And 5.54 bounds the other half of the same claim.** If the reachable gene were not the covariate,
 loud, it would still be open that a pass is a *compute* statement rather than an architecture one -
@@ -8343,3 +8371,14 @@ their own pre-registration before hours are spent. The order the machinery impli
 first, because it is answerable today and it decides whether (B)'s engineering buys
 anything - if the controller's value does not depend on the width it is given, moving
 width itself is a question about a different search, not about this one.
+
+**And (A) is now answered twice over, in the same direction.** Its registered form was
+answered by 5.48 at matched parameters and by 5.49-5.50 in dose form (§10.5 above). The
+depth axis then gave the same reading independently: across the whole upper ladder the
+controller's own edge is **flat to slightly worse** (5.56, rank-sum p `0.266`) while the
+value improves by `0.122` nats, and the entire improvement is the substrate's dependence
+on mutation. So the answer to "does the controller's value depend on the substrate it is
+given" is no, on both axes that have been dosed - which is the reading this section
+registered as the one that would settle whether (B) buys anything. It does not buy a
+better controller; what it would reach is the axis whose *substrate* effects are largest,
+which is a different (and still open) question.

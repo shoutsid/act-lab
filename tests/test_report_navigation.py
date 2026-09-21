@@ -14,6 +14,7 @@ declared group.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -140,6 +141,74 @@ def test_every_registered_arm_is_inside_a_declared_group() -> None:
     assert int(newest.split(".")[1]) <= last_end < int(newest.split(".")[1]) + 10, (
         f"the last group ends at {last_end} but the newest arm is {newest}"
     )
+
+
+def test_the_synthesis_depth_claims_match_the_committed_summaries() -> None:
+    """§10.1's churn claim and its ladder must be true of the records, not of prose.
+
+    §10.1 asserted "churn harm holds at every measured depth" and stopped the
+    depth ladder at four rungs, both of which 5.55-5.56 falsified - and no claim
+    audit or summary pin could see it, because a *universal* statement is not a
+    number. This reads the summaries directly: the sign of the collapse at every
+    rung, the monotonicity of the value ladder, and the depth the report says
+    the churn regime flips at.
+    """
+    import sys
+
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import null_toy_study as study  # noqa: E402
+
+    rungs = ("depth2", "depth3", "depth4-prefix", "depth5-dose", "depth6-dose")
+    values, collapses = [], []
+    for profile in rungs:
+        name = Path(study.PROFILES[profile]["summary"]).name
+        rows = json.loads((ROOT / "artifacts" / "study-summaries" / name).read_text())["per_seed"]
+        values.append(
+            sum(r["losses"]["adaptive"] - r["losses"]["null"] for r in rows) / len(rows)
+        )
+        collapses.append(
+            sum(r["losses"]["null"] - r["losses"]["random"] for r in rows) / len(rows)
+        )
+    assert values == sorted(values, reverse=True), f"the ladder is not monotone: {values}"
+    # The flip is at depth 6 and nowhere earlier - which is what §10.1 now says.
+    assert all(c < 0 for c in collapses[:4]) and collapses[4] > 0, collapses
+    text = " ".join(_text().split())
+    assert "churn harm (null < random) holds at every measured depth **up to 5**" in text
+    assert "mean delta +0.0508 > +0.0208 > +0.0046 > -0.0371 > -0.0753 > -0.1175" in text
+    assert "stops being so at depth 6" in text
+
+
+def test_the_study_index_status_row_is_live() -> None:
+    """The §5 index is a *status* table, so its cells are current-state surfaces.
+
+    Its real-scale row read "execution planned ... not yet run" while the campaign
+    was in flight. The registered `### 5.x` bodies must stay verbatim - they are
+    history - but a status column is not, so this checks that this one says what
+    is true and points at the operational record.
+    """
+    row = next(
+        (
+            line
+            for line in _text().splitlines()
+            if line.startswith("| Real-scale cost measurement |")
+        ),
+        None,
+    )
+    assert row is not None, "the §5 index no longer has a real-scale row"
+    assert "IN FLIGHT" in row, row
+    assert "not yet run" not in row and "execution planned" not in row, row
+    assert "docs/T4_RUNBOOK.md" in row, row
+    # A live campaign's progress is a snapshot, never a pinned constant: the
+    # row, the header and §4 must all say when they were true, so a stale count
+    # reads as stale rather than as a wrong measurement. Checked on the
+    # whitespace-normalized text, because the phrases wrap across lines and a
+    # line-wise check silently skips them (the first version of this did).
+    flat = " ".join(_text().split())
+    progress = list(re.finditer(r"\d+ of (?:its|the block's) \d+ (?:declared )?seeds", flat))
+    assert progress, "the report no longer states any campaign progress"
+    for match in progress:
+        window = flat[match.start() : match.end() + 60]
+        assert "at this writing" in window, window
 
 
 def test_the_report_still_has_the_sections_the_header_promises() -> None:

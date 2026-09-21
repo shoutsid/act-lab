@@ -1,5 +1,17 @@
 # ACT Implementation Status
 
+## The synthesis carried claims the 5.48-5.56 arms had already falsified (2026-09-21)
+
+| | |
+|---|---|
+| **What was found** | Sweeping every *current-state* surface in the report after correcting two synthesis claims turned up four more, and they were the kind nothing else can see: (1) §10.1's opening axis said "on the toy path, churn harm (null < random) holds at **every measured depth**" - false at depth 6, where the collapse is `+0.028013`; (2) the same axis stopped the depth ladder at four rungs, quoting `+0.0508 > +0.0208 > +0.0046 > -0.0371` as the whole dose-response; (3) §10.3 listed the depth-3/4 boundary as an open question - it was closed by 5.48-5.56 - and §10.2 said Gate 4 was "prepared, amended, and **unspent**" while the campaign was running; (4) §5's study-index table still carried `execution planned ... not yet run` for the real-scale row, and 5.14's heading still read `(designed, not yet run)`. |
+| **Why nothing caught it** | A universal statement is not a number. `scripts/verify_record.py` audits claims against artifacts and the summary pins check recorded cells, so "holds at every depth" and "not yet run" were both invisible - the same blind spot as the stale header, one layer down. |
+| **The line that decides what to edit** | The registered `### 5.x` bodies are **history and stay verbatim** - including the 5.13 consequence that calls the Gate 4 block "unspent" and 5.10's motivation that calls the depth-4 pass "the last pass not yet faced with a do-nothing control", both true when written. What is *not* history is the heading parenthetical (the same status marker that carries `(RAN - summary ...)`), the §5 index's status column, §4's conclusions and §10's synthesis. Those are the surfaces that get corrected. |
+| **What replaced them** | §10.1 now says churn harm holds "up to 5" and does not hold at depth 6; its depth axis runs the full ladder with the constant gradient and the arm-order flip. §10.3 opens by declaring **(ii) closed and (i) in flight**, so the long narrative that follows reads as the closing rather than as a list of open questions. §10.2 says Gate 4 is *running*. The §5 index row says **IN FLIGHT** and points at the runbook; 5.14's heading says the clause is implemented and running. |
+| **And the report's live numbers can no longer rot into false ones** | A campaign's progress is a snapshot, so every progress statement now says "at this writing" - which the new test enforces. It caught a fourth inconsistency on its first run: §10.2's count lacked the marker while the header's had it. |
+| **Pinned** | `tests/test_report_navigation.py` now also reads §10.1's claims against the committed summaries: the ladder must be monotone in the records, the collapse sign must be negative at rungs 2-5 and positive at 6, and the index row must say `IN FLIGHT` and name the runbook. Mutants: restoring the universal churn claim fails **1**; stopping the ladder at four rungs fails **1**; a status row reverting to "not yet run" fails **1**; dropping a snapshot marker fails **1** - and two earlier versions of these checks did **not** bite (a line-wise scan is defeated by wrapping), which is why they now run on whitespace-normalized text. |
+| **Result** | **1398 tests pass**; the report's synthesis is now data-checked in the two places where being wrong would mislead a reader the most. |
+
 ## The confirmation rung: the depth slope is constant, the churn regime flips, and the gain was never the controller's (2026-09-21)
 
 | | |
