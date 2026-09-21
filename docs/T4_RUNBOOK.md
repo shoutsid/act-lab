@@ -111,9 +111,9 @@ Drive a queue with `scripts/kaggle_queue.py`, which stages the kernel, pushes
 it, waits for the session, and re-pushes until the declared block is complete.
 One push is one session, so `--max-sessions 1` means "run one session now",
 and the default budget of eight covers the three sessions the primary queue
-needs (5+5+2 pairs, by the runner's own start gate - see §3; the registered
-first pass is 6 pairs per session, which would be two), with slack for a
-session that advances less than a full block:
+needs (4+4+4 pairs, by the runner's own start gate in the declared 7 h window -
+see §3; the registered first pass is 6 pairs per session, which would be two),
+with slack for a session that advances less than a full block:
 
 ```bash
 python scripts/kaggle_queue.py --queue session
