@@ -96,6 +96,43 @@ def test_the_bisection_lands_on_the_windows_geometric_midpoint() -> None:
     assert above / onset == pytest.approx(7.52, abs=0.01)
 
 
+def test_the_reports_window_table_is_the_profiles_own_arithmetic() -> None:
+    """Every row of §5.60's table, derived from the profiles rather than transcribed.
+
+    This exists because the first draft of that table carried two invented
+    parameter counts: `width-d3-equal` was written as 27,456 / 0.90x when the
+    committed cell is 31,192 / 1.02x and 5.48's own table says so. A number that
+    is quoted from the record can drift silently; one that is *computed from the
+    profile* cannot, so the whole column is pinned here.
+    """
+    onset = _parameters(4, 24)
+    rows = {
+        ("depth3", 3, 24): (23_280, 0.76),
+        ("width-d3-equal", 3, 28): (31_192, 1.02),
+        ("width-d3-dose", 3, 48): (88_032, 2.87),
+        (study.DOSE3_BELOW, 3, 68): (173_672, 5.66),
+        ("width-d3-dose2", 3, 96): (341_952, 11.15),
+        ("depth4-prefix", 4, 24): (30_672, 1.00),
+        ("width-d4-equal", 4, 28): (41_160, 1.34),
+        ("width-d4-dose", 4, 48): (116_640, 3.80),
+        (study.DOSE3_ABOVE, 4, 68): (230_520, 7.52),
+        ("width-d4-dose2", 4, 96): (454_464, 14.82),
+    }
+    for (name, depth, width), (params, multiple) in rows.items():
+        # Width 24 is the registered default, so those two profiles override only
+        # the depth - which is the point: they are the un-dosed reference cells.
+        expected: dict[str, int] = {"depth": depth}
+        if width != study.REGISTERED["hidden_size"]:
+            expected["hidden_size"] = width
+        assert study.PROFILES[name]["overrides"] == expected, name
+        assert _parameters(depth, width) == params, name
+        assert params / onset == pytest.approx(multiple, abs=0.005), name
+    # And the two committed doses that define the window are the ones the
+    # registration quotes, so the bisection's bracket is not a restatement.
+    assert rows[("width-d3-dose", 3, 48)][0] == CLOSED_PARAMS
+    assert rows[("width-d3-dose2", 3, 96)][0] == OPEN_PARAMS
+
+
 def test_the_blocks_are_fresh_against_every_other_claim() -> None:
     """A block is fresh against other profiles *and* against committed summaries."""
     used: set[int] = set()
