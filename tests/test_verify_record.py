@@ -8,11 +8,15 @@ produce it, and a budget ratio quoted from one draw seed as though it were typic
 and none of those broke a single test.
 
 The audit runs in quick mode here (skipping the 200-draw budget scan) so the suite
-stays fast; the scan's own claims are checked by hand when the record changes.
+stays fast; the scan's own claims are checked by hand when the record changes. One
+test needs the full path rather than the quick one - the record states how many claims
+the audit has, and the suite's own count is the quick path's - so the full audit is
+cached per process and costs the ~2s it differs from the quick one by, once.
 """
 
 from __future__ import annotations
 
+import functools
 import sys
 from pathlib import Path
 
@@ -31,8 +35,18 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+@functools.lru_cache(maxsize=None)
+def _audit_quick() -> Audit:
+    return run_audit(ARTIFACTS, quick=True)
+
+
+@functools.lru_cache(maxsize=None)
+def _audit_full() -> Audit:
+    return run_audit(ARTIFACTS, quick=False)
+
+
 def test_every_documented_number_still_agrees_with_the_artifacts():
-    audit = run_audit(ARTIFACTS, quick=True)
+    audit = _audit_quick()
     assert audit.claims, "the audit found nothing to check"
     failures = [(claim.what, claim.documented, claim.computed) for claim in audit.failures]
     assert not failures, f"the record and the artifacts disagree: {failures}"
@@ -41,7 +55,7 @@ def test_every_documented_number_still_agrees_with_the_artifacts():
 def test_the_audit_covers_the_headline_claims_rather_than_a_sample():
     """A verification script that quietly stopped checking half the record is worse
     than none, because it reports agreement."""
-    audit = run_audit(ARTIFACTS, quick=True)
+    audit = _audit_quick()
     checked = " | ".join(claim.what for claim in audit.claims)
     for expected in (
         "§2c pooled: depth",
@@ -87,6 +101,25 @@ def test_the_coverage_form_is_the_reason_the_mean_is_the_primary_statistic():
     assert inert.ok and contrast.ok
     assert "0.03" in inert.detail, inert.detail
     assert "0.9" in contrast.detail, contrast.detail
+
+
+def test_the_findings_record_states_the_coverage_the_audit_actually_has() -> None:
+    """The architecture record quoted **119** claims against the 274 it runs.
+
+    A coverage number is a claim about the check itself, which makes it the one claim
+    the check cannot disagree with — and this one had rotted by more than 2x, reading
+    as confidence the audit does not have. Both numbers the record states are pinned:
+    the full count, and the `--quick` count the suite's other tests run.
+    """
+    text = (ROOT / "artifacts" / "ARCH_SEARCH_FINDINGS.md").read_text()
+    full = len(_audit_full().claims)
+    quick = len(_audit_quick().claims)
+    assert f"**{full} load-bearing claims**" in text, (
+        f"the record no longer states the audit's full claim count ({full})"
+    )
+    assert f"**{quick}** of them on the `--quick` path" in text, (
+        f"the record no longer states the quick path's claim count ({quick})"
+    )
 
 
 def test_an_exact_count_must_match_exactly():
