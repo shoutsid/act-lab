@@ -6926,6 +6926,70 @@ the first free 576-windows at or after 88000 (5.52 holds 87600-88175), checked b
 every other profile and every committed summary. Registered before the run; the running revision
 is recorded in each summary's `code_revision`.
 
+**Outcome (run 2026-09-21, revision `76d2134`, 20 shards per cell; committed summaries
+`experts-d3-dose-576.json`, `experts-d4-dose-576.json`). Registered branch 4: both FAIL.**
+
+Neither cell clears the bar at `alpha/2` (bar 313/576), and the failure above the gate is the
+finding:
+
+| cell | total / active params | adaptive-vs-null | mean delta | collapse | controller's edge | best arm |
+|---|---|---|---|---|---|---|
+| `depth3` (5.15, below onset) | 23,280 / 8,880 | 188/384 | `+0.004643` | `-0.106794` | `-0.102151` | null |
+| `width-d3-equal` (5.48) | 31,192 / 11,704 | 252/576 | `+0.017638` | `-0.148365` | `-0.130727` | null |
+| **`experts-d3-dose`** | **30,624 / 9,024** | **211/576** | **`+0.059544`** | `-0.137169` | `-0.077625` | null |
+| `depth4-prefix` (5.12, above onset) | 30,672 / 11,472 | 225/384 | `-0.037147` | `-0.070072` | `-0.107220` | **adaptive** |
+| **`experts-d4-dose`** | **40,464 / 11,664** | **260/576** | **`+0.019507`** | `-0.095310` | `-0.075803` | **null** |
+
+**P1 fails as the width arm failed.** At 30,624 total parameters - the family's tightest
+equal-parameter partner, `-0.156%` against the above-onset cell's 30,672 - depth 3 does not
+create value (`211/576`, mean `+0.059544`, p `1.000`), and it is *further* from the bar than the
+committed below-onset cell already was (`188/384`). So the matched-parameter form of open
+question (ii) now has two answers that agree: the gate does not move for layer width (5.48) and
+it does not move for expert count. The remaining candidate is total compute.
+
+**P2 fails in the opposite direction, and that is the result.** At E=4 the above-onset cell
+creates value and the adaptive arm is its *best* arm (`12.4413` < `12.4785` < `12.5485`). At E=6
+the same depth-4 cell stops creating value (`260/576`, mean `+0.019507`, p `0.991`) and the
+ordering inverts - the do-nothing arm becomes the best one (`12.5379` < `12.5574` < `12.6332`).
+The dose is a real, strong effect rather than noise: the E=4 cell's per-seed deltas are
+stochastically *more negative* than the E=6 cell's at rank-sum p `9.1e-09` (depth 4) and
+p `8.0e-09` (depth 3, against `depth3`), and at both depths in the direction that means the
+extra experts *remove* value creation rather than add it.
+
+**And it is not churn.** The collapse (null-vs-random) stays negative at every one of the five
+cells - there is no churn harm anywhere in this covariate - and the controller's own edge over
+the pool-matched random arm stays negative and significant at both new cells (`391/576`,
+`-0.077625`, p `2.9e-18` at depth 3; `372/576`, `-0.075803`, p `1.2e-12` at depth 4). So the
+controller still *selects*: what dies is its value relative to doing nothing. At E=6 the null
+arm beats the mutating arms at both depths - the substrate's own extra capacity is worth more
+than any of the three mutation policies layered on it.
+
+**What this closes, and what it says about the search space.** Section 10.3(ii) named
+"parameter count, layer width, expert count" as the covariates that could separate depth from
+capacity, and all three are now measured at this scale: two do not move the gate, and the third
+- expert count, the one that *is* a measured covariate here - moves it the wrong way above the
+onset. That sharpens 10.4 rather than restating it. 10.4 observed that expert grow/prune is the
+only operation the V0 search space can reach, and that the architecture track's measured lever
+(residual width) is unreachable from it. This arm adds the complementary reading on the other
+track's own terms: the reachable gene is not merely a different covariate from the one the
+ontology reads, it is a covariate that reads *against* value creation when it is raised. A V0
+search that grows experts is therefore not asking a question this program has measured to have
+an answer - which is a bound on what a Gate 4 pass would license, not a verdict on Gate 4, whose
+question is about *selection* against a null on a declared block and whose null clause is the
+right control for exactly this kind of premise.
+
+Scoped: the expert count is a property of the *substrate* in this arm, as it is in every 5.4x
+cell - no run changed its expert count mid-flight, and the search's own grow/prune semantics are
+untouched - so this bounds what a wider expert pool is worth at a fixed budget, and does not
+measure whether a search that grows its own experts does better. The learning rate is the
+registered one at every cell, and the 576-seed cells are read against the 384-seed committed
+ones descriptively, as every cross-cell number in this family is.
+
+**Scrutiny before write-up.** Built-in checks 576/576 per cell (mutations 3/3/0, zero null
+search FLOPs); six replays of committed seeds (three per cell) exact at `OMP_NUM_THREADS=1`; and
+the cell statistics, the five-cell table, the ordering inversion and the two dose rank-sums were
+all computed before any of them entered prose.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
@@ -7631,7 +7695,15 @@ rank-sum p `0.98`) and what scales is the pool effect (`random`-vs-`null` `-0.01
 mutated at all; 5.51 (4x the steps, the same three mutational events) halves that
 collapse (`+1.574` -> `+0.708`) while value creation survives at `576/576` (`-0.7149`),
 and the controller's own edge - already flat above the gate - shrinks to `-0.0066` (from
-`-0.159`), so the value at 14.8x is the mutational pool at both budgets;
+`-0.159`), so the value at 14.8x is the mutational pool at both budgets. Section 5.53 then
+measured the *third* covariate this list named - expert count - at the same
+onset and at the family's tightest equal-parameter contrast yet (depth 3 with six experts,
+30,624 vs 30,672 parameters): the gate does not move (`211/576`, mean `+0.059544`), and above
+the onset the same dose takes value creation *away* (`260/576`, mean `+0.019507`, where the
+depth-4 E=4 cell creates value at `225/384`, `-0.037147`, and reverses which arm is best).
+**Two of the three named covariates do not move the gate and the third moves it the wrong way,
+so the candidate that remains is total compute** - and the one the V0 search can actually move
+is the one that reads against value creation;
 (iii) a real-text scale run above the diagnostic fidelity (the closed
 program says nothing about longer horizons or larger models). Nothing in
 the current picture depends on re-tuning an existing cell, and no knob
@@ -7662,6 +7734,19 @@ the right control for it. What it bounds is what a pass **licenses** - adaptive 
 of expert capacity at block 15000-15011, which is not the same claim as adaptive
 architecture search, and cannot move the recommendation of the track that measured
 width, because the two search spaces share no gene.
+
+**(Measured 2026-09-21, section 5.53 - and it sharpens the bound rather than only
+restating it.)** The table's only reachable axis was given the same treatment as width, at the
+family's tightest equal-parameter contrast: depth 3 with six experts reaches 30,624 parameters
+against the above-onset cell's 30,672 (`-0.156%`), and it does *not* create value (`211/576`,
+mean `+0.059544`). Above the onset the same dose does more than fail to help - it removes the
+value creation the E=4 cell has (`260/576`, `+0.019507` against `225/384`, `-0.037147`) and
+inverts the ordering so the do-nothing arm becomes the best one, at rank-sum p `9.1e-09` in the
+direction that means the extra experts remove value. So the reachable gene is not merely a
+different covariate from the one the ontology reads: it is a covariate that reads *against*
+selection value when it is raised. A V0 search that grows experts is asking a question this
+program has now measured a negative answer to - the bound 10.4 drew from the architecture track,
+restated on the second track's own terms.
 
 It also makes the priority of the *next* gate a live question rather than an
 inference. The arch phase's width effect is the largest single effect either track has
