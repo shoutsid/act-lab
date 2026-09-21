@@ -7211,6 +7211,71 @@ Gate 4 session trains. The block is 91384-91959, the first free 576-window at or
 checked by a test against every other profile *and* every committed summary's recorded seeds.
 Registered before the run; the running revision is recorded in the summary's `code_revision`.
 
+**Outcome (run 2026-09-21, revision `5fb7bd3`, 20 shards; committed summary
+`depth5-dose-576.json`). Registered branch 1: P1+P2 PASS.**
+
+P1: the depth-5 cell clears the bar (`375/576` against `313`, mean `-0.075335`, p `1.89e-13`), so
+**the gate is open above the onset** - a fifth layer creates value at the same width, expert
+count, step count, interval and policy as the fourth. P2: its value deltas are stochastically
+better than the committed above-onset cell's (rank-sum U `97584.0`, one-sided p `9.99e-04` against
+the `0.025` bar), so **a fifth layer creates more value than a fourth**. The onset is therefore
+**a slope on both sides**, and a depth-4 pass is a point on a scaling axis rather than a knife-edge.
+
+**The depth ladder is monotone, and that is the finding.** Value is adaptive-vs-null (negative is
+better), collapse is null-vs-random (negative = the do-nothing arm is the better one):
+
+| cell | depth | n | value | controller's edge | collapse | best arm | arms (adaptive / null / random) |
+|---|---|---|---|---|---|---|---|
+| `depth2` (5.15) | 2 | 384 | `+0.020811` | `-0.078848` | `-0.099659` | null | `14.3953 / 14.3745 / 14.4742` |
+| `depth3` (5.15) | 3 | 384 | `+0.004643` | `-0.102151` | `-0.106794` | null | `13.4549 / 13.4503 / 13.5571` |
+| `depth4-prefix` (5.12) | 4 | 384 | `-0.037147` | `-0.107220` | `-0.070072` | **adaptive** | `12.4413 / 12.4785 / 12.5485` |
+| **`depth5-dose`** | **5** | **576** | **`-0.075335`** | `-0.104561` | `-0.029226` | **adaptive** | **`11.4870 / 11.5624 / 11.5916`** |
+
+Four rungs, one direction, no reversal: `+0.0208`, `+0.0046`, `-0.0371`, `-0.0753`. The increments
+are `-0.0162` (2 -> 3), `-0.0417` (3 -> 4, the largest) and `-0.0382` (4 -> 5) - so the gate is a
+steep step rather than a discontinuity in kind, and **the axis that moves the gate keeps paying
+past it.** The arm ordering tells the same story from the other side: the do-nothing arm is the
+best arm at depths 2 and 3 and the adaptive arm is the best at 4 and 5.
+
+**And the improvement above the onset is not the controller.** Decomposing
+`adaptive - null = (adaptive - random) - (null - random)` at the two cells the arm compares:
+
+| 4 -> 5 layers | mean | rank-sum (4 -> 5) | reading |
+|---|---|---|---|
+| controller's edge (adaptive-vs-random) | `-0.107220` -> `-0.104561` | U `109725.0`, p `0.418` | **flat** - no move, in either direction (reversed p `0.582`) |
+| collapse (null-vs-random) | `-0.070072` -> `-0.029226` | U `95041.0`, p `1.1e-04` | the churn term moves |
+
+So the controller's own edge **saturates by depth 3** (`-0.0788`, `-0.1022`, `-0.1072`, `-0.1046`
+across the ladder) and never moves again, and what a fifth layer buys is a *substrate* effect: the
+unmutated form gets relatively worse against random churn (`-0.0701` -> `-0.0292`) while the
+controller's advantage over that churn stays exactly where it was. That is the same decomposition
+5.50 found at the width crossing - where the crossing was the pool effect and the controller's
+edge stayed flat - now measured on the depth axis, and it means **the ladder's value is not
+evidence that the controller gets better with depth.**
+
+**What this settles about the project's central claim.** 5.48-5.54 closed every covariate
+10.3(ii) named and left "the gate is depth per se". 5.55 shows that claim has a shape: the axis
+is monotone in depth from 2 to 5, the largest single step is the one that crosses the gate, and
+the step after it is nearly as large. A Gate 4 pass at depth 4 is therefore not a knife-edge
+reading - the same controller on a deeper substrate of the same block would create *more* value,
+not less - and equally it is not evidence of a controller whose skill grows: what grows is the
+substrate's dependence on being mutated at all.
+
+**Scrutiny before write-up.** Built-in checks 576/576 (mutations 3/3/0, zero null search FLOPs);
+three replays of committed seeds (91385, 91650, 91958) exact at `OMP_NUM_THREADS=1`; both
+primaries, both decomposition rank-sums, the ladder levels, the increments and the arm orderings
+were computed before any of them entered prose; and P2's ruler was rehearsed on a measured
+instance of the same comparison shape *before* the arm ran (U `41829`, p `2.6e-60`), which is what
+licenses reading its result here as a detection rather than as an artifact of the ruler.
+
+**Scoped.** The fifth layer carries 7,392 total / 2,592 active parameters irreducibly (every rung
+of the ladder adds exactly those), so this is the depth axis *as a package* and not a
+matched-parameter contrast - deliberately, since 5.48 and 5.53 measured that buying parameters
+with width or experts does not move the gate. The ladder's rungs are 384-seed committed cells read
+against a 576-seed cell descriptively; no cross-cell arithmetic enters either primary. The
+learning rate, step count, interval and policy are the registered ones at every rung, and the
+toy path's fidelity bounds are unchanged from the rest of the family.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
@@ -7932,7 +7997,16 @@ where the identical treatment one depth up moves both and strongly (`-0.037147` 
 p `2.6e-60`; collapse `-0.070072` -> `+0.163809`, p `1.9e-84`). So **all four named covariates are
 now measured at this scale and only the depth axis moves the gate**, and what the budget buys
 depends on being above that axis rather than being one - which is the sharpest form open question
-(i) has taken;
+(i) has taken. Section 5.55 then dosed that axis, the one covariate the family had never dosed:
+depth 5 at the registered config clears the bar (`375/576`, mean `-0.075335`, p `1.89e-13`) and
+creates *more* value than depth 4 (rank-sum p `9.99e-04`), so the ladder is monotone - `+0.0208`,
+`+0.0046`, `-0.0371`, `-0.0753` across depths 2 to 5 - and **the gate is a steep step on a slope
+rather than a discontinuity**, which is the strongest support the depth reading has had. The
+decomposition is the qualification: the controller's own edge saturates by depth 3 (`-0.0788`,
+`-0.1022`, `-0.1072`, `-0.1046`, with the 4 -> 5 move at p `0.418`) while the churn term is what
+keeps moving (`-0.0701` -> `-0.0292`, p `1.1e-04`), so a deeper substrate pays because the
+unmutated form gets relatively worse, not because the controller gets better;
+(ii) a real-text scale run above the diagnostic fidelity (the closed
 (iii) a real-text scale run above the diagnostic fidelity (the closed
 program says nothing about longer horizons or larger models). Nothing in
 the current picture depends on re-tuning an existing cell, and no knob
@@ -7983,6 +8057,14 @@ the search buys more training either way. That is now measured too: 4x training 
 onset and not inert above it (5.54), so what the block's 12 sessions train is not itself the
 variable a pass would be reading. A Gate 4 pass would be a statement about *selection on this
 block*, and neither the reachable gene nor the budget is an escape hatch from that reading.
+
+**5.55 sharpens the table below rather than adding a row to it.** The one axis that *gates* is
+depth, and the newest measurement says it also **scales** past the gate (monotone from 2 to 5).
+Layer count is fixed in the V0 session and unreachable from `feasible_expert_mutations`, so the
+search cannot move the axis that both gates and scales - and the axis it *can* move reads against
+value creation. Read with 5.55's decomposition, that is the sharpest form of the gap: what the
+reachable mutation buys is a substrate effect (escape from a collapse), not a controller effect,
+and no operation in the space reaches the axis whose effects are largest.
 
 It also makes the priority of the *next* gate a live question rather than an
 inference. The arch phase's width effect is the largest single effect either track has
