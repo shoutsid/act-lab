@@ -136,11 +136,16 @@ def test_the_reports_window_table_is_the_profiles_own_arithmetic() -> None:
 def test_the_blocks_are_fresh_against_every_other_claim() -> None:
     """A block is fresh against other profiles *and* against committed summaries."""
     used: set[int] = set()
+    own = {Path(study.PROFILES[name]["summary"]).name for name in study.DOSE3_PROFILES}
     for name, spec in study.PROFILES.items():
         if name in study.DOSE3_PROFILES:
             continue
         used |= set(spec["seeds"])
     for path in SUMMARIES.glob("*.json"):
+        # This arm's own committed summaries are not other claims: their seeds
+        # *are* the block, recorded once the run landed.
+        if path.name in own:
+            continue
         payload = json.loads(path.read_text())
         if isinstance(payload, dict):
             used |= set(payload.get("seeds") or [])

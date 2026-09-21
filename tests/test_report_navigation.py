@@ -301,6 +301,32 @@ def test_the_deliverables_checklist_is_not_stale_about_the_handoff() -> None:
         assert "DONE for the declared" in row or "DONE as for item 4" in row, row
 
 
+def test_the_cross_axis_claims_the_bisection_added_are_live() -> None:
+    """§10.1, §10.3, §10.5 read against 5.60: a price, a peak, and an exception.
+
+    These are the claims that section 5.60 changed the *synthesis* to say, and
+    each one is a statement no summary pin would catch on its own: a ratio
+    between two windows, the location of a term's peak, and the one regime where
+    the controller's edge crosses a threshold. A rewrite that reverts any of them
+    to the pre-bisection picture fails here.
+    """
+    text = " ".join(_text().split())
+    for fragment in (
+        # The price of the gate, bounded on both axes.
+        "2.9x to 7.5x more",
+        "2.9x-7.5x more parameters along width at the below-onset depth",
+        "23% *fewer* parameters than the width dose",
+        # The mechanism, replaced: the pool term peaks before the gate opens.
+        "The bisection then locates both flips",
+        "it *peaks* at 2.87x (`+0.305267`), declines through the bisection",
+        "So below the onset the flip happens *after* the gate opens",
+        # The one place the controller's edge crosses a threshold, and its status.
+        "the edge is flat (`-0.194518` -> `-0.199203`, p `0.199`)",
+        "That is a hypothesis about where a transfer policy could eventually matter",
+    ):
+        assert fragment in text, fragment
+
+
 def test_the_real_text_series_the_checklist_claims_exists() -> None:
     """Item 9 points at the architecture track's own artifacts; keep it honest."""
     series = sorted((ROOT / "artifacts").glob("arch-zoo-100m-v*"))

@@ -1360,8 +1360,8 @@ def dose3_verdict(shards: int, alpha: float) -> int:
 
     # Descriptive: the width ladder both depths, which is what the window is read off.
     for label, profile in (
-        ("depth 3  width 24 (1.00x)", "depth3"),
-        ("depth 3  width 28 (1.15x)", "width-d3-equal"),
+        ("depth 3  width 24 (0.76x)", "depth3"),
+        ("depth 3  width 28 (1.02x)", "width-d3-equal"),
         ("depth 3  width 48 (2.87x)", DOSE3_BELOW_REFERENCE),
         ("depth 3  width 68 (5.66x, this arm)", DOSE3_BELOW),
         ("depth 3  width 96 (11.15x)", "width-d3-dose2"),
