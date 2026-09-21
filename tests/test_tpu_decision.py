@@ -207,6 +207,27 @@ def test_the_rebuild_is_buildable_because_active_counts_stay_uniform() -> None:
     assert config.active_experts == 2
 
 
+def test_the_declared_genome_rebuilds_at_the_pre_registered_shape() -> None:
+    """The exact call that raised on Kaggle, at the shape the probe really uses.
+
+    Measured locally 2026-09-21: the declared genome is 12 layers of 8 experts with 2
+    active, and the rebuild is 12 layers of 8 with the last holding 9 - config and model
+    both build, at 287,434,752 parameters. The small-genome test pins the invariant; this
+    pins it where the probe runs, because a shape-dependent guard would only appear at
+    declared scale - which is the scale the probe dies at, and the queue is 6.5 h.
+    """
+    from act.training.v0_session import _genome_from_config, declared_session_config
+
+    genome = _genome_from_config(declared_session_config())
+    rebuilt, _, layer_id = tpu_probe._rebuild_genome(genome)
+
+    assert layer_id == genome.layers[-1].id
+    config = v0_moe_config_from_genome(rebuilt)  # must not raise
+    assert config.depth == len(genome.layers)
+    assert config.experts_per_layer[-1] == config.experts_per_layer[0] + 1
+    assert config.active_experts == 2
+
+
 def test_the_mutation_that_broke_the_probe_validates_but_cannot_be_built() -> None:
     """Why the rebuild uses the operator instead of editing the genome's dict itself.
 
