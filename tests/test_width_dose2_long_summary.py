@@ -170,15 +170,33 @@ def test_the_controller_edge_shrinks_with_the_budget() -> None:
 
 
 def test_the_long_budget_arm_has_exactly_one_cell() -> None:
-    """The absolute comparison is budget-internal and stays that way.
+    """The width-96 long-budget lineage has exactly one cell, and stays that way.
 
-    4x training moves the same width-96 arms from `15.1`-`16.9` to
-    `3.8`-`4.5`, but there is no 192-step width-24 control anywhere, so no
-    cross-width absolute claim can be made at this budget - and adding a second
-    long-budget cell would silently change what the arm's branch table means.
+    4x training moves the same width-96 arms from `15.1`-`16.9` to `3.8`-`4.5`,
+    and at registration time there was no 192-step width-24 control anywhere, so
+    no cross-width absolute claim could be made at this budget - 5.52 then built
+    that control, and 5.54 added a 192-step *depth-3* cell that belongs to
+    neither lineage. What this arm's own branch table needs is that the width-96
+    reading stays a single cell, so the predicate is the width lineage rather
+    than a name suffix: any second long-budget cell of that lineage would
+    silently change what the table means.
     """
-    long_cells = sorted(p for p in study.PROFILES if p.endswith("-long"))
+    long_cells = sorted(
+        profile
+        for profile, spec in study.PROFILES.items()
+        if spec["overrides"].get("steps") == 4 * study.REGISTERED["steps"]
+        and spec["overrides"].get("hidden_size") == 96
+    )
     assert long_cells == ["width-d4-dose2-long"]
+    # And the control 5.51 named as absent is now the only other cell of the
+    # width lineage at this budget, at the registered width.
+    controls = sorted(
+        profile
+        for profile, spec in study.PROFILES.items()
+        if spec["overrides"].get("steps") == 4 * study.REGISTERED["steps"]
+        and spec["overrides"].get("hidden_size") == study.REGISTERED["hidden_size"]
+    )
+    assert controls == ["width-d4-long-w24"]
     longer = _load(CELL["summary"])["arm_means"]
     reference = _load(REFERENCE)["arm_means"]
     for arm in ("adaptive", "null", "random"):

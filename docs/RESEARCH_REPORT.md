@@ -7074,6 +7074,67 @@ at or after 90000 (5.53 holds 88176-88751 and 89384-89959), checked by a test ag
 profile *and* every committed summary's recorded seeds. Registered before the run; the running
 revision is recorded in the summary's `code_revision`.
 
+**Outcome (run 2026-09-21, revision `64046da`, 20 shards; committed summary
+`depth3-long-576.json`). Registered branch 4: both FAIL.**
+
+Neither primary moves, and the *combined* 2x2 is the finding - because the same treatment that
+moved two things at depth 4 moved nothing here:
+
+| corner | steps | arms (adaptive / null / random) | value | collapse | own edge |
+|---|---|---|---|---|---|
+| `depth3` (5.15) | 48 | `13.4549 / 13.4503 / 13.5571` | `+0.004643` | `-0.106794` | `-0.102151` |
+| **`depth3-long`** | **192** | **`6.3453 / 6.3063 / 6.4347`** | **`+0.039005`** | **`-0.128388`** | **`-0.089383`** |
+| `depth4-prefix` (5.12) | 48 | `12.4413 / 12.4785 / 12.5485` | `-0.037147` | `-0.070072` | `-0.107220` |
+| `width-d4-long-w24` (5.52) | 192 | `5.4605 / 5.6648 / 5.5010` | `-0.204292` | `+0.163809` | `-0.040483` |
+
+**P1 fails, and it fails without moving at all.** At 192 steps depth 3 reaches `281/576` wins
+against the bar of `313` (mean `+0.039005`, p `0.734`) - a win rate of `48.8%`, against the
+committed 48-step cell's `49.0%` (`188/384`). Four times the training does not bring the
+below-onset cell one step closer to the bar; the small move in the *mean* is in the direction
+that would make it worse, and not significantly so (unpaired rank-sum of the value deltas, short
+against long, p `0.082`).
+
+**P2 fails, and it is the informative failure.** The collapse goes `-0.106794` -> `-0.128388` -
+still negative, so the do-nothing arm is still the *better* one at both budgets, and the regime
+has not moved (rank-sum U `112872.0`, one-sided p `0.706`). This is a non-detection that carries
+weight precisely because the ruler is not blind: the identical comparison at depth 4 returns
+U `28795.0`, p `1.9e-84`, and the reversed call at depth 3 reads as a dead null (p `0.294`), so
+the test is measuring the thing it was registered to measure.
+
+**The finding is that the budget's effect is itself gated by depth.** The same treatment - both
+multiplied by four, the same three mutational events, the registered learning rate - does two
+large things one depth up and neither of them here:
+
+| 48 -> 192 steps | value (adaptive-vs-null rank-sum) | collapse (null-vs-random rank-sum) |
+|---|---|---|
+| **depth 4** | `-0.037147` -> `-0.204292`, p `2.6e-60` (better) | `-0.070072` -> `+0.163809`, p `1.9e-84` (regime moves) |
+| **depth 3** | `+0.004643` -> `+0.039005`, p `0.082` (no move) | `-0.106794` -> `-0.128388`, p `0.706` (no move) |
+
+So the budget is not a covariate that the below-onset cell is short of *or* one that damages it:
+once there is a gate to cross, 4x training crosses further and brings a churn regime with it;
+where there is no gate, 4x training is inert. Section 10.3(ii) named parameter count, layer
+width, expert count and total compute, and 5.48-5.54 have now measured all four at this scale:
+**three do not move the gate, one removes value above it, and the one that does move it is the
+axis 10.1 identified in the first place.**
+
+**Descriptive secondaries, and they read exactly as 5.53's damage cells did.** At 192 steps
+depth 3's best arm is the do-nothing one (`6.3063` < `6.3453` < `6.4347`), the collapse is
+negative with `null_vs_random` at `400/576` (p `2.4e-21`), and the controller's own edge over the
+pool-matched random arm survives strongly (`443/576`, `-0.089383`, p `3.4e-40`). So the controller
+still *selects* - this is not a broken search - what it cannot do is beat doing nothing, at either
+budget, on this substrate.
+
+**Scrutiny before write-up.** Built-in checks 576/576 (mutations 3/3/0, zero null search FLOPs);
+three replays of committed seeds (90003, 90317, 90571) exact at `OMP_NUM_THREADS=1`; both
+primaries, both rank-sums, the 2x2 levels and the arm orderings were computed before any of them
+entered prose; and the P2 direction was rehearsed on the measured depth-4 flip *before* the arm
+ran, which is what licenses reading p `0.706` as an absence rather than as a blind test.
+
+**Scoped, and the dose caveat matters here.** The only dose that has ever crossed the gate is
+14.8x of *width* (5.50); a 14.8x step increase is not measured, and the two doses are not
+comparable, so the claim this arm licenses is the one it registered for - 4x training is inert
+below the onset and not inert above it - and not a statement about the budget as such.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
@@ -7787,7 +7848,15 @@ the onset the same dose takes value creation *away* (`260/576`, mean `+0.019507`
 depth-4 E=4 cell creates value at `225/384`, `-0.037147`, and reverses which arm is best).
 **Two of the three named covariates do not move the gate and the third moves it the wrong way,
 so the candidate that remains is total compute** - and the one the V0 search can actually move
-is the one that reads against value creation;
+is the one that reads against value creation. Section 5.54 then measured that last candidate,
+in the 2x2's final empty corner (depth 3 at 192 steps, the family's only arm that moves neither a
+parameter nor the search space): 4x training is **inert** below the onset, moving neither primary
+(`281/576`, mean `+0.039005`, p `0.734`; collapse `-0.106794` -> `-0.128388`, rank-sum p `0.706`),
+where the identical treatment one depth up moves both and strongly (`-0.037147` -> `-0.204292`,
+p `2.6e-60`; collapse `-0.070072` -> `+0.163809`, p `1.9e-84`). So **all four named covariates are
+now measured at this scale and only the depth axis moves the gate**, and what the budget buys
+depends on being above that axis rather than being one - which is the sharpest form open question
+(i) has taken;
 (iii) a real-text scale run above the diagnostic fidelity (the closed
 program says nothing about longer horizons or larger models). Nothing in
 the current picture depends on re-tuning an existing cell, and no knob
@@ -7831,6 +7900,13 @@ different covariate from the one the ontology reads: it is a covariate that read
 selection value when it is raised. A V0 search that grows experts is asking a question this
 program has now measured a negative answer to - the bound 10.4 drew from the architecture track,
 restated on the second track's own terms.
+
+**And 5.54 bounds the other half of the same claim.** If the reachable gene were not the covariate,
+loud, it would still be open that a pass is a *compute* statement rather than an architecture one -
+the search buys more training either way. That is now measured too: 4x training is inert below the
+onset and not inert above it (5.54), so what the block's 12 sessions train is not itself the
+variable a pass would be reading. A Gate 4 pass would be a statement about *selection on this
+block*, and neither the reachable gene nor the budget is an escape hatch from that reading.
 
 It also makes the priority of the *next* gate a live question rather than an
 inference. The arch phase's width effect is the largest single effect either track has
