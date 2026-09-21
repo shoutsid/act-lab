@@ -1,5 +1,18 @@
 # ACT Implementation Status
 
+## Two blind spots in the campaign launcher, and a failure report that was wrong about the cost (2026-09-21)
+
+| | |
+|---|---|
+| **The failure** | `act-t4-session` ended **ERROR after 0.29 h with no kernel log and no output files at all**. That is a launch-time death, not a training one - a session that dies in training leaves a log. |
+| **What the evidence shows** | The campaign log holds **two drivers' lines interleaved inside each other**: one wrote `session ended with ERROR after 0.29 h ...` *inside* the other's `the platform returned no ...`. So two drivers were driving one queue at once. The rule that should prevent it - "adopt a live session instead of pushing a second" - cannot: both drivers check `active_status`, both find nothing live, both push, and a push **replaces the running kernel's version**, which is exactly a logless early ERROR and the loss of everything that session had trained. Separately, `act-lab-code` was **republished at 12:31:51 while that session had it mounted**, and a session kernel's body and the mounted `src/` have to be one revision. That publish was this session's own TPU probe push. |
+| **Fix 1 - the race** | `drive()` now takes an exclusive **per-queue `flock`** (in `artifacts/.locks/`, git-ignored, per kernel so one queue cannot block another). A second driver exits **6**, naming the holder, instead of racing it. Mutual exclusion is the only thing that can close a check-then-push window. |
+| **Fix 2 - the publish** | The TPU probe **refuses to republish the code dataset while a campaign session is live** (exit 5). It is a measurement; the session is the critical path, so the probe waits. |
+| **Fix 3 - the report** | The log-less failure text was **unconditional**: it asserted the platform's 8 h kill and quoted **"8.05 GPU-h burned"** for a 0.29 h launch failure. That is where the belief that this run cost eight GPU-hours came from - this run spent **0.27**. The note is now selected by measured elapsed time and quotes the hours actually spent, because a report that misstates the cost is worse than no report: it is the number an operator decides with. |
+| **What it actually cost** | The failed session: **0.27 GPU-h**. The week stands at 23.8 h used / 6.2 h remaining, and the durable record is unchanged at **4 of 12 seeds** - what was lost is that session's training, not any published seed. |
+| **Recovery, in order** | 1. Verify the launch path with a cheap one-shot rather than hoping: `--queue preflight` (~0.07 h) completed clean - fresh 2×T4, fp16 **4,885 tok/s**, pair 1.45 h, parameter assertion OK, so push → dataset → mount → accelerator is intact. 2. Relaunch the campaign under the new lock with a **fitted 5.5 h window** (`HOURS=5.5`), because weekly quota expires at the 2026-09-26 refresh and unused hours are lost; the window is a scheduling knob, not a protocol term (fewer whole pairs, deadline stop, in-progress snapshot, resume from the last completed seed). Session is RUNNING. |
+| **Pinned** | `tests/test_kaggle_queue.py`: a second driver is refused with exit 6 *and* the lock is released afterwards, the lock names its holder, and a 0.29 h log-less failure is not described as the platform window while an 8.0 h one is. `tests/test_push_tpu_probe.py`: the publish is refused while a session is live and `ensure_code_dataset` is never reached. |
+
 ## Gate 5 had no path to take, and the check that gives it one was wrong once before it was right (2026-09-21)
 
 | | |
