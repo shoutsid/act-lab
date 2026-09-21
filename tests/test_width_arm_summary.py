@@ -101,14 +101,20 @@ def test_the_registered_branch_and_its_conjunction(profile: str) -> None:
     creates_value = comparison["wins"] >= bar and comparison["mean_delta"] < 0
     assert creates_value is cell["creates_value"]
     assert comparison["passes_bonferroni"] is cell["creates_value"]
-    # The summaries also carry the generic null-control label, and it must keep
-    # its two distinct values: churn suppression below the onset, both
-    # primaries above it (the schema the sibling summary tests pin).
-    expected_label = {
-        "width-d3-equal": "branch 2 (1 PASS / 2 FAIL)",
-        "width-d4-equal": "branch 1 (1+2 PASS)",
-    }
-    assert payload["outcome"].startswith(expected_label[profile])
+    # The outcome names *this arm's* per-cell primary, and must keep its two
+    # distinct values. It used to carry the 5.9 vocabulary instead, whose two
+    # primaries are null-vs-random and adaptive-vs-null *of one cell*, so it
+    # labelled this arm's below-onset cell "branch 2 (1 PASS / 2 FAIL)" - a pass
+    # - where the registration records a failure. (Post-run correction,
+    # 2026-09-21: the labels were rewritten at the source so the arm's own
+    # declaration decides them; no measured number moved.)
+    expected = (
+        "cell creates value (5.48's per-cell primary"
+        if cell["creates_value"]
+        else "cell does not create value (5.48's per-cell primary"
+    )
+    assert payload["outcome"].startswith(expected)
+    assert payload["bonferroni_alpha"] == pytest.approx(0.025)
 
 
 def test_the_registered_outcome_is_the_one_the_verdict_prints() -> None:

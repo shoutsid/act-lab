@@ -70,7 +70,7 @@
  },
  "config_hash": "eadb8c039408530e",
  "independent_arm_rng": true,
- "outcome": "branch 1 (1+2 PASS): the edge is real beyond the pool effect and churn suppression",
+ "outcome": "cell creates value (5.48's per-cell primary: adaptive-vs-null clears the alpha/2 bar and the mean delta is negative)",
  "per_seed": [
   {
    "losses": {

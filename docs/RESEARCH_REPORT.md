@@ -6789,6 +6789,67 @@ and the two widths differ in parameter count by 14.8x - the control completes th
 width line reads, it does not turn width into a matched-budget contrast (that is 5.48's
 equal-parameter arm, at 48 steps).
 
+### 5.52.1 Post-run correction: the committed labels named another arm's branches, and one statistic was never reproduced
+
+Found 2026-09-21 by regenerating the committed summaries from their own shards instead of
+reading them, in the same way 5.9's alpha slip was found. Three defects, one of them mine and
+caught in the act. **No measured number moved:** every corrected field is a label or a level,
+and every arm's statistics, branch and quoted figure recompute unchanged.
+
+**1. Sections 5.48, 5.49 and 5.52 carried the 5.9 vocabulary's branch string.** That
+vocabulary's two primaries are null-vs-random and adaptive-vs-null *of one cell*, so it can
+describe the arms that registered that pair (5.9, 5.10, 5.12, 5.15) and no others. The width
+arms registered a different pair - a per-cell conjunction on each of two cells (§5.48,
+§5.49), a per-cell conjunction plus a rank-sum between cells (§5.50-§5.52) - and the labels
+read backwards where it mattered most:
+
+| summary | committed label | what that arm actually registered |
+|---|---|---|
+| `width-d3-equal` (5.48) | "branch 2 (1 PASS / 2 FAIL): the pass is substantially churn suppression" | **P2 only** - this cell does *not* create value (`252/576`, mean `+0.0176`) |
+| `width-d3-dose` (5.49) | "branch 2 (1 PASS / 2 FAIL): ..." | **P2 only** - this cell does not create value either (`235/576`, mean `+0.0615`) |
+| `width-d4-long-w24` (5.52) | "branch 3 (1 FAIL / 2 PASS): no churn harm on this substrate" | **branch 1: P1+P2 PASS** - and this cell's recorded finding is a *collapse* of `+0.163809`, not its absence |
+
+The fix makes the style data rather than a section list: a profile declares
+`per_cell_primary`, and `summarize` renders the arm's own primary from it (a fact the 5.50 fix
+introduced for two arms only, while 5.48, 5.49 and 5.52 kept the old wording - the same "the
+vocabulary describes a different pair of primaries" bug that fix was written to prevent).
+Regenerating the five affected summaries moves exactly one line each; the 5.50 cells and 5.51
+regenerate byte-identically.
+
+**2. And the level was still reachable from the command line.** `summarize`'s CLI defaulted
+the Bonferroni divisor to `2.0` for every profile, so regenerating one of the two 5.50 cells
+wrote `bonferroni_alpha 0.025` and bar **313** where the registration states `alpha/3` and
+bar **315** - silently, and *after* 5.50 had already recorded that exact class of
+disagreement ("printing bar 318 where the registration said 315 ... a declaration whose bar
+and alpha disagree cannot be applied as written"). This is not hypothetical: it is what the
+first attempt at this very correction did. The divisor is now the profile's declaration
+(`bonferroni_divisor`, required for all fourteen profiles) and a mismatched override is
+refused before any shard is read, so the hole the 5.50 fix left is closed rather than
+narrowed. With the declaration in place both 5.50 cells regenerate byte-identically at 315.
+
+**3. Six committed summaries cannot be regenerated, and nothing was checking.** Recomputing
+`delta_stddev` (the one comparison field no summary test recomputed) from the stored
+`per_seed` triples reproduces **47 of 53** summaries bit-exactly - all eight width arms among
+them - and misses exactly the six `null-control-*` records of sections 5.9-5.15, whose values
+match `statistics.pstdev` instead: an accumulation the code has since replaced, and one that
+is order-sensitive, so no single formula reproduces all six in the stored order either. The
+drift is bounded at `2.8e-15` relative (~12 ulp), `delta_stddev` is quoted by no section and
+read by no decision, and rewriting six committed records to make a statistic nobody reads
+exact is not a repair - so it is **enumerated and bounded** by a test instead,
+`tests/test_toy_summary_labels.py`, with the six files named so the vintage is a decision
+rather than a discovered tolerance. The gap being closed is the missing recomputation, not
+the last digits: before this, a change to any recorded statistic in that field would have
+gone unnoticed.
+
+**Pinned.** `test_the_label_style_is_the_arms_own_declaration`,
+`test_every_committed_label_is_its_own_arms`,
+`test_every_profile_declares_its_bonferroni_divisor` (declaration and committed bar agree),
+`test_a_summary_cannot_be_written_at_a_level_its_registration_does_not_state`,
+`test_the_committed_summary_regenerates` (byte-exact, with the six earlier records bounded to
+`delta_stddev`), and `test_the_committed_stddevs_are_bounded_and_the_vintage_is_enumerated`.
+Mutants: restoring the hard-coded section list fails 5 (exactly the five corrected summaries);
+letting the divisor fall back to `2.0` fails 3, including the refusal itself.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

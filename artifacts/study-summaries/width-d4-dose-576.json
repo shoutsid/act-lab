@@ -70,7 +70,7 @@
  },
  "config_hash": "f69103c793f7404c",
  "independent_arm_rng": true,
- "outcome": "branch 3 (1 FAIL / 2 PASS): no churn harm on this substrate",
+ "outcome": "cell creates value (5.49's per-cell primary: adaptive-vs-null clears the alpha/2 bar and the mean delta is negative)",
  "per_seed": [
   {
    "losses": {

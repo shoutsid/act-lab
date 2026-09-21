@@ -49,6 +49,7 @@ PROFILES: dict[str, dict] = {
         "overrides": {},
         "run_revision": "78186e4",
         "report_section": "5.9",
+        "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/null-control-depth1-384.json",
     },
     "depth4": {
@@ -56,6 +57,7 @@ PROFILES: dict[str, dict] = {
         "overrides": {"depth": 4, "probe_candidate_policy": "spread"},
         "run_revision": "a9632a6",
         "report_section": "5.10",
+        "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/null-control-depth4-384.json",
     },
     # Section 5.12: the missing 2x2 cells. Sections 5.9 (depth 1 + prefix)
@@ -66,6 +68,7 @@ PROFILES: dict[str, dict] = {
         "overrides": {"probe_candidate_policy": "spread"},
         "run_revision": "c086685",
         "report_section": "5.12",
+        "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/null-control-depth1-spread-384.json",
     },
     "depth4-prefix": {
@@ -73,6 +76,7 @@ PROFILES: dict[str, dict] = {
         "overrides": {"depth": 4},
         "run_revision": "c086685",
         "report_section": "5.12",
+        "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/null-control-depth4-prefix-384.json",
     },
     # Section 5.15: the depth dose-response. The 2x2 established that DEPTH
@@ -84,6 +88,7 @@ PROFILES: dict[str, dict] = {
         "overrides": {"depth": 2},
         "run_revision": "bbad439",
         "report_section": "5.15",
+        "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/null-control-depth2-384.json",
     },
     "depth3": {
@@ -91,6 +96,7 @@ PROFILES: dict[str, dict] = {
         "overrides": {"depth": 3},
         "run_revision": "bbad439",
         "report_section": "5.15",
+        "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/null-control-depth3-384.json",
     },
     # Section 5.48: the width covariate at the onset. The dose-response (5.15)
@@ -106,6 +112,8 @@ PROFILES: dict[str, dict] = {
         "overrides": {"depth": 3, "hidden_size": 28},
         "run_revision": "38f3921",
         "report_section": "5.48",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/width-d3-equal-576.json",
     },
     "width-d4-equal": {
@@ -113,6 +121,8 @@ PROFILES: dict[str, dict] = {
         "overrides": {"depth": 4, "hidden_size": 28},
         "run_revision": "38f3921",
         "report_section": "5.48",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/width-d4-equal-576.json",
     },
     # Section 5.49: the **dose** form the 5.48 outcome left open. Width 48 at
@@ -125,6 +135,8 @@ PROFILES: dict[str, dict] = {
         "overrides": {"depth": 3, "hidden_size": 48},
         "run_revision": "e5dcbf6",
         "report_section": "5.49",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/width-d3-dose-576.json",
     },
     "width-d4-dose": {
@@ -132,6 +144,8 @@ PROFILES: dict[str, dict] = {
         "overrides": {"depth": 4, "hidden_size": 48},
         "run_revision": "e5dcbf6",
         "report_section": "5.49",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/width-d4-dose-576.json",
     },
     # Section 5.50: the amplifier's **second** dose. 5.49 showed that above the
@@ -148,6 +162,14 @@ PROFILES: dict[str, dict] = {
         "overrides": {"depth": 3, "hidden_size": 96},
         "run_revision": "05efa7b",
         "report_section": "5.50",
+        "per_cell_primary": True,
+        # Three primaries in 5.50 (two per-cell bars plus the rank-sum), so this
+        # arm's cells are read at alpha/3. Declared here rather than left to the
+        # command line: regenerating one of these summaries with the sibling
+        # arms' alpha/2 silently writes bar 313 where the registration states
+        # 315 - which is exactly what happened the first time this refactor was
+        # exercised, and is the defect 5.50's own verdict run already recorded.
+        "bonferroni_divisor": 3.0,
         "summary": "artifacts/study-summaries/width-d3-dose2-576.json",
     },
     # The depth-4 block was first drafted at 81000; the freshness test caught
@@ -158,6 +180,8 @@ PROFILES: dict[str, dict] = {
         "overrides": {"depth": 4, "hidden_size": 96},
         "run_revision": "05efa7b",
         "report_section": "5.50",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 3.0,
         "summary": "artifacts/study-summaries/width-d4-dose2-576.json",
     },
     # Section 5.51: the limit 5.50 registered. At 14.8x the do-nothing arm
@@ -177,6 +201,8 @@ PROFILES: dict[str, dict] = {
         },
         "run_revision": "a590a7f",
         "report_section": "5.51",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/width-d4-dose2-long-576.json",
     },
     # Section 5.52: the control 5.51 named as absent, in the same breath as its
@@ -203,6 +229,8 @@ PROFILES: dict[str, dict] = {
         },
         "run_revision": "f636990",
         "report_section": "5.52",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/width-d4-long-w24-576.json",
     },
 }
@@ -837,7 +865,7 @@ def _comparison(deltas: list[float], level: float) -> dict:
     }
 
 
-def summarize(profile: str, alpha: float, divisor: float = 2.0) -> dict:
+def summarize(profile: str, alpha: float, divisor: float | None = None) -> dict:
     """Build the committed study summary from this profile's shard payloads.
 
     The summary is self-contained: the per-seed loss triples let every
@@ -845,13 +873,39 @@ def summarize(profile: str, alpha: float, divisor: float = 2.0) -> dict:
     machine-checked against ``artifacts/study-summaries/`` without
     committing the (large, gitignored) shard payloads.
 
-    ``divisor`` is the Bonferroni divisor the arm's registration states (two
-    primaries from 5.9 to 5.49, three in 5.50). The 5.50 cells also carry the
-    arm's own per-cell label, because the 5.9 vocabulary describes a different
-    pair of primaries and mislabelling a cell is the defect this family keeps
-    re-finding.
+    The Bonferroni divisor is the **profile's own declaration**
+    (``bonferroni_divisor``), not an argument: two primaries from 5.9 to 5.49
+    and in 5.51/5.52, three in 5.50. A caller may still pass ``divisor``, but
+    only to confirm the declared value - passing anything else is refused
+    rather than honoured, so a summary can never be written at a level its
+    registration does not state. (The CLI used to default it to 2.0 for every
+    profile, which quietly rewrote the 5.50 cells at bar 313 where the
+    registration states 315 - the same disagreement between a bar and its
+    alpha that 5.16.1 adjudicates, and one a default value cannot prevent.)
+
+    A cell's ``outcome`` label is the arm's **own** per-cell primary whenever the
+    profile declares one (``per_cell_primary``), and the 5.9 vocabulary only for
+    the arms that registered the 5.9 pair. The vocabulary's two primaries are
+    null-vs-random and adaptive-vs-null *of the same cell*, so a cell whose
+    arm registered something else - a per-cell conjunction (5.48-5.52) or a
+    rank-sum between cells (5.50-5.52) - cannot be described by it: 5.48's
+    below-onset cell was labelled 5.9's "branch 2 (1 PASS / 2 FAIL)", which
+    names a *pass* for a cell the arm recorded as a failure, and 5.52's was
+    labelled "no churn harm on this substrate" while its recorded finding is a
+    collapse. The flag makes the choice data rather than a section list, so a
+    new arm cannot silently inherit the wrong family's wording - the same
+    defect class 5.16.1 adjudicates (a declaration whose label and content
+    disagree cannot be read as written).
     """
     spec = PROFILES[profile]
+    declared = float(spec["bonferroni_divisor"])
+    if divisor is not None and float(divisor) != declared:
+        raise SystemExit(
+            f"profile '{profile}' declares Bonferroni divisor {declared:g}; "
+            f"refusing to write its summary at {float(divisor):g} "
+            f"(the arm's bar would disagree with its registration)"
+        )
+    divisor = declared
     level = alpha / divisor
     experiments = load_shards(20 if profile == "depth1" else 20, profile)
     n = len(experiments)
@@ -894,9 +948,10 @@ def summarize(profile: str, alpha: float, divisor: float = 2.0) -> dict:
         raise SystemExit(f"built-in checks failed: {built_in}")
     p1 = comparisons["null_vs_random"]["passes_bonferroni"]
     p2 = comparisons["adaptive_vs_null"]["passes_bonferroni"]
-    if spec["report_section"] in ("5.50", "5.51"):
-        # These arms carry their own per-cell primary, so the 5.9 vocabulary
-        # (whose pair of primaries is a different pair) would mislabel them.
+    if spec.get("per_cell_primary"):
+        # This arm registered a per-cell primary, so the 5.9 vocabulary (whose
+        # pair of primaries is a different pair, on two values this arm never
+        # declared) would mislabel the cell.
         creates = p2 and comparisons["adaptive_vs_null"]["mean_delta"] < 0
         section = spec["report_section"]
         outcome = (
@@ -1001,8 +1056,12 @@ def main() -> int:
     sum_p.add_argument(
         "--divisor",
         type=float,
-        default=2.0,
-        help="the arm's Bonferroni divisor (2 from 5.9 to 5.49, 3 for 5.50)",
+        default=None,
+        help=(
+            "confirm the profile's declared Bonferroni divisor; omitted means "
+            "the declaration (2 from 5.9 to 5.49 and 5.51-5.52, 3 for 5.50), "
+            "and a different value is refused"
+        ),
     )
     args = parser.parse_args()
     if args.command == "run":

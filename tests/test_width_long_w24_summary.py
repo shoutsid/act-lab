@@ -104,6 +104,22 @@ def test_the_built_in_checks_held(summary: dict) -> None:
     }
 
 
+def test_the_summary_carries_this_arms_label_not_the_5_9_vocabulary(
+    summary: dict,
+) -> None:
+    """The outcome names 5.52's own per-cell primary, not 5.9's branch 3.
+
+    The committed summary read "branch 3 (1 FAIL / 2 PASS): no churn harm on this
+    substrate" - the 5.9 vocabulary, whose primaries are a different pair, and
+    which reads *backwards* for this cell: 5.52 recorded a collapse (+0.163809),
+    not its absence. Rewritten at the source (post-run correction 2026-09-21);
+    no measured number moved.
+    """
+    assert summary["outcome"].startswith("cell creates value (5.52's per-cell primary")
+    assert summary["bonferroni_alpha"] == pytest.approx(0.025)
+    assert "no churn harm" not in summary["outcome"]
+
+
 def test_the_report_quotes_the_recorded_branch(report: str) -> None:
     """The outcome names the branch, and the 2x2's four corners, as recorded."""
     assert "Registered branch 1: P1+P2 PASS." in report

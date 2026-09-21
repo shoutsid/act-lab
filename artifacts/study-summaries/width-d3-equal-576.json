@@ -70,7 +70,7 @@
  },
  "config_hash": "d54b71dc9463b479",
  "independent_arm_rng": true,
- "outcome": "branch 2 (1 PASS / 2 FAIL): the pass is substantially churn suppression",
+ "outcome": "cell does not create value (5.48's per-cell primary: the conjunction fails)",
  "per_seed": [
   {
    "losses": {

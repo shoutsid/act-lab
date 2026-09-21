@@ -28,7 +28,7 @@ CELLS = {
         "adaptive_vs_random": (430, -0.243801, 9.631e-34),
         "null_vs_random": (494, -0.305267, 5.389e-73),
         "creates_value": False,
-        "label": "branch 2 (1 PASS / 2 FAIL)",
+        "label": "cell does not create value (5.49's per-cell primary",
         "arm_means": {"adaptive": 20.506183, "null": 20.444717, "random": 20.749984},
     },
     "width-d4-dose": {
@@ -40,7 +40,7 @@ CELLS = {
         "adaptive_vs_random": (432, -0.194518, 1.085e-34),
         "null_vs_random": (266, +0.015155, 9.697e-01),
         "creates_value": True,
-        "label": "branch 3 (1 FAIL / 2 PASS)",
+        "label": "cell creates value (5.49's per-cell primary",
         "arm_means": {"adaptive": 16.56971, "null": 16.779383, "random": 16.764228},
     },
 }
@@ -102,7 +102,11 @@ def test_the_quoted_statistics_recompute_from_the_per_seed_triples(profile: str)
     }
     for arm, expected in cell["arm_means"].items():
         assert payload["arm_means"][arm] == pytest.approx(expected, abs=5e-7)
+    # The 5.49 cells carry the arm's own per-cell label, not the 5.9 vocabulary
+    # (whose pair of primaries is a different pair). Post-run correction
+    # 2026-09-21; no measured number moved.
     assert payload["outcome"].startswith(cell["label"])
+    assert payload["bonferroni_alpha"] == pytest.approx(0.025)
 
 
 def test_the_registered_branch_is_p2_only() -> None:
