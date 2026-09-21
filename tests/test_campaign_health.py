@@ -10,6 +10,7 @@ that would look like a healthy stalled campaign.
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -30,6 +31,79 @@ seed-15000/seed-15000/manifests/manifest.json                           596  202
 seed-15002/seed-15002/checkpoints/adaptive/checkpoint-003000.pt  3399209661  2026-09-21 08:05:36.710000
 seed-15002/seed-15002/checkpoints/random/checkpoint-006000.pt    3399209277  2026-09-21 08:05:46.588000
 """
+
+
+def test_the_listing_follows_page_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
+    """One CLI call sees 20 names, and the dataset is already that big.
+
+    Measured 2026-09-21: the session dataset holds **exactly 20 files at four seeds**
+    (five per seed) and the listing is ordered by name, so the fifth published seed
+    would sit entirely on page 2. A reader that ignores the token reports it as not
+    published - a *stalled* verdict at the exact moment the queue advanced, which is
+    the one wrong answer this report exists to avoid.
+    """
+    second = """name                                                                   size  creationDate
+---------------------------------------------------------------  ----------  --------------------------
+seed-15004/seed-15004/checkpoints/adaptive/checkpoint-006000.pt  3399209661  2026-09-21 09:05:15.249000
+seed-15004/seed-15004/checkpoints/random/checkpoint-006000.pt    3399209277  2026-09-21 09:05:32.497000
+"""
+    pages = ["Next Page Token = TOK2\n" + LISTING, second]
+    calls: list[list[str]] = []
+
+    def fake_run(argv, **kwargs):
+        calls.append(list(argv))
+        return subprocess.CompletedProcess(argv, 0, pages[len(calls) - 1], "")
+
+    monkeypatch.setattr(campaign_health.subprocess, "run", fake_run)
+
+    seeds = campaign_health.parse_seed_listing(campaign_health.dataset_listing("o/ds"))
+
+    assert len(calls) == 2
+    assert "--page-token" not in calls[0]
+    assert calls[1][calls[1].index("--page-token") + 1] == "TOK2"
+    # The seed that was only on the second page must be visible, or the report
+    # says the queue has not advanced.
+    assert set(seeds) == {15000, 15002, 15004}
+
+
+def test_published_seeds_reads_the_paginated_listing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The wiring is the pin: a paginated helper nothing calls restores the defect.
+
+    Testing ``dataset_listing`` alone leaves ``published_seeds`` free to keep
+    shelling out for one page - which is what it did, and the mutation that
+    reverted it passed the suite until this test existed.
+    """
+    called: list[str] = []
+
+    def fake_listing(dataset_id: str, **kwargs) -> str:
+        called.append(dataset_id)
+        return LISTING
+
+    def forbid_run(*args, **kwargs):
+        raise AssertionError("published_seeds must not shell out for one page")
+
+    monkeypatch.setattr(campaign_health, "dataset_listing", fake_listing)
+    monkeypatch.setattr(campaign_health.subprocess, "run", forbid_run)
+
+    seeds = campaign_health.published_seeds("o/ds")
+
+    assert called == ["o/ds"]
+    assert sorted(seeds) == [15000, 15002]
+
+
+def test_a_repeated_page_token_raises_instead_of_spinning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A hanging health report is worse than one that under-reports."""
+
+    def fake_run(argv, **kwargs):
+        return subprocess.CompletedProcess(argv, 0, "Next Page Token = SAME\n" + LISTING, "")
+
+    monkeypatch.setattr(campaign_health.subprocess, "run", fake_run)
+    with pytest.raises(RuntimeError, match="repeated page token"):
+        campaign_health.dataset_listing("o/ds")
 
 
 def test_the_padded_listing_parses_by_field_not_by_stripped_line() -> None:

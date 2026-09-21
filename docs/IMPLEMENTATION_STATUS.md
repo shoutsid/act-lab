@@ -11,7 +11,7 @@
 | **Why the suite never caught it** | The round-trip test's fake client modelled the service as extracting tar *members only* - single nesting - so the fake and the locator shared one assumption, and the pair agreed with itself. The new test is the first that models what the service actually did. |
 | **Also measured, free of charge** | The host overlay is `7.9T, 6.9T used, 1.1T free` (**88% full, shared with other tenants**) while `/kaggle/working` is `19.5 GiB` - confirming the handoff roots belong in `/tmp` as designed, and that the shared overlay is the only disk that scales. |
 | **Still not claimed** | The **1.32 h session death remains unexplained**. What is now true is that a failure of that kind is *readable* (the log fix), that the clock it is judged against is honest (`window_left`), and that a real source of silent waste has been removed. |
-| **Result** | **1587 tests pass**; 283/283 claims agree; campaign still stopped, **4.9 GPU-h** left this week. |
+| **Result** | **1590 tests pass**; 283/283 claims agree; campaign still stopped, **4.9 GPU-h** left this week. |
 
 ## A third session died with nothing to read, because the driver never asked for the log (2026-09-21)
 

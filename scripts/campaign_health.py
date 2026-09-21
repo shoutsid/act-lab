@@ -68,6 +68,12 @@ VERDICT_EXIT = {
 SEED_PATH = re.compile(r"^seed-(\d+)/.*?/checkpoints/([^/]+)/checkpoint-(\d+)\.pt$")
 
 
+#: The CLI prints this above the table when a listing has more pages. It is not a
+#: file row, so it is harmless to the parser below - it simply never matches
+#: ``SEED_PATH`` - and it is the only signal that a page is not the whole answer.
+PAGE_TOKEN_RE = re.compile(r"^Next Page Token = (\S+)\s*$", re.MULTILINE)
+
+
 def parse_seed_listing(listing: str) -> dict[int, dict]:
     """The seeds in a ``kaggle datasets files`` listing, with the arms and steps each has.
 
@@ -94,6 +100,46 @@ def parse_seed_listing(listing: str) -> dict[int, dict]:
     return seeds
 
 
+def dataset_listing(
+    dataset_id: str, *, timeout: float = 180.0, page_size: int = 200
+) -> str:
+    """The *whole* file listing, following the CLI's page tokens.
+
+    ``kaggle datasets files`` pages at 20 names and prints ``Next Page Token = ...`` when
+    there are more, so one call sees only the first page. Measured 2026-09-21: the session
+    dataset holds exactly 20 files at four seeds (five per seed), and the listing is ordered
+    by name - so the fifth published seed would sit entirely on page 2 and read as *not
+    published*, which is a stalled report at the exact moment the queue advanced. That is
+    the one wrong answer this report exists to avoid, so the pages are joined here and every
+    reader sees the same complete listing.
+    """
+    pages: list[str] = []
+    token: str | None = None
+    seen: set[str] = set()
+    while True:
+        argv = ["kaggle", "datasets", "files", dataset_id, "--page-size", str(page_size)]
+        if token is not None:
+            argv += ["--page-token", token]
+        proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"kaggle datasets files {dataset_id} failed: {proc.stderr.strip()[:400]}"
+            )
+        pages.append(proc.stdout)
+        match = PAGE_TOKEN_RE.search(proc.stdout)
+        token = match.group(1) if match else None
+        if token is None:
+            break
+        # A service that repeats a token would otherwise spin here forever, and
+        # a health report that hangs is worse than one that under-reports.
+        if token in seen:
+            raise RuntimeError(
+                f"kaggle datasets files {dataset_id} repeated page token {token!r}"
+            )
+        seen.add(token)
+    return "\n".join(pages)
+
+
 def published_seeds(dataset_id: str, *, timeout: float = 180.0) -> dict[int, dict]:
     """Every seed in the published dataset, with the arms and steps it has.
 
@@ -101,17 +147,7 @@ def published_seeds(dataset_id: str, *, timeout: float = 180.0) -> dict[int, dic
     the listing is a few kilobytes of exactly the information needed to tell a finished seed
     from one whose snapshot stopped part-way.
     """
-    proc = subprocess.run(
-        ["kaggle", "datasets", "files", dataset_id],
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
-    if proc.returncode != 0:
-        raise RuntimeError(
-            f"kaggle datasets files {dataset_id} failed: {proc.stderr.strip()[:400]}"
-        )
-    return parse_seed_listing(proc.stdout)
+    return parse_seed_listing(dataset_listing(dataset_id, timeout=timeout))
 
 
 def seed_progress(seeds: dict[int, dict]) -> dict:
