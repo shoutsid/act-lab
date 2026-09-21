@@ -276,6 +276,35 @@ PROFILES: dict[str, dict] = {
         "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/experts-d4-dose-576.json",
     },
+    # Section 5.54: the **total compute** covariate, the last of the three 10.3(ii)
+    # names ("parameter count, layer width, expert count" were the first two; the
+    # third is the budget). One cell, because three corners of the depth x budget
+    # 2x2 at width 24 are already committed:
+    #
+    #   d3 @  48  depth3              (5.15, 384 seeds)  fails the bar
+    #   d3 @ 192  this cell           (576 seeds)        the missing corner
+    #   d4 @  48  depth4-prefix       (5.12, 384 seeds)  creates value
+    #   d4 @ 192  width-d4-long-w24   (5.52, 576 seeds)  creates value
+    #
+    # The config is 5.52's with only the depth changed (4 -> 3): 192 steps and a
+    # 48-step mutation interval, which keeps the three mutational events the
+    # built-in checks assert. 4x training at depth 4 *flipped the churn regime*
+    # (collapse -0.0701 -> +0.1638), so the arm asks what it does one depth below
+    # the gate - the question "is the gate a compute threshold" in its sharpest
+    # available form.
+    #
+    # See `long_d3_verdict` for the four fixed branches. Block 90000: the first
+    # free 576-window at or after 90000 (5.52 holds 87600-88175 and 5.53 holds
+    # 88176-88751 and 89384-89959).
+    "depth3-long": {
+        "seeds": tuple(range(90000, 90576)),
+        "overrides": {"depth": 3, "steps": 192, "mutation_interval": 48},
+        "run_revision": None,
+        "report_section": "5.54",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 2.0,
+        "summary": "artifacts/study-summaries/depth3-long-576.json",
+    },
 }
 REGISTERED = dict(
     hidden_size=24,
@@ -326,6 +355,14 @@ EXPERTS_PROFILES = ("experts-d3-dose", "experts-d4-dose")
 EXPERTS_BELOW_BASELINE = "depth3"
 EXPERTS_ABOVE_BASELINE = "depth4-prefix"
 EXPERTS_WIDTH_PARTNER = "width-d3-equal"
+# The *total compute* covariate (section 5.54): 10.3(ii)'s last candidate, and
+# the only corner of the depth x budget 2x2 at width 24 that is not yet measured.
+# 4x training flips the churn regime at depth 4 (5.52 measured the collapse go
+# -0.0701 -> +0.1638); this arm asks what it does one depth *below* the gate.
+LONG_D3_PROFILE = "depth3-long"
+LONG_D3_SAME_DEPTH = "depth3"
+LONG_D3_ABOVE_LONG = "width-d4-long-w24"
+LONG_D3_ABOVE_SHORT = "depth4-prefix"
 
 
 def run_shard(shard: int, shards: int, profile: str) -> Path:
@@ -804,6 +841,102 @@ def long_w24_verdict(shards: int, alpha: float) -> int:
     return 0
 
 
+def long_d3_verdict(shards: int, alpha: float) -> int:
+    """Section 5.54's primaries and branches: the total-compute covariate.
+
+    One fresh cell at width 24 and depth 3 with 192 steps and a 48-step mutation
+    interval - 5.52's config with only the depth changed - completing the depth x
+    budget 2x2 at the registered width. Three corners are committed: `depth3`
+    (48 steps, fails the bar), `depth4-prefix` (48, creates value) and
+    `width-d4-long-w24` (192, creates value). Two primaries at the sibling
+    arms' alpha/2 (bar 313/576):
+
+    - P1 (the below-onset cell creates value at 4x the budget): the family's
+      per-cell conjunction. This is the question 10.3(ii)'s third covariate
+      asks, and the one that decides whether the onset is a compute threshold.
+    - P2 (4x training moves the churn *regime* below the onset too): a one-sided
+      rank-sum on null-vs-random deltas against the committed 48-step cell of
+      the same depth, larger meaning the longer budget has created the churn
+      harm. Rehearsed on the one measured instance before this arm ran: at depth
+      4 the same comparison gives U 28795, p 1.9e-84 on the measured flip
+      (`-0.0701` -> `+0.1638`), so the test detects the regime change where the
+      records say one exists.
+
+    Branches, fixed before the run:
+
+    - P1 and P2: **total compute is the covariate** - 4x training creates value
+      below the onset and brings the churn regime with it. That would make the
+      below-onset cells' failures a fixed-budget statement, and the onset a
+      compute threshold rather than depth per se.
+    - P1 only: 4x training creates value below the onset without creating a churn
+      harm - the gate is compute, and the regime change belongs to depth 4.
+    - P2 only: the budget reaches the *regime* below the onset (a churn harm
+      appears, as it did at depth 4) but not the *gate* (no value) - so the budget
+      is not what the below-onset cell is short of, and the gate is not compute.
+    - neither: 4x training changes nothing below the onset - no churn harm, no
+      value. 10.3(ii)'s last candidate is then closed too, and the onset is depth
+      per se at every covariate this search space can measure.
+
+    The 2x2's four corners and the controller's own edge are reported
+    descriptively, as every cross-cell reading in this family is.
+    """
+    level = alpha / 2
+    cell = _cell_stats(LONG_D3_PROFILE, shards, level)
+    p1 = bool(cell["creates_value"])
+    collapse_long = _cell_deltas(LONG_D3_PROFILE, shards, "null", "random")
+    collapse_short = _cell_deltas(LONG_D3_SAME_DEPTH, shards, "null", "random")
+    u, p2 = _rank_sum_one_sided(collapse_short, collapse_long)
+    p2_passes = p2 <= level
+    print(
+        f"\nP2 (4x training moves the churn regime below the onset): rank-sum "
+        f"{LONG_D3_PROFILE} vs {LONG_D3_SAME_DEPTH} on null-vs-random: "
+        f"U {u:.1f}, one-sided p {p2:.2e} (bar alpha/2 = {level:.4f}; means "
+        f"{sum(collapse_long) / len(collapse_long):+.6f} vs "
+        f"{sum(collapse_short) / len(collapse_short):+.6f}) "
+        f"-> regime moved: {p2_passes}"
+    )
+    branches = {
+        (True, True): (
+            "P1+P2 PASS: total compute is the covariate - 4x training creates "
+            "value below the onset and brings the churn regime with it, so the "
+            "below-onset failures are a fixed-budget statement and the onset is "
+            "a compute threshold rather than depth per se"
+        ),
+        (True, False): (
+            "P1 only: 4x training creates value below the onset without creating "
+            "a churn harm - the gate is compute, and the regime change belongs "
+            "to depth 4"
+        ),
+        (False, True): (
+            "P2 only: the budget reaches the regime below the onset but not the "
+            "gate - a churn harm appears where none was, and no value is "
+            "created, so the budget is not what the below-onset cell is short of"
+        ),
+        (False, False): (
+            "both FAIL: 4x training changes nothing below the onset; the "
+            "compute covariate is closed too and the onset is depth per se at "
+            "every covariate this search space can measure"
+        ),
+    }
+    print(f"BRANCH: {branches[(p1, p2_passes)]}")
+    # Descriptive: the 2x2 those four cells are, and the controller's edge.
+    for label, profile in (
+        ("depth 3 @  48 (committed)", LONG_D3_SAME_DEPTH),
+        ("depth 3 @ 192 (this arm)", LONG_D3_PROFILE),
+        ("depth 4 @  48 (committed)", LONG_D3_ABOVE_SHORT),
+        ("depth 4 @ 192 (committed)", LONG_D3_ABOVE_LONG),
+    ):
+        collapse = _cell_deltas(profile, shards, "null", "random")
+        edge = _cell_deltas(profile, shards, "adaptive", "random")
+        value = _cell_deltas(profile, shards, "adaptive", "null")
+        print(
+            f"  {label:<26} collapse {sum(collapse) / len(collapse):+.6f}  "
+            f"value {sum(value) / len(value):+.6f}  "
+            f"edge {sum(edge) / len(edge):+.6f}  ({profile})"
+        )
+    return 0
+
+
 def experts_verdict(shards: int, alpha: float) -> int:
     """Section 5.53's primaries and branches: the expert-count covariate.
 
@@ -1198,6 +1331,12 @@ def main() -> int:
     )
     experts_p.add_argument("--shards", type=int, required=True)
     experts_p.add_argument("--alpha", type=float, default=ALPHA)
+    d3long_p = sub.add_parser(
+        "depth3-long-verdict",
+        help="section 5.54: the total-compute covariate at the below-onset depth",
+    )
+    d3long_p.add_argument("--shards", type=int, required=True)
+    d3long_p.add_argument("--alpha", type=float, default=ALPHA)
     sum_p = sub.add_parser("summary", help="write the committed study summary")
     sum_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
     sum_p.add_argument("--alpha", type=float, default=ALPHA)
@@ -1234,6 +1373,8 @@ def main() -> int:
         return long_w24_verdict(args.shards, args.alpha)
     if args.command == "experts-verdict":
         return experts_verdict(args.shards, args.alpha)
+    if args.command == "depth3-long-verdict":
+        return long_d3_verdict(args.shards, args.alpha)
     return verdict(args.shards, args.profile)
 
 

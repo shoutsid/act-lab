@@ -89,7 +89,9 @@ def test_every_profile_declares_its_bonferroni_divisor() -> None:
     A missing key is a failure rather than a fallback: the fallback is exactly
     how the 5.50 cells were nearly rewritten at bar 313.
     """
-    assert len(study.PROFILES) == 16
+    # A tripwire, not a contract: if a new arm is added to the table and this
+    # test has not been revisited, the count here is what says so.
+    assert len(study.PROFILES) == 17
     for profile, spec in study.PROFILES.items():
         assert "bonferroni_divisor" in spec, f"{profile} declares no divisor"
         declared = float(spec["bonferroni_divisor"])

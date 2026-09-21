@@ -6990,6 +6990,90 @@ search FLOPs); six replays of committed seeds (three per cell) exact at `OMP_NUM
 the cell statistics, the five-cell table, the ordering inversion and the two dose rank-sums were
 all computed before any of them entered prose.
 
+### 5.54 Pre-registration: the *total-compute* covariate, in the 2x2's last empty corner (RAN - summary `depth3-long-576.json`)
+
+10.3(ii) named three covariates that could separate depth from capacity - "parameter count, layer
+width, expert count" - and then added a fourth thing the onset could be: **total compute**. Width
+was closed by 5.48-5.52 (the matched-parameter partner does not move the gate; the doses pay only
+at 14.8x) and expert count by 5.53 (the tightest equal-parameter partner does not move the gate
+either, and the dose *removes* value above it). Budget is what remains, and it is the one
+covariate that is not a property of the substrate at all.
+
+This arm runs the **one corner of the depth x budget 2x2 at width 24 that is still empty.** Three
+of its four corners are already committed:
+
+| corner | steps | total / active params | adaptive-vs-null | collapse (null-vs-random) |
+|---|---|---|---|---|
+| `depth3` (5.15) | 48 | 23,280 / 8,880 | 188/384, `+0.004643` | `-0.106794` |
+| **`depth3-long`** | **192** | **23,280 / 8,880** | *this arm* | *this arm* |
+| `depth4-prefix` (5.12) | 48 | 30,672 / 11,472 | 225/384, `-0.037147` | `-0.070072` |
+| `width-d4-long-w24` (5.52) | 192 | 30,672 / 11,472 | 550/576, `-0.2043` | `+0.1638` |
+
+**Design.** One fresh cell of the registered config with only the budget changed: `depth` 3, `steps`
+48 -> 192, `mutation_interval` 12 -> 48, holding `hidden_size` 24 and `expert_count` 4. That is
+5.52's exact treatment (both multiplied by four) applied one depth lower, so the same three
+mutational events run over four times the training. It is the family's **first arm that moves
+neither a parameter nor the search space** - 5.48 moved width, 5.53 moved experts, and this moves
+only the step count - which is what makes it the compute covariate rather than a second reading of
+capacity.
+
+**Why the regime primary, and not a third value primary.** 5.52 already measured what 4x training
+does at depth 4: the collapse goes `-0.0701` -> `+0.1638`, a churn **harm** appearing where none
+was, while the value reading improves (`-0.0371` -> `-0.2043`). So the informative question one
+depth below the gate is not "does more training help" - it did, above the gate - but whether the
+budget **reaches the regime** there: if 4x training is what makes a substrate churn, the
+below-onset cell should start churning too even though it still creates no value.
+
+**Primaries.** Two, at the sibling arms' level: `alpha/2 = 0.025`, bar **313/576**.
+
+1. **P1 (value below the onset at 4x training).** `depth3-long`'s adaptive-vs-null wins clear the
+   bar **and** the mean delta is negative - the family's per-cell conjunction.
+2. **P2 (the budget moves the churn regime).** One-sided rank-sum of `depth3-long`'s null-vs-random
+   deltas against the committed 48-step `depth3` cell's, asking whether the longer cell's deltas
+   are **stochastically larger** (a churn harm). Deliberately a non-paired test between two
+   independent 576-seed cells, and the family's first: the two cells share no seed, so there is no
+   pairing to exploit.
+
+**The rank-sum's sensitivity was rehearsed on the one measured instance before this arm ran.** At
+depth 4 the same 48 -> 192 comparison gives U 28795, p 1.9e-84 on the measured flip. So the ruler
+detects the regime change where the records already say one exists - P2 is only informative if it
+is not blind to the thing it measures - and the pinned direction convention (short cell first)
+means a reversed call reads as a dead null (p > 0.999), not as a second detection.
+
+**Pre-registered interpretation (fixed before running).**
+
+- **P1 and P2:** **total compute is the covariate** - 4x training creates value below the onset
+  *and* brings the churn regime with it. That would make every below-onset cell's failure a
+  fixed-budget statement, and the onset a compute threshold rather than depth per se. Read with
+  5.52, the whole 2x2 would then be compute-driven at both depths.
+- **P1 only:** the gate is compute and the regime change belongs to depth 4 - 4x training buys
+  value below the onset without making that substrate churn, so the below-onset cell is short of
+  *both* and more training supplies one.
+- **P2 only:** the budget reaches the *regime* below the onset but not the *gate* - a churn harm
+  appears where none was and no value is created, so the budget is not what the below-onset cell
+  is short of even though it is enough to make the substrate churn.
+- **Neither:** 4x training changes nothing below the onset - no churn harm and no value. 10.3(ii)'s
+  last candidate is then closed too, and the onset is depth per se at every covariate this search
+  space can measure or vary.
+
+**Descriptive secondaries.** The full 2x2's four corners (value, collapse and the controller's own
+edge at each), so the budget reading can be compared across depths; and the controller's own edge
+(adaptive-vs-random) at the new cell, as at every cell in this family.
+
+**Scope.** The 576-seed cell is read against the 384-seed committed corners **descriptively**, as
+every cross-cell number in this family is; no cross-cell arithmetic enters either primary. The
+learning rate is the registered one at both budgets and is not rescaled with the step count, so
+this arm measures the effect of more steps at a fixed schedule, not the effect of a tuned long-budget
+schedule - recorded here because a rescaled schedule is exactly the change that would be expected
+to help further.
+
+**Cost.** Measured on this cell's own config before registering: ~3.29 s/seed at four threads, so
+576 seeds is ~30 min of single-thread CPU across 20 shards - minutes of wall clock, no GPU quota,
+run while the corrected Gate 4 session trains. The block is 90000-90575, the first free 576-window
+at or after 90000 (5.53 holds 88176-88751 and 89384-89959), checked by a test against every other
+profile *and* every committed summary's recorded seeds. Registered before the run; the running
+revision is recorded in the summary's `code_revision`.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
