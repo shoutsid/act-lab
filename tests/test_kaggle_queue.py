@@ -1042,6 +1042,64 @@ def test_run_once_reports_a_diagnostic_kernels_log(monkeypatch, capsys) -> None:
     assert "all checks passed" in printed
 
 
+def test_a_restore_probe_that_measured_then_died_keeps_its_number(
+    monkeypatch, capsys, tmp_path: Path
+) -> None:
+    """The measurement is the result, so a failure on the way out must not lose it.
+
+    A session pays this download before it trains, and the kernel log carrying it
+    is exactly what the platform discards for a killed run, so the record is
+    imported before the status is judged - the same ordering ``archzoo`` uses for
+    ledger rows that cost GPU-hours to regenerate.
+    """
+
+    def fake_run(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        if argv[1:3] == ["kernels", "status"]:
+            return subprocess.CompletedProcess(
+                argv, 0, 'has status "KernelWorkerStatus.ERROR"', ""
+            )
+        if argv[1:3] == ["kernels", "output"]:
+            target = Path(argv[argv.index("-p") + 1])
+            target.mkdir(parents=True, exist_ok=True)
+            (target / kaggle_t4.RESTORE_PROBE_NAME).write_text(
+                json.dumps(
+                    {
+                        "dataset": "o/ds",
+                        "seeds_restored": [15000, 15001, 15002, 15003],
+                        "minutes": 41.5,
+                        "gib_written": 22.7,
+                        "accelerator": "cpu",
+                    }
+                )
+                + "\n"
+            )
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(kaggle_queue, "_run", fake_run)
+    monkeypatch.setattr(kaggle_queue, "ensure_code_dataset", lambda *a, **k: "")
+    # Staging is real by default and reads the kernel body from REPO_ROOT, so it
+    # is redirected here along with the import target: what is under test is the
+    # ordering of the import against the status check, not the staging.
+    monkeypatch.setattr(kaggle_queue, "stage", lambda d, mode, hours=None: Path(d))
+    repo = tmp_path / "repo"
+    monkeypatch.setattr(kaggle_queue, "REPO_ROOT", repo)
+
+    code = kaggle_queue.run_once("restoreprobe", poll=0.0, timeout=1.0)
+
+    assert code == kaggle_queue.EXIT_SESSION_FAILED
+    transferred = repo / "artifacts" / kaggle_t4.RESTORE_PROBE_NAME
+    assert transferred.is_file()
+    assert "41.5 min" in capsys.readouterr().out
+
+
+def test_a_missing_restore_probe_record_is_reported_not_invented(
+    tmp_path: Path, capsys
+) -> None:
+    """A probe that died before measuring must not read as a measurement."""
+    assert kaggle_queue.import_restore_probe(tmp_path, tmp_path / "repo") is None
+    assert f"no {kaggle_t4.RESTORE_PROBE_NAME}" in capsys.readouterr().out
+
+
 def test_the_documented_verdict_command_is_accepted(monkeypatch) -> None:
     """The runbook tells operators to run this; it must not be a usage error."""
     seen: list[str] = []

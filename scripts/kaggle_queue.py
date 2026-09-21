@@ -1080,7 +1080,7 @@ def drive(
     print(f"=== driving queue {queue_mode!r}: {queue.dataset} ===", flush=True)
     # The kernel runs the mounted code, so what it executes has to be the
     # committed tree - checked before any quota is spent, not after.
-    repo = Path(__file__).resolve().parent.parent
+    repo = REPO_ROOT
     staged_revision = ensure_code_dataset(repo)
     work = Path(tempfile.mkdtemp(prefix=f"act-queue-{queue_mode}-"))
     push_dir = stage(work / "push", queue_mode, declared_hours)
@@ -1155,6 +1155,11 @@ def drive(
             if text:
                 print(f"  --- session log ({source}) ---", flush=True)
                 print(text[-8000:], flush=True)
+                # Where the *rest* of it is. The tail above is the diagnosis; the
+                # file is what a longer read needs, and a path in the campaign log
+                # saves hunting through mkdtemp directories afterwards.
+                if live_log.is_file():
+                    print(f"  full capture: {live_log}", flush=True)
             elif kept:
                 # The session kept its audit trail but no channel returned a
                 # log: worth naming, because it means the run got far enough to
@@ -1247,6 +1252,37 @@ def drive(
         flush=True,
     )
     return EXIT_BUDGET_EXHAUSTED
+
+
+def import_restore_probe(
+    output_dir: str | Path, repo: str | Path, *, log=print
+) -> dict[str, object] | None:
+    """Copy the startup-restore measurement into the repo's ``artifacts/``.
+
+    A session downloads the whole published dataset before it trains, so this is
+    a scheduling input rather than a curiosity, and the kernel log carrying it is
+    not durable - the platform keeps no log at all for a run it kills. Returns
+    the record, or ``None`` when the output holds none (a probe that died before
+    it measured).
+    """
+    candidates = sorted(
+        Path(output_dir).rglob(kaggle_t4.RESTORE_PROBE_NAME), key=lambda p: len(p.parts)
+    )
+    if not candidates:
+        log(f"  no {kaggle_t4.RESTORE_PROBE_NAME} in the kernel output", flush=True)
+        return None
+    target = Path(repo) / "artifacts" / kaggle_t4.RESTORE_PROBE_NAME
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(candidates[0], target)
+    record = json.loads(target.read_text(encoding="utf-8"))
+    restored = list(record.get("seeds_restored") or [])
+    log(
+        f"  imported {target}: {float(record.get('minutes', 0.0)):.1f} min, "
+        f"{float(record.get('gib_written', 0.0)):.2f} GiB written, "
+        f"{len(restored)} seed version(s) restored",
+        flush=True,
+    )
+    return record
 
 
 def import_archzoo_output(
@@ -1368,7 +1404,7 @@ def run_once(mode: str, *, poll: float, timeout: float) -> int:
     # applies: the verdict reads the runner's own summaries, and a dataset that
     # lags the tree would compute the decision with an older reader than the
     # one that wrote them.
-    ensure_code_dataset(Path(__file__).resolve().parent.parent)
+    ensure_code_dataset(REPO_ROOT)
     push_dir = stage(Path(tempfile.mkdtemp(prefix=f"act-{mode}-")) / "push", mode)
     push = _run(["kaggle", "kernels", "push", "-p", str(push_dir)])
     print(push.stdout.strip() or push.stderr.strip(), flush=True)
@@ -1378,13 +1414,22 @@ def run_once(mode: str, *, poll: float, timeout: float) -> int:
     status = _wait_for_terminal(kernel, poll, timeout)
     output_dir = Path(tempfile.mkdtemp(prefix=f"act-{mode}-out-"))
     _run(["kaggle", "kernels", "output", kernel, "-p", str(output_dir)])
+    if mode == "restoreprobe":
+        # Imported before the status check, like archzoo: the number is the
+        # result, and a probe that measured the restore and then failed on the
+        # way out must not lose the measurement.
+        imported = import_restore_probe(output_dir, REPO_ROOT)
+        _print_log_tail(output_dir, kernel)
+        if status != SUCCESS_STATUS or imported is None:
+            print(f"{mode} ended with {status}", flush=True)
+            return EXIT_SESSION_FAILED
+        print(f"=== {mode} complete ({kernel}) ===", flush=True)
+        return EXIT_COMPLETE
     if mode == "archzoo":
         # Imported before the status check: a kernel that ended with an error
         # after hours of training may still have kept its ledgers, and those
         # rows cost GPU-hours to regenerate.
-        imported = import_archzoo_output(
-            output_dir, Path(__file__).resolve().parent.parent
-        )
+        imported = import_archzoo_output(output_dir, REPO_ROOT)
         _print_log_tail(output_dir, kernel)
         if status != SUCCESS_STATUS or imported is None:
             print(f"{mode} ended with {status}", flush=True)

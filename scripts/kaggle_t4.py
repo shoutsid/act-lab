@@ -411,6 +411,10 @@ def kernel_metadata(
 # Modes that are diagnostics rather than queues: (title, wants a GPU).
 # ``preflight`` measures throughput and so needs the T4; ``probe`` only asks
 # who it is on the Kaggle API, so it must not queue behind one.
+#: The startup-restore measurement's artifact name, shared with the driver so a
+#: drifted name cannot make the probe report a number nothing reads.
+RESTORE_PROBE_NAME = "restore-probe.json"
+
 DIAGNOSTIC_MODES = {
     "probe": ("act-t4-probe", False),
     "dtypeprobe": ("act-t4-dtypeprobe", True),
@@ -816,6 +820,25 @@ def mode_restoreprobe() -> None:
         f"{DEFAULT_HOURS:g} h and a pair is ~1.5 h, so a restore that costs a "
         "meaningful fraction of a window is a scheduling input, not an overhead."
     )
+    # Written out as well as logged, because a kernel log is not durable: the
+    # platform keeps none at all for a run it kills, and this number is the one
+    # that decides whether a session can start - so it belongs with the other
+    # measured artifacts, where it can be read and audited later.
+    record = {
+        "dataset": queue.dataset,
+        "dataset_root": str(root),
+        "seeds_restored": restored,
+        "minutes": minutes,
+        "gib_written": free_before - free_after,
+        "gib_free_before": free_before,
+        "gib_free_after": free_after,
+        "registered_session_hours": DEFAULT_HOURS,
+        "accelerator": "cpu",
+    }
+    artifact = work / "artifacts" / RESTORE_PROBE_NAME
+    artifact.parent.mkdir(parents=True, exist_ok=True)
+    artifact.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    _keep(artifact)
 
 
 def mode_session(queue: Queue) -> None:
