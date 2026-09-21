@@ -8,6 +8,7 @@ own prose rather than a machine-readable field.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import subprocess
@@ -537,11 +538,18 @@ def test_a_failed_session_reports_the_loss_instead_of_going_silent(
     assert [argv for argv in calls if argv[1:3] == ["kernels", "push"]]
     out = capsys.readouterr().out
     assert "session ended with ERROR after 0.00 h" in out
-    assert "no kernel log and no output files at all" in out
+    assert "no log came back from any channel" in out
+    assert "carries no files at all" in out
     assert "restarts from its last published seed" in out
     # And it must not claim a log it does not have: the banner that promised one
     # and then printed nothing is the defect this pins.
     assert "kernel log follows" not in out
+    # The log is *requested*, not assumed absent. `kaggle kernels output` returns
+    # files and has never returned a log, so a driver that ran only that command
+    # reported "the platform returned no kernel log" for a log it never asked
+    # for - which is what this pins. Measured 2026-09-21: three ERROR endings of
+    # one queue were each explained without the session's own account.
+    assert ["kaggle", "kernels", "logs", "sid123123234/act-t4-session"] in calls
 
 
 def test_a_failed_session_names_what_the_platform_did_return(
@@ -574,8 +582,115 @@ def test_a_failed_session_names_what_the_platform_did_return(
 
     assert code == kaggle_queue.EXIT_SESSION_FAILED
     out = capsys.readouterr().out
-    assert "no kernel log; what it did return: session-log.json" in out
+    assert "no log came back from the live stream" in out
+    assert "what the output did return: session-log.json" in out
     assert "no output files at all" not in out
+
+
+def test_a_failed_session_reports_the_log_it_captured_while_it_ran(
+    monkeypatch, capsys
+) -> None:
+    """The live capture is preferred, and named as the channel it came from.
+
+    Measured 2026-09-21: the platform kept no log at all for the session it
+    killed (``kaggle kernels logs`` returns nothing for a failed run, and full
+    logs for a completed one), so the streamed copy is the only account of that
+    failure that can exist. Nothing else in the driver can produce it.
+    """
+
+    @contextlib.contextmanager
+    def fake_capture(kernel: str, path: Path):
+        Path(path).write_text(
+            "=== ACT lab: session session ===\n"
+            "restored 4 seed version(s) from act-v0-5-1: [15000, 15001]\n"
+        )
+        yield
+
+    def fake_run(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        if argv[1] == "quota":
+            return subprocess.CompletedProcess(argv, 0, QUOTA_PAYLOAD, "")
+        if argv[1:3] == ["kernels", "status"]:
+            return subprocess.CompletedProcess(
+                argv, 0, 'has status "KernelWorkerStatus.ERROR"', ""
+            )
+        if argv[1:3] == ["kernels", "output"]:
+            Path(argv[argv.index("-p") + 1]).mkdir(parents=True, exist_ok=True)
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(kaggle_queue, "capture_live_log", fake_capture)
+    monkeypatch.setattr(kaggle_queue, "_run", fake_run)
+    monkeypatch.setattr(kaggle_queue, "ensure_code_dataset", lambda *a, **k: "")
+
+    code = kaggle_queue.drive("session", hours=9.0, poll=0.0, timeout=1.0, max_sessions=1)
+
+    assert code == kaggle_queue.EXIT_SESSION_FAILED
+    out = capsys.readouterr().out
+    assert "--- session log (live stream captured while it ran) ---" in out
+    assert "restored 4 seed version(s) from act-v0-5-1" in out
+
+
+def test_the_execution_log_is_fetched_when_the_output_carries_none() -> None:
+    """``kaggle kernels logs`` is the channel that has the log; use it."""
+    calls: list[list[str]] = []
+
+    def fake_run(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        calls.append(list(argv))
+        if argv[1:3] == ["kernels", "logs"]:
+            return subprocess.CompletedProcess(argv, 0, "RuntimeError: boom", "")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    original = kaggle_queue._run
+    kaggle_queue._run = fake_run
+    try:
+        text, source = kaggle_queue.session_failure_log(Path("/nonexistent"), "o/k")
+    finally:
+        kaggle_queue._run = original
+
+    assert calls == [["kaggle", "kernels", "logs", "o/k"]]
+    assert text == "RuntimeError: boom"
+    assert "kaggle kernels logs" in source
+
+
+def test_the_run_clock_is_measured_from_the_first_running_poll() -> None:
+    """Queue time is not training time, and must not be read as either.
+
+    A session that sits QUEUED for an hour and then dies at startup looks
+    identical to an hour of training if the clock runs from the push - the same
+    class of error as reporting a 0.29 h launch failure as the platform's 8 h
+    window, which is what the elapsed time was used for.
+    """
+    statuses = ["QUEUED", "QUEUED", "RUNNING", "ERROR"]
+
+    def fake_run(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        status = statuses.pop(0) if statuses else "ERROR"
+        return subprocess.CompletedProcess(
+            argv, 0, f'has status "KernelWorkerStatus.{status}"', ""
+        )
+
+    original = kaggle_queue._run
+    kaggle_queue._run = fake_run
+    try:
+        status, running_since = kaggle_queue._wait_for_terminal_detailed(
+            "o/k", poll=0.0, timeout=60.0
+        )
+    finally:
+        kaggle_queue._run = original
+    assert status == "ERROR"
+    assert running_since is not None
+
+    # Never RUNNING: there is no run to measure, so the caller falls back to the
+    # wall clock rather than being handed a fabricated run length.
+    statuses[:] = ["QUEUED", "ERROR"]
+    kaggle_queue._run = fake_run
+    try:
+        _, running_since = kaggle_queue._wait_for_terminal_detailed(
+            "o/k", poll=0.0, timeout=60.0
+        )
+    finally:
+        kaggle_queue._run = original
+    assert running_since is None
+    assert kaggle_queue.ran_note(None) == ""
+    assert "after the first RUNNING poll" in kaggle_queue.ran_note(1.5)
 
 
 def _fake_kaggle(calls: list[list[str]], session_logs: list[dict], publish_logs=None):

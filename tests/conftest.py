@@ -12,7 +12,33 @@ still gets the whole machine.
 
 from __future__ import annotations
 
+import contextlib
 import os
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _no_live_log_tailer(monkeypatch):
+    """Keep the driver's live log tailer offline for every test.
+
+    ``kaggle_queue.capture_live_log`` spawns ``kaggle kernels logs -f`` as a real
+    process, which is the one part of the driver that would reach Kaggle from a
+    test: the rest goes through ``_run``, which every driver test replaces. The
+    tailer is neutralised here rather than per-test so that a test which forgets
+    to think about it cannot quietly start talking to the platform; the tests
+    that *do* exercise the capture patch this attribute themselves.
+    """
+    try:
+        import kaggle_queue
+    except ImportError:  # a test module that does not touch the driver at all
+        return
+
+    @contextlib.contextmanager
+    def inert(*_args, **_kwargs):
+        yield
+
+    monkeypatch.setattr(kaggle_queue, "capture_live_log", inert, raising=False)
 
 if os.environ.get("PYTEST_XDIST_WORKER"):
     for variable in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):

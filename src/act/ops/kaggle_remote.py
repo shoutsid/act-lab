@@ -347,6 +347,18 @@ excepted from it.
     return result
 
 
+def _tree_gib(root: Path) -> float:
+    """Bytes under ``root`` in GiB, so a logged download cost is comparable."""
+    total = 0
+    for path in root.rglob("*"):
+        try:
+            if path.is_file():
+                total += path.stat().st_size
+        except OSError:
+            continue
+    return total / 2**30
+
+
 def _write_log(
     log_path: str | Path | None,
     dataset_root: str | Path,
@@ -379,12 +391,22 @@ def restore_latest(
     seeds are kept. Raises on client errors - a session that asked for
     remote state and cannot get it must fail before training starts.
     Returns the restored seed numbers.
+
+    The download's size and duration are logged because this cost is *unpriced*
+    and grows with every seed the queue publishes: it is the whole published
+    dataset (~22.7 GiB at four seeds, ~6.4 GiB per seed added) downloaded before
+    a token is trained, so a session's startup gets more expensive for as long as
+    the queue runs. Measured 2026-09-21: a session ended ERROR after 1.32 h with
+    no log and no output, and this startup cost is one of the two things known to
+    occupy a session for that long - so the next session's log has to carry the
+    number rather than an expectation.
     """
     logger = log if log is not None else (lambda message: None)
     handoff_name = _handoff_dirname()
     local = Path(dataset_root) / handoff_name
     with tempfile.TemporaryDirectory(prefix="act-kaggle-restore-") as scratch:
         extracted = Path(scratch) / "download"
+        download_started = time.monotonic()
         try:
             client.download_files(dataset, extracted)
         except Exception as error:
@@ -398,6 +420,11 @@ def restore_latest(
                 "training from scratch (atomic pairs make this safe)"
             )
             return []
+        logger(
+            f"remote restore: {dataset} downloaded in "
+            f"{(time.monotonic() - download_started) / 60.0:.1f} min "
+            f"({_tree_gib(extracted):.2f} GiB on disk)"
+        )
         source = _locate_handoff_tree(extracted, handoff_name)
         if source is None:
             # Defense in depth: if the service ever stops auto-extracting

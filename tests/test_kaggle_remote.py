@@ -399,6 +399,38 @@ def test_restore_latest_merges_remote_over_local(tmp_path: Path) -> None:
     assert (handoff / "seed-9999").is_dir()  # local-only seed kept
 
 
+def test_restore_latest_prices_its_own_download(tmp_path: Path) -> None:
+    """The startup restore is the one cost that grows with the queue: name it.
+
+    Measured 2026-09-21: a session ended ERROR after 1.32 h with no log and no
+    output, and this restore - the whole published dataset, downloaded before a
+    token is trained - is one of the two things known to occupy a session for
+    that long. It is ~22.7 GiB at four seeds and roughly 6.4 GiB more per seed
+    published, it was priced nowhere, and an unpriced cost cannot be reasoned
+    about when a week's quota is finite.
+    """
+    dataset_root = _publish_local_seed(tmp_path, 42)
+    client = FakeClient()
+    publish_on_exit(
+        dataset_root, dataset="owner/ds", client=client, log=lambda message: None
+    )
+    shutil.rmtree(dataset_root / HANDOFF_DATASET / "seed-0042")
+    lines: list[str] = []
+
+    restored = restore_latest(
+        dataset_root,
+        dataset="owner/ds",
+        client=client,
+        log=lines.append,
+    )
+
+    assert restored == [42]
+    cost = [line for line in lines if "remote restore:" in line]
+    assert len(cost) == 1
+    assert "owner/ds downloaded in" in cost[0]
+    assert "GiB on disk" in cost[0]
+
+
 def test_restore_latest_ignores_partial_versions(tmp_path: Path) -> None:
     dataset_root = _publish_local_seed(tmp_path, 42)
     client = FakeClient()

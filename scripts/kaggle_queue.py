@@ -42,7 +42,6 @@ import re
 import shutil
 import subprocess
 import tarfile
-import subprocess
 import sys
 import tempfile
 import time
@@ -52,6 +51,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import kaggle_t4
+
+#: How long the live log tailer is given to exit before it is killed. A capture
+#: that is still draining when the session ends must not hold up the exit path.
+LIVE_LOG_STOP_SECONDS = 5.0
 
 # A seed the runner counts as done: published before this session, or trained
 # and published during it. "interrupted" (deadline stop mid-pair) is not done.
@@ -821,19 +824,128 @@ def wait_for_refresh(
 
 def _wait_for_terminal(kernel: str, poll: float, timeout: float) -> str:
     """Poll the kernel until a terminal status, then return it."""
+    return _wait_for_terminal_detailed(kernel, poll, timeout)[0]
+
+
+def _wait_for_terminal_detailed(
+    kernel: str, poll: float, timeout: float
+) -> tuple[str, float | None]:
+    """Poll to a terminal status; also report when it was first seen RUNNING.
+
+    The *run* duration is what a log-less ending has to be read against, and the
+    wall clock from the push also contains the queue wait - so a session that
+    spent an hour queued and then died at startup was being reported as an hour
+    of training. That is the same class of error as reporting a 0.29 h launch
+    failure as the platform's 8 h window, and it chose the wrong explanation for
+    the 2026-09-21 failure for exactly this reason.
+    """
     deadline = time.monotonic() + timeout
     last = ""
+    running_since: float | None = None
     while True:
         result = _run(["kaggle", "kernels", "status", kernel])
         status = parse_status(result.stdout + result.stderr)
         if status != last:
             print(f"  status: {status or 'unknown'}", flush=True)
             last = status
+        if status == "RUNNING" and running_since is None:
+            running_since = time.monotonic()
         if is_terminal(status):
-            return status
+            return status, running_since
         if time.monotonic() >= deadline:
             raise SystemExit(f"timed out waiting for {kernel} (last status {last!r})")
         time.sleep(poll)
+
+
+@contextmanager
+def capture_live_log(kernel: str, path: Path):
+    """Stream a running kernel's log to local disk, so a failure keeps its words.
+
+    ``kaggle kernels logs -f`` streams the execution log while the kernel runs,
+    which puts a copy on *this* machine before the platform decides what to keep.
+    That matters because of what the platform keeps for a failed session:
+    measured 2026-09-21, a session ended ERROR after 1.32 h and ``kaggle kernels
+    logs`` returned nothing at all for it afterwards (while the same command
+    returns full logs for kernels that completed), so three failures of this
+    queue have now been diagnosed from side effects alone - and two of those
+    explanations were wrong.
+
+    Best effort by construction: if the tailer cannot start the session still
+    runs, and the exit path falls back to the post-hoc fetch.
+    """
+    handle = None
+    process = None
+    try:
+        handle = open(path, "w", encoding="utf-8")  # noqa: SIM115 - closed below
+        process = subprocess.Popen(
+            ["kaggle", "kernels", "logs", "-f", kernel],
+            stdout=handle,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+    except OSError as error:
+        if handle is not None:
+            handle.close()
+        print(f"  live log capture unavailable ({error})", flush=True)
+    try:
+        yield
+    finally:
+        if process is not None:
+            process.terminate()
+            try:
+                process.wait(timeout=LIVE_LOG_STOP_SECONDS)
+            except subprocess.TimeoutExpired:
+                process.kill()
+        if handle is not None:
+            handle.close()
+
+
+def fetch_kernel_log(kernel: str) -> str:
+    """Ask the platform for a kernel's execution log after the fact.
+
+    ``kaggle kernels output`` returns the kernel's *files* and has never
+    returned a log, so a driver that only ran that command could not tell an
+    empty log from a log it never requested - and reported the second as the
+    first. Measured 2026-09-21: this returns nothing for a failed run and a full
+    log for a completed one.
+    """
+    result = _run(["kaggle", "kernels", "logs", kernel])
+    return (result.stdout or "").strip()
+
+
+def session_failure_log(
+    output_dir: Path, kernel: str, live_path: Path | None = None
+) -> tuple[str, str]:
+    """The session's own account, from the first channel that has one.
+
+    Three channels, in order of fidelity: the live capture streamed while the
+    kernel ran (the only one that exists when the platform keeps nothing for a
+    failed run), the log file the platform placed in the kernel's output, and
+    ``kaggle kernels logs`` asked afterwards. Returns the text and the channel
+    it came from, because a log that is merely empty and a log that was never
+    requested otherwise read alike - which is the defect that made the 2026-09
+    losses undiagnosable.
+    """
+    if live_path is not None and live_path.is_file():
+        live = live_path.read_text(encoding="utf-8", errors="replace").strip()
+        if live:
+            return live, "live stream captured while it ran"
+    log = output_dir / f"{kernel.split('/')[-1]}.log"
+    if log.is_file():
+        text = log.read_text(encoding="utf-8", errors="replace").strip()
+        if text:
+            return text, log.name
+    fetched = fetch_kernel_log(kernel)
+    if fetched:
+        return fetched, "`kaggle kernels logs` after the fact"
+    return "", ""
+
+
+def ran_note(hours: float | None) -> str:
+    """Name the run duration beside the wall duration, when the two differ."""
+    if hours is None:
+        return ""
+    return f" ({hours:.2f} h of it after the first RUNNING poll)"
 
 
 class QueueLockedError(RuntimeError):
@@ -841,13 +953,27 @@ class QueueLockedError(RuntimeError):
 
 
 def logless_failure_note(elapsed_hours: float) -> str:
-    """Explain a session that ended with no kernel log and no output files.
+    """Explain a session that ended with no log from any of the three channels.
 
-    The reading depends on how long it ran, and the two readings are different failures
-    with different causes. This text used to be one hardcoded paragraph asserting the
-    platform's 8 h kill and "8.05 GPU-h burned" for *any* log-less ending, so a 0.29 h
-    launch failure was reported to an operator as an eight-hour platform loss - quoting
-    hours this run never spent, at the moment they are deciding whether to spend more.
+    The reading depends on how long it *ran*, and the two readings are different
+    failures with different causes. This text used to be one hardcoded paragraph
+    asserting the platform's 8 h kill and "8.05 GPU-h burned" for *any* log-less
+    ending, so a 0.29 h launch failure was reported to an operator as an
+    eight-hour platform loss - quoting hours this run never spent, at the moment
+    they are deciding whether to spend more.
+
+    The number it is given is the run, measured from the first RUNNING poll where
+    one was seen, because wall time from the push also contains the queue wait.
+
+    Measured 2026-09-21: a session ended ERROR after 1.32 h with no log from any
+    channel, and neither earlier explanation applied - the code dataset had not
+    moved (its publish time was 15 minutes before the push) and the queue lock
+    was held, so no second driver could have replaced the running version. So the
+    branch below names what is *known* to cost a session that long instead of
+    asserting a cause: the startup restore, which downloads the whole published
+    dataset before any training (22.7 GiB at four seeds, growing ~6.4 GiB per
+    seed, and never priced anywhere), and a hard kill, which is what an ERROR
+    with nothing flushed and no log retained looks like.
     """
     if elapsed_hours >= PLATFORM_KILL_HOURS:
         return (
@@ -857,14 +983,19 @@ def logless_failure_note(elapsed_hours: float) -> str:
             f"{elapsed_hours:.2f} GPU-h reported above."
         )
     return (
-        f"  At {elapsed_hours:.2f} h it died at or before startup, not in training: "
-        f"the quota cost is the {elapsed_hours:.2f} GPU-h reported above, not a full "
-        "window. The launch path is what to read, and its candidates are (a) a second "
-        "driver pushing this same kernel while this one ran - a push replaces the "
-        "running version, which is exactly a logless early ERROR, and why the driver "
-        "now takes a per-queue lock (exit 6 if it is held), (b) the code dataset being "
-        "republished under a live mount, which breaks the one-revision rule the "
-        "kernel body depends on, or (c) no accelerator being available."
+        f"  At {elapsed_hours:.2f} h of run it died with nothing flushed, so the "
+        "quota cost is the "
+        f"{elapsed_hours:.2f} GPU-h reported above, not a full window. Read the "
+        "startup path before the training path, and note that two causes are "
+        "already excluded for this failure whatever the last one was: a second "
+        "driver pushing this same kernel is impossible while the queue lock is "
+        "held (exit 6), and the code dataset cannot move under a live mount "
+        "without the launch re-checking it. What remains is the session's own "
+        "startup restore - it downloads the entire published dataset "
+        "(~22.7 GiB and growing) before training one token, so its cost grows "
+        "with every seed the queue publishes - and a hard kill that flushed "
+        "nothing, which is what an ERROR with no log and no output looks like "
+        "and which /kaggle/working (19.5 GiB) is too small to explain."
     )
 
 
@@ -986,31 +1117,42 @@ def drive(
                 return EXIT_SESSION_FAILED
 
         session_started = time.monotonic()
-        status = _wait_for_terminal(queue.kernel_id, poll, timeout)
+        # Captured for the whole of the wait, not fetched afterwards: this is the
+        # only channel that survives a run the platform keeps nothing for.
+        live_log = work / f"live-{queue_mode}.log"
+        with capture_live_log(queue.kernel_id, live_log):
+            status, running_since = _wait_for_terminal_detailed(
+                queue.kernel_id, poll, timeout
+            )
         output_dir.mkdir(parents=True, exist_ok=True)
         _run(["kaggle", "kernels", "output", queue.kernel_id, "-p", str(output_dir)])
 
         if status != SUCCESS_STATUS:
-            elapsed = (time.monotonic() - session_started) / 3600.0
+            ended = time.monotonic()
+            elapsed = (ended - session_started) / 3600.0
+            ran = None if running_since is None else (ended - running_since) / 3600.0
             print(
                 f"session ended with {status} after {elapsed:.2f} h"
+                f"{ran_note(ran)}"
                 f"{burned_note(quota_before, active_quota())}",
                 flush=True,
             )
-            log = output_dir / f"{queue.kernel_id.split('/')[-1]}.log"
             kept = (
                 sorted(path.name for path in output_dir.iterdir())
                 if output_dir.is_dir()
                 else []
             )
-            if log.is_file():
-                print(log.read_text(encoding="utf-8")[-4000:], flush=True)
+            text, source = session_failure_log(output_dir, queue.kernel_id, live_log)
+            if text:
+                print(f"  --- session log ({source}) ---", flush=True)
+                print(text[-8000:], flush=True)
             elif kept:
-                # The session kept its audit trail but the platform kept no
+                # The session kept its audit trail but no channel returned a
                 # log: worth naming, because it means the run got far enough to
                 # write output and the loss is partial.
                 print(
-                    "  the platform returned no kernel log; what it did return: "
+                    "  no log came back from the live stream, the kernel output "
+                    "or `kaggle kernels logs`; what the output did return: "
                     + ", ".join(kept),
                     flush=True,
                 )
@@ -1019,14 +1161,19 @@ def drive(
                 # the driver printed "kernel log follows" and then nothing, so
                 # an operator could not tell an empty log from a missing one.
                 print(
-                    "  the platform returned no kernel log and no output files "
-                    "at all, so the session's own account of itself is lost with "
-                    "it. Nothing it trained is durable (the exit publish is the "
-                    "only copy and the session never reached it), so the queue "
-                    "restarts from its last published seed.",
+                    "  no log came back from any channel (the live stream, the "
+                    "kernel output, or `kaggle kernels logs`) and the output "
+                    "carries no files at all, so the session's own account of "
+                    "itself is lost with it. Nothing it trained is durable (the "
+                    "exit publish is the only copy and the session never "
+                    "reached it), so the queue restarts from its last published "
+                    "seed.",
                     flush=True,
                 )
-                print(logless_failure_note(elapsed), flush=True)
+                print(
+                    logless_failure_note(ran if ran is not None else elapsed),
+                    flush=True,
+                )
             return EXIT_SESSION_FAILED
 
         session_log = load_session_log(output_dir)
@@ -1182,10 +1329,20 @@ def report_verdict(output_dir: str | Path) -> int:
 
 
 def _print_log_tail(output_dir: Path, kernel: str, limit: int = 4000) -> None:
-    """Print the end of a one-shot kernel's log, where its result lives."""
-    log = output_dir / f"{kernel.split('/')[-1]}.log"
-    if log.is_file():
-        print(log.read_text(encoding="utf-8")[-limit:], flush=True)
+    """Print the end of a kernel's log, where its result lives.
+
+    Falls back to ``kaggle kernels logs``, because for a script kernel the
+    execution log is not one of the output files: the ``<slug>.log`` this used
+    to look for is usually absent, so the diagnostics that call this - whose
+    whole result *is* the log - printed nothing at all.
+    """
+    text, source = session_failure_log(Path(output_dir), kernel)
+    if not text:
+        return
+    # Named even on success: a reader who cannot tell which channel produced the
+    # lines cannot tell a live capture from a post-hoc one.
+    print(f"  --- kernel log ({source}) ---", flush=True)
+    print(text[-limit:], flush=True)
 
 
 def run_once(mode: str, *, poll: float, timeout: float) -> int:

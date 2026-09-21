@@ -802,6 +802,35 @@ fixed first. Watch the `remote publish:` line and the push duration in the
 exit log; if a push ever takes longer than the pairs it protects, revisit this
 choice with that number rather than an assumption.
 
+### Reading a session that died
+
+`kaggle kernels output` returns a kernel's *files* and has never returned a
+log, and the platform keeps **no log at all** for a session it kills - verified
+2026-09-21: `kaggle kernels logs` returns a full log for a kernel that
+completed and nothing whatsoever for the one that ended ERROR, so a failure has
+to be captured while it is happening or not at all.
+
+So the driver **streams and captures**: `kaggle kernels logs -f <kernel>` runs
+for the whole wait, writing into `/tmp/act-queue-<queue>-*/live-<queue>.log`,
+and the failure path reads three channels in order of fidelity - that live
+capture, the log file in the kernel output, and `kaggle kernels logs` asked
+afterwards - printing the tail **and naming which channel produced it**. A line
+saying no log came back from any channel is a real statement about that run, and
+it is what the earlier three failures could not distinguish from an empty log.
+
+The failure line also states the *run* duration beside the wall duration,
+measured from the first `RUNNING` poll: wall time from the push contains the
+queue wait, so a session queued for an hour that then died at startup read as an
+hour of training.
+
+Each session additionally **downloads the entire published dataset before it
+trains** (`restore_latest`, since a queue republishes its whole handoff at
+exit). That cost was priced nowhere; it is now logged as
+`remote restore: <dataset> downloaded in N min (X GiB on disk)`. At four seeds it
+is ~22.7 GiB and it grows ~6.4 GiB per seed, so a session's fixed startup cost
+rises for as long as the queue runs - read that line before assuming a slow
+start is a hang.
+
 ### Is the campaign alive? (one command, read from the durable side)
 
 Both 2026-09 session losses were expensive partly because nothing said the
