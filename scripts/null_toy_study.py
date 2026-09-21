@@ -1153,11 +1153,18 @@ def depth9_verdict(shards: int, alpha: float) -> int:
         f"-> hit: {edge_hit}"
     )
     if not gradient_hit:
-        regime = (
-            "flat (the reading 5.57 refuted)"
-            if increment > high
-            else "steeper than the fourth increment"
-        )
+        # Which reading a miss lands in, from the declared bands themselves rather
+        # than from a two-way test: the flat model's own band, this arm's band, and
+        # the crack between them are three distinct places, and a miss in the crack
+        # is neither reading. Naming it "flat" because it is the shallower side
+        # would be the verdict claiming more than the number says.
+        flat_low, _flat_high = DEPTH7_GRADIENT_BAND
+        if increment < low:
+            regime = "steeper than the fourth increment"
+        elif increment > flat_low:
+            regime = "flat, or shallower than the flat reading"
+        else:
+            regime = "between the flat reading's band and the mild-rise band"
         print(f"PREDICTION miss names the regime: the increment is {regime}")
 
     # Descriptive: the ladder to depth 9.

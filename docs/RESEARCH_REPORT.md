@@ -7815,6 +7815,93 @@ quota, run while the corrected Gate 4 session trains. The block is 95384-95959, 
 summary's recorded seeds. Registered before the run; the running revision is recorded in the
 summary's `code_revision`.
 
+**Outcome (run 2026-09-21, revision `1816e34`, 20 shards; committed summary `depth9-dose-576.json`).
+Registered branch 1: P1+P2 PASS - and the increment missed for the third consecutive rung, into the
+seam between the two bands that preceded it.**
+
+P1: the depth-9 cell clears the bar decisively (`559/576` against `313`, mean `-0.283891`,
+p `7.81e-142`). P2: its value deltas are stochastically better than the depth-8 cell's (rank-sum
+U `135354.0`, one-sided p `3.19e-08`, means `-0.283891` vs `-0.235166`), so **the slope continues**
+and the ladder is monotone across all six rungs above the onset:
+
+| cell | depth | n | value | controller's edge | collapse | best arm | arms (adaptive / null / random) |
+|---|---|---|---|---|---|---|---|
+| `depth2` (5.15) | 2 | 384 | `+0.020811` | `-0.078848` | `-0.099659` | null | `14.3953 / 14.3745 / 14.4742` |
+| `depth3` (5.15) | 3 | 384 | `+0.004643` | `-0.102151` | `-0.106794` | null | `13.4549 / 13.4503 / 13.5571` |
+| `depth4-prefix` (5.12) | 4 | 384 | `-0.037147` | `-0.107220` | `-0.070072` | **adaptive** | `12.4413 / 12.4785 / 12.5485` |
+| `depth5-dose` (5.55) | 5 | 576 | `-0.075335` | `-0.104561` | `-0.029226` | **adaptive** | `11.4870 / 11.5624 / 11.5916` |
+| `depth6-dose` (5.56) | 6 | 576 | `-0.117494` | `-0.089482` | `+0.028013` | **adaptive** | `10.5882 / 10.7057 / 10.6777` |
+| `depth7-dose` (5.57) | 7 | 576 | `-0.181042` | `-0.086622` | `+0.094421` | **adaptive** | `9.7065 / 9.8876 / 9.7932` |
+| `depth8-dose` (5.58) | 8 | 576 | `-0.235166` | `-0.070113` | `+0.165053` | **adaptive** | `9.0747 / 9.3099 / 9.1448` |
+| **`depth9-dose`** | **9** | **576** | **`-0.283891`** | **`-0.082532`** | **`+0.201358`** | **adaptive** | **`8.5254 / 8.8093 / 8.6079`** |
+
+**The miss, and the small region it landed in.** The declared band was `(-0.069, -0.049)` and the
+measured increment is **`-0.048724`** - above that band's shallow edge by `0.000276`, and outside the
+flat model's own band (`-0.047, -0.033`) as well, on the same side. So the third forecast in a row
+missed, and this one missed into the `0.002`-wide gap *between* the two bands its predecessors
+declared: the reading is neither the mild rise it declared nor the flat level the first model
+declared. The verdict prints that sentence on a miss rather than only reporting `False`, precisely so
+that a third miss could be read as a location rather than as a disconfirmation.
+
+**What three misses from three readings leave standing.** The increments ending at depths 4 through 9
+run `-0.0418`, `-0.0382`, `-0.0422`, `-0.0635`, `-0.0541`, `-0.0487`. The first three are flat at
+`0.0407`; the last three decline *monotonically* and the gap above that flat level shrinks
+`0.0228 -> 0.0134 -> 0.0080`, a factor of `0.59` and `0.60` - so what the ladder shows above the
+flat regime is an **excursion that is decaying back toward it geometrically**, not a steeper axis.
+That is consistent with all three misses (it is above the closing of the flat band, below the
+mild-rise band by the amount the decay had already erased) and it is the first reading in this
+family that predicts the *near* future rather than describing the past: on the measured ratio the
+increment ending at depth 10 falls inside the flat band. That is a prediction this section does not
+test; it is named here so the next rung can be registered against it rather than against a fresh
+guess.
+
+**The edge band hit for a fourth consecutive rung, and 5.58's marginal reading did not survive the
+fifth.** `|−0.082532 − (−0.070113)| = 0.012419` inside the declared `0.020`, so the controller's own
+edge is still not moving with depth. That matters more than a fourth hit usually would, because the
+one reading that had suggested otherwise is now gone: 5.58 reported the edge's decline reaching
+p `0.0244` over 3 -> 8 and deliberately reported it as **descriptive and unregistered**, noting that a
+single rank-sum with no multiplicity correction and a hypothesised direction should not be read as a
+finding. Over 3 -> 9 the same contrast reads p `0.121` - not significance lost by a hair but a
+marginal reading that one more rung simply does not reproduce - and the edge is `+0.019619`
+*against* over the wider span. The discipline that labelled it descriptive rather than a finding is
+what kept it out of the synthesis, and this rung is the payoff.
+
+**The decomposition is now six rungs deep.** From depth 3 to depth 9:
+
+| term | depth 3 | depth 9 | rank-sum | reading |
+|---|---|---|---|---|
+| controller's own edge | `-0.102151` | `-0.082532` | U `105663.0`, p `0.121` (reversed `0.879`) | **flat - no move** |
+| churn term | `-0.106794` | `+0.201358` | U `19510.0`, p `3.7e-104` | moves, decisively |
+
+The value improvement over those six added layers is `-0.288534` (p `6.4e-109`): the churn term
+carries `-0.308153` of it and the controller's own edge `+0.019619` **against**, so essentially all
+of it is churn. The newest step alone (`-0.048724`) decomposes the same way and with the same shares
+as its predecessors: the churn term contributes `-0.036305` (p `3.2e-06`, 74.5%) and the edge
+`-0.012419` (p `0.831`, flat).
+
+**The collapse keeps growing.** `null - random` runs `-0.099659`, `-0.106794`, `-0.070072`,
+`-0.029226`, `+0.028013`, `+0.094421`, `+0.165053`, `+0.201358`. At depth 9 the order is `8.5254`
+(adaptive) < `8.6079` (random) < `8.8093` (null) - the order depth 6 established, with the null arm
+now `0.284` nats behind the adaptive one.
+
+**What this settles.** Three registered forecasts have now missed and six rungs have passed: the
+gate is open and the value gap widens at every rung from depth 4 to depth 9, with no reversal, and
+what widens is still *not* the controller's skill - the edge is flat across the whole span at
+p `0.879` while the churn term moves at p `3.7e-104`. The refusal to claim more than that is not
+new and is the point: nothing here bounds the axis from above, and the ladder's own gradient is an
+excursion decaying back toward `0.04` per layer rather than a curve that steepens.
+
+**Scrutiny before write-up.** Built-in checks held in 576/576 seeds (mutations 3/3/0, zero null
+search FLOPs), re-derived from the shard files independently of the summary's own `built_in_checks`
+field; three replays of committed seeds (95404, 95704, 95944) exact at `OMP_NUM_THREADS=1`; both
+primaries, the increment, both decompositions and the algebraic identity computed before any of them
+entered prose. The band and both predictions were committed at `1816e34`, before the first shard ran.
+
+**Scoped.** The ninth layer carries 7,392 total / 2,592 active parameters irreducibly, so this is
+the depth axis *as a package*; the candidate pool is identical at every rung (pinned by a test); and
+the increments are cross-cell descriptives in this family's convention, while both primaries are
+tests on their own cells.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
@@ -8449,27 +8536,32 @@ The program now has two cleanly separated empirical axes:
    (`adaptive - random` = -0.0101, p = 0.61).
 
 2. **The depth axis (toy path).** Value creation by probe-ordered
-   selection is a function of substrate depth, now measured across seven
-   rungs: adaptive-vs-null wins go 117 (d1) < 161 (d2) < 188 (d3) < 225
-   (d4) of 384, then 375/576 (d5), 442/576 (d6), 503/576 (d7) and
-   544/576 (d8), with mean delta
+   selection is a function of substrate depth, now measured across nine
+   cells: adaptive-vs-null wins go 117 (d1) < 161 (d2) < 188 (d3) < 225
+   (d4) of 384, then 375/576 (d5), 442/576 (d6), 503/576 (d7), 544/576 (d8)
+   and 559/576 (d9), with mean delta
    +0.0508 > +0.0208 > +0.0046 > -0.0371 > -0.0753 > -0.1175 > -0.1810
-   > -0.2352
+   > -0.2352 > -0.2839
    - a monotone
    dose-response with the sign flip between depth 3 and 4 (5.15), robust
    to the candidate policy (5.12 2x2: prefix and spread agree in every
-   cell). **The gradient above the gate is mildly rising, and two
-   registered forecasts each missed it from one side** (increments
-   -0.0162, -0.0418, -0.0382, -0.0422, -0.0635, -0.0541; 5.55-5.58):
-   three steps at the flat ~0.04 level, then a fourth well above it and a
-   fifth above that flat level but below the fourth. So the constant
-   reading (5.56-5.57) understated the axis and the accelerating reading
-   (5.58) overstated it, and what the ladder supports is the mild rise,
-   not either model. The churn axis flips with it: the do-nothing arm is
+   cell). **The gradient above the gate is an excursion decaying back to a
+   flat level, and three registered forecasts have now missed it**
+   (increments -0.0162, -0.0418, -0.0382, -0.0422, -0.0635, -0.0541,
+   -0.0487; 5.55-5.59): three steps at the flat ~0.04 level, then a fourth
+   well above it, then two that decline monotonically back toward it with
+   the gap shrinking by a factor of ~0.59 each rung. So the constant
+   reading (5.56-5.57) *understated* the axis, the accelerating one (5.58)
+   overstated it, and the mild-rise one (5.59) landed in the 0.002-wide seam
+   between their bands - which is why this synthesis says what the series
+   *is* (a decaying excursion) rather than picking the reading it most
+   nearly matched. On that decay the next increment falls inside the flat
+   band; that prediction is stated and untested, not asserted. The churn
+   axis flips with it: the do-nothing arm is
    the better one at depths 2-5 and stops being so at depth 6, where the
    arm order becomes adaptive
-   < random < null - which depths 7 and 8 repeat, at 1.5x and then 1.75x
-   the separation of the step before.
+   < random < null - which depths 7, 8 and 9 repeat, with the do-nothing
+   arm 0.1175, 0.1811, 0.2352 and then 0.2839 nats behind the adaptive one.
 
 Together: **selection value exists, but only where the substrate is deep
 enough to support it - and the deeper the substrate, the less of that
@@ -8478,11 +8570,13 @@ doing nothing; the historical depth-1 passes were churn suppression
 measured against random churn (the only control they had), not value
 creation. At depth 4 about a quarter of the raw edge survives the strictest   control (0.0297-0.0371 of 0.1130); across the whole upper ladder the
    controller's own edge is **flat to slightly worse** (p `0.139` from depth 3
-   to depth 7, and p `0.0244` over 3 -> 8 - a descriptive, unregistered
-   rank-sum, and the first reading in which the edge's own decline reaches any
-   significance level) while the entire 0.240-nat improvement from depth 3 to
-   depth 8 is the substrate's
-   growing dependence on being mutated (5.56-5.58).
+   to depth 7, p `0.0244` over 3 -> 8, and p `0.121` over 3 -> 9 - so the one
+   marginal decline reading, reported as descriptive precisely because it was
+   marginal, does not survive the next rung) while essentially all of the
+   0.2885-nat improvement from depth 3 to depth 9 is the substrate's
+   growing dependence on being mutated: the churn term carries `-0.308153` of
+   it and the controller's own edge contributes `+0.019619` **against**
+   (5.56-5.59).
 
 ### 10.2 What this means for the gates
 

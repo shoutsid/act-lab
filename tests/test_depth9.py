@@ -244,7 +244,15 @@ def test_the_four_branches_are_fixed(
 
 @pytest.mark.parametrize(
     ("increment", "regime"),
-    [(-0.04, "flat (the reading 5.57 refuted)"), (-0.08, "steeper than the fourth increment")],
+    [
+        (-0.04, "flat, or shallower than the flat reading"),
+        (-0.08, "steeper than the fourth increment"),
+        # The crack between the two declared bands: steeper than the flat model's
+        # own band allows (`-0.047`) and shallower than this arm's requires
+        # (`-0.049`). Calling that "flat" would be the verdict claiming more than
+        # the number says, and the arm's own measurement landed here.
+        (-0.0487, "between the flat reading's band and the mild-rise band"),
+    ],
 )
 def test_a_miss_names_the_regime_it_landed_in(
     tmp_path: Path,

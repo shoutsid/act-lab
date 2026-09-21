@@ -155,6 +155,13 @@ def test_the_synthesis_depth_claims_match_the_committed_summaries() -> None:
     sign of the collapse at every rung, the monotonicity of the value ladder,
     the depth the report says the churn regime flips at, and the increments the
     gradient claim rests on.
+
+    The gradient claim itself has now moved a third time - 5.59's increment
+    landed between the two bands its predecessors declared - so the assertion is
+    no longer "which model is right" but the shape the three post-flat increments
+    make: all above the flat level, declining monotonically, and declining by a
+    roughly constant *factor*. A report that goes back to flatness, to
+    acceleration, or to a decided mild rise fails here.
     """
     import sys
 
@@ -169,6 +176,7 @@ def test_the_synthesis_depth_claims_match_the_committed_summaries() -> None:
         "depth6-dose",
         "depth7-dose",
         "depth8-dose",
+        "depth9-dose",
     )
     values, collapses = [], []
     for profile in rungs:
@@ -187,26 +195,34 @@ def test_the_synthesis_depth_claims_match_the_committed_summaries() -> None:
     assert "churn harm (null < random) holds at every measured depth **up to 5**" in text
     chain = (
         "mean delta +0.0508 > +0.0208 > +0.0046 > -0.0371 > -0.0753 > -0.1175 > -0.1810"
-        " > -0.2352"
+        " > -0.2352 > -0.2839"
     )
     assert chain in text
     # The gradient claim is read off the increments themselves, and it has now been
-    # wrong twice in opposite directions: the flat reading (three steps at ~0.04)
-    # was refuted by the fourth, and the accelerating reading (the fourth repeated)
-    # by the fifth. A report that commits to either model again fails here as well
-    # as on the chain above.
-    # The last three steps, as magnitudes of value improvement (deeper is better):
-    # 5 -> 6, 6 -> 7 and 7 -> 8.
-    steps = [values[i] - values[i + 1] for i in range(len(values) - 4, len(values) - 1)]
-    assert 0.03 < steps[0] < 0.05, steps
-    assert steps[1] > 0.06, steps
-    assert 0.05 < steps[2] < steps[1], steps
+    # wrong three times: the flat reading (three steps at ~0.04) was refuted by the
+    # fourth, the accelerating reading (the fourth repeated) by the fifth, and the
+    # mild-rise reading by the sixth, which landed in the seam between their bands.
+    # What is left is the shape: every post-flat increment above the flat level,
+    # declining monotonically, and decaying by a roughly constant factor.
+    steps = [values[i] - values[i + 1] for i in range(len(values) - 1)]
+    flat = sum(steps[1:4]) / 3
+    assert flat == pytest.approx(0.0407, abs=1e-3), steps
+    excursion = [step - flat for step in steps[4:]]
+    assert len(excursion) == 3 and all(gap > 0 for gap in excursion), excursion
+    assert excursion == sorted(excursion, reverse=True), excursion
+    ratios = [b / a for a, b in zip(excursion, excursion[1:])]
+    assert all(0.5 < ratio < 0.7 for ratio in ratios), ratios
     assert (
-        "The gradient above the gate is mildly rising, and two registered forecasts"
-        " each missed it from one side"
+        "The gradient above the gate is an excursion decaying back to a"
+        " flat level, and three registered forecasts have now missed it"
     ) in text
-    assert "-0.0162, -0.0418, -0.0382, -0.0422, -0.0635, -0.0541" in text
+    assert "-0.0162, -0.0418, -0.0382, -0.0422, -0.0635, -0.0541, -0.0487" in text
+    assert "0.002-wide seam" in text
     assert "stops being so at depth 6" in text
+    # The edge's marginal decline reading, which 5.58 reported as descriptive
+    # only, is not carried as a finding - and the synthesis has to say why.
+    assert "p `0.0244` over 3 -> 8, and p `0.121` over 3 -> 9" in text
+    assert "does not survive the next rung" in text
 
 
 def test_the_study_index_status_row_is_live() -> None:
