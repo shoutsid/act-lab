@@ -6672,6 +6672,65 @@ small and *shrinking* with budget. 10.5(B)'s case that a width mutation is a pac
 effect therefore strengthens: at the longer budget the width story is entirely "mutate at
 all".
 
+### 5.52 Pre-registration: the long-budget width-24 control 5.51 named as absent (RAN - summary `width-d4-long-w24-576.json`)
+
+5.51 registered its limit in the same breath as its result: at 14.8x the collapse is
+*relieved by 55%* at 4x the budget (`+1.574` -> `+0.708`) and the arms move from `15.1`-`16.9`
+to `3.8`-`4.5`, but "there is no 192-step width-24 control ... so no cross-width absolute
+claim is made at the longer budget". This arm is that control, and it closes the gap on the
+one axis such a claim needs: the same cell with only the width changed.
+
+**Design.** One cell: 5.51's config with `hidden_size` 96 -> **24** and nothing else - depth
+4, **192 steps**, **48**-step mutation interval (three events, asserted by the built-in checks
+at 3/3/0), fresh block **87600-88175**. With the committed cells that gives the 2x2 the
+collapse has to be read in:
+
+| cell | section | block | n | depth | width | steps | interval | total params |
+|---|---|---|---|---|---|---|---|---|
+| `depth4-prefix` | 5.12 | 73000-73383 | 384 | 4 | 24 | 48 | 12 | 30,672 |
+| `width-d4-dose2` | 5.50 | 84000-84575 | 576 | 4 | 96 | 48 | 12 | 454,464 |
+| `width-d4-dose2-long` | 5.51 | 87000-87575 | 576 | 4 | 96 | 192 | 48 | 454,464 |
+| `width-d4-long-w24` | **5.52** | **87600-88175** | 576 | 4 | 24 | **192** | **48** | 30,672 |
+
+All four corners run the registered **prefix** candidate policy, which is what makes the two
+widths comparable at both budgets: 5.10's depth-4 cell is the same width at the same budget
+but runs the *spread* policy, so it is deliberately **not** the corner used here (pinned by a
+test, because ranking against it would move width and policy at once). The block is fresh
+against every other profile and every committed summary (checked by a test). The learning
+rate and every other knob stay registered, so this is not a tuned longer run.
+
+**Primaries.** Two, at the sibling arms' level: `alpha/2 = 0.025`, bar **313/576**.
+
+1. **P1 (the residual collapse is the wide substrate's).** The width-24 cell's collapse - its
+   null-vs-random deltas, the quantity 5.50 measured at `+1.574` and 5.51 at `+0.708` - is
+   stochastically *smaller* than the width-96 long cell's: a one-sided rank-sum at `alpha/2`,
+   the non-paired test 5.50 introduced and rehearsed on committed rungs.
+2. **P2 (value creation survives at width 24).** adaptive-vs-null clears the bar **and** the
+   mean delta is negative - the family's per-cell conjunction.
+
+**Pre-registered interpretation (fixed before running).**
+
+- **P1 and P2:** the collapse that survives 4x training is the wide substrate's and the
+  narrow one creates value - so 5.51's relief is a *capacity* effect, and 5.50's dose ladder
+  reads as a liability of capacity itself.
+- **P1 only:** the collapse is the wide substrate's, but width 24 does not create value at the
+  longer budget - the budget is not what the narrow substrate was short of.
+- **P2 only:** the collapse is general across widths at 4x (both substrates churn away the
+  unmutated arm) and the narrow cell still creates value.
+- **Neither:** the longer budget neither relieves the narrow cell's collapse nor keeps its
+  value.
+
+**Descriptive secondaries.** The four corners' collapse means, the within-width relief (the
+*difference in differences* - deliberately not a pre-registered test, because it is a
+statistic on four independent cells), and the controller's own edge (adaptive-vs-random
+against the width-96 long cell).
+
+**Cost.** Measured at the new cell: ~4.6 s/seed (three arms, four threads; 4x the steps of the
+sibling cells - the width-96 long cell measures 4.6 s/seed too, so it is the longer budget,
+not the width, that this cost is). 576 seeds is ~44 min of single-thread CPU across 20
+shards: minutes of wall clock, no GPU quota, run while the corrected Gate 4 session trains.
+Registered before the run; the running revision is recorded in the summary's `code_revision`.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`

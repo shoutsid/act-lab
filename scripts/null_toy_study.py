@@ -179,6 +179,32 @@ PROFILES: dict[str, dict] = {
         "report_section": "5.51",
         "summary": "artifacts/study-summaries/width-d4-dose2-long-576.json",
     },
+    # Section 5.52: the control 5.51 named as absent, in the same breath as its
+    # result - "4x training moves the arms from 15.1-16.9 to 3.8-4.5 ... with no
+    # 192-step width-24 control, no cross-width absolute claim is made". One
+    # fresh cell runs the identical config with only the width changed (96 ->
+    # 24), completing the 2x2 the collapse has to be read in - and every corner
+    # of it is prefix-policy, so the widths are comparable at both budgets:
+    #
+    #   w24 @  48 steps  depth4-prefix         (5.12, 384 seeds)
+    #   w96 @  48 steps  width-d4-dose2        (5.50, 576 seeds)
+    #   w96 @ 192 steps  width-d4-dose2-long   (5.51, 576 seeds)
+    #   w24 @ 192 steps  this cell             (576 seeds)
+    #
+    # See `long_w24_verdict` for the branches. Block 87600: the first 576-window
+    # at or after 87600 that no other profile and no committed summary claims.
+    "width-d4-long-w24": {
+        "seeds": tuple(range(87600, 88176)),
+        "overrides": {
+            "depth": 4,
+            "hidden_size": 24,
+            "steps": 192,
+            "mutation_interval": 48,
+        },
+        "run_revision": None,
+        "report_section": "5.52",
+        "summary": "artifacts/study-summaries/width-d4-long-w24-576.json",
+    },
 }
 REGISTERED = dict(
     hidden_size=24,
@@ -214,6 +240,13 @@ DOSE2_REFERENCE = "width-d4-dose"
 # The long-budget cell (section 5.51) and the 48-step cell it is read against.
 DOSE2_LONG_PROFILE = "width-d4-dose2-long"
 DOSE2_LONG_REFERENCE = "width-d4-dose2"
+# The long-budget width-24 control (section 5.52), plus the two corners of its
+# 2x2 it is read against: the same-width shorter-budget cell (5.12's depth-4
+# prefix cell, the family's 48-step width-24 prefix reference) and the
+# same-budget wider cell (5.51's).
+LONG_W24_PROFILE = "width-d4-long-w24"
+LONG_W24_SAME_WIDTH = "depth4-prefix"
+LONG_W24_SAME_BUDGET = DOSE2_LONG_PROFILE
 
 
 def run_shard(shard: int, shards: int, profile: str) -> Path:
@@ -586,6 +619,112 @@ def dose2_long_verdict(shards: int, alpha: float) -> int:
     return 0
 
 
+def long_w24_verdict(shards: int, alpha: float) -> int:
+    """Section 5.52's primaries and branches: 5.51's missing width control.
+
+    5.51 stated its limit beside its result: at 14.8x the collapse halves at 4x
+    the budget, but there is no 192-step *width-24* control, so its absolute
+    levels (3.8-4.5 against 15.1-16.9) support no cross-width claim. One fresh
+    cell runs the identical config with only the width changed (96 -> 24), which
+    completes the prefix-lineage 2x2 - w24 and w96 at 48 and at 192 steps - and
+    gives its cross-budget reference for free. Two primaries at the sibling
+    arms' alpha/2 (bar 313/576):
+
+    - P1 (the residual collapse is the wide substrate's): the width-24 cell's
+      *collapse* - its null-vs-random deltas, the quantity 5.50 measured at
+      +1.574 and 5.51 at +0.708 - is stochastically *smaller* than the width-96
+      long cell's: a one-sided rank-sum between two independent fresh cells, the
+      non-paired test 5.50 introduced and rehearsed on committed rungs.
+    - P2 (value creation survives at width 24): adaptive-vs-null clears the bar
+      and the mean delta is negative (the family's per-cell conjunction).
+
+    Branches, fixed before the run:
+
+    - P1 and P2: the collapse that survives 4x training is the wide substrate's
+      and the narrow one creates value - so 5.51's relief is a *capacity*
+      effect, and 5.50's dose ladder is a liability of capacity itself.
+    - P1 only: the collapse is the wide substrate's, but width 24 does not
+      create value at the longer budget - the budget is not what the narrow
+      substrate was short of.
+    - P2 only: the collapse is general across widths at 4x (both substrates
+      churn away the unmutated arm), and the narrow cell still creates value.
+    - neither: the longer budget neither relieves the narrow cell's collapse nor
+      keeps its value.
+
+    The 2x2 levels, the within-width relief and the controller's own edge are
+    reported descriptively, as every cross-cell reading in this family is.
+    """
+    level = alpha / 2
+    cell = _cell_stats(LONG_W24_PROFILE, shards, level)
+    p2 = bool(cell["creates_value"])
+    collapse_w24 = _cell_deltas(LONG_W24_PROFILE, shards, "null", "random")
+    collapse_w96 = _cell_deltas(LONG_W24_SAME_BUDGET, shards, "null", "random")
+    u, p1 = _rank_sum_one_sided(collapse_w24, collapse_w96)
+    confined = p1 <= level
+    print(
+        f"\nP1 (the residual collapse is the wide substrate's): rank-sum "
+        f"{LONG_W24_PROFILE} vs {LONG_W24_SAME_BUDGET} on null-vs-random: "
+        f"U {u:.1f}, one-sided p {p1:.2e} (bar alpha/2 = {level:.4f}; means "
+        f"{sum(collapse_w24) / len(collapse_w24):+.6f} vs "
+        f"{sum(collapse_w96) / len(collapse_w96):+.6f}) "
+        f"-> collapse confined to width 96: {confined}"
+    )
+    # Descriptive: the 2x2 those two cells are two corners of. The other two
+    # corners are committed, and all four are prefix-policy, so the widths are
+    # comparable at both budgets without a confound.
+    short_w24 = _cell_deltas(LONG_W24_SAME_WIDTH, shards, "null", "random")
+    short_w96 = _cell_deltas(DOSE2_LONG_REFERENCE, shards, "null", "random")
+    for label, values in (
+        (f"w24 @  48 ({LONG_W24_SAME_WIDTH})", short_w24),
+        (f"w96 @  48 ({DOSE2_LONG_REFERENCE})", short_w96),
+        (f"w24 @ 192 ({LONG_W24_PROFILE})", collapse_w24),
+        (f"w96 @ 192 ({LONG_W24_SAME_BUDGET})", collapse_w96),
+    ):
+        print(
+            f"  collapse {label}: mean {sum(values) / len(values):+.6f} "
+            f"over {len(values)} seeds"
+        )
+    print(
+        "  within-width relief (descriptive, the difference in differences): "
+        f"w24 {sum(collapse_w24) / len(collapse_w24) - sum(short_w24) / len(short_w24):+.6f}, "
+        f"w96 {sum(collapse_w96) / len(collapse_w96) - sum(short_w96) / len(short_w96):+.6f}"
+    )
+    edge_w24 = _cell_deltas(LONG_W24_PROFILE, shards, "adaptive", "random")
+    edge_w96 = _cell_deltas(LONG_W24_SAME_BUDGET, shards, "adaptive", "random")
+    u_edge, p_edge = _rank_sum_one_sided(edge_w24, edge_w96)
+    print(
+        f"edge (descriptive): adaptive-vs-random rank-sum vs the width-96 long "
+        f"cell: U {u_edge:.1f}, one-sided p {p_edge:.2e} "
+        f"(mean {sum(edge_w24) / len(edge_w24):+.6f} vs "
+        f"{sum(edge_w96) / len(edge_w96):+.6f})"
+    )
+    branches = {
+        (True, True): (
+            "P1+P2 PASS: the collapse that survives 4x training is the wide "
+            "substrate's, and width 24 creates value - 5.51's relief is a "
+            "capacity effect"
+        ),
+        (True, False): (
+            "P1 only: the collapse is the wide substrate's, but width 24 does "
+            "not create value at the longer budget - the budget is not what the "
+            "narrow substrate was short of"
+        ),
+        (False, True): (
+            "P2 only: the collapse is general across widths at 4x, and the "
+            "narrow cell still creates value"
+        ),
+        (False, False): (
+            "both FAIL: the longer budget neither relieves the narrow cell's "
+            "collapse nor keeps its value"
+        ),
+    }
+    print(
+        f"\nOUTCOME (alpha={alpha}, Bonferroni alpha/2={level}): "
+        f"{branches[(confined, p2)]}"
+    )
+    return 0
+
+
 def width_verdict(shards: int, alpha: float) -> int:
     """Section 5.48's pre-registered primaries and four fixed branches.
 
@@ -850,6 +989,12 @@ def main() -> int:
     )
     long_p.add_argument("--shards", type=int, required=True)
     long_p.add_argument("--alpha", type=float, default=ALPHA)
+    w24_p = sub.add_parser(
+        "long-w24-verdict",
+        help="section 5.52: the 192-step width-24 control 5.51 named as absent",
+    )
+    w24_p.add_argument("--shards", type=int, required=True)
+    w24_p.add_argument("--alpha", type=float, default=ALPHA)
     sum_p = sub.add_parser("summary", help="write the committed study summary")
     sum_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
     sum_p.add_argument("--alpha", type=float, default=ALPHA)
@@ -878,6 +1023,8 @@ def main() -> int:
         return dose2_verdict(args.shards, args.alpha)
     if args.command == "dose2-long-verdict":
         return dose2_long_verdict(args.shards, args.alpha)
+    if args.command == "long-w24-verdict":
+        return long_w24_verdict(args.shards, args.alpha)
     return verdict(args.shards, args.profile)
 
 
