@@ -44,6 +44,7 @@ import subprocess
 import tarfile
 import sys
 import tempfile
+import threading
 import time
 from collections.abc import Mapping
 from contextlib import contextmanager
@@ -55,6 +56,12 @@ import kaggle_t4
 #: How long the live log tailer is given to exit before it is killed. A capture
 #: that is still draining when the session ends must not hold up the exit path.
 LIVE_LOG_STOP_SECONDS = 5.0
+
+#: How long to wait before restarting a dropped live-log stream. The Kaggle CLI's own
+#: stream retries five times and then gives up *for good*; measured 2026-09-21 a session's
+#: capture ended 4.1 min in while the session ran another 3.4 h, so the run that most
+#: needed reading had no account at all. Restarting is the fix, and this is the gap.
+LIVE_LOG_RESTART_SECONDS = 15.0
 
 # A seed the runner counts as done: published before this session, or trained
 # and published during it. "interrupted" (deadline stop mid-pair) is not done.
@@ -866,6 +873,104 @@ def _wait_for_terminal_detailed(
         time.sleep(poll)
 
 
+def _open_log_stream(kernel: str):
+    """Start one ``kaggle kernels logs -f`` stream. The seam a test replaces.
+
+    A function rather than an inline ``Popen`` because the restart loop is the part
+    worth testing and it should not need a real Kaggle process to test: a fake here
+    returns an object whose ``stdout`` is a list of lines.
+    """
+    return subprocess.Popen(
+        ["kaggle", "kernels", "logs", "-f", kernel],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+
+
+def _tail_attempt(
+    kernel: str,
+    handle,
+    written: int,
+    last: str | None,
+    current: list,
+) -> tuple[int, str | None, bool]:
+    """Consume one ``logs -f`` attempt, appending only lines not already captured.
+
+    ``kaggle kernels logs -f`` streams a kernel's log **from its first line**, so an
+    attempt that reconnects re-sends everything already on disk (measured 2026-09-21: a
+    completed kernel's stream begins at its header, twice, for 195 lines both times).
+    ``written`` is how many lines are already captured, so the new lines begin after that
+    many - and the line it lands on is checked against ``last`` to report a replay that
+    did not match, rather than acted on: a log only ever grows, so the count is still the
+    best estimate, and a duplicated line costs a reader far less than a missing one.
+
+    Returns the updated line count, the new last line, and whether the replay matched.
+    ``current`` is a one-slot list the caller keeps the live process in, so the exit path
+    can still kill a stream that is mid-read.
+    """
+    process = _open_log_stream(kernel)
+    current[:] = [process]
+    aligned = True
+    try:
+        skip = written
+        index = 0
+        for line in process.stdout or ():
+            if index < skip:
+                if index == skip - 1 and last is not None and line != last:
+                    aligned = False
+                index += 1
+                continue
+            handle.write(line)
+            handle.flush()
+            written += 1
+            last = line
+            index += 1
+    finally:
+        current[:] = []
+        process.terminate()
+        try:
+            process.wait(timeout=LIVE_LOG_STOP_SECONDS)
+        except subprocess.TimeoutExpired:
+            process.kill()
+    return written, last, aligned
+
+
+def _tail_until_stopped(
+    kernel: str, path: Path, stop: threading.Event, current: list
+) -> None:
+    """Keep a live account of a kernel on disk for as long as it is running.
+
+    The CLI retries a dropped stream five times and then gives up permanently; a session
+    that then runs for hours has nothing reading it. So the capture is a supervisor, not
+    a single connection: it restarts until the caller says the run is over, and each
+    attempt appends only what the previous one did not.
+
+    ``current`` is shared with the caller so the exit path can kill a stream that is
+    mid-read; ``_tail_attempt`` owns its contents.
+    """
+    written = 0
+    last: str | None = None
+    with open(path, "w", encoding="utf-8") as handle:  # noqa: SIM115 - closed by the block
+        while not stop.is_set():
+            try:
+                written, last, aligned = _tail_attempt(kernel, handle, written, last, current)
+            except OSError as error:
+                handle.write(f"--- live capture unavailable ({error}) ---\n")
+                handle.flush()
+                break
+            if not aligned:
+                handle.write(
+                    "--- the replayed log did not match what was captured; lines may "
+                    "repeat from here ---\n"
+                )
+                handle.flush()
+            if stop.is_set():
+                break
+            stop.wait(LIVE_LOG_RESTART_SECONDS)
+
+
 @contextmanager
 def capture_live_log(kernel: str, path: Path):
     """Stream a running kernel's log to local disk, so a failure keeps its words.
@@ -879,34 +984,38 @@ def capture_live_log(kernel: str, path: Path):
     queue have now been diagnosed from side effects alone - and two of those
     explanations were wrong.
 
+    The tailing runs on its own thread and **restarts**, because the CLI's stream gives
+    up for good after five failed reconnects: measured 2026-09-21, a session's capture
+    ended 4.1 min in and the session then ran another 3.4 h unread, which is the same
+    failure it was meant to prevent.
+
     Best effort by construction: if the tailer cannot start the session still
     runs, and the exit path falls back to the post-hoc fetch.
     """
-    handle = None
-    process = None
+    stop = threading.Event()
+    thread: threading.Thread | None = None
+    holder: list = []
     try:
-        handle = open(path, "w", encoding="utf-8")  # noqa: SIM115 - closed below
-        process = subprocess.Popen(
-            ["kaggle", "kernels", "logs", "-f", kernel],
-            stdout=handle,
-            stderr=subprocess.STDOUT,
-            text=True,
+        thread = threading.Thread(
+            target=_tail_until_stopped,
+            args=(kernel, path, stop, holder),
+            name="live-log-capture",
+            daemon=True,
         )
-    except OSError as error:
-        if handle is not None:
-            handle.close()
+        thread.start()
+    except (OSError, RuntimeError) as error:
         print(f"  live log capture unavailable ({error})", flush=True)
+        thread = None
     try:
         yield
     finally:
-        if process is not None:
+        stop.set()
+        # Kill a stream that is mid-read before joining: an attempt blocked on a live
+        # connection would otherwise sit through its own read until the platform ends it.
+        for process in holder:
             process.terminate()
-            try:
-                process.wait(timeout=LIVE_LOG_STOP_SECONDS)
-            except subprocess.TimeoutExpired:
-                process.kill()
-        if handle is not None:
-            handle.close()
+        if thread is not None:
+            thread.join(timeout=LIVE_LOG_STOP_SECONDS)
 
 
 def fetch_kernel_log(kernel: str) -> str:

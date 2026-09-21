@@ -20,6 +20,12 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import tpu_probe  # noqa: E402
+from act.model.factory import v0_moe_config_from_genome  # noqa: E402
+from act.topology.genome import (  # noqa: E402
+    ArchitectureGenome,
+    create_genome,
+    validate_genome,
+)
 
 
 def _record(*, aggregate: float, workers: int, first: float, steady: float) -> dict:
@@ -154,3 +160,85 @@ def test_a_record_without_the_parallel_measurement_is_recorded_as_such(tmp_path:
     decision = tpu_probe.evaluate(json.loads(path.read_text()))
     assert decision["verdict"] == "INCONCLUSIVE"
     assert "independent_seeds" in decision["why"]
+
+
+def _small_genome() -> ArchitectureGenome:
+    """The declared shape in miniature: uniform expert counts, uniform active count."""
+    return create_genome(
+        15_000,
+        hidden_size=64,
+        vocab_size=128,
+        depth=3,
+        ffn="moe",
+        expert_count=4,
+        active_experts=2,
+    )
+
+
+def test_the_rebuild_grows_one_expert_with_the_projects_own_operator() -> None:
+    genome = _small_genome()
+    before = [len(layer.experts) for layer in genome.layers]
+
+    rebuilt, expert_id, layer_id = tpu_probe._rebuild_genome(genome)
+
+    assert layer_id == rebuilt.layers[-1].id
+    assert expert_id in {expert.id for expert in rebuilt.layers[-1].experts}
+    assert [len(layer.experts) for layer in rebuilt.layers] == [
+        *before[:-1],
+        before[-1] + 1,
+    ]
+    # The caller's genome is the declared one and is reused for the other dtype.
+    assert [len(layer.experts) for layer in genome.layers] == before
+
+
+def test_the_rebuild_is_buildable_because_active_counts_stay_uniform() -> None:
+    """The invariant whose loss killed the probe's first run.
+
+    Measured 2026-09-21: the probe raised ``ValueError: V0 MoE reconstruction requires
+    uniform active expert counts`` 148 s in and wrote no record, so 6.5 h of Kaggle queue
+    produced no number. The rebuild the project's own event performs keeps that uniform.
+    """
+    rebuilt, _, _ = tpu_probe._rebuild_genome(_small_genome())
+
+    active = {layer.active_experts for layer in rebuilt.layers if layer.enabled}
+    assert len(active) == 1
+    config = v0_moe_config_from_genome(rebuilt)  # must not raise
+    assert config.experts_per_layer[-1] == 5
+    assert config.active_experts == 2
+
+
+def test_the_mutation_that_broke_the_probe_validates_but_cannot_be_built() -> None:
+    """Why the rebuild uses the operator instead of editing the genome's dict itself.
+
+    Pins the gap rather than a preference: a per-layer ``active_experts`` is valid to the
+    genome validator, and the V0 MoE config holds one scalar for every layer, so a
+    hand-rolled expert *and* active-expert bump is a genome the project can hold and
+    cannot build. If this ever stops raising, the probe's justification is worth revisiting.
+    """
+    mutated = _small_genome().to_dict()
+    last = mutated["layers"][-1]
+    last["experts"].append({"id": "L2-probe", "width": 64, "birth_step": 0})
+    last["active_experts"] += 1
+    rebuilt = ArchitectureGenome.from_dict(mutated)
+
+    assert validate_genome(rebuilt).valid
+    with pytest.raises(ValueError, match="uniform active expert counts"):
+        v0_moe_config_from_genome(rebuilt)
+
+
+def test_a_partial_record_is_written_where_it_stands(tmp_path: Path) -> None:
+    target = tmp_path / "nested" / "tpu-probe.json"
+    tpu_probe._save({"completed": ["fp32.throughput"]}, target)
+    assert json.loads(target.read_text())["completed"] == ["fp32.throughput"]
+
+
+def test_every_measurement_is_saved_before_the_next_one_runs() -> None:
+    """The first run wrote its record once, at the end, and died 148 s in.
+
+    So 6.5 h of queue produced no number at all - not even the throughput it had already
+    measured. Each measurement now lands on disk as it completes, and the record carries a
+    ``completed`` list so a partial one cannot read like a finished one.
+    """
+    source = (ROOT / "scripts" / "tpu_probe.py").read_text(encoding="utf-8")
+    assert source.count("_save(record, args.output)") >= 4
+    assert 'record["completed"] = []' in source

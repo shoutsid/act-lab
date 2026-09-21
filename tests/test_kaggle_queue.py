@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 import tarfile
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -24,6 +25,11 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import kaggle_queue  # noqa: E402
 import kaggle_t4  # noqa: E402
+
+#: The suite-wide fixture replaces ``kaggle_queue.capture_live_log`` so no test reaches
+#: Kaggle for a log; this reference is taken first, for the test that pins the capture's
+#: own concurrency and shutdown.
+REAL_CAPTURE_LIVE_LOG = kaggle_queue.capture_live_log
 
 
 @pytest.fixture(autouse=True)
@@ -1553,3 +1559,104 @@ def test_a_fast_logless_failure_is_not_reported_as_the_platform_window() -> None
     long = kaggle_queue.logless_failure_note(8.0)
     assert "session window" in long
     assert "8 h 00 m" in long
+
+
+class _Attempt:
+    """One ``kaggle kernels logs -f`` connection, as the tailer sees it."""
+
+    def __init__(self, lines: list[str]) -> None:
+        self.stdout = list(lines)
+        self.terminated = False
+
+    def terminate(self) -> None:
+        self.terminated = True
+
+    def wait(self, timeout: float | None = None) -> int:
+        return 0
+
+    def kill(self) -> None:
+        self.terminated = True
+
+
+def test_a_dropped_live_capture_is_restarted_until_the_session_ends(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The stream gave up for good 4.1 min into a 3.50 h session.
+
+    ``kaggle kernels logs -f`` retries a dropped connection five times and then stops
+    permanently; measured 2026-09-21, a session's capture ended 4.1 min in and the session
+    then ran another 3.4 h unread, which is the exact failure the capture exists to
+    prevent. So the capture restarts - and because the CLI replays a kernel's log from its
+    first line every attempt (measured: 195 lines, identical, twice), a restart must not
+    duplicate what is already on disk.
+    """
+    attempts = [
+        ["header\n", "step 1\n"],
+        ["header\n", "step 1\n", "step 2\n"],
+        ["header\n", "step 1\n", "step 2\n", "step 3\n"],
+    ]
+    opened: list[_Attempt] = []
+
+    def fake_open(kernel: str) -> _Attempt:
+        if not attempts:
+            raise OSError("no more attempts")
+        attempt = _Attempt(attempts.pop(0))
+        opened.append(attempt)
+        return attempt
+
+    monkeypatch.setattr(kaggle_queue, "_open_log_stream", fake_open)
+    monkeypatch.setattr(kaggle_queue, "LIVE_LOG_RESTART_SECONDS", 0.0)
+
+    path = tmp_path / "live.log"
+    kaggle_queue._tail_until_stopped("o/k", path, threading.Event(), [])
+
+    captured = [line for line in path.read_text().splitlines() if not line.startswith("---")]
+    assert captured == ["header", "step 1", "step 2", "step 3"]
+    assert len(opened) == 3, "the dropped streams were not restarted"
+    assert all(attempt.terminated for attempt in opened)
+
+
+def test_a_replay_that_does_not_match_is_reported_not_hidden(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A misaligned capture says so, rather than silently reading as complete.
+
+    Resuming at the line count is the estimate for a log that only grows; when the replay
+    disagrees the reader is told, because a capture someone trusts to be whole is worse
+    than one that admits it may not be.
+    """
+    attempts = [["a\n", "b\n"], ["X\n", "Y\n", "c\n"]]
+
+    def fake_open(kernel: str) -> _Attempt:
+        if not attempts:
+            raise OSError("no more attempts")
+        return _Attempt(attempts.pop(0))
+
+    monkeypatch.setattr(kaggle_queue, "_open_log_stream", fake_open)
+    monkeypatch.setattr(kaggle_queue, "LIVE_LOG_RESTART_SECONDS", 0.0)
+
+    path = tmp_path / "live.log"
+    kaggle_queue._tail_until_stopped("o/k", path, threading.Event(), [])
+
+    text = path.read_text()
+    assert "did not match what was captured" in text
+    assert "c\n" in text
+
+
+def test_the_capture_tails_while_the_session_runs_and_stops_afterwards(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """On its own thread, so the driver's poll loop is not blocked by the tail."""
+    started = threading.Event()
+    stopped = threading.Event()
+
+    def fake_tail(kernel: str, path: Path, stop: threading.Event, current: list) -> None:
+        started.set()
+        stop.wait(30.0)
+        stopped.set()
+
+    monkeypatch.setattr(kaggle_queue, "_tail_until_stopped", fake_tail)
+
+    with REAL_CAPTURE_LIVE_LOG("o/k", tmp_path / "live.log"):
+        assert started.wait(5.0), "the capture never started"
+    assert stopped.wait(5.0), "the capture outlived the session"

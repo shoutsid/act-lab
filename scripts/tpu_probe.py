@@ -209,6 +209,19 @@ def evaluate(record: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _save(record: dict[str, Any], path: Path) -> None:
+    """Write the record as it stands, rather than only once every measurement is in.
+
+    The probe's first run measured nothing: it raised 148 s in, and the record was written
+    after the last measurement, so 6.5 h of Kaggle queue produced no number at all. Every
+    completed measurement now lands on disk, so a later failure still leaves what the
+    hardware had already given up - and the record carries a ``completed`` list, because
+    a partial record must not read like a finished one.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(record, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def _device_report(torch, xm, xr) -> dict[str, Any]:
     """What the runtime actually gave us: device count, type, and per-core memory."""
     devices = xm.get_xla_supported_devices()
@@ -286,32 +299,45 @@ def _measure(torch, xm, model, optimizer, config, *, steps: int) -> dict[str, An
     }
 
 
+def _rebuild_genome(genome) -> tuple[Any, str, str]:
+    """The genome a rebuild builds from: one expert grown by the project's own operator.
+
+    Returns the mutated copy, the new expert's id, and the layer it landed on. The copy
+    matters because the caller's genome is the declared one and is reused for the other
+    dtype.
+
+    This uses ``act.topology.mutations.grow_expert`` rather than a hand-written edit. That
+    is not tidiness: measured 2026-09-21, a hand-written version (append an expert *and*
+    raise that layer's ``active_experts``) produced a genome that passes validation and
+    still cannot be built, because ``v0_moe_config_from_genome`` requires one uniform
+    active-expert count while its config holds a single scalar for every layer. The probe
+    raised ``ValueError: V0 MoE reconstruction requires uniform active expert counts``
+    148 s in and wrote no record at all - so it measured nothing, after 6.5 h of queue.
+    Using the operator the session actually applies also makes "the shape a real event
+    produces" literally true rather than approximate.
+    """
+    from copy import deepcopy
+
+    from act.topology.mutations import grow_expert
+
+    rebuilt = deepcopy(genome)
+    target = rebuilt.layers[-1]
+    expert_id = grow_expert(rebuilt, target.id, 0)
+    if expert_id is None:  # pragma: no cover - the declared layer holds 8 of 16
+        raise SystemExit(f"cannot measure a rebuild: grow_expert declined {target.id}")
+    return rebuilt, expert_id, target.id
+
+
 def _rebuild_cost(torch, xm, config, genome, *, dtype: str, steps: int) -> dict[str, Any]:
     """What a mutation event (or a probed candidate) costs: a new graph, compiled again.
 
     The candidate path builds a model from a *different* genome, so this rebuilds from a
-    genome with one expert added on the last layer - the shape a real event produces -
-    rather than reusing the model above, whose graph XLA already has.
+    genome with one expert added - the shape a real event produces - rather than reusing
+    the model above, whose graph XLA already has.
     """
     from act.model.factory import v0_moe_model_from_genome
 
-    mutated = genome.to_dict()
-    last = mutated["layers"][-1]
-    experts = list(last.get("experts", []))
-    experts.append(
-        {
-            "id": f"{last['id']}-probe{len(experts)}",
-            "width": config.expert_width,
-            "birth_step": 0,
-        }
-    )
-    last["experts"] = experts
-    last["active_experts"] = min(
-        int(last.get("active_experts", 0)) + 1, len(experts)
-    )
-    from act.topology.genome import ArchitectureGenome
-
-    rebuilt_genome = ArchitectureGenome.from_dict(mutated)
+    rebuilt_genome, expert_id, layer_id = _rebuild_genome(genome)
     model = v0_moe_model_from_genome(rebuilt_genome)
     if dtype == "bf16":
         model = model.to(torch.bfloat16)
@@ -319,7 +345,11 @@ def _rebuild_cost(torch, xm, config, genome, *, dtype: str, steps: int) -> dict[
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
     measured = _measure(torch, xm, model, optimizer, config, steps=steps)
     measured["experts_added"] = 1
-    measured["expert_count_after"] = len(experts)
+    measured["expert_id"] = expert_id
+    measured["rebuilt_layer"] = layer_id
+    measured["expert_count_after"] = next(
+        len(layer.experts) for layer in rebuilt_genome.layers if layer.id == layer_id
+    )
     del model, optimizer
     return measured
 
@@ -402,15 +432,21 @@ def main() -> int:
     }
 
     dtypes = ("fp32", "bf16") if args.dtype == "both" else (args.dtype,)
+    record["completed"] = []
+    _save(record, args.output)
     for dtype in dtypes:
         config, genome, model, optimizer, total = _build_declared(torch, xm, dtype)
         record[dtype] = {
             "parameters": total,
             "throughput": _measure(torch, xm, model, optimizer, config, steps=args.steps),
         }
+        record["completed"].append(f"{dtype}.throughput")
+        _save(record, args.output)
         record[dtype]["rebuild"] = _rebuild_cost(
             torch, xm, config, genome, dtype=dtype, steps=max(3, args.steps // 3)
         )
+        record["completed"].append(f"{dtype}.rebuild")
+        _save(record, args.output)
         del model, optimizer
 
     if args.workers:
@@ -442,9 +478,9 @@ def main() -> int:
                 round((tokens / wall) / T4_PAIR_TOKENS_PER_SECOND, 2) if wall else None
             ),
         }
+        record["completed"].append("independent_seeds")
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(record, indent=1, sort_keys=True) + "\n")
+    _save(record, args.output)
     print(json.dumps(record, indent=1, sort_keys=True))
     print(f"\nwrote {args.output}")
     return 0
