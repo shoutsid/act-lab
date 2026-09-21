@@ -105,6 +105,11 @@ VERDICT_EXIT_CODES = {0: "PASS", 1: "FAIL", 2: "PASS with qualification"}
 INPUT_ROOT = Path("/kaggle/input")
 WORK_ROOT = Path("/kaggle/working/act-lab")
 
+#: The child's streamed output, kept beside the other kernel-output artifacts. The driver
+#: reads it back on a failure (``kaggle_queue.STREAM_LOG_NAME`` is this value), so the two
+#: must not drift - a test asserts they agree.
+STREAM_LOG_NAME = "session-stream.log"
+
 # --- The architecture-search horizon arm (ARCH_SEARCH_FINDINGS.md §3, §11) ---
 # The crossed depth x hidden_size factorial of ``arch-zoo-100m-v3-crossed``, run
 # 10x longer. Every design flag below is the one that arm's ledgers record, so
@@ -956,7 +961,7 @@ def mode_session(queue: Queue) -> None:
         f"min of the declared {hours:g} h spent on startup) ---"
     )
     # The child's own account, teed into the kernel output as it is produced.
-    stream_log = Path("/kaggle/working") / "session-stream.log"
+    stream_log = Path("/kaggle/working") / STREAM_LOG_NAME
     publish_log = work / queue.dataset_root / "remote-publish-log.json"
     try:
         _run(session_argv(queue, remaining), env, tee=stream_log)

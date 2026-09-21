@@ -657,6 +657,51 @@ def test_the_execution_log_is_fetched_when_the_output_carries_none() -> None:
     assert "kaggle kernels logs" in source
 
 
+def test_the_tee_is_read_back_from_the_kernel_output(tmp_path: Path) -> None:
+    """The child's stream, written during the run, is a channel the driver reads.
+
+    Measured 2026-09-21: a session ended ERROR after 3.50 h with an **empty** kernel
+    output, so nothing carried its account - and the launcher now writes the child's
+    stream into that output as it arrives, which is the copy a hard kill cannot take.
+    """
+    output = tmp_path / "out"
+    output.mkdir()
+    (output / kaggle_queue.STREAM_LOG_NAME).write_text(
+        "seed 15004: starting pair\nstep 500\nstep 1000\n", encoding="utf-8"
+    )
+
+    text, source = kaggle_queue.session_failure_log(output, "o/act-t4-session")
+
+    assert "seed 15004: starting pair" in text
+    assert kaggle_queue.STREAM_LOG_NAME in source
+
+
+def test_a_truncated_capture_does_not_mask_a_fuller_account(tmp_path: Path) -> None:
+    """A stub that wins by order hides the run it was supposed to describe.
+
+    The 3.50 h failure's live capture was real and first in order, and held 28 lines: it
+    had given up 4.1 min in while the session ran another 3.4 h. Returning it
+    short-circuited every longer channel, so the fuller account is now the one taken.
+    """
+    live = tmp_path / "live.log"
+    live.write_text("=== ACT lab: session session ===\ntorch 2.10.0\n", encoding="utf-8")
+    output = tmp_path / "out"
+    output.mkdir()
+    (output / kaggle_queue.STREAM_LOG_NAME).write_text(
+        "seed 15004: starting pair (rule 1)\n" + "step\n" * 40, encoding="utf-8"
+    )
+
+    text, source = kaggle_queue.session_failure_log(output, "o/k", live)
+
+    assert "seed 15004: starting pair (rule 1)" in text, "the stub capture won by being first"
+    assert kaggle_queue.STREAM_LOG_NAME in source
+
+
+def test_the_driver_and_the_launcher_agree_where_the_stream_is_written() -> None:
+    """One writes the tee and the other reads it; a drift is a silent blind spot."""
+    assert kaggle_queue.STREAM_LOG_NAME == kaggle_t4.STREAM_LOG_NAME
+
+
 def test_the_run_clock_is_measured_from_the_first_running_poll() -> None:
     """Queue time is not training time, and must not be read as either.
 

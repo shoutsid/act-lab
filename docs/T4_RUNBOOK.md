@@ -812,11 +812,34 @@ to be captured while it is happening or not at all.
 
 So the driver **streams and captures**: `kaggle kernels logs -f <kernel>` runs
 for the whole wait, writing into `/tmp/act-queue-<queue>-*/live-<queue>.log`,
-and the failure path reads three channels in order of fidelity - that live
-capture, the log file in the kernel output, and `kaggle kernels logs` asked
-afterwards - printing the tail **and naming which channel produced it**. A line
-saying no log came back from any channel is a real statement about that run, and
-it is what the earlier three failures could not distinguish from an empty log.
+and the failure path reads four channels - that live capture, the child's stream
+teed into the kernel output as `session-stream.log`, the log file in the kernel
+output, and `kaggle kernels logs` asked afterwards - keeping the **longest** and
+printing the tail **and naming which channel produced it**. A line saying no log
+came back from any channel is a real statement about that run, and it is what the
+earlier three failures could not distinguish from an empty log.
+
+Two corrections came out of the 2026-09-21 3.50 h loss, and both are worth
+knowing when reading a failure:
+
+- **The capture can end long before the run does.** `kaggle kernels logs -f`
+  retries a dropped stream five times and then gives up for good; that session's
+  capture stopped at **4.1 min** and the session ran another 3.4 h. The capture
+  now restarts while the kernel is live, skipping the CLI's replay of lines
+already on disk.
+- **The longest channel wins, not the first.** The truncated capture was genuine
+  and was first in order, so it was returned and three longer channels were
+  never read. An account that wins by order is worse than none, because it reads
+  like the whole thing.
+
+The launcher also **tees** the child's streamed output into
+`/kaggle/working/session-stream.log` as it arrives, and keeps its audit trail -
+`session-log.json`, `remote-publish-log.json`, and every seed's summary - in a
+`finally`, so a session that dies still has them. Until 2026-09-21 those copies
+sat after the child's exit, which is why three failures left an **empty** kernel
+output: `kaggle kernels output` is exactly the command that still answers for a
+run the platform killed. After any failed session, fetch it and read the last
+few hundred lines before re-pushing.
 
 The failure line also states the *run* duration beside the wall duration,
 measured from the first `RUNNING` poll: wall time from the push contains the

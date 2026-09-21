@@ -57,6 +57,12 @@ import kaggle_t4
 #: that is still draining when the session ends must not hold up the exit path.
 LIVE_LOG_STOP_SECONDS = 5.0
 
+#: The file the launcher tees its child's streamed output into, inside the kernel output.
+#: Written while the run happens, so it is the copy that survives a hard kill - the case
+#: where every `finally` on the way out is skipped. Taken from the producer rather than
+#: spelled again here, so the writer and the reader cannot drift apart.
+STREAM_LOG_NAME = kaggle_t4.STREAM_LOG_NAME
+
 #: How long to wait before restarting a dropped live-log stream. The Kaggle CLI's own
 #: stream retries five times and then gives up *for good*; measured 2026-09-21 a session's
 #: capture ended 4.1 min in while the session ran another 3.4 h, so the run that most
@@ -1034,25 +1040,46 @@ def fetch_kernel_log(kernel: str) -> str:
 def session_failure_log(
     output_dir: Path, kernel: str, live_path: Path | None = None
 ) -> tuple[str, str]:
-    """The session's own account, from the first channel that has one.
+    """The session's own account, from the channel that has the most of it.
 
-    Three channels, in order of fidelity: the live capture streamed while the
-    kernel ran (the only one that exists when the platform keeps nothing for a
-    failed run), the log file the platform placed in the kernel's output, and
-    ``kaggle kernels logs`` asked afterwards. Returns the text and the channel
-    it came from, because a log that is merely empty and a log that was never
-    requested otherwise read alike - which is the defect that made the 2026-09
-    losses undiagnosable.
+    Four channels, and **the longest wins rather than the first** - which is the
+    correction the 3.50 h failure forced. Its live capture was genuine and was first in
+    order, but it held 28 lines: it had given up for good 4.1 min in while the run went on
+    for another 3.4 h, so returning it short-circuited three channels that could only have
+    been longer. A truncated account that wins by order is worse than none, because it
+    reads like the whole thing.
+
+    The channels: the copy streamed to this machine while the kernel ran; the child's own
+    output teed into the kernel's output as it was produced (``session-stream.log``, the
+    one that survives a hard kill, because the platform still answers ``kernels output``
+    for a run it killed); the log file the platform placed in the kernel's output; and
+    ``kaggle kernels logs`` afterwards, which is the fallback because a failed run usually
+    has none. Returns the text and the channel it came from, because a log that is merely
+    empty and a log that was never requested otherwise read alike - the defect that made
+    the 2026-09 losses undiagnosable.
     """
+    candidates: list[tuple[str, str]] = []
     if live_path is not None and live_path.is_file():
-        live = live_path.read_text(encoding="utf-8", errors="replace").strip()
-        if live:
-            return live, "live stream captured while it ran"
-    log = output_dir / f"{kernel.split('/')[-1]}.log"
-    if log.is_file():
-        text = log.read_text(encoding="utf-8", errors="replace").strip()
-        if text:
-            return text, log.name
+        candidates.append(
+            (
+                live_path.read_text(encoding="utf-8", errors="replace").strip(),
+                "live stream captured while it ran",
+            )
+        )
+    for name, source in (
+        (STREAM_LOG_NAME, f"{STREAM_LOG_NAME} (the child's stream, written as it ran)"),
+        (f"{kernel.split('/')[-1]}.log", f"{kernel.split('/')[-1]}.log"),
+    ):
+        path = output_dir / name
+        if path.is_file():
+            candidates.append(
+                (path.read_text(encoding="utf-8", errors="replace").strip(), source)
+            )
+    present = [(text, source) for text, source in candidates if text]
+    if present:
+        # Line count, not bytes: these are all the same run's log, so the fuller one is
+        # the one with more to say. Ties keep the earlier channel by list order.
+        return max(present, key=lambda item: item[0].count("\n"))
     fetched = fetch_kernel_log(kernel)
     if fetched:
         return fetched, "`kaggle kernels logs` after the fact"
