@@ -362,6 +362,33 @@ PROFILES: dict[str, dict] = {
         "bonferroni_divisor": 2.0,
         "summary": "artifacts/study-summaries/depth9-dose-576.json",
     },
+    # Section 5.60: the bisection the width programme left open. 5.49 and 5.50
+    # bracket the width axis's gate between 2.87x and 11.15x the above-onset cell
+    # (88,032 -> 341,952 parameters at depth 3) - a 3.9x window, and the widest
+    # unresolved number in the covariate programme, since "only depth moves the
+    # gate" is qualified by "capacity moves it above 3.8x". Width 68 is the
+    # geometric midpoint of that window in parameter space (173,672 at depth 3 = 
+    # 5.66x; 230,520 at depth 4 = 7.52x), so one dose halves it either way. Both
+    # cells run the identical config with only `hidden_size` and `depth` changed,
+    # 48 steps and the registered policy. See `dose3_verdict` for the branches.
+    "width-d3-dose3": {
+        "seeds": tuple(range(96384, 96960)),
+        "overrides": {"depth": 3, "hidden_size": 68},
+        "run_revision": None,
+        "report_section": "5.60",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 3.0,
+        "summary": "artifacts/study-summaries/width-d3-dose3-576.json",
+    },
+    "width-d4-dose3": {
+        "seeds": tuple(range(97384, 97960)),
+        "overrides": {"depth": 4, "hidden_size": 68},
+        "run_revision": None,
+        "report_section": "5.60",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 3.0,
+        "summary": "artifacts/study-summaries/width-d4-dose3-576.json",
+    },
 }
 REGISTERED = dict(
     hidden_size=24,
@@ -457,6 +484,27 @@ DEPTH8_REFERENCE = DEPTH7_PROFILE
 # middle one, with the two it excludes named before it runs.
 DEPTH9_PROFILE = "depth9-dose"
 DEPTH9_REFERENCE = DEPTH8_PROFILE
+# The width axis's *bisection* (section 5.60): the window 5.49 and 5.50 left open.
+# The two doses measured 2.87x (88,032 params at depth 3) closed and 11.15x
+# (341,952) open, so the width-axis gate sits somewhere in a 3.9x window - the
+# widest unresolved number left in the covariate programme, and the one that
+# decides what "only depth moves the gate" is worth. Width 68 is the geometric
+# midpoint of that window: 173,672 / 230,520 parameters, 5.66x / 7.52x the
+# above-onset cell. One dose halves the window from either side.
+DOSE3_PROFILES = ("width-d3-dose3", "width-d4-dose3")
+DOSE3_BELOW = DOSE3_PROFILES[0]
+DOSE3_ABOVE = DOSE3_PROFILES[1]
+DOSE3_BELOW_REFERENCE = "width-d3-dose"  # 2.87x: closed, value +0.0615
+DOSE3_ABOVE_REFERENCE = "width-d4-dose"  # 3.80x: open, value -0.2097
+# The declared prediction's *direction*, fixed before the run. 5.50's mechanism is
+# that the gate opens when the unmutated arm stops being viable - i.e. when the
+# pool term (random-vs-null) flips from positive (churn harm) to negative. Below
+# the onset that term rises monotonically with width (+0.107, +0.148, +0.305) and
+# above it is -0.586, so this arm declares the flip is *above* the bisection: at
+# 5.66x the pool term is still positive and larger than at 2.87x. That is a claim
+# about the mechanism rather than about the outcome, and it is why the branch where
+# the gate stays shut still says something if it obtains.
+DOSE3_POOL_GROWS = True
 # The model's forecast, declared before the run. The gradient band is the
 # *measured* range of the three existing increments (0.0382..0.0422, i.e. about
 # 0.040) widened by a flat 0.005 on each side, so the forecast is the model's own
@@ -1185,6 +1233,153 @@ def depth9_verdict(shards: int, alpha: float) -> int:
             f"  {label:<22} value {sum(value) / len(value):+.6f}  "
             f"collapse {sum(collapse) / len(collapse):+.6f}  "
             f"edge {sum(edge) / len(edge):+.6f}  ({profile})"
+        )
+    return 0
+
+
+def dose3_verdict(shards: int, alpha: float) -> int:
+    """Section 5.60's primaries, prediction and branches: the width bisection.
+
+    The covariate programme closed on "only the depth axis moves the gate", and
+    that closure carries a number it never closed: 5.49's 2.87x dose (88,032
+    parameters at depth 3) does not open the gate and 5.50's 11.15x dose
+    (341,952) does, so the width-axis gate sits somewhere in a 3.9x window -
+    the widest unresolved quantity left in the programme. This arm bisects it at
+    the geometric midpoint in parameter space, width 68: 173,672 parameters at
+    depth 3 (5.66x the above-onset cell) and 230,520 at depth 4 (7.52x).
+
+    Three primaries at ``alpha/3``, the 5.50 level, since this arm carries the
+    same third (rank-sum) test:
+
+    - P1 (the below-onset cell creates value): the family's per-cell conjunction.
+    - P2 (the above-onset cell creates value): the same, one depth up.
+    - P3 (the dose keeps paying above the gate): one-sided rank-sum of the
+      depth-4 cell's adaptive-vs-null deltas against the 3.80x rung's.
+
+    And one **declared prediction about the mechanism rather than the outcome**,
+    fixed before the run: below the onset the pool term (random-vs-null) rises
+    monotonically with width (+0.107, +0.148, +0.305) and above it is -0.586, so
+    the gate opens when that term flips - and this arm declares the flip is
+    *above* the bisection, i.e. the depth-3 pool term is still positive at 5.66x
+    and larger than at 2.87x. Linked to it by the mechanism: the depth-3 cell is
+    declared **not** to create value.
+
+    Branches, fixed before the run (P1, P2, P3 as above):
+
+    - not P1, P2, P3: **the window narrows to (5.66x, 11.15x)** - capacity does
+      not buy the gate at 173,672 parameters at depth 3, against ~30,672 along
+      depth, so the gate costs several times more along width than along depth.
+    - P1, P2, P3: **the window narrows to (2.87x, 5.66x)** - capacity does buy the
+      gate at this dose, at a price between 88,032 and 173,672 parameters.
+    - P1, not P2: width opens the gate below the onset and destroys value above it
+      again, the 5.49 interaction in bisection form.
+    - not P1, not P2: width is harmful above the onset and useless below at this
+      dose - the depth axis is not capacity.
+    - not P3: the above-gate dose stops paying between 3.80x and 7.52x, so the
+      width ladder plateaus where the depth ladder does not.
+    """
+    level = alpha / 3
+    below = _cell_stats(DOSE3_BELOW, shards, level)
+    above = _cell_stats(DOSE3_ABOVE, shards, level)
+    p1 = bool(below["creates_value"])
+    p2 = bool(above["creates_value"])
+    new = _cell_deltas(DOSE3_ABOVE, shards, "adaptive", "null")
+    reference = _cell_deltas(DOSE3_ABOVE_REFERENCE, shards, "adaptive", "null")
+    u, p3 = _rank_sum_one_sided(new, reference)
+    p3_passes = p3 <= level
+    print(
+        f"\nP3 (the dose keeps paying above the gate): rank-sum {DOSE3_ABOVE} vs "
+        f"{DOSE3_ABOVE_REFERENCE} on adaptive-vs-null: U {u:.1f}, one-sided "
+        f"p {p3:.2e} (bar alpha/3 = {level:.4f}; means "
+        f"{sum(new) / len(new):+.6f} vs {sum(reference) / len(reference):+.6f})"
+        f" -> wider is better: {p3_passes}"
+    )
+    branches = {
+        (False, True, True): (
+            "P1 fails, P2+P3 pass: the window narrows to (5.66x, 11.15x) - "
+            "capacity does not buy the gate at 173,672 parameters at depth 3, "
+            "against ~30,672 along depth"
+        ),
+        (True, True, True): (
+            "all three pass: the window narrows to (2.87x, 5.66x) - capacity "
+            "does buy the gate at this dose, between 88,032 and 173,672 "
+            "parameters"
+        ),
+        (True, False, True): (
+            "P1+P3 pass, P2 fails: width opens the gate below the onset and "
+            "destroys value above it - the 5.49 interaction in bisection form"
+        ),
+        (False, False, True): (
+            "P2 fails: width is harmful above the onset and useless below at "
+            "this dose - the depth axis is not capacity"
+        ),
+        (False, True, False): (
+            "P3 fails: the gate stays shut at 5.66x below the onset while the "
+            "above-gate dose stops paying between 3.80x and 7.52x - the width "
+            "ladder plateaus where the depth ladder does not"
+        ),
+        (True, True, False): (
+            "P3 fails with P1 passing: the gate opens below the onset but the "
+            "above-gate ladder has already flattened"
+        ),
+        (True, False, False): (
+            "P1 only: the below-onset dose buys the gate while both above-gate "
+            "readings fail - a depth x width reversal at the bisection"
+        ),
+        (False, False, False): (
+            "all three fail: the bisection cell is inert at both depths"
+        ),
+    }
+    print(f"BRANCH: {branches[(p1, p2, p3_passes)]}")
+
+    # The declared prediction, evaluated as a descriptive secondary: which way the
+    # pool term is going, which is what the mechanism says decides the gate.
+    pool_new = _cell_deltas(DOSE3_BELOW, shards, "random", "null")
+    pool_ref = _cell_deltas(DOSE3_BELOW_REFERENCE, shards, "random", "null")
+    pool_u, pool_p = _rank_sum_one_sided(pool_new, pool_ref)
+    new_pool = sum(pool_new) / len(pool_new)
+    ref_pool = sum(pool_ref) / len(pool_ref)
+    pool_grows = new_pool > ref_pool and pool_p <= level
+    print(
+        f"\nPREDICTION (declared before the run, descriptive): the depth-3 pool "
+        f"term is positive at 5.66x and larger than at 2.87x -> measured "
+        f"{new_pool:+.6f} vs {ref_pool:+.6f} (rank-sum U {pool_u:.1f}, one-sided "
+        f"p {pool_p:.2e}) -> positive: {new_pool > 0}, larger: {pool_grows}"
+    )
+    if not (new_pool > 0 and pool_grows):
+        print(
+            "PREDICTION miss names the state: the pool term is "
+            + (
+                "already negative - the unmutated arm is no longer viable at "
+                "this dose, so the gate's mechanism has fired without the gate"
+                if new_pool < 0
+                else "still positive but not growing - the flip is not yet "
+                "visible in the term that is supposed to carry it"
+            )
+        )
+
+    # Descriptive: the width ladder both depths, which is what the window is read off.
+    for label, profile in (
+        ("depth 3  width 24 (1.00x)", "depth3"),
+        ("depth 3  width 28 (1.15x)", "width-d3-equal"),
+        ("depth 3  width 48 (2.87x)", DOSE3_BELOW_REFERENCE),
+        ("depth 3  width 68 (5.66x, this arm)", DOSE3_BELOW),
+        ("depth 3  width 96 (11.15x)", "width-d3-dose2"),
+        ("depth 4  width 24 (1.00x)", DEPTH_DOSE_REFERENCE),
+        ("depth 4  width 28 (1.34x)", "width-d4-equal"),
+        ("depth 4  width 48 (3.80x)", DOSE3_ABOVE_REFERENCE),
+        ("depth 4  width 68 (7.52x, this arm)", DOSE3_ABOVE),
+        ("depth 4  width 96 (14.82x)", "width-d4-dose2"),
+    ):
+        try:
+            value = _cell_deltas(profile, shards, "adaptive", "null")
+            edge = _cell_deltas(profile, shards, "adaptive", "random")
+            pool = _cell_deltas(profile, shards, "random", "null")
+        except Exception:  # a committed 384-seed cell read at this arm's n
+            continue
+        print(
+            f"  {label:<34} value {sum(value) / len(value):+.6f}  "
+            f"edge {sum(edge) / len(edge):+.6f}  pool {sum(pool) / len(pool):+.6f}"
         )
     return 0
 
@@ -2076,6 +2271,12 @@ def main() -> int:
     )
     d9_p.add_argument("--shards", type=int, required=True)
     d9_p.add_argument("--alpha", type=float, default=ALPHA)
+    dose3_p = sub.add_parser(
+        "dose3-verdict",
+        help="section 5.60: the width bisection that halves 5.49/5.50's gate window",
+    )
+    dose3_p.add_argument("--shards", type=int, required=True)
+    dose3_p.add_argument("--alpha", type=float, default=ALPHA)
     sum_p = sub.add_parser("summary", help="write the committed study summary")
     sum_p.add_argument("--profile", default="depth1", choices=sorted(PROFILES))
     sum_p.add_argument("--alpha", type=float, default=ALPHA)
@@ -2120,6 +2321,8 @@ def main() -> int:
         return depth6_verdict(args.shards, args.alpha)
     if args.command == "depth9-verdict":
         return depth9_verdict(args.shards, args.alpha)
+    if args.command == "dose3-verdict":
+        return dose3_verdict(args.shards, args.alpha)
     if args.command == "depth8-verdict":
         return depth8_verdict(args.shards, args.alpha)
     if args.command == "depth7-verdict":
