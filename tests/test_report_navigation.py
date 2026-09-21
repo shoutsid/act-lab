@@ -314,7 +314,9 @@ def test_the_cross_axis_claims_the_bisection_added_are_live() -> None:
     for fragment in (
         # The price of the gate, bounded on both axes.
         "2.9x to 7.5x more",
-        "2.9x-7.5x more parameters along width at the below-onset depth",
+        "4.0x-7.5x more parameters along width at the below-onset depth",
+        "**the ratio tightens to 4.0x-7.5x**",
+        "the pool term peaks at 2.87x and the controller's edge at 5.66x",
         "23% *fewer* parameters than the width dose",
         # The mechanism, replaced: the pool term peaks before the gate opens.
         "The bisection then locates both flips",

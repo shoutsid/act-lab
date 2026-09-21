@@ -8073,7 +8073,7 @@ trainability limit above; the bisection is cross-column descriptive in this fami
 all three primaries are tests on their own cells; and the *mechanism* reading above is descriptive,
 not a pre-registered test - the registered prediction was the one that missed.
 
-### 5.61 Pre-registration: the second bisection, where the edge's maximum is reached (REGISTERED; summaries `width-d3-dose4-576.json`, `width-d4-dose4-576.json`)
+### 5.61 Pre-registration: the second bisection, where the edge's maximum is reached (RAN - summaries `width-d3-dose4-576.json`, `width-d4-dose4-576.json`)
 
 5.60 left two things: a narrower window, and a mechanism. The window is (2.87x, 5.66x) -
 the gate's width price at the below-onset depth lies between 88,032 and 173,672 parameters, a 1.97x
@@ -8148,6 +8148,65 @@ no GPU quota, run while the Gate 4 campaign trains. The blocks are 98384-98959 a
 first free 576-windows at or after those points, checked by a test against every other profile *and*
 every committed summary's recorded seeds. As in 5.60 the cost probe ran one seed of each cell for
 timing only, and both brackets are derived from the committed neighbours rather than from it.
+
+**Outcome (run 2026-09-21, revision `04dc4b3`, 20 shards per cell; committed summaries
+`width-d3-dose4-576.json` and `width-d4-dose4-576.json`). Registered branch 1 - P1 fails with P2+P3
+passing: the window narrows to (123,006, 173,672]. Both declared brackets hit.**
+
+| cell | params | adaptive-vs-null | mean delta | p | creates value |
+|---|---|---|---|---|---|
+| depth 3, width 57 (4.01x) | 123,006 | 310/576 | `-0.028562` | `0.0365` | **no** (bar `315`) |
+| depth 4, width 57 (5.32x) | 163,134 | 551/576 | `-0.418214` | `1.65e-130` | **yes** |
+
+The below-onset cell misses the bar **by five seeds** at `alpha/3 = 0.0167` (and by three at the
+sibling arms' `alpha/2`), so the gate is still shut at 4.01x and the width axis's price is now
+bounded to **(123,006, 173,672]** parameters - a 1.41x window where 5.49/5.50 left 3.9x. The miss is
+worth stating precisely rather than as a clean non-detection: the cell's mean delta has *crossed*
+(`-0.028562`, against `+0.061466` one dose lower) while its win rate has not, so at 4.01x the
+advantage is large on some seeds and absent on the median one. P2 passes (`551/576`, p `1.65e-130`)
+and P3 with it (`U = 88052.0`, p `1.55e-43`).
+
+**Both declared brackets hit - so the staging is a gradient, not a step.**
+
+| declared bracket | bound | measured | rank-sum against the bounds |
+|---|---|---|---|
+| controller's edge between its 2.87x and 5.66x readings | `-0.359770 < edge < -0.243801` | `-0.326291` | below the 2.87x reading at p `7.7e-05`; above the 5.66x reading at p `0.051` |
+| pool term positive and below its 2.87x peak | `0 < pool < +0.305267` | `+0.297729` | above zero by construction of the ladder; below the 2.87x peak at p `0.275`; *larger* than the 5.66x reading at p `2.5e-03` |
+
+The second row is the honest qualification and it matters: the pool term at 4.01x is **not yet
+significantly below its 2.87x peak** (p `0.275`), and the edge is only marginally above its 5.66x
+reading (p `0.051`). So the two brackets hold, but the local slopes inside them are gentle - what is
+established is that both terms are between their neighbours' readings, not that either has turned
+sharply. The turning points themselves are now located: **the pool term peaks at 2.87x and the
+controller's edge peaks at 5.66x**, and the gate opens in the window between them, where the edge is
+still rising and the pool has come off its peak but is still positive.
+
+**Above the gate the asymmetry is now four doses deep.** From 3.80x to 5.32x the depth-4 edge is flat
+(`-0.194518` -> `-0.210845`, p `0.180`) and the pool term carries everything (`-0.015155` ->
+`-0.207369`, p `2.55e-28`); from 5.32x to 7.52x it is the same (`-0.210845` -> `-0.199203`, p `0.453`;
+p `1.5e-63`). Four consecutive above-gate doses now show the controller's edge not moving while the
+pool term moves decisively at every step - which is 5.50's decomposition, replicated rather than
+restated, and the reason the two-stage account is read off the *decomposition* rather than off the bar.
+
+**What the tightened window says.** The price ratio is now **(4.01, 7.46]** - the width axis's bracket
+divided by the depth axis's own (23,280-30,672) - so even with the most capacity-favourable pairing
+of the two windows, the same gate costs **four times** more along width than along depth. The report's
+synthesis is updated to that bound; section 5.60's own outcome keeps the `2.9x-7.5x` interval it
+measured, scoped to the window it left, and this section is what narrows it.
+
+**Scrutiny before write-up.** Built-in checks held in 576/576 seeds per cell (mutations 3/3/0, zero
+null search FLOPs); both summaries are at the frozen revision `04dc4b3`; the three primaries, both
+declared brackets and the rank-sums against their bounds were computed before any entered prose. The
+trainability limit is unchanged and re-measured: the width-57 arms sit at `21.39`-`21.72` (depth 3)
+and `16.62`-`17.04` (depth 4) in absolute loss, against `12.44`-`12.55` for the narrow cells, so at
+48 steps this capacity is still a liability that mutation repairs rather than a better model.
+
+**Scoped.** Two doses at the fixed 48-step budget, with 5.50's trainability limit above; the bisection
+is cross-column descriptive in this family's convention while all three primaries are tests on their
+own cells; both brackets are descriptive, and the registered prediction that did the work here is the
+gate's own. The window is now narrow enough that the next dose would be measuring a 1.4x interval -
+what remains open is not the price but *why* 4.01x is a near miss: the mean has crossed and the win
+rate has not.
 
 ## 6. Reproducibility
 
@@ -8878,7 +8937,7 @@ The covariate programme (5.48-5.53) measured every candidate (ii) named, and
 sections 5.54-5.59 then dosed the depth axis itself; the answer is that only
 depth moves the gate *cheaply* and that the axis keeps paying past it - with the
 qualification section 5.60 adds below, that width reaches the same gate at
-2.9x-7.5x the parameter price. (i) is the three-
+4.0x-7.5x the parameter price. (i) is the three-
 queue campaign on Kaggle, 4 of its 12 declared seeds published at this writing. What follows is
 that closing in the order it happened, kept as the audit trail of how (ii) was
 settled rather than as a list of things still open.
@@ -8952,7 +9011,16 @@ number this paragraph left open - the width axis's gate, bracketed to a 3.9x win
 mean `-0.127992`), so capacity reaches this gate too, but the two axes' prices differ by a bounded
 factor. Along depth the gate costs between 23,280 and 30,672 parameters; along width, at the
 below-onset depth, between 88,032 and 173,672 - **2.9x to 7.5x more**, with the deepest cell (5.59,
-67,632) opening it at 23% *fewer* parameters than the width dose that does not. And the bisection
+67,632) opening it at 23% *fewer* parameters than the width dose that does not. Section 5.61 then
+bisected again, to 123,006-173,672: the gate stays shut at 4.01x **by five seeds** (`310/576`,
+though the mean has already crossed) so **the ratio tightens to 4.0x-7.5x**, and both of that arm's
+declared brackets obtained - the depth-3 controller's edge lies between its 2.87x and 5.66x
+readings (`-0.326291`, rising at p `7.7e-05` and still under the maximum at p `0.051`) and the pool
+term is positive but off its peak (`+0.297729`, not yet significantly below it at p `0.275`). So the
+two turning points are located: **the pool term peaks at 2.87x and the controller's edge at 5.66x,
+and the gate opens in the window between them** - a gradient rather than a step, and above the gate
+the asymmetry is now four consecutive doses deep (the edge flat at p `0.180` and `0.453` across two
+more steps while the pool term moves at p `2.6e-28` and `1.5e-63`). And the bisection
 refuted the mechanism 5.50 had attributed the crossing to, replacing it with a staged account: at
 5.66x the gate is open while the pool term is still positive (`+0.231778`, having *peaked* at 2.87x)
 - what crosses it is the controller's own edge, at its ladder maximum (`-0.359770`), and only at
@@ -9025,7 +9093,7 @@ block*, and neither the reachable gene nor the budget is an escape hatch from th
 
 **5.60 attaches a price to "the one axis that gates" - and one exception worth naming.** The width
 axis reaches the same gate at 5.66x (5.60), so the honest form of the table's claim is that depth is
-the *cheapest* axis on which mutation pays: the same gate costs 2.9x-7.5x more parameters along width
+the *cheapest* axis on which mutation pays: the same gate costs 4.0x-7.5x more parameters along width
 at the below-onset depth, and the deepest cell opens it at 23% fewer parameters than the width dose
 that does not. The exception matters more than the price: every arm before this one found the
 controller's own edge flat or irrelevant, and the bisection found the one place where it is the term
