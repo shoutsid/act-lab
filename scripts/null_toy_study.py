@@ -374,7 +374,7 @@ PROFILES: dict[str, dict] = {
     "width-d3-dose3": {
         "seeds": tuple(range(96384, 96960)),
         "overrides": {"depth": 3, "hidden_size": 68},
-        "run_revision": None,
+        "run_revision": "698a866",
         "report_section": "5.60",
         "per_cell_primary": True,
         "bonferroni_divisor": 3.0,
@@ -383,7 +383,7 @@ PROFILES: dict[str, dict] = {
     "width-d4-dose3": {
         "seeds": tuple(range(97384, 97960)),
         "overrides": {"depth": 4, "hidden_size": 68},
-        "run_revision": None,
+        "run_revision": "698a866",
         "report_section": "5.60",
         "per_cell_primary": True,
         "bonferroni_divisor": 3.0,
