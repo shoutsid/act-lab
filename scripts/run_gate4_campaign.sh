@@ -27,6 +27,13 @@ set -uo pipefail
 
 QUEUES=(session control null verdict)
 MAX_ATTEMPTS=${MAX_ATTEMPTS:-12}
+# The session window, when the week's remaining quota cannot cover the registered 7 h. The
+# window is a scheduling knob, not a protocol term: a shorter one completes fewer whole
+# pairs and stops by its own deadline, publishing an in-progress snapshot ("interrupted"
+# is not counted as done), so the queue resumes from its last completed seed. Unused
+# weekly quota expires at the refresh, so a fitted window is how the last hours of a week
+# are spent on real pairs instead of lost.
+HOURS=${HOURS:-}
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON=${PYTHON:-"$REPO_ROOT/.venv/bin/python"}
 DRIVER="$REPO_ROOT/scripts/kaggle_queue.py"
@@ -56,6 +63,10 @@ for queue in "${QUEUES[@]}"; do
     # the intent explicit.
     if [[ "$queue" == "verdict" ]]; then
       PYTHONPATH="$REPO_ROOT/src" "$PYTHON" "$DRIVER" --queue "$queue"
+    elif [[ -n "$HOURS" ]]; then
+      echo "$(stamp) $queue: declaring a $HOURS h session window"
+      PYTHONPATH="$REPO_ROOT/src" "$PYTHON" "$DRIVER" --queue "$queue" \
+        --hours "$HOURS" --wait-for-quota
     else
       PYTHONPATH="$REPO_ROOT/src" "$PYTHON" "$DRIVER" --queue "$queue" --wait-for-quota
     fi
