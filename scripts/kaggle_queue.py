@@ -1018,7 +1018,10 @@ def capture_live_log(kernel: str, path: Path):
         stop.set()
         # Kill a stream that is mid-read before joining: an attempt blocked on a live
         # connection would otherwise sit through its own read until the platform ends it.
-        for process in holder:
+        # Over a **copy**, because `_tail_attempt` owns this list and replaces its contents
+        # from the tail thread - iterating the live list is how a list-changed-size error
+        # lands on the exit path, which is the one place in the driver that must not raise.
+        for process in list(holder):
             process.terminate()
         if thread is not None:
             thread.join(timeout=LIVE_LOG_STOP_SECONDS)
