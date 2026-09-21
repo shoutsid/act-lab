@@ -34,10 +34,13 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import os
 import re
 import shutil
+import subprocess
+import tarfile
 import subprocess
 import sys
 import tempfile
@@ -183,11 +186,19 @@ def code_dataset_id() -> str:
 def code_revision(repo: str | Path) -> str:
     """The commit the code dataset must match.
 
-    The kernel runs the *mounted dataset*, not this working tree, while the
-    staged kernel body is embedded from this working tree - and the handoff
-    manifest records ``code_revision``. So a tree that is not a clean commit
-    cannot be published reproducibly, and a dataset that lags the tree runs
-    different code than the run claims.
+    Everything that ships is read from **HEAD**, not from the working tree
+    (`committed_tar`, `committed_text`), so a dirty checkout cannot publish
+    uncommitted edits under a committed revision's name - which is the defect
+    this function used to detect by refusing to work at all.
+
+    That refusal is gone deliberately, and the reason is measured. A dirty tree
+    is the normal state of a tree someone is working in, and the driver calls
+    this before every push: on a two-week unattended campaign, one uncommitted
+    edit during a poll would end the driver *after* a session had already
+    trained and published, with no session 3 ever pushed. Sourcing the payload
+    from HEAD removes the failure instead of detecting it - the dataset is now
+    exactly a commit by construction - and a dirty tree is *reported* rather
+    than fatal (see `dirty_paths` and `ensure_code_dataset`).
     """
     head = _run(["git", "-C", str(repo), "rev-parse", "HEAD"])
     if head.returncode != 0:
@@ -195,20 +206,107 @@ def code_revision(repo: str | Path) -> str:
             f"{repo} is not a git checkout, so the code dataset cannot be pinned "
             "to a revision"
         )
-    dirty = _run(["git", "-C", str(repo), "status", "--porcelain"])
-    if dirty.stdout.strip():
-        raise SystemExit(
-            "the working tree has uncommitted changes; the published code dataset "
-            "must equal the revision the handoff records, so commit first"
-        )
     return head.stdout.strip()
 
 
+def dirty_paths(repo: str | Path) -> list[str]:
+    """Tracked paths the working tree differs from HEAD in.
+
+    Not an error: whatever is listed here is simply not what ships, because the
+    payload comes from HEAD. It is worth saying out loud, because the opposite
+    assumption - that the tree you are editing is the code the session runs - is
+    exactly what the old refusal was protecting.
+    """
+    dirty = _run(["git", "-C", str(repo), "status", "--porcelain"])
+    if dirty.returncode != 0:
+        return []
+    return [
+        line[3:].strip()
+        for line in dirty.stdout.splitlines()
+        if len(line) > 3
+    ]
+
+
+def committed_tar(repo: str | Path) -> dict[str, tuple[tarfile.TarInfo, bytes]]:
+    """Every tracked file's bytes and mode at HEAD, in one ``git archive`` call.
+
+    The single source of the code that ships. Using ``git archive`` rather than
+    reading the working tree keeps the executable bits git recorded, needs no
+    per-file subprocess, and cannot see an uncommitted edit at all.
+
+    The whole committed tree is archived and the caller keeps the paths it wants,
+    rather than passing ``CODE_PATHS`` as pathspecs: a pathspec that HEAD happens
+    not to carry (a fresh repository, or a tree without ``notebooks/``) makes
+    ``git archive`` fail outright, while a missing path is simply absent from the
+    members and is reported per-name by ``stage_code_dataset``.
+    """
+    result = subprocess.run(
+        ["git", "-C", str(repo), "archive", "--format=tar", "HEAD"],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise SystemExit(
+            f"git archive HEAD failed in {repo}: "
+            f"{result.stderr.decode('utf-8', 'replace').strip()}"
+        )
+    members: dict[str, tuple[tarfile.TarInfo, bytes]] = {}
+    with tarfile.open(fileobj=io.BytesIO(result.stdout), mode="r:") as tar:
+        for info in tar.getmembers():
+            if not info.isfile():
+                continue
+            handle = tar.extractfile(info)
+            members[info.name] = (info, handle.read() if handle is not None else b"")
+    return members
+
+
+def committed_text(repo: str | Path, name: str) -> str:
+    """One file's text at HEAD - what the kernel body is embedded from."""
+    result = _run(["git", "-C", str(repo), "show", f"HEAD:{name}"])
+    if result.returncode != 0:
+        raise SystemExit(
+            f"HEAD does not carry {name}: "
+            f"{result.stderr.strip() or 'git show failed'}"
+        )
+    return result.stdout
+
+
+# Where the kernel driver is read from. A module constant, not ``__file__``, so
+# pointing ``__file__`` at a stub cannot move which tree the body comes from.
+KERNEL_BODY_NAME = "scripts/kaggle_t4.py"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def kernel_body(repo: str | Path) -> str:
+    """The text of the kernel driver that the pushed body embeds.
+
+    It has to be the same revision as the package the session imports, and that
+    package now comes from HEAD. So this file's *committed* copy ships whenever
+    the working copy differs from it - and the working copy is used when it does
+    not, because then the two are the same text and a local edit stays testable
+    without a commit. Either way a body from one revision can never be embedded
+    against a package from another, which is the mismatch the old dirty-tree
+    refusal was there to prevent.
+    """
+    root = Path(repo)
+    if KERNEL_BODY_NAME not in dirty_paths(root):
+        candidate = root / KERNEL_BODY_NAME
+        if candidate.is_file():
+            return candidate.read_text(encoding="utf-8")
+    return committed_text(root, KERNEL_BODY_NAME)
+
+
 def code_files(repo: str | Path) -> list[str]:
-    """Tracked files under :data:`CODE_PATHS`, in git's order."""
-    listed = _run(["git", "-C", str(repo), "ls-files"])
+    """Files under :data:`CODE_PATHS` as of HEAD, in git's order.
+
+    HEAD rather than the index: the dataset's marker names a commit, so the
+    list has to be that commit's tree - which also means a file deleted in the
+    working tree still ships, because it is in the revision being published.
+    """
+    listed = _run(["git", "-C", str(repo), "ls-tree", "-r", "--name-only", "HEAD"])
     if listed.returncode != 0:
-        raise SystemExit(f"git ls-files failed in {repo}: {listed.stderr.strip()}")
+        raise SystemExit(
+            f"git ls-tree HEAD failed in {repo}: {listed.stderr.strip()}"
+        )
     paths = []
     for line in listed.stdout.splitlines():
         name = line.strip()
@@ -242,6 +340,7 @@ def stage_code_dataset(repo: str | Path, directory: str | Path, revision: str) -
             "staged code dataset lacks pyproject.toml + src/act, which is exactly "
             "what the kernel's mount search looks for"
         )
+    committed = committed_tar(root)
     archive = folder / CODE_ARCHIVE_NAME
     # The marker is written into the *staging* folder and never the source
     # tree: a marker left at the repo root is an untracked file, so the very
@@ -251,7 +350,19 @@ def stage_code_dataset(repo: str | Path, directory: str | Path, revision: str) -
     marker.write_text(f"{revision}\n", encoding="utf-8")
     with tarfile.open(archive, "w") as tar:
         for name in names:
-            tar.add(root / name, arcname=name)
+            entry = committed.get(name)
+            if entry is None:
+                raise SystemExit(
+                    f"HEAD does not carry {name}, which the dataset is supposed to "
+                    "ship: the archive's marker names a revision, so its payload "
+                    "has to be that revision's"
+                )
+            info, content = entry
+            # Normalised so the archive is a function of the revision alone.
+            info.mtime = 0
+            info.uid = info.gid = 0
+            info.uname = info.gname = ""
+            tar.addfile(info, io.BytesIO(content))
         tar.add(marker, arcname=REVISION_MARKER)
     with tarfile.open(archive) as tar:
         archived = set(tar.getnames())
@@ -337,6 +448,15 @@ def ensure_code_dataset(repo: str | Path, *, log=print) -> str:
     """
     dataset = code_dataset_id()
     revision = code_revision(repo)
+    dirty = dirty_paths(repo)
+    if dirty:
+        # Not an error - the payload is HEAD's either way - but the opposite
+        # assumption is the one worth correcting out loud.
+        log(
+            f"  the working tree differs from {revision[:12]} in "
+            f"{len(dirty)} path(s) (e.g. {dirty[0]}); HEAD is what ships",
+            flush=True,
+        )
     fetch = Path(tempfile.mkdtemp(prefix="act-code-fetch-"))
     if download_code_dataset(dataset, work=fetch) is not None:
         published = read_revision_marker(fetch)
@@ -442,7 +562,9 @@ def stage(
     """
     folder = Path(directory)
     folder.mkdir(parents=True, exist_ok=True)
-    body = Path(__file__).with_name("kaggle_t4.py").read_text(encoding="utf-8")
+    # Matched to the dataset's revision, like the dataset itself: the body and
+    # the mounted ``src/`` have to be one revision. See `kernel_body`.
+    body = kernel_body(REPO_ROOT)
     if MAIN_GUARD not in body:
         raise SystemExit(
             "kaggle_t4.py's __main__ guard drifted; kaggle_queue.stage cannot "

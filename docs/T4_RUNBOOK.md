@@ -271,18 +271,32 @@ cost one failed run:
    2026-09-15: the dataset was a commit behind, and every fix in between
    (including the guarded handoff publish) was absent from the session that was
    running. `kaggle_queue.ensure_code_dataset` runs before any quota is spent:
-   it pins the dataset to `git rev-parse HEAD`, refuses outright on a dirty or
-   non-git tree (a tree that is not a clean commit has no reproducible
-   revision), and republishes when the published copy is not at that revision
+   it pins the dataset to `git rev-parse HEAD`, refuses a **non-git** tree (no
+   commit to pin to), and republishes when the published copy is not at that revision
    **or does not carry the package tree**. The marker alone is not evidence -
    it is a loose top-level file, so it survives an upload that drops every
    subdirectory while the tree does not. So the tree travels as one archive
    (`code.tar`, whose internal paths the service restores), the staging marker
-   is written into the staging folder and never the repo (a marker left in the
-   repo is untracked, which makes the next run refuse the tree as dirty), and
+   is written into the staging folder and never the repo, and
    the read-back is polled, because a download issued immediately after a
    version push can serve the previous version and look like a rejected
    publish.
+
+   **A dirty working tree is reported and does not stop the run** (2026-09-21).
+   The payload is built from `HEAD` (`committed_tar`/`kernel_body`), never from
+   the working tree, so an uncommitted edit cannot ship under a committed
+   revision's name - which is what a dirty tree used to mean, and why
+   `ensure_code_dataset` refused outright. That refusal was measured to cost a
+   campaign: the driver checks the dataset before every push, so one
+   uncommitted edit during a poll would end a two-week unattended run *after* a
+   session had already trained and published. The failure is now removed rather
+   than detected - the dataset is exactly a commit by construction - and the
+   dirt is named in the log ("the working tree differs from `<rev>` in N
+   path(s)") so the operator is not left assuming the tree is what ships. The
+   kernel body follows the same rule: it is taken from the working tree only
+   when that one file is unmodified, so a local edit stays testable without a
+   commit while a body from one revision can never be embedded against a
+   package from another.
    `artifacts/` is deliberately **not** shipped: a session must start with no
    `artifacts/` directory, so the launch command cannot read a benchmark
    artifact that this session did not measure itself.

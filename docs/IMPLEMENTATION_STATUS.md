@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## A dirty working tree could end the campaign after a session had already trained and published (2026-09-21)
+
+| | |
+|---|---|
+| **What was found** | `kaggle_queue.ensure_code_dataset` refuses to publish on a dirty tree, by design - a tree that is not a clean commit cannot be pinned to a revision. But the driver calls it **before every push**, so on a two-week unattended campaign one uncommitted edit during a poll ends the driver: `SystemExit`, no session 3, and the campaign stops one session *after* the work has been published. I found it while checking whether it was safe to leave a fix uncommitted; the answer was no, and that is a property of the driver rather than of the fix. |
+| **Why the refusal existed** | `stage_code_dataset` tarred files from the **working tree** while writing a marker naming `HEAD`, so a dirty checkout published uncommitted edits under a clean commit's name - and the handoff manifest records that revision, so the provenance would be wrong too. The refusal was the guard against a real defect. |
+| **The fix removes the failure instead of detecting it** | Everything that ships is now read from `HEAD`: the dataset through `committed_tar` (one `git archive HEAD`, which also preserves the executable bits git recorded and needs no per-file subprocess), and the kernel body through `kernel_body`, which uses the working copy **only when that one file is unmodified** - so a local edit stays testable without a commit, while a body from one revision can never be embedded against a package from another (the mismatch the refusal existed to prevent). A dirty tree is now *reported* (`the working tree differs from <rev> in N path(s), HEAD is what ships`) rather than fatal, and `code_revision` returns the commit instead of exiting. |
+| **Proved on the real tree, not just in fixtures** | Staged the actual repository while `scripts/kaggle_queue.py` and `tests/test_kaggle_queue.py` were dirty: the archive carried **238 files + the marker**, excluded `artifacts/` as designed, and its copy of `kaggle_queue.py` **lacked** the uncommitted edit - i.e. the payload was HEAD's, and the publish would have been correct rather than merely non-fatal. The staged kernel body still compiles with the window pinned at 7.0. |
+| **Pinned** | `test_code_revision_reports_a_dirty_tree_instead_of_refusing` (the revision is still the commit, `dirty_paths` names the dirt, and an unresolvable repo does not raise out of the reporter on the hot path), `test_the_staged_archive_is_head_bytes_even_when_dirty` (a real one-file git repo, edited after commit, whose archive still carries the committed text), and `test_the_kernel_body_is_the_committed_copy_when_it_is_edited`. Mutants: reading the working tree again in staging fails **1**; restoring the fatal refusal fails **1**; taking the body from the working tree unconditionally fails **1**. |
+| **Result** | **1328 tests pass**; the runbook's pre-flight item 7 records the new rule beside the old one. |
+
 ## The expert-count covariate: the one gene the search can move reads against value creation (2026-09-21)
 
 | | |

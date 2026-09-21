@@ -237,9 +237,11 @@ def test_staged_kernel_without_a_window_keeps_the_kernel_default(tmp_path: Path)
 def test_stage_fails_loudly_when_the_guard_moves(tmp_path: Path, monkeypatch) -> None:
     # If the driver's __main__ guard is refactored, staging must refuse rather
     # than push a kernel that exits on the mode check without doing any work.
-    driver = tmp_path / "kaggle_t4.py"
-    driver.write_text("print('no guard here')\n")
-    monkeypatch.setattr(kaggle_queue, "__file__", str(tmp_path / "kaggle_queue.py"))
+    # The body comes from `kernel_body`, so that is the seam this pins - the old
+    # version moved `__file__`, which no longer decides which tree is read.
+    monkeypatch.setattr(
+        kaggle_queue, "kernel_body", lambda repo: "print('no guard here')\n"
+    )
 
     with pytest.raises(SystemExit, match="guard drifted"):
         kaggle_queue.stage(tmp_path / "push", "session")
@@ -963,8 +965,16 @@ def test_code_files_ship_the_package_and_not_the_artifacts(monkeypatch) -> None:
     assert not [name for name in files if name.split("/")[0] == "artifacts"]
 
 
-def test_code_revision_refuses_an_unpublishable_tree(monkeypatch) -> None:
-    """A dirty tree has no reproducible revision, and the handoff records one."""
+def test_code_revision_reports_a_dirty_tree_instead_of_refusing(monkeypatch) -> None:
+    """A dirty tree is reported, not fatal - the payload is HEAD's either way.
+
+    The refusal this replaced was measured to cost a campaign: the driver calls
+    this before every push, so one uncommitted edit during a poll ended a
+    two-week unattended run *after* a session had trained and published. What
+    the refusal protected against - publishing uncommitted edits under a
+    committed revision's name - is now impossible, because the archive is built
+    from HEAD (`test_the_staged_archive_is_head_bytes_even_when_dirty`).
+    """
     def clean(argv: list[str]) -> subprocess.CompletedProcess[str]:
         if "--porcelain" in argv:
             return subprocess.CompletedProcess(argv, 0, "", "")
@@ -972,15 +982,17 @@ def test_code_revision_refuses_an_unpublishable_tree(monkeypatch) -> None:
 
     monkeypatch.setattr(kaggle_queue, "_run", clean)
     assert kaggle_queue.code_revision(ROOT) == "deadbeef"
+    assert kaggle_queue.dirty_paths(ROOT) == []
 
     def dirty(argv: list[str]) -> subprocess.CompletedProcess[str]:
         if "--porcelain" in argv:
-            return subprocess.CompletedProcess(argv, 0, " M src/act/x.py\n", "")
+            return subprocess.CompletedProcess(argv, 0, " M src/act/x.py\n?? scratch.py\n", "")
         return subprocess.CompletedProcess(argv, 0, "deadbeef\n", "")
 
     monkeypatch.setattr(kaggle_queue, "_run", dirty)
-    with pytest.raises(SystemExit, match="uncommitted"):
-        kaggle_queue.code_revision(ROOT)
+    # The revision is still the commit - and the dirt is *named*, not hidden.
+    assert kaggle_queue.code_revision(ROOT) == "deadbeef"
+    assert kaggle_queue.dirty_paths(ROOT) == ["src/act/x.py", "scratch.py"]
 
     monkeypatch.setattr(
         kaggle_queue,
@@ -989,6 +1001,87 @@ def test_code_revision_refuses_an_unpublishable_tree(monkeypatch) -> None:
     )
     with pytest.raises(SystemExit, match="not a git checkout"):
         kaggle_queue.code_revision(ROOT)
+    # An unresolvable repository cannot report dirt either; it must not raise out
+    # of the reporter, which runs on the driver's hot path.
+    assert kaggle_queue.dirty_paths(ROOT) == []
+
+
+def _scratch_repo(tmp_path: Path) -> Path:
+    """A one-file git repo, committed, for the publish-source tests."""
+    repo = tmp_path / "repo"
+    (repo / "src" / "act").mkdir(parents=True)
+    (repo / "src" / "act" / "__init__.py").write_text("VERSION = 'committed'\n")
+    (repo / "pyproject.toml").write_text("[project]\nname = 'scratch'\n")
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True, capture_output=True)
+    _scratch_commit(repo, "scratch")
+    return repo
+
+
+def _scratch_commit(repo: Path, message: str) -> None:
+    subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True, capture_output=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo),
+            "-c",
+            "user.email=t@example.com",
+            "-c",
+            "user.name=t",
+            "commit",
+            "-qm",
+            message,
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+
+def test_the_staged_archive_is_head_bytes_even_when_dirty(tmp_path: Path) -> None:
+    """The marker names a commit, so the payload must be that commit's bytes.
+
+    The old path read the working tree, which is how an uncommitted edit could
+    have shipped under a clean commit's name - the reason for the refusal that
+    killed a live campaign. Sourcing from HEAD makes it impossible rather than
+    detected, and this pins it on a real repository: the file is edited after
+    the commit, and the archive still carries the committed text.
+    """
+    repo = _scratch_repo(tmp_path)
+    (repo / "src" / "act" / "__init__.py").write_text("VERSION = 'UNCOMMITTED'\n")
+
+    folder = kaggle_queue.stage_code_dataset(repo, tmp_path / "code", "deadbeef")
+
+    with tarfile.open(folder / kaggle_queue.CODE_ARCHIVE_NAME) as archive:
+        member = archive.extractfile("src/act/__init__.py")
+        assert member is not None
+        assert member.read().decode() == "VERSION = 'committed'\n"
+        assert "UNCOMMITTED" not in archive.extractfile(
+            "src/act/__init__.py"
+        ).read().decode()
+    # And the revision the marker claims is the one HEAD resolves to.
+    assert kaggle_queue.code_revision(repo) == subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def test_the_kernel_body_is_the_committed_copy_when_it_is_edited(tmp_path: Path) -> None:
+    """A locally edited kernel driver cannot ship against HEAD's package.
+
+    A clean tree keeps a local edit testable (the two texts are the same); a
+    dirty one ships the commit, so the body and the mounted ``src/`` are always
+    one revision - which is the mismatch the old refusal existed to prevent.
+    """
+    repo = _scratch_repo(tmp_path)
+    body_path = repo / kaggle_queue.KERNEL_BODY_NAME
+    body_path.parent.mkdir(parents=True, exist_ok=True)
+    body_path.write_text("print('committed body')\n")
+    _scratch_commit(repo, "body")
+    # Clean: the working copy is used, so an edit under test is the text tested.
+    assert kaggle_queue.kernel_body(repo) == "print('committed body')\n"
+    body_path.write_text("print('edited')\n")
+    assert kaggle_queue.kernel_body(repo) == "print('committed body')\n"
 
 
 def test_stage_code_dataset_archives_the_package(tmp_path: Path, monkeypatch) -> None:
