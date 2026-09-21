@@ -107,7 +107,16 @@ PUBLISH_LOG_NAME = "remote-publish-log.json"
 # what confirms the target host really does place one arm per device.
 # ``archzoo`` is the architecture-search horizon arm: one push, and its ledgers
 # come back in the kernel output and are imported into ``artifacts/``.
-ONE_SHOT_MODES = ("preflight", "verdict", "dtypeprobe", "selfcheck", "archzoo")
+ONE_SHOT_MODES = (
+    "preflight",
+    "verdict",
+    "dtypeprobe",
+    "selfcheck",
+    "archzoo",
+    # CPU-only, so it never queues behind a GPU and bills nothing: it prices the
+    # download every session pays before it trains (see kaggle_t4.mode_restoreprobe).
+    "restoreprobe",
+)
 
 
 def parse_status(text: str) -> str:

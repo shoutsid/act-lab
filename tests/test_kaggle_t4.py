@@ -300,6 +300,20 @@ def test_selfcheck_metadata_wants_a_gpu_and_is_pushed() -> None:
     assert "selfcheck" in kaggle_t4.PUSH_MODES
 
 
+def test_restoreprobe_is_registered_cpu_only_and_pushed() -> None:
+    """The startup restore must be measurable without spending GPU quota.
+
+    It is a download and a local merge, so a GPU bills the week's scarcest
+    resource to measure something the accelerator cannot influence - and the
+    number it produces decides whether a *GPU* session can start at all.
+    """
+    metadata = kaggle_t4.metadata_for("restoreprobe")
+    assert metadata["id"] == "sid123123234/act-t4-restoreprobe"
+    assert metadata["enable_gpu"] is False
+    assert metadata["enable_tpu"] is False
+    assert "restoreprobe" in kaggle_t4.PUSH_MODES
+
+
 def test_selfcheck_mode_runs_the_battery_on_cuda(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """It must run the shipped battery, not a copy of it, on the GPU device.
 

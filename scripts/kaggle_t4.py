@@ -418,6 +418,11 @@ DIAGNOSTIC_MODES = {
     # The battery trains tiny non-declared pairs, so it wants a GPU (the
     # placement check is about devices) but costs a few minutes, not a window.
     "selfcheck": ("act-t4-selfcheck", True),
+    # The startup restore is a download and a local merge, so measuring it on a
+    # GPU would bill the week's scarcest resource for a number the accelerator
+    # cannot influence. It is the one measurement that answers whether a session
+    # can start at all, and it is free.
+    "restoreprobe": ("act-t4-restoreprobe", False),
 }
 PUSH_MODES = (*DIAGNOSTIC_MODES, "verdict", "archzoo", *QUEUES)
 
@@ -744,6 +749,68 @@ def mode_selfcheck() -> None:
         env,
     )
     _log("=== SELF-CHECK COMPLETE (all checks passed) ===")
+
+
+def _free_gib(path: Path) -> float:
+    """Free space at the nearest existing ancestor of ``path``, in GiB."""
+    probe = path
+    while not probe.exists() and probe.parent != probe:
+        probe = probe.parent
+    try:
+        return shutil.disk_usage(probe).free / 2**30
+    except OSError:
+        return float("nan")
+
+
+def mode_restoreprobe() -> None:
+    """Price a session's startup restore, which no session has ever reported.
+
+    Every session restores the *whole* published dataset before it trains a
+    token, because a queue republishes its entire handoff at exit and so the
+    roots have to be merged locally first - which makes the cost of starting a
+    session grow with every seed the queue publishes (~6.4 GiB per seed).
+    Measured 2026-09-21: a session ended ERROR after 1.32 h with no log and no
+    output, and this startup cost is one of the two things known to occupy a
+    session for that long. It had been priced nowhere because the only logs that
+    carry it are the sessions' own, and those are the logs the platform discards.
+
+    CPU-only by design (see ``DIAGNOSTIC_MODES``): the accelerator cannot change
+    a download time or a copy time. Nothing is published - the queue's dataset
+    is read, never written - so this cannot disturb the campaign's progress,
+    which is read from the published seed set.
+    """
+    import time
+
+    from act.ops.kaggle_remote import default_client, restore_latest
+    from act.training.session_plan import working_dir_headroom_gb
+
+    queue = QUEUES["session"]
+    _log("=== ACT lab: startup-restore probe (CPU, no quota) ===")
+    work, env = _bootstrap()
+    report_resources()
+    root = Path(queue.dataset_root)
+    _log(f"dataset root: {root}")
+    _log(f"remote dataset: {queue.dataset}")
+    _log(f"registered working-dir headroom: {working_dir_headroom_gb():.2f} GiB")
+
+    free_before = _free_gib(root.parent)
+    started = time.time()
+    restored = restore_latest(
+        root, dataset=queue.dataset, client=default_client(), log=_log
+    )
+    minutes = (time.time() - started) / 60.0
+    free_after = _free_gib(root)
+    _log(
+        f"=== restore probe: {len(restored)} seed version(s) in {minutes:.1f} min, "
+        f"{free_before - free_after:.2f} GiB written, "
+        f"{free_after:.2f} GiB free after ==="
+    )
+    _log(f"seeds restored: {restored}")
+    _log(
+        "A session pays this before training. The registered session window is "
+        f"{DEFAULT_HOURS:g} h and a pair is ~1.5 h, so a restore that costs a "
+        "meaningful fraction of a window is a scheduling input, not an overhead."
+    )
 
 
 def mode_session(queue: Queue) -> None:
@@ -1183,6 +1250,9 @@ def main() -> int:
         return 0
     if mode == "selfcheck":
         mode_selfcheck()
+        return 0
+    if mode == "restoreprobe":
+        mode_restoreprobe()
         return 0
     if mode in QUEUES:
         mode_session(QUEUES[mode])
