@@ -7528,6 +7528,77 @@ quota, run while the corrected Gate 4 session trains. The block is 93384-93959, 
 summary's recorded seeds. Registered before the run; the running revision is recorded in the
 summary's `code_revision`.
 
+**Outcome (run 2026-09-21, revision `18ae507`, 20 shards; committed summary `depth7-dose-576.json`).
+Registered branch 1: P1+P2 PASS - and the declared increment missed, in the direction that makes the
+axis steeper than the model forecast.**
+
+P1: the depth-7 cell clears the bar decisively (`503/576` against `313`, mean `-0.181042`,
+p `2.92e-80`). P2: its value deltas are stochastically better than the depth-6 cell's (rank-sum
+U `128927.0`, one-sided p `2.95e-11`, means `-0.181042` vs `-0.117494`), so **the slope continues**
+and the ladder is monotone across all four rungs above the onset:
+
+| cell | depth | n | value | controller's edge | collapse | best arm | arms (adaptive / null / random) |
+|---|---|---|---|---|---|---|---|
+| `depth2` (5.15) | 2 | 384 | `+0.020811` | `-0.078848` | `-0.099659` | null | `14.3953 / 14.3745 / 14.4742` |
+| `depth3` (5.15) | 3 | 384 | `+0.004643` | `-0.102151` | `-0.106794` | null | `13.4549 / 13.4503 / 13.5571` |
+| `depth4-prefix` (5.12) | 4 | 384 | `-0.037147` | `-0.107220` | `-0.070072` | **adaptive** | `12.4413 / 12.4785 / 12.5485` |
+| `depth5-dose` (5.55) | 5 | 576 | `-0.075335` | `-0.104561` | `-0.029226` | **adaptive** | `11.4870 / 11.5624 / 11.5916` |
+| `depth6-dose` (5.56) | 6 | 576 | `-0.117494` | `-0.089482` | `+0.028013` | **adaptive** | `10.5882 / 10.7057 / 10.6777` |
+| **`depth7-dose`** | **7** | **576** | **`-0.181042`** | `-0.086622` | **`+0.094421`** | **adaptive** | **`9.7065 / 9.8876 / 9.7932`** |
+
+**The declared prediction was half right, and the half that missed is the informative one.** The
+increment from depth 6 to depth 7 is `-0.063548` against a declared band of `(-0.047, -0.033)`: a
+**miss, and 1.5x every previous step of the upper ladder**. The four increments are `-0.0418`
+(3 -> 4), `-0.0382` (4 -> 5), `-0.0422` (5 -> 6) and `-0.0635` (6 -> 7). The second prediction hit:
+the controller's own edge measured `-0.086622` against the declared band of `0.020` around
+`-0.089482`, a move of `+0.0029`.
+
+So the model's *mechanism* survived a second rung and its *magnitude* did not - and the mechanism is
+the sharper claim. Across 6 -> 7 the controller's own edge is flat (rank-sum p `0.663`) while the
+churn term moves decisively (p `2.6e-11`); of the `-0.063548` the newest layer buys, the churn term
+contributes `-0.066408` and the edge contributes `+0.002860`, i.e. slightly *against*. Extended over
+the whole upper ladder, 3 -> 7:
+
+| term | depth 3 | depth 7 | rank-sum | reading |
+|---|---|---|---|---|
+| controller's own edge | `-0.102151` | `-0.086622` | U `106031.5`, p `0.139` (reversed `0.861`) | **flat - no move** |
+| churn term | `-0.106794` | `+0.094421` | U `40968.0`, p `9.0e-62` | moves, decisively |
+
+The value improvement over those four added layers is `-0.185686`: the churn term carries
+`-0.201215` of it and the controller's edge `+0.015529` against, so 5.56's decomposition holds one
+rung further up and with a wider margin rather than narrowing.
+
+**What the miss corrects.** 5.56 read three flat increments as "the slope is a constant, not a
+decaying one". A fourth point shows that flatness was not yet the *shape*: the axis buys a flat
+`~0.04` per layer for the steps ending at depths 4, 5 and 6, and **`0.0635` for the step ending at
+depth 7**, so the constant-gradient reading is bounded to the three rungs that produced it and the
+axis is super-linear at the fourth. Nothing here weakens the ladder claim - all four rungs above the
+onset pass and the newest step is the largest of the five - but it changes what a deeper substrate
+is worth: the model understated the axis rather than overstating it.
+
+**The collapse accelerates with it.** `null - random` runs `-0.099659`, `-0.106794`, `-0.070072`,
+`-0.029226`, `+0.028013`, `+0.094421`, so the do-nothing arm's disadvantage grows **3.4x** across
+the newest step alone. At depth 7 the arm order is `9.7065` (adaptive) < `9.7932` (random) <
+`9.8876` (null) - the order depth 6 established, at 1.5x the separation.
+
+**What this settles.** A Gate 4 pass at depth 4 is a point on a curve rising faster than the
+previous rung suggested, and what rises is still the substrate's dependence on being mutated rather
+than the controller's skill: over four added layers the edge is flat at p `0.861` while the churn
+term moves at p `9.0e-62`. Read with 5.53, whose one movable gene reads *against* value, the two
+readings agree - what this program's selection value tracks is something the search neither creates
+nor enlarges.
+
+**Scrutiny before write-up.** Built-in checks 576/576 (mutations 3/3/0, zero null search FLOPs);
+three replays of committed seeds (93404, 93704, 93944) exact at `OMP_NUM_THREADS=1`; both primaries,
+the increment, both decomposition rank-sums and the algebraic identity were computed before any of
+them entered prose. The declared bands and both predictions were committed at `80a28a2` and
+`f6f5a08`, before the first shard ran.
+
+**Scoped.** The seventh layer carries 7,392 total / 2,592 active parameters irreducibly, so this is
+the depth axis *as a package*; the candidate pool is identical at every rung (pinned by a test); and
+the increments are cross-cell descriptives in this family's convention, while both primaries are
+tests on their own cells. The ladder is not bounded from above by anything measured here.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
@@ -8162,28 +8233,33 @@ The program now has two cleanly separated empirical axes:
    (`adaptive - random` = -0.0101, p = 0.61).
 
 2. **The depth axis (toy path).** Value creation by probe-ordered
-   selection is a function of substrate depth, now measured across five
+   selection is a function of substrate depth, now measured across six
    rungs: adaptive-vs-null wins go 117 (d1) < 161 (d2) < 188 (d3) < 225
-   (d4) of 384, then 375/576 (d5) and 442/576 (d6), with mean delta
-   +0.0508 > +0.0208 > +0.0046 > -0.0371 > -0.0753 > -0.1175 - a monotone
+   (d4) of 384, then 375/576 (d5), 442/576 (d6) and 503/576 (d7), with
+   mean delta
+   +0.0508 > +0.0208 > +0.0046 > -0.0371 > -0.0753 > -0.1175 > -0.1810
+   - a monotone
    dose-response with the sign flip between depth 3 and 4 (5.15), robust
    to the candidate policy (5.12 2x2: prefix and spread agree in every
-   cell). **Above the gate the gradient is a constant, not a decaying one**
-   (increments -0.0162, -0.0418, -0.0382, -0.0422; 5.55-5.56), and the
-   churn axis flips with it: the do-nothing arm is the better one at depths
-   2-5 and stops being so at depth 6, where the arm order becomes adaptive
-   < random < null.
+   cell). **Above the gate the gradient is flat at roughly 0.04 per layer
+   for three rungs and then steepens** (increments -0.0162, -0.0418,
+   -0.0382, -0.0422, -0.0635; 5.55-5.57), so 5.56's constant-gradient
+   reading is
+   bounded to the rungs that produced it and the axis is super-linear at
+   the fourth. The churn axis flips with it: the do-nothing arm is the
+   better one at depths 2-5 and stops being so at depth 6, where the arm
+   order becomes adaptive
+   < random < null - which depth 7 repeats at 1.5x the separation.
 
 Together: **selection value exists, but only where the substrate is deep
 enough to support it - and the deeper the substrate, the less of that
 value is the controller's.** Below the onset, every mutating arm loses to
 doing nothing; the historical depth-1 passes were churn suppression
 measured against random churn (the only control they had), not value
-creation. At depth 4 about a quarter of the raw edge survives the strictest
-control (0.0297-0.0371 of 0.1130); across the whole upper ladder the
-controller's own edge is **flat to slightly worse** (p `0.266`) while the
-entire 0.122-nat improvement from depth 3 to depth 6 is the substrate's
-growing dependence on being mutated (5.56).
+creation. At depth 4 about a quarter of the raw edge survives the strictest   control (0.0297-0.0371 of 0.1130); across the whole upper ladder the
+   controller's own edge is **flat to slightly worse** (p `0.139`) while the
+   entire 0.186-nat improvement from depth 3 to depth 7 is the substrate's
+   growing dependence on being mutated (5.56-5.57).
 
 ### 10.2 What this means for the gates
 
@@ -8200,7 +8276,7 @@ growing dependence on being mutated (5.56).
   this writing (sections 5.2 and 5.47 record the session window and the rebuild
   treatment; `docs/T4_RUNBOOK.md` is the operational record). The
   *read* of a pass, when it comes, is bounded by section 10.4: the block
-  trains the one gene the search can move, and 5.53-5.56 measure that gene
+  trains the one gene the search can move,  and 5.53-5.57 measure that gene
   and the substrate's need for mutation rather than controller skill. The
   three-queue launch path is smoke-tested; the run needs a T4. **In flight
   since 2026-09-20** (Kaggle T4, three queues, ~18.4 GPU-h each at the
@@ -8230,7 +8306,7 @@ layer width, expert count) would separate depth per se from capacity.
 
 **Where these stand at this writing: (ii) is closed and (i) is in flight.**
 The covariate programme (5.48-5.53) measured every candidate (ii) named, and
-sections 5.54-5.56 then dosed the depth axis itself; the answer is that only
+sections 5.54-5.57 then dosed the depth axis itself; the answer is that only
 depth moves the gate and that the axis keeps paying past it. (i) is the three-
 queue campaign on Kaggle, 4 of its 12 declared seeds published at this writing. What follows is
 that closing in the order it happened, kept as the audit trail of how (ii) was

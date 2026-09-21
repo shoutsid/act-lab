@@ -149,16 +149,26 @@ def test_the_synthesis_depth_claims_match_the_committed_summaries() -> None:
     §10.1 asserted "churn harm holds at every measured depth" and stopped the
     depth ladder at four rungs, both of which 5.55-5.56 falsified - and no claim
     audit or summary pin could see it, because a *universal* statement is not a
-    number. This reads the summaries directly: the sign of the collapse at every
-    rung, the monotonicity of the value ladder, and the depth the report says
-    the churn regime flips at.
+    number. The same reading caught 5.56's own successor: the section called
+    the gradient "a constant, not a decaying one" on three increments, and the
+    fourth (5.57) is 1.5x all of them. This reads the summaries directly: the
+    sign of the collapse at every rung, the monotonicity of the value ladder,
+    the depth the report says the churn regime flips at, and the increments the
+    gradient claim rests on.
     """
     import sys
 
     sys.path.insert(0, str(ROOT / "scripts"))
     import null_toy_study as study  # noqa: E402
 
-    rungs = ("depth2", "depth3", "depth4-prefix", "depth5-dose", "depth6-dose")
+    rungs = (
+        "depth2",
+        "depth3",
+        "depth4-prefix",
+        "depth5-dose",
+        "depth6-dose",
+        "depth7-dose",
+    )
     values, collapses = [], []
     for profile in rungs:
         name = Path(study.PROFILES[profile]["summary"]).name
@@ -171,10 +181,21 @@ def test_the_synthesis_depth_claims_match_the_committed_summaries() -> None:
         )
     assert values == sorted(values, reverse=True), f"the ladder is not monotone: {values}"
     # The flip is at depth 6 and nowhere earlier - which is what §10.1 now says.
-    assert all(c < 0 for c in collapses[:4]) and collapses[4] > 0, collapses
+    assert all(c < 0 for c in collapses[:4]) and all(c > 0 for c in collapses[4:]), collapses
     text = " ".join(_text().split())
     assert "churn harm (null < random) holds at every measured depth **up to 5**" in text
-    assert "mean delta +0.0508 > +0.0208 > +0.0046 > -0.0371 > -0.0753 > -0.1175" in text
+    chain = "mean delta +0.0508 > +0.0208 > +0.0046 > -0.0371 > -0.0753 > -0.1175 > -0.1810"
+    assert chain in text
+    # The gradient claim is read off the increments themselves: three flat steps
+    # and a fourth that is 1.5x them. A report that calls the series constant
+    # again fails here as well as on the chain above.
+    # The last three steps, as magnitudes of value improvement (deeper is better):
+    # 4 -> 5, 5 -> 6 and the rung this test was extended for, 6 -> 7.
+    steps = [values[i] - values[i + 1] for i in range(len(values) - 4, len(values) - 1)]
+    assert all(0.03 < step < 0.05 for step in steps[:2]), steps
+    assert steps[2] > 0.06, steps
+    assert "the gradient is flat at roughly 0.04 per layer for three rungs and then steepens" in text
+    assert "-0.0162, -0.0418, -0.0382, -0.0422, -0.0635" in text
     assert "stops being so at depth 6" in text
 
 
