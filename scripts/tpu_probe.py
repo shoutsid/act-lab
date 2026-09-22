@@ -32,6 +32,13 @@ does not compare against the registered numbers - it reports what the hardware d
 this model's shape, so the decision to port (or not) rests on measurements. The record is
 written to ``/kaggle/working/tpu-probe.json`` and printed.
 
+What a verdict *buys* is declared beside it (``week_capacity``), because the two answer
+different questions from one measurement and only the second one is about the campaign's
+clock. The rule's bar moves the port go/no-go; the GPU week moves at
+``ONE_GPU_WEEK_MULTIPLE``, where the TPU's separate 20-hour week carries two of the three
+queues. A reading between them is a real outcome - a port worth making that still leaves the
+block two weeks - so it is stated with the rule rather than discovered afterwards.
+
 Two properties of the run are deliberate, and both were paid for. **The measurements run in
 the order a failure would cost the decision** (``MEASUREMENT_ORDER``): bf16 is what
 ``evaluate`` reads and what the session trains in, so it goes first, then the eight-worker
@@ -53,6 +60,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import statistics
 import sys
@@ -131,6 +139,92 @@ MUTATION_EVENTS_PER_ARM = 3
 PROBED_CANDIDATES_PER_EVENT = 4
 REBUILDS_PER_ARM = MUTATION_EVENTS_PER_ARM * (1 + PROBED_CANDIDATES_PER_EVENT)
 
+#: The campaign's own bill, for the port's *schedule* reading. ``evaluate`` answers whether
+#: the TPU is worth porting to; this answers the question an operator then has to decide
+#: with - how much of the campaign its separate week carries, and whether the block's GPU
+#: side still needs two weeks. Both readings come from the same measurement, which is why
+#: they are declared together rather than in a document after the numbers arrive.
+#:
+#: The two clocks differ, and that is the whole reason a separate quota matters: a queue is
+#: ``DECLARED_SEEDS_PER_QUEUE`` pairs at :data:`PAIR_HOURS_ON_T4` each, and the same queue's
+#: tokens over the TPU's eight-core aggregate. Kaggle's TPU line is 20.00 h/week beside the
+#: GPU's 30.00 h/week and is billed per hour a v3-8 is *running* - read 2026-09-22, when the
+#: week's TPU usage stood at 0.10 h after two probe runs of 148 s and 180 s with 4.3 h
+#: queued between them billed not at all.
+TPU_QUOTA_HOURS = 20.0
+GPU_QUOTA_HOURS = 30.0
+QUEUES_PER_CAMPAIGN = 3
+#: Section 5.2's per-pair event/rebuild overhead. Pinned against
+#: ``act.training.session_plan.PAIR_OVERHEAD_HOURS`` by a test, so the two cannot drift.
+PAIR_OVERHEAD_HOURS = 0.1
+#: One pair's GPU wall time at the measured rate, and a queue's twelve of them.
+PAIR_HOURS_ON_T4 = (
+    DECLARED_TOKENS_PER_ARM / T4_PAIR_TOKENS_PER_SECOND / 3600.0 + PAIR_OVERHEAD_HOURS
+)
+GPU_HOURS_PER_QUEUE = DECLARED_SEEDS_PER_QUEUE * PAIR_HOURS_ON_T4
+
+
+def queue_tpu_hours(multiple: float, *, arms: int = DECLARED_ARMS_PER_SEED) -> float:
+    """One queue's wall hours on eight TPU cores at a measured multiple of a T4 pair.
+
+    Total tokens over the eight-core aggregate, so this is the wall time the queue occupies
+    a v3-8 - the unit the quota line bills in, and the reason it can be compared with the
+    GPU's own hours at all.
+    """
+    if multiple <= 0:
+        raise ValueError("multiple must be positive")
+    tokens = DECLARED_SEEDS_PER_QUEUE * arms * DECLARED_TOKENS_PER_ARM
+    return tokens / (T4_PAIR_TOKENS_PER_SECOND * multiple) / 3600.0
+
+
+#: The two cheapest of the campaign's three queues: the null queue (one arm per seed) and
+#: one pair queue (two).
+_TWO_QUEUES_ARMS = (1, DECLARED_ARMS_PER_SEED)
+
+
+def _multiple_that_fits(arms: tuple[int, ...]) -> float:
+    """The multiple at which this set of queues fits the TPU's week."""
+    tokens = sum(
+        DECLARED_SEEDS_PER_QUEUE * arm_count * DECLARED_TOKENS_PER_ARM
+        for arm_count in arms
+    )
+    return tokens / (T4_PAIR_TOKENS_PER_SECOND * TPU_QUOTA_HOURS * 3600.0)
+
+
+#: The multiple at which the TPU's week carries **two** of the campaign's three queues, which
+#: is what it takes for the block's GPU side to fit a single 30-hour week. Below it the port
+#: buys a two-week block however clean the verdict: at the rule's own 2.0x pass mark the week
+#: carries one pair queue in 16.1 h and the GPU side is still 34.6 h.
+ONE_GPU_WEEK_MULTIPLE = _multiple_that_fits(_TWO_QUEUES_ARMS)
+
+
+def week_capacity(multiple: float) -> dict[str, Any]:
+    """The schedule reading of a verdict: what the TPU's week carries, and what is left.
+
+    Declared with the rule rather than derived after the result, because the number a port
+    is *for* is the campaign's wall clock and that number does not move where the rule's bar
+    does. A reading between the two is a real outcome - a port worth making that still
+    leaves the GPU side two weeks - not a rounding of the bar. ``gpu_hours_left`` is a
+    floor: a session also pays boot, restore and its exit publish.
+    """
+    pair = queue_tpu_hours(multiple)
+    null = queue_tpu_hours(multiple, arms=1)
+    # Inclusive at the boundary, for the same reason the rule's own two conditions are: the
+    # pivot is *defined* as the multiple where these two queues fit, so a float comparison
+    # cannot be left to land on the wrong side of its own definition.
+    carry_two = pair + null <= TPU_QUOTA_HOURS + 1e-9
+    gpu_left = (QUEUES_PER_CAMPAIGN - (2 if carry_two else 1)) * GPU_HOURS_PER_QUEUE
+    return {
+        "multiple": round(multiple, 3),
+        "pair_queue_hours": round(pair, 2),
+        "null_queue_hours": round(null, 2),
+        "null_and_pair_queue_hours": round(pair + null, 2),
+        "carries_two_queues": carry_two,
+        "one_gpu_week_multiple": round(ONE_GPU_WEEK_MULTIPLE, 3),
+        "gpu_hours_left": round(gpu_left, 2),
+        "gpu_weeks_left": math.ceil(gpu_left / GPU_QUOTA_HOURS),
+    }
+
 
 def evaluate(record: dict[str, Any]) -> dict[str, Any]:
     """Apply the pre-registered rule to a probe record, and say what it decides.
@@ -155,6 +249,7 @@ def evaluate(record: dict[str, Any]) -> dict[str, Any]:
             "recompile_overhead_fraction": RECOMPILE_OVERHEAD_LIMIT,
         },
         "measured": {},
+        "capacity": None,
         "verdict": "INCONCLUSIVE",
         "why": "",
     }
@@ -181,6 +276,10 @@ def evaluate(record: dict[str, Any]) -> dict[str, Any]:
     compile_seconds = max(0.0, first - steady)
     rebuilds_per_core = (DECLARED_SEEDS_PER_QUEUE / workers) * DECLARED_ARMS_PER_SEED * REBUILDS_PER_ARM
     overhead = rebuilds_per_core * compile_seconds / training_seconds
+
+    # What this verdict *buys* the campaign, from the same measurement: the rule's bar moves
+    # the port go/no-go, and the campaign's GPU wall clock moves at ONE_GPU_WEEK_MULTIPLE.
+    result["capacity"] = week_capacity(aggregate / T4_PAIR_TOKENS_PER_SECOND)
 
     throughput_ok = aggregate >= result["thresholds"]["aggregate_tokens_per_second"]
     overhead_ok = overhead <= RECOMPILE_OVERHEAD_LIMIT

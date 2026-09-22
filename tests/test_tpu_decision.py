@@ -67,6 +67,65 @@ def test_the_rebuild_count_is_the_declared_cadence() -> None:
     assert tpu_probe.REBUILDS_PER_ARM == 15
 
 
+def test_the_week_pivot_is_the_second_queue_not_the_pass_mark() -> None:
+    """The rule's bar moves the verdict; the campaign's wall clock moves higher up.
+
+    Both readings come from the one measurement, so the arithmetic that separates them is
+    pinned here: at the declared 2.0x the TPU's week carries one pair queue (16.1 h) and the
+    GPU side is 34.6 h, which is still two weeks against a 30 h week. It is the *second*
+    queue that takes the block to one week, and the cheapest two are the null queue and one
+    pair queue.
+    """
+    at_bar = tpu_probe.week_capacity(tpu_probe.PORT_THRESHOLD_MULTIPLE)
+    assert at_bar["pair_queue_hours"] == pytest.approx(16.12, abs=0.01)
+    assert at_bar["null_queue_hours"] == pytest.approx(8.06, abs=0.01)
+    assert at_bar["carries_two_queues"] is False
+    assert at_bar["gpu_hours_left"] == pytest.approx(
+        2 * tpu_probe.GPU_HOURS_PER_QUEUE, abs=0.02
+    )
+    assert at_bar["gpu_weeks_left"] == 2
+
+    pivot = tpu_probe.ONE_GPU_WEEK_MULTIPLE
+    assert pivot == pytest.approx(2.417, abs=0.002)
+    assert pivot > tpu_probe.PORT_THRESHOLD_MULTIPLE, (
+        "a pivot at or below the bar would make the two readings the same number"
+    )
+    at_pivot = tpu_probe.week_capacity(pivot)
+    assert at_pivot["null_and_pair_queue_hours"] == pytest.approx(
+        tpu_probe.TPU_QUOTA_HOURS, abs=0.05
+    )
+    assert at_pivot["carries_two_queues"] is True
+    assert at_pivot["gpu_hours_left"] == pytest.approx(
+        tpu_probe.GPU_HOURS_PER_QUEUE, abs=0.02
+    )
+    assert at_pivot["gpu_weeks_left"] == 1
+
+
+def test_the_capacity_reading_rides_with_the_verdict() -> None:
+    """A PORT between the bar and the pivot must not be read as "the block fits a week"."""
+    decision = tpu_probe.evaluate(
+        _record(aggregate=2.0 * T4, workers=8, first=31.0, steady=1.0)
+    )
+    assert decision["verdict"] == "PORT"
+    assert decision["capacity"]["carries_two_queues"] is False
+    assert decision["capacity"]["gpu_weeks_left"] == 2
+
+    # And a record the rule cannot decide carries no capacity reading at all, rather than
+    # one computed from a rate nothing measured.
+    assert tpu_probe.evaluate({})["capacity"] is None
+
+
+def test_the_probe_and_the_session_plan_agree_on_the_pair_overhead() -> None:
+    """One number in two files: the probe's GPU clock has to be the campaign's own."""
+    from act.training.session_plan import PAIR_OVERHEAD_HOURS, PairSchedule
+
+    assert tpu_probe.PAIR_OVERHEAD_HOURS == PAIR_OVERHEAD_HOURS
+    schedule = PairSchedule(
+        tokens_per_second=tpu_probe.T4_PAIR_TOKENS_PER_SECOND, arms=2, arm_slots=2
+    )
+    assert tpu_probe.PAIR_HOURS_ON_T4 == pytest.approx(schedule.pair_time_hours)
+
+
 def test_fast_and_cheap_to_rebuild_ports() -> None:
     decision = tpu_probe.evaluate(
         _record(aggregate=3 * T4, workers=8, first=31.0, steady=1.0)
