@@ -1,14 +1,17 @@
 # Adaptive Computational Topology — Research Report
 
 Status: the narrative report for the whole program to date - the factor map (section 3, Gate 3),
-the pre-registered study series (section 5, 93 subsections), the substrate audit (section 9) and
-the synthesis (section 10). **Updated: 2026-09-21** - sections 5.48-5.59 close the covariate
+the pre-registered study series (section 5, 101 subsections), the substrate audit (section 9) and
+the synthesis (section 10). **Updated: 2026-09-22** - sections 5.48-5.59 close the covariate
 programme (parameter count, layer width, expert count and total compute) and then measure the
 depth axis itself, out to six rungs above its onset, 5.60 and 5.61 bisect the one window
 that closure left open (the width axis's gate between 2.87x and 11.15x) to 1.97x and then 1.41x, 5.62
 tests the crossing's mechanism under the family's other candidate policy, 5.63 builds the transfer
 path gate 5 will need and pins that a fresh initialization is distinguishable from a resumed one,
-5.64 declares the whole gate chain (with the questions each gate still leaves open), and section 10
+5.64 declares the whole gate chain (with the questions each gate still leaves open), 5.65 re-reserves
+the declared block after its first four seeds were found to have run the pre-amendment rebuild, 5.66
+takes the dev-fidelity anchors for the two withholding clauses that had none - registered while
+that block is in flight - and section 10
 is re-read
 against them. Gate 4 is declared and running: 4 of
 its 12 declared seeds are published **at this writing**, on the corrected 7-hour session window
@@ -43,7 +46,7 @@ taking first - 9 is the audit that changed the interpretation, and 10 is the cur
 | **5.21-5.34** | The mid-training penalty and the prune-target chain: the penalty's arm-genericity (§5.22), optimizer history against the architecture change (§5.23), the discarded routing head (§5.24), prune against grow (§5.25), the freshly drawn expert (§5.26), cloning's two effects (§5.27-§5.28), the discovery path (§5.29-§5.30), and the powered prune-target studies (§5.31-§5.34). |
 | **5.35-5.40** | The declared path: defects found by reading rather than by a study (§5.35), dev-scale evidence on the real token stream (§5.36), the measured liveness contract (§5.37), whether the rebuild treatment transfers (§5.38), churn harm as a property of churn (§5.39), and the deployed configuration against the do-nothing arm (§5.40). |
 | **5.41-5.47** | Audit-derived corrections and the Gate 4 registration: the tolerance band's scale (§5.41), the clause a partial run made unfireable (§5.42), the verdict-path rehearsal (§5.43), the one-directional quality clause (§5.44), the suite's cost (§5.45), the launch path's missing rebuild treatment (§5.46), and the amendment that registers it (§5.47). |
-| **5.48-5.65** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), the two width bisections that halve the gate window the width programme left open and then test where the edge's maximum is reached (§5.60-§5.61), the crossing dose under the family's other candidate policy (§5.62), the Gate-5 transfer path with its fresh-versus-resumed check (§5.63), the gate chain itself, declared while gates 5-7 are still prose (§5.64), and the re-reservation of the declared block after its first four seeds were found to have run the pre-amendment rebuild (§5.65). |
+| **5.48-5.66** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), the two width bisections that halve the gate window the width programme left open and then test where the edge's maximum is reached (§5.60-§5.61), the crossing dose under the family's other candidate policy (§5.62), the Gate-5 transfer path with its fresh-versus-resumed check (§5.63), the gate chain itself, declared while gates 5-7 are still prose (§5.64), the re-reservation of the declared block after its first four seeds were found to have run the pre-amendment rebuild (§5.65), and the dev-fidelity anchors for the two withholding clauses that had none, registered before the declared verdict lands (§5.66). |
 | **6-10** | Reproducibility (§6), the deliverables checklist (§7), figures (§8), the substrate audit (§9), and the synthesis (§10) - which reads this track against the architecture-search track. |
 
 Reproducibility at notebook fidelity (plan sections 39 and 104) now ships with
@@ -8479,6 +8482,83 @@ gap is not read as an oversight.
 finishing it untreated is a constant change plus the conformance block reporting what the
 artifact already says. After the new block's first seed is published the re-reservation is
 the less costly direction, for the reason in ground 3.
+
+### 5.66 Pre-registration: the two withholding clauses that had no dev-fidelity anchor, measured before the declared verdict lands (REGISTERED)
+
+**Registered 2026-09-22, before the block's first session.**
+
+**Why this exists.** The verdict that decides Gate 4 withholds on three clauses - the harm
+guard, the section 5.5 pool-matched control, and the section 5.14 do-nothing clause - and
+`scripts/null_clause_power.py` reads all three *before* the declared block lands. That
+reading is anchored on the only real-text effect this program has measured with the
+treatment in place: section 5.40's null-versus-adaptive contrast (0.13554 nats at sd
+0.1129, **z = 1.203**). Two of the three clauses have no anchor at all, and section 5.40's
+own entry records the reason for one of them in as many words - "the pool-matched control
+arm has never been run beside them". The declared block is in flight (15024-15035),
+so the anchors are taken **now**, at dev fidelity, on fresh seeds, under the campaign's own
+policies, before the numbers they will be used to read exist.
+
+**What this is, and is not.** It is an *anchor* study, not a verdict: it measures the
+effect sizes the three clause statistics see at the only fidelity this project can run for
+free, so that a clause that fires (or clears) in the declared verdict can be read against a
+measured analogue rather than an assumed one. It changes no criterion, gates nothing, and
+adds nothing to the declared block.
+
+**The block.** 12 fresh seeds **15260-15271** (verified unused across `src/`, `scripts/`,
+`tests/`, `docs/` and every committed block before the first session), four sessions per
+seed at the dev shape (320 hidden / 6 layers / 8 experts / 2 active, 400 steps, batch 8 x
+context 512, three events at steps 100/200/300, cap 4 / 1 probe batch, fp32) on the real
+TinyStories stream, with the deployed treatment
+(`preserve_router_on_rebuild=True`, `new_expert_initialization="clone"`) on all four - the
+runbook section 2c rule that all three queues carry the same declaration:
+
+| session | arms | probe policy | selection | what it stands for |
+|---|---|---|---|---|
+| `pair_prefix` | random, adaptive | `prefix` | `argmin` | section 5.40's pair session, fresh seeds (the policy replication) |
+| `pair_spread` | random, adaptive | `spread` | `argmin` | the declared primary's policy |
+| `control_spread` | random, adaptive | `spread` | `random` | the declared pool-matched loss-blind arm |
+| `null` | null | - | - | the declared null queue's arm |
+
+**The clause statistics are the verdict's own, not a restatement.** Each is computed the way
+`scripts/v0_verdict.py` computes it, with the same limits imported from that module
+(`HARM_GUARD_LOSS_LIMIT`, `POOL_CONTROL_WIN_LIMIT`, `NULL_WIN_LIMIT`, asserted equal):
+
+| clause | root | comparison arm | fires when it beats adaptive on |
+|---|---|---|---|
+| harm guard | `pair_spread` (and `pair_prefix`, as a policy check) | churn (`random`) | >= 10 of 12 |
+| pool-matched control | `control_spread` | churn (`random`) | >= 10 of 12 |
+| do-nothing | `null` paired cross-root against each pair root | `null` | >= 10 of 12 |
+
+**The readings, fixed before the first session.**
+
+- **A1-A3 (the anchors).** For each clause, the paired per-seed contrast is reported as
+  ``mean``, sample ``sd`` and **z = |mean| / sd** in the direction that favours the
+  comparison arm, together with the clause's firing rate at that z computed through
+  `null_clause_power.clause_reading` (the same function that produced the existing
+  null-clause reading, so the two cannot be two different calculations). The existing
+  z = 1.203 anchor stays what it is: the `prefix` root's null-versus-adaptive contrast is
+  this block's **fresh-seed replication** of it, not a replacement.
+- **A4 (the check that must hold first).** On `pair_prefix`, the null arm is the lowest of
+  the three arms on **>= 10 of 12** seeds - section 5.40's ordering on fresh seeds. If it
+  is not, the deployment is not stable across fresh seeds and that is reported **before**
+  any anchor is quoted; a block that does not reproduce the ordering is not a valid place
+  to read anchors from.
+- **A5 (the policy check).** For each of the three contrasts the two policies (`prefix`,
+  `spread`) must agree in sign. If they do not, the anchor for the declared block is the
+  `spread` root's by construction - the declared primary runs `spread` - and the
+disagreement is reported rather than averaged away.
+- **Nothing here adjudicates.** No branch of the declared verdict is decided by this
+  block, and no number in it is a Gate 4 result. What it produces is the missing
+  anchor column: for each clause, the dev-fidelity effect size and the firing rate at
+  it, so that clause table can be read whole rather than one third of it.
+
+**Cost.** 48 dev sessions on the idle local GTX 1070, about **1.2 h** of wall clock and
+**zero** Kaggle GPU-hours or TPU-hours. The card is otherwise unused while the campaign
+waits for the weekly quota to refresh (the 26th).
+
+**Reversible.** Nothing outside `artifacts/dev-clause-anchor-study/` (scratch) and
+`artifacts/study-summaries/dev-clause-anchor.json` (the record) is written until the
+readings are recorded.
 
 ## 6. Reproducibility
 
