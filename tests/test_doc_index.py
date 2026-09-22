@@ -241,6 +241,38 @@ def test_the_front_page_names_the_engine_the_repository_imports() -> None:
     )
 
 
+#: A backticked snake_case identifier in the feature list - a symbol or a layout name,
+#: as opposed to a path (``artifacts/mixer-benchmark/``) or a flag (``--device``), which
+#: this deliberately does not try to resolve.
+ADVERTISED_SYMBOL = re.compile(r"`([a-z][a-z0-9_]{3,})`")
+
+
+def test_every_symbol_the_feature_list_names_exists_somewhere_in_the_tree() -> None:
+    """The general form of the defect the prior-extraction bullet was: it named a thing.
+
+    Measured 2026-09-22, the front page advertised a prior-extraction tool, JAX, a TPU v5e
+    and attention-head mutations in as many words, and the repository had none of the
+    four. This resolves each backticked identifier in the feature list against the
+    implementation text - the same check that would have caught all four at once, and the
+    one that catches the next invented name without anyone thinking to look for it.
+
+    Deliberately *text*, not import: some of these are layout names (``gdn_3to1``) rather
+    than Python symbols, and requiring importability would rule out naming a real one.
+    """
+
+    features = README.read_text(encoding="utf-8").split("## Features")[1].split("## ")[0]
+    sources = {path: path.read_text(encoding="utf-8") for path in _python_sources()}
+
+    missing = sorted(
+        name
+        for name in set(ADVERTISED_SYMBOL.findall(features))
+        if not any(name in text for text in sources.values())
+    )
+    assert missing == [], (
+        f"the front page's feature list names symbols no source file contains: {missing}"
+    )
+
+
 def test_the_front_page_advertises_no_tool_the_repository_lacks() -> None:
     """A bullet for a tool that does not exist is the same defect as a wrong number.
 

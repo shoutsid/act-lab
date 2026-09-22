@@ -23,10 +23,11 @@ A training process that jointly optimizes weights and computational topology can
 ```
 
 ## Features
-- **Dynamic Topology Mutation**: Prune, Grow, Clone, Merge, Split, Rewire operations on layers, attention heads, MoE experts, and residual routes.
+- **Dynamic Topology Mutation**: `prune_expert`, `grow_expert`, `clone_expert`, `merge_experts` and `split_expert` on MoE experts; `rewire_layer` for a layer's residual input edge; `change_module` to change a layer's sequence mixer or feed-forward type; `toggle_layer` for effective depth. Uniform-active-expert invariants are enforced at build time.
 - **Multi-Level Importance Metrics**: Routing load, parameter and gradient norms, Fisher approximations (`fisher_ema`), functional redundancy (cosine similarity and per-expert functional sketches), temporal stability, and causal ablation (`expert_ablation_delta`).
 - **Evolutionary Search**: Pareto frontier optimization (Quality vs Compute/FLOPs) with frontier-diversity-first population selection.
 - **Kaggle-Optimized**: Designed for T4x2 environments with stateless resume, dataset sharding, checksums, and safety budgets.
+- **Prior-ranked module search**: a `SearchPrior` (imported module scores plus an explicit `depth_penalty`) ranks a genome's layer/module candidates deterministically through `rank_module_candidates`, with a rationale attached to each candidate. No external model artifacts are bundled or claimed.
 - **Named mixer layouts**: the zoo's `gdn_3to1` Qwen3-Next-style 3:1 sequence schedule among others, with a committed throughput benchmark (`artifacts/mixer-benchmark/`).
 
 ## Quick Start
