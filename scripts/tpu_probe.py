@@ -613,6 +613,92 @@ def _worker(rank: int, steps: int, dtype: str, directory: str) -> None:
     )
 
 
+def spawn_arguments(
+    workers: int, steps: int, dtype: str, directory: str
+) -> dict[str, Any]:
+    """The arguments for ``xmp.spawn``, as data so the property is testable.
+
+    ``nprocs`` is **None**, not the worker count. Measured 2026-09-22: torch_xla 2.8
+    refuses ``nprocs=8`` with ``ValueError: Unsupported nprocs (8). Please use nprocs=1 or
+    None (default)``, and the acceptance takes ``None`` as "one process per available
+    device". The declared worker count still governs the measurement - it is checked
+    against the device count and carried in the record - but it is not what the spawn call
+    is told.
+    """
+    return {
+        "args": (steps, dtype, directory),
+        "nprocs": None,
+        "start_method": "fork",
+        "expected_workers": workers,
+    }
+
+
+def measure_independent_seeds(
+    *,
+    xmp: Any,
+    devices: int,
+    workers: int,
+    steps: int,
+    dtype: str,
+    directory: str,
+) -> dict[str, Any]:
+    """One single-arm seed per core, and the aggregate the decision divides by the cores.
+
+    The aggregate is the **sum of the ranks' steady rates**, not total tokens over the
+    spawn's wall clock. Two reasons, both structural rather than conveniences: the decision
+    compares it with the T4 pair's *steady* rate (5,083.4 tokens/s) and divides it by the
+    worker count to get per-core training hours, and the wall clock carries one-off costs
+    the session pays once - eight process startups and eight XLA compilations - which
+    amortize over a 24.6M-token arm and are otherwise double-counted, since the rule models
+    recompiles separately from the rebuild measurement. The wall-based figure is recorded
+    beside it rather than dropped, so the difference between the two is visible in the
+    record instead of being an assumption.
+
+    A rank that did not finish, or a device count that is not the declared worker count,
+    raises: a partial parallel measurement is not the measurement the decision reads, and
+    it is contained as a phase error rather than averaged into a plausible number.
+    """
+    if devices != workers:
+        raise RuntimeError(
+            f"the host exposes {devices} XLA device(s) but the measurement declares "
+            f"{workers} worker(s); the aggregate is divided by the worker count, so a "
+            "mismatch is not a measurement"
+        )
+    plan = spawn_arguments(workers, steps, dtype, directory)
+    paths = [Path(directory) / f"rank-{rank}.json" for rank in range(workers)]
+    started = time.perf_counter()
+    xmp.spawn(
+        _worker,
+        args=plan["args"],
+        nprocs=plan["nprocs"],
+        start_method=plan["start_method"],
+        join=True,
+    )
+    wall = time.perf_counter() - started
+    per_rank = [json.loads(path.read_text()) for path in paths if path.exists()]
+    if len(per_rank) != workers:
+        raise RuntimeError(
+            f"{len(per_rank)} of {workers} ranks wrote a report; the aggregate needs all "
+            "of them"
+        )
+    steady = sum(float(row["tokens_per_second"]) for row in per_rank)
+    tokens = sum(row["tokens_per_step"] * steps for row in per_rank)
+    return {
+        "workers": workers,
+        "completed": len(per_rank),
+        "wall_seconds": round(wall, 3),
+        "aggregate_tokens_per_second": round(steady, 1),
+        "wall_tokens_per_second_including_startup": round(tokens / wall, 1) if wall else None,
+        "aggregate_definition": (
+            "sum of the ranks' steady tokens/s (compile excluded), which is the quantity "
+            "comparable to the T4 pair rate and to the per-core training hours the rule "
+            "divides by the worker count"
+        ),
+        "per_rank": per_rank,
+        "ratio_to_t4_pair": round(steady / T4_PAIR_TOKENS_PER_SECOND, 2),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--steps", type=int, default=12, help="steady-state steps to time")
@@ -695,33 +781,24 @@ def main() -> int:
     def independent_seeds() -> None:
         """Eight cores, one independent seed each: the aggregate the decision reads first.
 
-        ``xmp.spawn`` shares one process tree, so the per-rank files are the report.
+        ``xmp.spawn`` shares one process tree, so the per-rank files are the report - and
+        the device count is checked against the declared worker count before spawning,
+        because the aggregate is divided by that count by the decision rule.
         """
+        import tempfile
+
         import torch_xla.distributed.xla_multiprocessing as xmp
 
-        with __import__("tempfile").TemporaryDirectory(prefix="tpu-probe-") as temporary:
-            paths = [Path(temporary) / f"rank-{rank}.json" for rank in range(args.workers)]
-            started = time.perf_counter()
-            xmp.spawn(
-                _worker,
-                args=(args.steps, args.dtype if args.dtype != "both" else "bf16", temporary),
-                nprocs=args.workers,
-                start_method="fork",
-                join=True,
+        devices = len(xm.get_xla_supported_devices())
+        with tempfile.TemporaryDirectory(prefix="tpu-probe-") as temporary:
+            record["independent_seeds"] = measure_independent_seeds(
+                xmp=xmp,
+                devices=devices,
+                workers=args.workers,
+                steps=args.steps,
+                dtype=args.dtype if args.dtype != "both" else "bf16",
+                directory=temporary,
             )
-            wall = time.perf_counter() - started
-            per_rank = [json.loads(path.read_text()) for path in paths if path.exists()]
-        tokens = sum(row["tokens_per_step"] * args.steps for row in per_rank)
-        record["independent_seeds"] = {
-            "workers": args.workers,
-            "completed": len(per_rank),
-            "wall_seconds": round(wall, 3),
-            "aggregate_tokens_per_second": round(tokens / wall, 1) if wall else None,
-            "per_rank": per_rank,
-            "ratio_to_t4_pair": (
-                round((tokens / wall) / T4_PAIR_TOKENS_PER_SECOND, 2) if wall else None
-            ),
-        }
 
     # The order is the decision's, not the dtypes': every dtype's own measurements, then
     # the aggregate the port headline is read from - ahead of the last dtype's diagnostic.

@@ -390,6 +390,79 @@ def test_the_dtype_the_decision_reads_is_the_one_measured_first() -> None:
     )
 
 
+def _fake_xmp(rows: dict[int, dict], recorded: dict) -> object:
+    """An ``xmp``-shaped object that writes each rank's report instead of training."""
+
+    class _Xmp:
+        def spawn(self, fn, args, nprocs, start_method, join):  # noqa: ANN001
+            recorded.update(
+                fn=fn, args=args, nprocs=nprocs, start_method=start_method, join=join
+            )
+            _steps, _dtype, directory = args
+            for rank, row in rows.items():
+                (Path(directory) / f"rank-{rank}.json").write_text(json.dumps(row))
+
+    return _Xmp()
+
+
+def test_the_seed_parallel_spawn_is_told_none_not_the_worker_count(tmp_path: Path) -> None:
+    """The 2026-09-22 failure: torch_xla 2.8 refuses ``nprocs=8``.
+
+    The run measured bf16, both rebuilds and fp32, and lost the one phase the decision
+    reads first - ``independent_seeds`` raised ``ValueError: Unsupported nprocs (8). Please
+    use nprocs=1 or None (default)`` before spawning anything - so a complete probe landed
+    ``INCONCLUSIVE``. The declared worker count still governs the measurement (it is
+    checked against the device count and recorded), but the spawn call is told ``None``.
+    """
+    plan = tpu_probe.spawn_arguments(8, 12, "bf16", "/tmp/anywhere")
+    assert plan["nprocs"] is None
+    assert plan["nprocs"] != plan["expected_workers"]
+    assert plan["args"] == (12, "bf16", "/tmp/anywhere")
+    assert plan["start_method"] == "fork"
+
+    recorded: dict = {}
+    rows = {
+        rank: {"tokens_per_step": 4096, "tokens_per_second": 1100.0 + rank}
+        for rank in range(8)
+    }
+    result = tpu_probe.measure_independent_seeds(
+        xmp=_fake_xmp(rows, recorded), devices=8, workers=8, steps=12, dtype="bf16",
+        directory=str(tmp_path),
+    )
+    assert recorded["nprocs"] is None
+    assert recorded["args"] == (12, "bf16", str(tmp_path))
+    assert recorded["join"] is True
+    # The aggregate is the sum of the ranks' **steady** rates, which is the quantity
+    # comparable to the T4 pair rate and to per-core training hours - not total tokens
+    # over the spawn's wall clock, which carries eight process startups and eight XLA
+    # compilations that a 24.6M-token arm pays once.
+    assert result["aggregate_tokens_per_second"] == round(
+        sum(1100.0 + rank for rank in range(8)), 1
+    )
+    assert result["workers"] == 8 and result["completed"] == 8
+    assert result["wall_tokens_per_second_including_startup"] is not None
+    assert "steady" in result["aggregate_definition"]
+
+
+def test_a_partial_or_mis_sized_seed_parallel_run_is_an_error_not_an_average(
+    tmp_path: Path,
+) -> None:
+    """The aggregate is divided by the worker count, so shortcuts cannot be silent."""
+    rows = {rank: {"tokens_per_step": 4096, "tokens_per_second": 1000.0} for rank in range(8)}
+    with pytest.raises(RuntimeError, match="4 XLA device"):
+        tpu_probe.measure_independent_seeds(
+            xmp=_fake_xmp(rows, {}), devices=4, workers=8, steps=12, dtype="bf16",
+            directory=str(tmp_path / "mismatch"),
+        )
+    (tmp_path / "partial").mkdir()
+    partial = {rank: rows[rank] for rank in range(7)}
+    with pytest.raises(RuntimeError, match="7 of 8 ranks"):
+        tpu_probe.measure_independent_seeds(
+            xmp=_fake_xmp(partial, {}), devices=8, workers=8, steps=12, dtype="bf16",
+            directory=str(tmp_path / "partial"),
+        )
+
+
 def test_a_phase_that_cannot_run_is_recorded_and_the_rest_still_run(tmp_path: Path) -> None:
     """The containment the 2026-09-22 run needed and did not have.
 
