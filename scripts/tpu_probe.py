@@ -32,6 +32,20 @@ does not compare against the registered numbers - it reports what the hardware d
 this model's shape, so the decision to port (or not) rests on measurements. The record is
 written to ``/kaggle/working/tpu-probe.json`` and printed.
 
+Two properties of the run are deliberate, and both were paid for. **The measurements run in
+the order a failure would cost the decision** (``MEASUREMENT_ORDER``): bf16 is what
+``evaluate`` reads and what the session trains in, so it goes first, then the eight-worker
+aggregate, and the fp32 diagnostic last. **Each measurement is contained**
+(``_run_phase``): one that cannot run is recorded as an error, stays out of ``completed``,
+and does not stop the measurements after it. A probe is queued for hours and runs once, so
+"the record holds whatever the hardware gave up before it broke" is the requirement, not a
+nicety.
+
+The costs of ignoring both are committed history: the 2026-09-21 run raised 148 s in and
+wrote no record at all (6.5 h of queue, no number). The 2026-09-22 run saved its first
+measurement, then died inside **fp32's** rebuild - a dtype the decision never reads -
+losing bf16, the aggregate, and its own exit status.
+
     PJRT_DEVICE=TPU python scripts/tpu_probe.py --steps 12 --workers 8
 """
 
@@ -44,7 +58,7 @@ import statistics
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -98,6 +112,14 @@ T4_PAIR_TOKENS_PER_SECOND = 5_083.4
 #:    session would actually see.
 PORT_THRESHOLD_MULTIPLE = 2.0
 RECOMPILE_OVERHEAD_LIMIT = 0.10
+
+#: The order the measurements run in, decided by what a *failure* would cost the decision
+#: rather than by the dtypes' names. ``evaluate`` reads ``bf16`` (the dtype the session
+#: trains in, fp16 being its nearest neighbour) and the eight-worker aggregate; fp32 is a
+#: diagnostic that decides nothing. On 2026-09-22 the probe ran fp32 first, died inside its
+#: rebuild, and its one queued run produced no bf16 measurement and no aggregate - so the
+#: decision was INCONCLUSIVE on a record that had never reached the shape it needed.
+MEASUREMENT_ORDER = ("bf16", "fp32")
 
 #: The declared primary queue, for the overhead arithmetic: 12 seeds x 2 arms x 24,576,000
 #: tokens, with 3 mutation events per arm and a candidate cap of 4, so each arm pays
@@ -222,6 +244,50 @@ def _save(record: dict[str, Any], path: Path) -> None:
     path.write_text(json.dumps(record, indent=1, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def phase_names(dtypes: tuple[str, ...], *, workers: int) -> tuple[str, ...]:
+    """The measurement order, decided by what a failure would *cost the decision*.
+
+    ``evaluate`` reads ``bf16`` and the eight-worker aggregate, so those run first and
+    fp32's diagnostic runs last: a phase that cannot run then loses the reading nobody
+    decides on. A pure function so the property is testable without a TPU - the order is
+    the sort of thing a refactor flips silently, and on 2026-09-22 it cost the run.
+    """
+    names: list[str] = []
+    for index, dtype in enumerate(dtypes):
+        names.append(f"{dtype}.throughput")
+        names.append(f"{dtype}.rebuild")
+        if index == 0 and workers:
+            names.append("independent_seeds")
+    return tuple(names)
+
+
+def _run_phase(
+    record: dict[str, Any], name: str, work: Callable[[], None], path: Path
+) -> bool:
+    """Run one measurement, keeping a failure in the record rather than ending the run.
+
+    Returns whether it completed. A phase that raises is recorded under ``errors`` and stays
+    out of ``completed``: the record is then honestly partial, and the phases after it still
+    run. ``evaluate`` reads the fields it needs rather than the exit status, so a contained
+    failure still decides nothing on its own - a missing measurement is INCONCLUSIVE, never
+    a pass (which is the property ``_save`` exists for as well).
+
+    Both halves of that were bought. A probe run that dies does not just lose its number:
+    it ends the kernel ERROR after hours in a queue, and a reader who has only the record
+    cannot tell a finished one from a partial one unless the record says so.
+    """
+    try:
+        work()
+    except Exception as exc:  # noqa: BLE001 - recorded, not swallowed
+        record.setdefault("errors", []).append(
+            {"phase": name, "error": f"{type(exc).__name__}: {exc}"}
+        )
+    else:
+        record["completed"].append(name)
+    _save(record, path)
+    return name in record["completed"]
+
+
 def _device_report(torch, xm, xr) -> dict[str, Any]:
     """What the runtime actually gave us: device count, type, and per-core memory."""
     devices = xm.get_xla_supported_devices()
@@ -334,6 +400,19 @@ def _rebuild_cost(torch, xm, config, genome, *, dtype: str, steps: int) -> dict[
     The candidate path builds a model from a *different* genome, so this rebuilds from a
     genome with one expert added - the shape a real event produces - rather than reusing
     the model above, whose graph XLA already has.
+
+    The caller has already released the declared model and its optimizer (see
+    ``build_and_time`` in ``main``), so this measures one rebuild rather than two sessions'
+    worth of state. The coexistence that costs a *session* per-core memory is narrower than
+    that: ``v0_session._adaptive_event`` holds the previous model while it rebuilds the
+    winner, but only one optimizer's state is ever stepped, so pricing an event's peak is a
+    previous model's parameters and grads on top of this one - which the recorded parameter
+    count gives a reader directly.
+
+    2026-09-22: this is where the run died. The fp32 pair of models plus two stepped
+    optimizers needed 7.96G with 5.33G free, and the probe was holding both because it
+    measured the rebuild before releasing the declared model. bf16 is wider of the limit,
+    but the order is what made the loss total: see ``MEASUREMENT_ORDER``.
     """
     from act.model.factory import v0_moe_model_from_genome
 
@@ -431,25 +510,42 @@ def main() -> int:
         "steps": args.steps,
     }
 
-    dtypes = ("fp32", "bf16") if args.dtype == "both" else (args.dtype,)
+    dtypes = tuple(dtype for dtype in MEASUREMENT_ORDER if args.dtype in ("both", dtype))
     record["completed"] = []
+    record["errors"] = []
     _save(record, args.output)
-    for dtype in dtypes:
+
+    def build_and_time(dtype: str, state: dict[str, Any]) -> None:
+        """The declared model at one dtype, timed, then released before any rebuild.
+
+        The model and its optimizer are dropped here rather than after the rebuild: a
+        rebuild's cost is the new graph, and holding a second fully-stepped optimizer's
+        state while measuring one is not a shape any event produces. The genome survives
+        (it is device-free), which is what the rebuild builds from.
+        """
         config, genome, model, optimizer, total = _build_declared(torch, xm, dtype)
+        state["config"], state["genome"] = config, genome
         record[dtype] = {
             "parameters": total,
             "throughput": _measure(torch, xm, model, optimizer, config, steps=args.steps),
         }
-        record["completed"].append(f"{dtype}.throughput")
-        _save(record, args.output)
-        record[dtype]["rebuild"] = _rebuild_cost(
-            torch, xm, config, genome, dtype=dtype, steps=max(3, args.steps // 3)
-        )
-        record["completed"].append(f"{dtype}.rebuild")
-        _save(record, args.output)
         del model, optimizer
 
-    if args.workers:
+    def rebuild_of(dtype: str, state: dict[str, Any]) -> None:
+        if "genome" not in state:
+            raise RuntimeError(
+                f"{dtype}.throughput did not complete, so there is no genome to rebuild from"
+            )
+        record[dtype]["rebuild"] = _rebuild_cost(
+            torch, xm, state["config"], state["genome"], dtype=dtype,
+            steps=max(3, args.steps // 3),
+        )
+
+    def independent_seeds() -> None:
+        """Eight cores, one independent seed each: the aggregate the decision reads first.
+
+        ``xmp.spawn`` shares one process tree, so the per-rank files are the report.
+        """
         import torch_xla.distributed.xla_multiprocessing as xmp
 
         with __import__("tempfile").TemporaryDirectory(prefix="tpu-probe-") as temporary:
@@ -463,10 +559,7 @@ def main() -> int:
                 join=True,
             )
             wall = time.perf_counter() - started
-            # xmp.spawn shares one process tree, so the per-rank files are the report.
-            per_rank = [
-                json.loads(path.read_text()) for path in paths if path.exists()
-            ]
+            per_rank = [json.loads(path.read_text()) for path in paths if path.exists()]
         tokens = sum(row["tokens_per_step"] * args.steps for row in per_rank)
         record["independent_seeds"] = {
             "workers": args.workers,
@@ -478,7 +571,18 @@ def main() -> int:
                 round((tokens / wall) / T4_PAIR_TOKENS_PER_SECOND, 2) if wall else None
             ),
         }
-        record["completed"].append("independent_seeds")
+
+    # The order is the decision's, not the dtypes': every dtype's own measurements, then
+    # the aggregate the port headline is read from - ahead of the last dtype's diagnostic.
+    states: dict[str, dict[str, Any]] = {dtype: {} for dtype in dtypes}
+    work: dict[str, Callable[[], None]] = {}
+    for dtype in dtypes:
+        state = states[dtype]
+        work[f"{dtype}.throughput"] = lambda d=dtype, s=state: build_and_time(d, s)
+        work[f"{dtype}.rebuild"] = lambda d=dtype, s=state: rebuild_of(d, s)
+    work["independent_seeds"] = independent_seeds
+    for name in phase_names(dtypes, workers=args.workers):
+        _run_phase(record, name, work[name], args.output)
 
     _save(record, args.output)
     print(json.dumps(record, indent=1, sort_keys=True))

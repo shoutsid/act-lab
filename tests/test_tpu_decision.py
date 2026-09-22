@@ -6,6 +6,12 @@ that arrives. These tests pin the two thresholds, the arithmetic between them, a
 that matters most - that an incomplete record is `INCONCLUSIVE` rather than a pass. A probe
 that fails to produce an eight-worker measurement is exactly the outcome where "no problem
 found" would be the wrong reading.
+
+They also pin the properties that decide what a *partial* record contains, because both were
+learned by losing a queued run: the measurement order runs the rule's own dtype first, and a
+phase that cannot run is contained (recorded, and the later measurements still happen). An
+uncontained failure does not just lose its number - it ends the kernel ERROR after hours in a
+queue, which is what the 2026-09-22 run did inside a dtype the decision never reads.
 """
 
 from __future__ import annotations
@@ -253,13 +259,129 @@ def test_a_partial_record_is_written_where_it_stands(tmp_path: Path) -> None:
     assert json.loads(target.read_text())["completed"] == ["fp32.throughput"]
 
 
-def test_every_measurement_is_saved_before_the_next_one_runs() -> None:
+def test_the_measurement_order_is_the_decisions() -> None:
+    """bf16 and the aggregate first, the fp32 diagnostic last.
+
+    ``evaluate`` reads ``bf16`` and ``independent_seeds`` (pinned against this order by the
+    test below, so the two cannot drift apart). A probe is queued for hours and runs once,
+    so the order is what a *partial* record still contains - and on 2026-09-22 the run
+    spent itself on fp32 and delivered neither of the measurements the rule needs.
+    """
+    assert tpu_probe.phase_names(("bf16", "fp32"), workers=8) == (
+        "bf16.throughput",
+        "bf16.rebuild",
+        "independent_seeds",
+        "fp32.throughput",
+        "fp32.rebuild",
+    )
+    # Without the parallel pass there is nothing to put between the dtypes.
+    assert tpu_probe.phase_names(("bf16", "fp32"), workers=0) == (
+        "bf16.throughput",
+        "bf16.rebuild",
+        "fp32.throughput",
+        "fp32.rebuild",
+    )
+
+
+def test_the_dtype_the_decision_reads_is_the_one_measured_first() -> None:
+    """The coupling itself, stated as one fact rather than two literals that agree.
+
+    ``evaluate`` names the fields a port depends on - a record missing one is
+    INCONCLUSIVE, never a pass - and the measurement order runs that dtype first. They were
+    *not* coupled on 2026-09-22: the order measured fp32 first, the rule needed bf16, and
+    the one queued run produced neither.
+    """
+    why = tpu_probe.evaluate({})["why"]
+    first = tpu_probe.MEASUREMENT_ORDER[0]
+    assert first == "bf16"
+    assert f"{first}.rebuild" in why
+    assert tpu_probe.phase_names(tpu_probe.MEASUREMENT_ORDER, workers=8)[0] == (
+        f"{first}.throughput"
+    )
+
+
+def test_a_phase_that_cannot_run_is_recorded_and_the_rest_still_run(tmp_path: Path) -> None:
+    """The containment the 2026-09-22 run needed and did not have.
+
+    That probe measured fp32's throughput, then died inside fp32's rebuild and took bf16,
+    the eight-worker aggregate and its own exit status with it. A failure is now a row in
+    the record: it stays out of ``completed``, names itself, and the measurements after it
+    still happen - which matters because a failure *is* often a memory verdict, and the
+    numbers after this one are the ones the decision reads.
+    """
+    path = tmp_path / "tpu-probe.json"
+    record: dict = {"completed": [], "errors": []}
+    ran: list[str] = []
+
+    def exhausted() -> None:
+        raise RuntimeError(
+            "Bad StatusOr access: RESOURCE_EXHAUSTED: Attempting to reserve 7.96G"
+        )
+
+    def later() -> None:
+        ran.append("independent_seeds")
+
+    assert tpu_probe._run_phase(record, "fp32.rebuild", exhausted, path) is False
+    assert tpu_probe._run_phase(record, "independent_seeds", later, path) is True
+
+    assert record["completed"] == ["independent_seeds"]
+    assert record["errors"] == [
+        {
+            "phase": "fp32.rebuild",
+            "error": "RuntimeError: Bad StatusOr access: RESOURCE_EXHAUSTED: "
+            "Attempting to reserve 7.96G",
+        }
+    ]
+    assert ran == ["independent_seeds"]
+
+
+def test_the_record_reaches_disk_before_the_next_measurement_runs(tmp_path: Path) -> None:
     """The first run wrote its record once, at the end, and died 148 s in.
 
     So 6.5 h of queue produced no number at all - not even the throughput it had already
-    measured. Each measurement now lands on disk as it completes, and the record carries a
-    ``completed`` list so a partial one cannot read like a finished one.
+    measured. This pins the *timing* rather than the existence of a call - the following
+    phase reads the file and sees what the previous one left - and it pins it for a phase
+    that **failed** as well as one that completed, because a dying run is the case this
+    exists for. A version that saved only on success passed an earlier version of this
+    test, which is why the failing branch is asserted here.
+    """
+    path = tmp_path / "tpu-probe.json"
+    record: dict = {"completed": [], "errors": []}
+    on_disk: list[object] = []
+
+    def read_it_back() -> None:  # stands in for the next measurement
+        on_disk.append(json.loads(path.read_text()))
+
+    def exhausted() -> None:
+        raise RuntimeError("RESOURCE_EXHAUSTED")
+
+    tpu_probe._run_phase(record, "bf16.throughput", lambda: None, path)
+    tpu_probe._run_phase(record, "bf16.rebuild", read_it_back, path)
+    tpu_probe._run_phase(record, "fp32.throughput", exhausted, path)
+
+    assert on_disk == [{"completed": ["bf16.throughput"], "errors": []}]
+    assert json.loads(path.read_text())["errors"] == [
+        {"phase": "fp32.throughput", "error": "RuntimeError: RESOURCE_EXHAUSTED"}
+    ]
+
+
+def test_the_declared_model_is_released_before_any_rebuild_is_measured() -> None:
+    """The memory shape that killed the 2026-09-22 run, pinned where it can be seen.
+
+    That run died with 7.96G wanted and 5.33G free, holding two fp32 models plus two AdamW
+    states at once - because it measured the rebuild before releasing the declared model.
+    A session's own event peak is narrower: ``v0_session._adaptive_event`` holds the
+    previous model while it rebuilds the winner, but only one optimizer's state is ever
+    stepped, so what an event costs on top of one session is a model's parameters and
+    grads. Releasing the pair after its throughput is timed keeps that true, and bf16 is
+    what the decision reads either way - so nothing this probe is read for depends on the
+    two coexisting.
+
+    Pinned as source order rather than behaviour: releasing device memory has no CPU
+    stand-in, and the cost of a silent revert is another queued run that dies where this
+    one did.
     """
     source = (ROOT / "scripts" / "tpu_probe.py").read_text(encoding="utf-8")
-    assert source.count("_save(record, args.output)") >= 4
-    assert 'record["completed"] = []' in source
+    body = source.split("def build_and_time", 1)[1].split("def rebuild_of", 1)[0]
+    assert "del model, optimizer" in body
+    assert body.index("del model, optimizer") > body.index("_measure(")
