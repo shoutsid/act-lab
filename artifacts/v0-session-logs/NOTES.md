@@ -81,6 +81,16 @@ than in the tailer's patience. And the four unexplained deaths are unexplained *
 of this: a session killed mid-pair never flushes, which is why the platform's log for them
 is empty rather than short.
 
+## 3b. A message in this log that looks like a failure and is not
+
+Lines 44-47 are four copies of `Error while trying to load upload info:
+KaggleObject.from_dict() got an unexpected keyword argument 'token'`, and they sit
+immediately **before** line 48's success (`version pushed (4 seed version(s))`). This log is
+the reason that message can be called benign rather than dismissed: the container's own
+`kaggle` 2.0.2 CLI rejects a field in a modern API response while *reading* upload info,
+and the upload path continues. The runbook's symptom table now carries it, because a
+reader diagnosing a lost publish would otherwise reasonably stop on it.
+
 ## 4. What the session did with its hours
 
 | | |
