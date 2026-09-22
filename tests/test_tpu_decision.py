@@ -365,6 +365,43 @@ def test_the_record_reaches_disk_before_the_next_measurement_runs(tmp_path: Path
     ]
 
 
+def test_each_phase_is_bound_to_its_own_dtype_and_state() -> None:
+    """The failure mode a loop-built table hides: every phase running as the last dtype.
+
+    A closure reading ``dtype`` or ``state`` at call time writes the same measurements
+    under two names, and the record then **reads as complete and is wrong** - which is
+    worse than a crash, because nothing downstream can tell. So the binding is asserted
+    rather than eyeballed, and so is the *sharing* it depends on: a rebuild is buildable
+    only because its own dtype's throughput pass left a genome in that dtype's state, so a
+    table that gave each phase a fresh dict would turn every rebuild into a recorded error.
+    """
+    calls: list[tuple[str, int]] = []
+
+    def build_and_time(dtype: str, state: dict) -> None:
+        calls.append((f"build:{dtype}", id(state)))
+        state["genome"] = f"{dtype}-genome"
+
+    def rebuild_of(dtype: str, state: dict) -> None:
+        calls.append((f"rebuild:{dtype}", id(state)))
+        # Raises for real if the throughput pass did not run against this same dict.
+        calls.append((f"from:{state['genome']}", id(state)))
+
+    states, work = tpu_probe.phase_table(("bf16", "fp32"), build_and_time, rebuild_of)
+
+    assert set(work) == {"bf16.throughput", "bf16.rebuild", "fp32.throughput", "fp32.rebuild"}
+    assert states["bf16"] is not states["fp32"]
+    for name in ("bf16.throughput", "bf16.rebuild", "fp32.throughput", "fp32.rebuild"):
+        work[name]()
+
+    assert [name for name, _ in calls] == [
+        "build:bf16", "rebuild:bf16", "from:bf16-genome",
+        "build:fp32", "rebuild:fp32", "from:fp32-genome",
+    ]
+    # Each dtype's two phases share one dict; the two dtypes share nothing.
+    assert {state for _, state in calls[:3]} == {id(states["bf16"])}
+    assert {state for _, state in calls[3:]} == {id(states["fp32"])}
+
+
 def test_the_fetch_script_decides_where_the_record_lands() -> None:
     """A probe is queued for hours, runs once, and exists for its verdict.
 

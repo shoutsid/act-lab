@@ -261,6 +261,38 @@ def phase_names(dtypes: tuple[str, ...], *, workers: int) -> tuple[str, ...]:
     return tuple(names)
 
 
+def _binder(function: Callable[..., None], *arguments: Any) -> Callable[[], None]:
+    """Bind a phase's arguments **now**, not when the loop variable has moved on.
+
+    The phase table is built in a loop, so a closure that read ``dtype`` or ``state`` at
+    call time would run every phase against the last dtype's state and write the same
+    measurements under two names - a record that reads as complete and is wrong. That is
+    the failure this project treats as worse than a crash, so the binding is explicit and
+    `phase_table` is a function a test can watch rather than an idiom to be noticed.
+    """
+    return lambda: function(*arguments)
+
+
+def phase_table(
+    dtypes: tuple[str, ...],
+    build_and_time: Callable[[str, dict[str, Any]], None],
+    rebuild_of: Callable[[str, dict[str, Any]], None],
+) -> tuple[dict[str, dict[str, Any]], dict[str, Callable[[], None]]]:
+    """The per-dtype state and the phase name -> callable table, each properly bound.
+
+    Returns the states as well as the callables because what makes a rebuild measurable is
+    the genome its own dtype's throughput pass put there - the sharing is the point, and a
+    table that gave each phase a fresh dict would silently make every rebuild an error.
+    """
+    states: dict[str, dict[str, Any]] = {dtype: {} for dtype in dtypes}
+    work: dict[str, Callable[[], None]] = {}
+    for dtype in dtypes:
+        state = states[dtype]
+        work[f"{dtype}.throughput"] = _binder(build_and_time, dtype, state)
+        work[f"{dtype}.rebuild"] = _binder(rebuild_of, dtype, state)
+    return states, work
+
+
 def _run_phase(
     record: dict[str, Any], name: str, work: Callable[[], None], path: Path
 ) -> bool:
@@ -574,12 +606,9 @@ def main() -> int:
 
     # The order is the decision's, not the dtypes': every dtype's own measurements, then
     # the aggregate the port headline is read from - ahead of the last dtype's diagnostic.
-    states: dict[str, dict[str, Any]] = {dtype: {} for dtype in dtypes}
-    work: dict[str, Callable[[], None]] = {}
-    for dtype in dtypes:
-        state = states[dtype]
-        work[f"{dtype}.throughput"] = lambda d=dtype, s=state: build_and_time(d, s)
-        work[f"{dtype}.rebuild"] = lambda d=dtype, s=state: rebuild_of(d, s)
+    # Only the callables are needed here: each already holds its own dtype's state dict,
+    # which is what makes a rebuild buildable from the genome its own pass stored.
+    _, work = phase_table(dtypes, build_and_time, rebuild_of)
     work["independent_seeds"] = independent_seeds
     for name in phase_names(dtypes, workers=args.workers):
         _run_phase(record, name, work[name], args.output)
