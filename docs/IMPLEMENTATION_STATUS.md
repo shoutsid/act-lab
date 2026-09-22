@@ -1,5 +1,19 @@
 # ACT Implementation Status
 
+## The front page described an engine and a tool the repository does not have (2026-09-22)
+
+| | |
+|---|---|
+| **What was found** | `README.md`'s architecture block read `TRAINING ENGINE | PyTorch + T4x2 / JAX + TPU v5e`, and its feature list advertised **"Qwen-Informed Prior: Prior extraction and structural analysis tool for hybrid architectures"** and **"entropy tracking"**. |
+| **Checked rather than assumed, because a dependency claim is checkable** | `import jax` / `from jax`: **zero** occurrences under `src/`, `scripts/` and `tests/`, and no `jax` anywhere in `pyproject.toml` or `uv.lock`. The TPU this project has actually measured is a **v3-8** under **torch_xla** - `xla_devices: 8`, torch 2.8.0+cpu, torch_xla 2.8.0, from this session's own probe - not a v5e, and not JAX. |
+| **The tool that does not exist** | `prior extraction`, `extract_prior`: the **only** occurrence anywhere in the repository was the README's own generated egg-info mirror (`src/adaptive_computational_topology.egg-info/PKG-INFO`, which is untracked and is a copy of an older README). Nothing under `src/`, `scripts/` or `tests/` mentions prior extraction at all. |
+| **And one claim that was half true** | `entropy tracking`: no occurrence anywhere in `src/act/evolution` or `src/act/topology`. What does exist is `pareto_frontier`, `dominates` and a `select_population` that retains **frontier diversity** first - so the bullet keeps the Pareto and diversity halves and drops entropy. The importance bullet's `Activation counters` likewise became the signals the module computes (`routing_load`, `parameter_norm`); the rest of it is real (`gradient_norm`, `fisher_ema`, `cosine_similarity`, per-expert functional sketches, `temporal_stability`, `expert_ablation_delta`). |
+| **What the Qwen bullet became** | The real, nearby capability the repository has: **named mixer layouts** - the zoo's `gdn_3to1` Qwen3-Next-style 3:1 sequence schedule among others, with the committed throughput benchmark in `artifacts/mixer-benchmark/`. Naming the lineage is honest; claiming a prior-extraction tool was not. |
+| **Why it was worth doing and what was left alone** | The front page is what a reader believes the project is, and `docs/complete_implementation_plan.md` is a **frozen plan** that still reads "Kaggle T4x2 primary, TPU v5e-8 secondary, JAX" - that is the plan's own text and it is deliberately **not** amended, exactly as the report's historical registrations are not. The README describes the project; the plan describes the intention, and they should differ where the implementation moved. |
+| **Pinned in both directions** | `tests/test_doc_index.py` gained two **agreement** checks, not absence checks: the architecture block's framework names must agree with what `src/` and `scripts/` import, and the feature list must advertise a prior-extraction tool exactly when one exists. Mutations: putting the JAX/v5e line back fails 1, putting the Qwen bullet back fails 1, and adding `import jax` to `src/` - the *other* direction - fails 1. |
+| **A bug in my own first version, kept on the record** | The first `_python_sources()` searched `tests/` too, so the test found the very literals it searches for and **passed** on a repository with no such tool - the same self-reference shape as the earlier "the search found itself" failures. Scoped to `src/` and `scripts/`, with the reason in its docstring. |
+| **Result** | **1631 tests pass**; README corrected in four places; plan untouched by design. |
+
 ## A capture held the whole log of the session that succeeded, and it settles the exit-publish trade with a measurement (2026-09-22)
 
 | | |

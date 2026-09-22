@@ -18,16 +18,16 @@ A training process that jointly optimizes weights and computational topology can
 │ attention / GDN / MoE / residual / depth    │
 ├──────────────────────────────────────────────┤
 │             TRAINING ENGINE                  │
-│ PyTorch + T4x2 / JAX + TPU v5e              │
+│ PyTorch + T4 x2 (CUDA)                      │
 └──────────────────────────────────────────────┘
 ```
 
 ## Features
 - **Dynamic Topology Mutation**: Prune, Grow, Clone, Merge, Split, Rewire operations on layers, attention heads, MoE experts, and residual routes.
-- **Multi-Level Importance Metrics**: Activation counters, gradient norms, Fisher approximations, functional redundancy (CKA / cosine), temporal stability, and causal ablation.
-- **Evolutionary Search**: Pareto frontier optimization (Quality vs Compute/FLOPs), population diversity management, entropy tracking.
+- **Multi-Level Importance Metrics**: Routing load, parameter and gradient norms, Fisher approximations (`fisher_ema`), functional redundancy (cosine similarity and per-expert functional sketches), temporal stability, and causal ablation (`expert_ablation_delta`).
+- **Evolutionary Search**: Pareto frontier optimization (Quality vs Compute/FLOPs) with frontier-diversity-first population selection.
 - **Kaggle-Optimized**: Designed for T4x2 environments with stateless resume, dataset sharding, checksums, and safety budgets.
-- **Qwen-Informed Prior**: Prior extraction and structural analysis tool for hybrid architectures.
+- **Named mixer layouts**: the zoo's `gdn_3to1` Qwen3-Next-style 3:1 sequence schedule among others, with a committed throughput benchmark (`artifacts/mixer-benchmark/`).
 
 ## Quick Start
 ```bash

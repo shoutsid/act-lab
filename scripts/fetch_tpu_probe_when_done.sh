@@ -35,6 +35,31 @@ fetch_log() {
   fi
 }
 
+# Apply the pre-registered decision rule to whatever record was fetched, here, where the
+# record lands. The rule itself decides nothing by being printed - it is `--evaluate`, the
+# same mode the runbook names - but a probe's whole purpose is the verdict, and a verdict
+# that needs a second hand-run command is a verdict that can be left unread. Best-effort by
+# construction: a missing interpreter must not stop the fetch that already happened.
+evaluate_record() {
+  local record="$1"
+  local interpreter=""
+  if [[ -n "${PYTHON:-}" ]]; then
+    interpreter="$PYTHON"
+  elif command -v python3 >/dev/null 2>&1; then
+    interpreter="python3"
+  elif [[ -x "$REPO_ROOT/.venv/bin/python" ]]; then
+    interpreter="$REPO_ROOT/.venv/bin/python"
+  fi
+  if [[ -z "$interpreter" ]]; then
+    echo "$(stamp) no python found; run the decision by hand:"
+    echo "  PYTHONPATH=src python scripts/tpu_probe.py --evaluate $record"
+    return 0
+  fi
+  echo "$(stamp) pre-registered decision (exit 0 PORT, 2 PORT_FIXED_GRAPH_ONLY, 1 DO-NOT-PORT, 3 INCONCLUSIVE):"
+  ( cd "$REPO_ROOT" && PYTHONPATH=src "$interpreter" scripts/tpu_probe.py --evaluate "$record" ) || true
+  return 0
+}
+
 for poll in $(seq 1 "$MAX_POLLS"); do
   status=$(kaggle kernels status "$KERNEL" 2>&1 | tail -1)
   case "$status" in
@@ -45,6 +70,7 @@ for poll in $(seq 1 "$MAX_POLLS"); do
       if [[ -f "$OUT_DIR/tpu-probe.json" ]]; then
         echo "$(stamp) record:"
         cat "$OUT_DIR/tpu-probe.json"
+        evaluate_record "$OUT_DIR/tpu-probe.json"
       else
         echo "$(stamp) no tpu-probe.json in the output; the log above says why"
       fi
@@ -59,6 +85,10 @@ for poll in $(seq 1 "$MAX_POLLS"); do
       if [[ -f "$OUT_DIR/tpu-probe.json" ]]; then
         echo "$(stamp) PARTIAL record (this run did not finish):"
         cat "$OUT_DIR/tpu-probe.json"
+        # A contained failure still leaves whatever the hardware gave up, and a record can
+        # be partial and decisive at once - so the rule is applied here too, not only on a
+        # clean exit. INCONCLUSIVE (exit 3) is a legitimate answer to print.
+        evaluate_record "$OUT_DIR/tpu-probe.json"
       fi
       fetch_log
       exit 1

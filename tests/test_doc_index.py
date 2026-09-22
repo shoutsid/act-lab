@@ -201,6 +201,71 @@ def test_report_section_references_resolve() -> None:
     )
 
 
+def _python_sources() -> list[Path]:
+    """The implementation the front page's claims are about.
+
+    ``src/`` and ``scripts/`` only, deliberately: this module spells the names it
+    searches for (``extract_prior``, ``import jax``), so a search that included
+    ``tests/`` would find its own literals and pass whatever the repository did - which
+    is precisely how the first version of `test_the_front_page_advertises_no_tool...`
+    failed on a repository with no such tool in it at all.
+    """
+
+    return [
+        path
+        for root in (ROOT / "src", ROOT / "scripts")
+        for path in root.rglob("*.py")
+    ]
+
+
+def test_the_front_page_names_the_engine_the_repository_imports() -> None:
+    """The README's architecture block is a *dependency* claim, so it can be checked.
+
+    Measured 2026-09-22: that block read `TRAINING ENGINE | PyTorch + T4x2 / JAX + TPU
+    v5e` while nothing in the repository imported jax (and the hardware the project has
+    actually measured is a TPU **v3-8** under torch_xla, eight XLA devices, not a v5e).
+    The invariant under test is **agreement**, not the absence of jax: add a JAX backend
+    and this fails until the front page says so, which is the direction that matters.
+    """
+
+    engine = README.read_text(encoding="utf-8").split("TRAINING ENGINE")[1].splitlines()[1]
+    assert "PyTorch" in engine
+
+    jax_imported = any(
+        re.search(r"^\s*(?:import jax|from jax)", path.read_text(encoding="utf-8"), re.M)
+        for path in _python_sources()
+    )
+    assert ("JAX" in engine) == jax_imported, (
+        f"the front page's TRAINING ENGINE line and the tree disagree about jax: "
+        f"engine={engine.strip()!r}, src+scripts import jax={jax_imported}"
+    )
+
+
+def test_the_front_page_advertises_no_tool_the_repository_lacks() -> None:
+    """A bullet for a tool that does not exist is the same defect as a wrong number.
+
+    `Qwen-Informed Prior: Prior extraction and structural analysis tool for hybrid
+    architectures` sat in the README's feature list while nothing under `src/`,
+    `scripts/` or `tests/` mentioned prior extraction at all - the only occurrence
+    anywhere in the repository was the README's own generated egg-info mirror. Removed
+    2026-09-22, and pinned as agreement in the same direction as the engine line: build
+    the tool, and the front page has to name it.
+    """
+
+    readme = README.read_text(encoding="utf-8").lower()
+    has_prior_tool = any(
+        "extract_prior" in path.read_text(encoding="utf-8")
+        or "prior_extraction" in path.read_text(encoding="utf-8")
+        for path in _python_sources()
+    )
+    advertises_prior_tool = "qwen-informed prior" in readme
+    assert advertises_prior_tool == has_prior_tool, (
+        "the front page advertises a prior-extraction tool the repository does not "
+        f"have, or has one it does not advertise (advertised={advertises_prior_tool}, "
+        f"implemented={has_prior_tool})"
+    )
+
+
 def test_plan_section_references_resolve() -> None:
     """Every "plan section N" reference points at a section the plan actually has."""
 

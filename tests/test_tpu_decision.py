@@ -365,6 +365,30 @@ def test_the_record_reaches_disk_before_the_next_measurement_runs(tmp_path: Path
     ]
 
 
+def test_the_fetch_script_decides_where_the_record_lands() -> None:
+    """A probe is queued for hours, runs once, and exists for its verdict.
+
+    So the verdict is printed by the fetch that delivers the record, not left for a second
+    hand-run command that can be forgotten. Both terminal branches apply it, which is the
+    point of the containment fix: a run that ends ERROR still writes a record, and a record
+    that is incomplete is `INCONCLUSIVE` with exit 3 - a legitimate answer to print rather
+    than a reason to say nothing.
+
+    (This is why the script is `fetch_*` rather than `run_*`: the `run_*_when_*` watchers
+    run the arch-zoo analyzer and their logs are their arms' records, and
+    `test_record_freshness.py` requires an analyzer call of every one of them.)
+    """
+    text = (ROOT / "scripts" / "fetch_tpu_probe_when_done.sh").read_text(encoding="utf-8")
+    assert "scripts/tpu_probe.py --evaluate" in text
+    complete_branch, error_branch = text.split("*COMPLETE*)")[1].split(
+        "*ERROR* | *CANCELLED*)"
+    )
+    assert "evaluate_record" in complete_branch
+    assert "evaluate_record" in error_branch
+    # Best-effort by construction: no interpreter must not undo a fetch already made.
+    assert ") || true" in text
+
+
 def test_the_declared_model_is_released_before_any_rebuild_is_measured() -> None:
     """The memory shape that killed the 2026-09-22 run, pinned where it can be seen.
 
