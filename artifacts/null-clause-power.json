@@ -1,0 +1,191 @@
+{
+  "anchor_reading": {
+    "p_clause_fires": 0.8483007817643149,
+    "p_clause_passes": 0.1516992182356851,
+    "p_seed_favours_null": 0.8850811129661258,
+    "z": 1.2007768503022296
+  },
+  "by_effect_size": [
+    {
+      "p_clause_fires": 0.019287109375,
+      "p_clause_passes": 0.980712890625,
+      "p_seed_favours_null": 0.5,
+      "z": 0.0
+    },
+    {
+      "p_clause_fires": 0.08207546980989432,
+      "p_clause_passes": 0.9179245301901057,
+      "p_seed_favours_null": 0.5987063256829237,
+      "z": 0.25
+    },
+    {
+      "p_clause_fires": 0.23289186588016997,
+      "p_clause_passes": 0.76710813411983,
+      "p_seed_favours_null": 0.6914624612740131,
+      "z": 0.5
+    },
+    {
+      "p_clause_fires": 0.46621018051824686,
+      "p_clause_passes": 0.5337898194817532,
+      "p_seed_favours_null": 0.7733726476231317,
+      "z": 0.75
+    },
+    {
+      "p_clause_fires": 0.705729154024097,
+      "p_clause_passes": 0.29427084597590303,
+      "p_seed_favours_null": 0.8413447460685429,
+      "z": 1.0
+    },
+    {
+      "p_clause_fires": 0.8495501704142003,
+      "p_clause_passes": 0.15044982958579967,
+      "p_seed_favours_null": 0.8855118397242583,
+      "z": 1.203
+    },
+    {
+      "p_clause_fires": 0.9584140638275429,
+      "p_clause_passes": 0.041585936172457094,
+      "p_seed_favours_null": 0.9331927987311419,
+      "z": 1.5
+    },
+    {
+      "p_clause_fires": 0.9977796367019555,
+      "p_clause_passes": 0.0022203632980445365,
+      "p_seed_favours_null": 0.9772498680518208,
+      "z": 2.0
+    }
+  ],
+  "clause": {
+    "adaptive_wins_required_to_clear": 3,
+    "declared_seeds": 12,
+    "fires_when_adaptive_wins_at_most": 2,
+    "null_win_limit": 10,
+    "source": "scripts/v0_verdict.py::_null_block (imported, not restated)",
+    "statistic": "exact sign test on the paired per-seed null-vs-adaptive losses",
+    "ties_count_against_the_adaptive_arm": true
+  },
+  "clauses": {
+    "harm_guard": {
+      "comparison_arm": "the pool-matched random arm",
+      "fires_when_arm_beats_adaptive_on_at_least": 10,
+      "level_under_no_effect": 0.019287109375,
+      "z=0.0": 0.019287109375,
+      "z=0.25": 0.08207546980989432,
+      "z=0.5": 0.23289186588016997,
+      "z=0.75": 0.46621018051824686,
+      "z=1.0": 0.705729154024097,
+      "z=1.203": 0.8495501704142003,
+      "z=1.5": 0.9584140638275429,
+      "z=2.0": 0.9977796367019555
+    },
+    "null_clause": {
+      "comparison_arm": "the null arm (do nothing)",
+      "fires_when_arm_beats_adaptive_on_at_least": 10,
+      "level_under_no_effect": 0.019287109375,
+      "z=0.0": 0.019287109375,
+      "z=0.25": 0.08207546980989432,
+      "z=0.5": 0.23289186588016997,
+      "z=0.75": 0.46621018051824686,
+      "z=1.0": 0.705729154024097,
+      "z=1.203": 0.8495501704142003,
+      "z=1.5": 0.9584140638275429,
+      "z=2.0": 0.9977796367019555
+    },
+    "pool_matched_control": {
+      "comparison_arm": "the pool-matched control arm",
+      "fires_when_arm_beats_adaptive_on_at_least": 10,
+      "level_under_no_effect": 0.019287109375,
+      "z=0.0": 0.019287109375,
+      "z=0.25": 0.08207546980989432,
+      "z=0.5": 0.23289186588016997,
+      "z=0.75": 0.46621018051824686,
+      "z=1.0": 0.705729154024097,
+      "z=1.203": 0.8495501704142003,
+      "z=1.5": 0.9584140638275429,
+      "z=2.0": 0.9977796367019555
+    }
+  },
+  "clauses_share_one_limit": true,
+  "dev_fidelity_anchor": {
+    "effect_nats_null_minus_adaptive": -0.1355433166027069,
+    "fidelity": "dev (14.9M total / 7.6M active), 400 steps, depth 6, treatment on",
+    "null_wins_observed": 12,
+    "sample_sd": 0.11287968831893397,
+    "source": "artifacts/study-summaries/real-path-deployed-vs-null.json (section 5.40)",
+    "z": 1.2007768503022296
+  },
+  "dev_fidelity_anchors_by_clause": {
+    "harm_guard": {
+      "comparison_arm": "churn (random)",
+      "comparison_wins": 7,
+      "fidelity": "dev (14.9M total / 7.6M active), 400 steps, real TinyStories stream, deployed treatment on all four sessions, fresh seeds 15260-15271",
+      "fires_at_dev_fidelity": false,
+      "level_under_no_effect": 0.019287109375,
+      "limit": 10,
+      "mean_delta_comparison_minus_adaptive": -0.004429250955581665,
+      "n": 12,
+      "p_clause_fires_at_z": 0.02485843396154272,
+      "sample_sd": 0.11391580779620686,
+      "source": "artifacts/study-summaries/dev-clause-anchor.json (section 5.66), clause block 'harm_guard_spread'",
+      "z": 0.03888179385520847
+    },
+    "null_clause": {
+      "comparison_arm": "null (do nothing)",
+      "comparison_wins": 12,
+      "fidelity": "dev (14.9M total / 7.6M active), 400 steps, real TinyStories stream, deployed treatment on all four sessions, fresh seeds 15260-15271",
+      "fires_at_dev_fidelity": true,
+      "level_under_no_effect": 0.019287109375,
+      "limit": 10,
+      "mean_delta_comparison_minus_adaptive": -0.12575879196325937,
+      "n": 12,
+      "p_clause_fires_at_z": 0.9560465547209906,
+      "sample_sd": 0.08447532757898883,
+      "source": "artifacts/study-summaries/dev-clause-anchor.json (section 5.66), clause block 'null_clause_spread'",
+      "z": 1.4887044012426984
+    },
+    "pool_matched_control": {
+      "comparison_arm": "churn (random)",
+      "comparison_wins": 7,
+      "fidelity": "dev (14.9M total / 7.6M active), 400 steps, real TinyStories stream, deployed treatment on all four sessions, fresh seeds 15260-15271",
+      "fires_at_dev_fidelity": false,
+      "level_under_no_effect": 0.019287109375,
+      "limit": 10,
+      "mean_delta_comparison_minus_adaptive": -0.017519891262054443,
+      "n": 12,
+      "p_clause_fires_at_z": 0.04281070867490806,
+      "sample_sd": 0.1364592671099808,
+      "source": "artifacts/study-summaries/dev-clause-anchor.json (section 5.66), clause block 'pool_matched_control'",
+      "z": 0.12838916427664895
+    }
+  },
+  "dev_fidelity_clause_read": {
+    "declared_block": false,
+    "fidelity": "dev (section 5.40's fresh block, seeds 15240-15251)",
+    "harm_guard_fires": false,
+    "null_beats_adaptive": 12,
+    "null_clause_fires": true,
+    "pool_matched_control": "not present in this block; measured on the section 5.66 block at the same fidelity, fresh seeds and the declared policies: churn beats the loss-blind arm on 7/12 (bar 10), so the loss-blind arm clears the bar on 5/12 - the direction the section 5.5 clause fires in - and the clause does not fire; mean (churn - loss-blind) -0.01752 nats, z +0.128",
+    "random_beats_adaptive": 6
+  },
+  "kind": "null-clause-power",
+  "level_under_no_effect": {
+    "note": "a rule that withholds on >=10 of 12 adverse seeds almost never withholds on noise: f = 79/4096 = 0.0193",
+    "p_clause_fires": 0.019287109375,
+    "p_clause_passes": 0.980712890625
+  },
+  "question": "how much does the registered do-nothing clause decide, on the declared 12-seed block, before its own data exists",
+  "readings": {
+    "anchors_by_clause": "the clause table was anchored on the one contrast that had been measured (the null clause's, z = 1.20); section 5.66 measured the other two at the same fidelity on fresh seeds under the declared policies, and ``dev_fidelity_anchors_by_clause`` now carries each clause's own contrast and the firing rate at it - so the declared verdict's three clauses are read against three measured analogues rather than one",
+    "clauses_are_not_redundant": "on section 5.40's dev-fidelity seeds the null clause fires (the null beats adaptive on 12/12) while the harm guard does not (the random arm beats it on 6/12), so a verdict can withhold on one clause and clear another; the third arm that block lacked is measured on the section 5.66 block, where each clause's own contrast is reported beside its firing rate",
+    "modal_verdict": "with the dev-fidelity effect (z = 1.20) the clause fires with probability 0.8483; since section 5.40 measured the null arm ahead on 12/12 fresh seeds, a withheld Gate 4 is the modal outcome and it is strong evidence, not a coin flip",
+    "one_rule_three_arms": "all three withhold clauses are the same 10-of-12 sign test on the adaptive arm, differing only in the comparison arm (random, pool-matched control, null); each has level 0.0193 and the union is at most 0.0579 by the union bound, less in fact because a hard block fires them together",
+    "what_a_pass_is_worth": "a pass needs only 3 of 12 seeds favouring the adaptive arm, and under no effect it happens with probability 0.9807 - so a cleared null clause is not evidence that adaptive beats doing nothing, and the verdict's value claim then rests on the registered cost/band/control rules exactly as registered"
+  },
+  "record_type": "study-summary",
+  "report_section": "5.14",
+  "thresholds": {
+    "adequate": 0.5,
+    "planning": 0.8
+  },
+  "union_bound_level": 0.057861328125
+}

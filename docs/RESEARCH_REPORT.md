@@ -8483,7 +8483,7 @@ finishing it untreated is a constant change plus the conformance block reporting
 artifact already says. After the new block's first seed is published the re-reservation is
 the less costly direction, for the reason in ground 3.
 
-### 5.66 Pre-registration: the two withholding clauses that had no dev-fidelity anchor, measured before the declared verdict lands (REGISTERED)
+### 5.66 Pre-registration: the two withholding clauses that had no dev-fidelity anchor, measured before the declared verdict lands (RAN - summary `dev-clause-anchor.json`; outcome at the end of this section)
 
 **Registered 2026-09-22, before the block's first session.**
 
@@ -8559,6 +8559,96 @@ waits for the weekly quota to refresh (the 26th).
 **Reversible.** Nothing outside `artifacts/dev-clause-anchor-study/` (scratch) and
 `artifacts/study-summaries/dev-clause-anchor.json` (the record) is written until the
 readings are recorded.
+
+**Status: RUN, 48/48 sessions (2026-09-22). VERDICT: A4 held, the anchors are readable,
+and the column is filled - for one clause where its effect is present, and for the other
+two in the regime where their effect is absent.** The block ran in one detached sitting on
+the idle local card, 15:00 to 16:32 (about **1.5 h** of wall clock and **zero** Kaggle
+GPU- or TPU-hours), 12 seeds x 4 sessions, every session 70-140 s.
+
+**A4, the check that gates the anchors, held: the null arm is the lowest of the three on
+12/12 seeds (bar 10).** The ordering section 5.40 measured replicates on fresh seeds under
+the same policy, with the means quoted beside it because a fresh-seed replication is not
+bit-equality: `null - adaptive` is **-0.1262** here against section 5.40's **-0.1355**, and
+`null - random` **-0.1213** against **-0.1457**. **A5 held too**: all three contrasts
+(`null - adaptive`, `null - random`, `adaptive - random`) agree in sign between the
+`prefix` and `spread` policies.
+
+**The anchor column.** Each row is the clause's own comparison arm winning (the direction
+in which that clause withholds), so `z` positive means the comparison arm tends to win:
+
+| clause | root | comparison arm | wins | bar | mean delta | sd | z | P(fires at z) | level |
+|---|---|---|---|---|---|---|---|---|---|
+| harm guard | `pair_spread` | churn (`random`) | **7** | 10 | -0.00443 | 0.1139 | **+0.039** | 0.0249 | 0.0193 |
+| harm guard | `pair_prefix` (policy check) | churn (`random`) | **6** | 10 | -0.00483 | 0.1297 | **+0.037** | 0.0246 | 0.0193 |
+| pool-matched control | `control_spread` | churn (`random`) | **7** | 10 | -0.01752 | 0.1365 | **+0.128** | 0.0428 | 0.0193 |
+| do-nothing | `pair_spread` | null | **12** | 10 | -0.12576 | 0.0845 | **+1.489** | **0.9561** | 0.0193 |
+| do-nothing | `pair_prefix` (policy check) | null | **12** | 10 | -0.12616 | 0.1008 | **+1.251** | 0.8750 | 0.0193 |
+
+**Read the right-hand column before the left, because it is where the anchors differ in
+kind.** The do-nothing clause's anchor is taken where the effect it tests is real:
+`z = 1.489`, and the clause fires **95.6%** of the time at that effect - so that clause's
+*power* is now anchored, not just its level. The other two are taken where the effect they
+test is **absent**: the treatment beats its own churn arm at z = +0.039 and the loss-blind
+arm at z = +0.128, i.e. a coin flip either way, and their firing rates (2.49% and 4.28%)
+sit at the **false-alarm level (1.93%)**. What those two anchors calibrate is therefore the
+clauses' behaviour when there is nothing to detect - their quiet cost - and **not their
+power**. Stated plainly because the alternative reading ("the harm guard has been shown to
+be insensitive") is not what this block shows: at dev there is no effect for it to be
+sensitive to.
+
+**The instrument, for reading the declared block against.** The 10-of-12 sign test is a
+large-effect instrument: 50% power at `z = 0.783`, 80% at `z = 1.123`, and the two clauses
+this section anchors sit at `z` = 0.04 and 0.13. So a declared-block contrast that fires
+one of these clauses has cleared a genuinely high bar, and a contrast that fails to fire
+them has been tested at a bar whose power at the observed effect size is known rather than
+assumed.
+
+**The verdict's own clause arithmetic, read off this block.** Derived from the rows above
+and recorded in the summary as `verdict_reading_at_dev_fidelity` (the cost side is not
+evaluated here, and this adjudicates no branch):
+
+| quantity | value | reading |
+|---|---|---|
+| adaptive beats churn | **5/12** | `harm_guard_clear` = **True** - the guard does *not* fire |
+| loss-blind arm beats churn | **5/12** | `control_passes_gate` = **False** - the section 5.5 clause does not fire in that direction |
+| neither arm clears the bar | - | `indistinguishable` = **True** - the section 5.44 premise **does** fire |
+| adaptive beats null | **0/12** | `null_clause_rejects` = **True** (12/12 >= 10) - the section 5.14 clause fires |
+| label under the verdict's own precedence | - | **`PASS_COST_ONLY_NO_DEMONSTRATED_EDGE`** |
+
+**That is the reading worth having.** Read through the verdict's own precedence, dev-fidelity
+data lands in the branch section 5.44 added - *"neither arm clears the bar (no edge to
+recommend Gate 4 on)"* - which means the anchor is not vacuous: the clause that had never
+been run beside the loss-blind arm is exactly the clause that fires on the only block that
+has ever carried all three of them. And it lands there **without the harm guard firing**,
+which is its correct behaviour: the guard asks whether the treatment is *worse* than churn,
+and at dev it is not (mean -0.0044, a hair better). Restricting to the quality premise
+leaves the harm guard's non-firing calibrated in the one regime where a reader might
+otherwise suspect it was simply blind.
+
+**One structural property the block measured rather than assumed.** The churn arm is
+**bit-identical across all three pair roots on 12/12 seeds** (`pair_prefix`, `pair_spread`
+and `control_spread` give the same `random` loss to the last digit on every seed) - which is
+the loss-blind arm's defining property stated behaviourally: it never probes, so neither
+`probe_candidate_policy` nor `probe_selection` can move it. Recorded in the summary as
+`loss_blind_invariance`. It carries a limit for this section's own table: the harm-guard and
+pool-matched rows are paired against the **same** churn trajectories, not three independent
+controls, so the two calibration rows are not independent evidence of one another.
+
+**A direction correction, made because it was nearly made in the other order.** The
+registered table above names each truth as its own comparison arm winning, and
+`scripts/v0_verdict.py`'s section 5.5 clause fires on the **loss-blind arm** winning
+(`control_passes_gate`). The two tables therefore state that clause's direction
+*oppositely*, and a reader checking one row against the other would read the clause
+backwards. Both directions are now reported together in the summary
+(`verdict_reading_at_dev_fidelity` carries `loss_blind_wins_vs_churn` beside the row's
+`comparison_wins`), and `tests/test_dev_clause_anchor_summary.py` pins each crossing so a
+flip in either direction fails a test rather than printing a plausible table.
+
+**Post-outcome fields, disclosed.** Two summary fields were added after the block ran,
+both functions of the already-registered rows and both stated above with their reason:
+`loss_blind_invariance` and `verdict_reading_at_dev_fidelity`. No criterion moved, nothing
+was added to the declared block, and no number above was retaken.
 
 ## 6. Reproducibility
 

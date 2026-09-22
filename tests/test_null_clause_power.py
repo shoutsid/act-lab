@@ -20,6 +20,8 @@ import math
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
@@ -67,19 +69,63 @@ def test_the_clauses_are_not_redundant_on_the_one_block_that_exists() -> None:
 
     The null clause fires there (the null arm beats adaptive on 12/12) while the harm
     guard does not (the random arm beats adaptive on 6/12): a verdict can withhold on one
-    clause and clear another, so the clauses are three conditions rather than one.
+    clause and clear another, so the clauses are three conditions rather than one. The
+    third arm that block lacks is measured on the section 5.66 block, and its reading is
+    attached from that record rather than restated here.
     """
     read = json.loads(ARTIFACT.read_text())["dev_fidelity_clause_read"]
     assert read["declared_block"] is False
     assert (read["null_beats_adaptive"], read["null_clause_fires"]) == (12, True)
     assert (read["random_beats_adaptive"], read["harm_guard_fires"]) == (6, False)
-    assert read["pool_matched_control"].startswith("not evaluated")
+    assert read["pool_matched_control"].startswith("not present in this block")
     # And the counts agree with section 5.40's own comparison, which counts the seeds
     # favouring random at 6/12.
     comparison = json.loads(
         (ROOT / "artifacts/study-summaries/real-path-deployed-vs-null.json").read_text()
     )["comparisons"]["adaptive_minus_random"]
     assert comparison["wins_in_tested_direction"] == 6
+
+
+def test_every_withhold_clause_has_its_own_dev_fidelity_anchor() -> None:
+    """The gap this artifact used to state: two of three clauses had no anchor.
+
+    The clause table was anchored on the null clause's contrast alone. Section 5.66
+    measured all three at the same fidelity on fresh seeds under the declared policies,
+    and each anchor here must be that measurement - recomputed from the study's record,
+    with the firing rate computed through this module's own ``clause_reading``.
+    """
+    payload = json.loads(ARTIFACT.read_text())
+    anchors = payload["dev_fidelity_anchors_by_clause"]
+    assert set(anchors) == {"harm_guard", "pool_matched_control", "null_clause"}
+    study = json.loads(
+        (ROOT / "artifacts/study-summaries/dev-clause-anchor.json").read_text()
+    )
+    blocks = {
+        "harm_guard": "harm_guard_spread",
+        "pool_matched_control": "pool_matched_control",
+        "null_clause": "null_clause_spread",
+    }
+    for clause, block in blocks.items():
+        row = study["clauses"][block]
+        anchor = anchors[clause]
+        assert anchor["comparison_wins"] == row["comparison_wins"]
+        assert anchor["limit"] == row["limit"] == v0_verdict.NULL_WIN_LIMIT
+        assert anchor["n"] == 12
+        assert anchor["fires_at_dev_fidelity"] == (
+            row["comparison_wins"] >= row["limit"]
+        )
+        assert anchor["mean_delta_comparison_minus_adaptive"] == pytest.approx(
+            row["mean_delta_comparison_minus_adaptive"]
+        )
+        assert anchor["z"] == pytest.approx(row["anchor_z"])
+        # The rate is this module's arithmetic on the study's measurement, not a copy.
+        assert anchor["p_clause_fires_at_z"] == clause_reading(anchor["z"])["p_clause_fires"]
+        assert anchor["level_under_no_effect"] == 79 / 4096
+        assert "dev-clause-anchor.json" in anchor["source"]
+        assert "5.66" in anchor["source"]
+    # The anchors are contrasts, not verdicts: nothing in them authorizes Gate 4.
+    assert payload["dev_fidelity_anchors_by_clause"]
+    assert "three measured analogues" in payload["readings"]["anchors_by_clause"]
 
 
 def test_the_clause_fires_on_79_of_4096_no_effect_blocks() -> None:

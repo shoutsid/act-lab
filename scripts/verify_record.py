@@ -1999,6 +1999,140 @@ def check_gate5_transfer(root: Path, audit: Audit) -> None:
     )
 
 
+def check_dev_clause_anchors(root: Path, audit: Audit) -> None:
+    """§5.66's dev-fidelity clause anchors, read against the record they were written from.
+
+    The section's prose quotes three kinds of number and all three are audited here: the
+    replication the anchors are gated on (12/12 against a bar of 10, with section 5.40's
+    means beside this block's), the anchor column itself (each clause's z and its firing
+    rate, plus the level under no effect), and the verdict's own clause arithmetic read off
+    the rows (the three win counts and the label). A reader checking the section against
+    its artifact is doing what this function does.
+    """
+    payload = json.loads(
+        (root / "study-summaries" / "dev-clause-anchor.json").read_text()
+    )
+    replication = payload["replication_check"]
+    clauses = payload["clauses"]
+    reading = payload["verdict_reading_at_dev_fidelity"]
+
+    audit.check("§5.66: fresh seeds in the block", 12, len(payload["seeds"]), "§5.66")
+    audit.check(
+        "§5.66: seeds with the null arm lowest of the three",
+        12,
+        replication["seeds_with_null_lowest"],
+        "§5.66",
+    )
+    audit.check("§5.66: the ordering bar", 10, replication["bar"], "§5.66")
+    audit.check(
+        "§5.66: null - adaptive on these fresh seeds",
+        -0.1262,
+        replication["this_block"]["null_minus_adaptive_mean"],
+        "§5.66",
+    )
+    audit.check(
+        "§5.66: null - random on these fresh seeds",
+        -0.1213,
+        replication["this_block"]["null_minus_random_mean"],
+        "§5.66",
+    )
+    audit.check(
+        "§5.66: section 5.40's null - adaptive, quoted beside it",
+        -0.1355,
+        replication["section_5_40_measurement"]["null_minus_adaptive_mean"],
+        "§5.66",
+    )
+    audit.check(
+        "§5.66: section 5.40's null - random, quoted beside it",
+        -0.1457,
+        replication["section_5_40_measurement"]["null_minus_random_mean"],
+        "§5.66",
+    )
+    for label, documented_z, documented_rate in (
+        ("harm_guard_spread", 0.039, 0.0249),
+        ("pool_matched_control", 0.128, 0.0428),
+        ("null_clause_spread", 1.489, 0.9561),
+    ):
+        audit.check(
+            f"§5.66: the {label} anchor z",
+            documented_z,
+            clauses[label]["anchor_z"],
+            "§5.66",
+        )
+        audit.check(
+            f"§5.66: the {label} firing rate at its own z",
+            documented_rate,
+            clauses[label]["firing_rate_at_anchor_z"],
+            "§5.66",
+        )
+        audit.check(
+            f"§5.66: the {label} level under no effect",
+            0.0193,
+            clauses[label]["level_without_effect"],
+            "§5.66",
+        )
+        audit.check(
+            f"§5.66: the {label} comparison arm's wins",
+            {
+                "harm_guard_spread": 7,
+                "pool_matched_control": 7,
+                "null_clause_spread": 12,
+            }[label],
+            clauses[label]["comparison_wins"],
+            "§5.66",
+        )
+        audit.check(
+            f"§5.66: the {label} bar", 10, clauses[label]["limit"], "§5.66"
+        )
+    # The verdict's own arithmetic, which the section's table quotes.
+    audit.check(
+        "§5.66: adaptive beats churn", 5, reading["adaptive_wins_vs_churn"], "§5.66"
+    )
+    audit.check(
+        "§5.66: the loss-blind arm beats churn",
+        5,
+        reading["loss_blind_wins_vs_churn"],
+        "§5.66",
+    )
+    audit.check(
+        "§5.66: adaptive beats the null arm", 0, reading["adaptive_wins_vs_null"], "§5.66"
+    )
+    audit.check(
+        "§5.66: the harm guard clears", True, reading["harm_guard_clear"], "§5.66"
+    )
+    audit.check(
+        "§5.66: the section 5.5 clause does not pass its gate",
+        False,
+        reading["control_passes_gate"],
+        "§5.66",
+    )
+    audit.check(
+        "§5.66: the no-edge premise is satisfied",
+        True,
+        reading["indistinguishable"],
+        "§5.66",
+    )
+    audit.check(
+        "§5.66: the label under the verdict's own precedence",
+        "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE",
+        reading["label_if_the_declared_block_read_like_this"],
+        "§5.66",
+    )
+    # The structural property the section records, which limits its own table.
+    audit.check(
+        "§5.66: the churn arm is identical across all three pair roots",
+        True,
+        payload["loss_blind_invariance"]["churn_identical_across_pair_roots"],
+        "§5.66",
+    )
+    audit.check(
+        "§5.66: the anchors are gated on a reproduced ordering",
+        True,
+        payload["built_in_checks"]["the_anchors_are_read_only_from_a_reproduced_ordering"],
+        "§5.66",
+    )
+
+
 #: The audit's checks in record order. Each is a pure function of the artifacts root
 #: that appends to the audit it is handed, so they can run in separate processes and
 #: have their claims concatenated in this order - the output is identical to running
@@ -2019,6 +2153,7 @@ CHECKS: tuple[str, ...] = (
     "check_finalist_order",
     "check_horizon_10x",
     "check_gate5_transfer",
+    "check_dev_clause_anchors",
 )
 
 

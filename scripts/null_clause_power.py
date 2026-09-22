@@ -51,6 +51,22 @@ from deployed_vs_null_study import SUMMARY_PATH as DEPLOYED_SUMMARY  # noqa: E40
 
 DECLARED_SEEDS = len(DECLARED_BLOCK)
 
+#: The section 5.66 block: the same three clause statistics at the same fidelity, on fresh
+#: seeds, under the campaign's own policies - and the only place the pool-matched control
+#: arm's contrast exists at dev fidelity (section 5.40's block carries no such arm).
+#: Path written literally rather than imported: the section 5.66 study imports
+#: ``clause_reading`` from this module, so an import back would be circular.
+DEV_ANCHOR_SUMMARY = (
+    ROOT / "artifacts" / "study-summaries" / "dev-clause-anchor.json"
+)
+
+#: The three clauses, and the section 5.66 clause block each one's anchor comes from.
+ANCHOR_BLOCKS: dict[str, str] = {
+    "harm_guard": "harm_guard_spread",
+    "pool_matched_control": "pool_matched_control",
+    "null_clause": "null_clause_spread",
+}
+
 # Every withhold clause in the section 5.1 verdict is the *same* rule - a 10-of-12 sign
 # test on the adaptive arm's losses - differing only in which arm it is measured against.
 # Named here as one table so the unification is checked rather than assumed: if a future
@@ -132,8 +148,12 @@ def dev_fidelity_clause_read() -> dict[str, object]:
     Dev fidelity, not the declared block, and two of the three arms are present there: the
     null arm and the random arm, both paired against the same adaptive arm. It is recorded
     because it shows the clauses are not redundant - at this effect size one fires and the
-    other does not - and because the pool-matched control arm has never been run beside
-    them, which the reading states rather than assuming away.
+    other does not.
+
+    The third arm was the gap this reading stated rather than assumed away, and section
+    5.66 has since measured it - at the same fidelity, on fresh seeds, under the campaign's
+    own policies. Its reading is attached here from that block rather than restated, so the
+    two cannot drift apart.
     """
     payload = json.loads(DEPLOYED_SUMMARY.read_text())
     rows = payload["per_seed"]
@@ -142,6 +162,13 @@ def dev_fidelity_clause_read() -> dict[str, object]:
         1 for row in rows if row["random_final_loss"] < row["adaptive_final_loss"]
     )
     limit = NULL_WIN_LIMIT
+    anchor = dev_clause_anchors()["pool_matched_control"]
+    # `comparison_wins` counts the *comparison* arm winning, and this clause's comparison
+    # arm is churn, while the section 5.5 clause fires on the **loss-blind arm** clearing
+    # the bar (`v0_verdict.py`'s `control_passes_gate`). The two directions are complements
+    # on a partition, so both are stated: reading the row's own count as the clause's
+    # direction says the opposite of what the clause does.
+    loss_blind_wins = int(anchor["n"]) - int(anchor["comparison_wins"])
     return {
         "fidelity": "dev (section 5.40's fresh block, seeds 15240-15251)",
         "declared_block": False,
@@ -150,11 +177,56 @@ def dev_fidelity_clause_read() -> dict[str, object]:
         "random_beats_adaptive": random_beats,
         "harm_guard_fires": random_beats >= limit,
         "pool_matched_control": (
-            "not evaluated: section 5.40's block carries no pool-matched control arm, and "
-            "the clauses are not redundant - on these seeds the null clause fires and the "
-            "harm guard does not"
+            "not present in this block; measured on the section 5.66 block at the same "
+            f"fidelity, fresh seeds and the declared policies: churn beats the loss-blind "
+            f"arm on {anchor['comparison_wins']}/{anchor['n']} (bar {anchor['limit']}), "
+            f"so the loss-blind arm clears the bar on {loss_blind_wins}/{anchor['n']} - "
+            "the direction the section 5.5 clause fires in - and the clause does "
+            + ("FIRE" if loss_blind_wins >= int(anchor["limit"]) else "not fire")
+            + f"; mean (churn - loss-blind) "
+            f"{anchor['mean_delta_comparison_minus_adaptive']:+.5f} nats, "
+            f"z {anchor['z']:+.3f}"
         ),
     }
+
+
+def dev_clause_anchors() -> dict[str, dict[str, object]]:
+    """Each withholding clause's own dev-fidelity contrast, from the section 5.66 block.
+
+    The clause table below was anchored on one contrast - the null clause's - because that
+    was the only one measured. This reads the block that measured all three: per clause, the
+    paired mean and sd, the win count against the clause's own limit, and the firing rate
+    computed **here** through ``clause_reading`` rather than copied from the study's record,
+    so the artifact's rate is this module's arithmetic on the study's measurement.
+    """
+    payload = json.loads(DEV_ANCHOR_SUMMARY.read_text())
+    anchors: dict[str, dict[str, object]] = {}
+    for clause, block in ANCHOR_BLOCKS.items():
+        row = payload["clauses"][block]
+        z = float(row["anchor_z"])
+        anchors[clause] = {
+            "source": (
+                "artifacts/study-summaries/dev-clause-anchor.json (section 5.66), "
+                f"clause block {block!r}"
+            ),
+            "fidelity": (
+                "dev (14.9M total / 7.6M active), 400 steps, real TinyStories stream, "
+                "deployed treatment on all four sessions, fresh seeds 15260-15271"
+            ),
+            "comparison_arm": row["comparison_arm"],
+            "n": row["n"],
+            "comparison_wins": row["comparison_wins"],
+            "limit": row["limit"],
+            "fires_at_dev_fidelity": row["fires_at_dev_fidelity"],
+            "mean_delta_comparison_minus_adaptive": row[
+                "mean_delta_comparison_minus_adaptive"
+            ],
+            "sample_sd": row["sample_sd"],
+            "z": z,
+            "p_clause_fires_at_z": clause_reading(z)["p_clause_fires"],
+            "level_under_no_effect": clause_reading(0.0)["p_clause_fires"],
+        }
+    return anchors
 
 
 def dev_fidelity_anchor() -> dict[str, object]:
@@ -225,6 +297,7 @@ def build_report() -> dict:
         ),
         "dev_fidelity_anchor": anchor,
         "anchor_reading": clause_reading(abs(anchor["z"])),
+        "dev_fidelity_anchors_by_clause": dev_clause_anchors(),
         "dev_fidelity_clause_read": dev_fidelity_clause_read(),
         "thresholds": {"planning": 0.80, "adequate": 0.50},
         "readings": {
@@ -238,8 +311,9 @@ def build_report() -> dict:
             "clauses_are_not_redundant": (
                 "on section 5.40's dev-fidelity seeds the null clause fires (the null beats "
                 "adaptive on 12/12) while the harm guard does not (the random arm beats it on "
-                "7/12), so a verdict can withhold on one clause and clear another - and the "
-                "pool-matched control arm has never been run beside them"
+                "6/12), so a verdict can withhold on one clause and clear another; the third "
+                "arm that block lacked is measured on the section 5.66 block, where each "
+                "clause's own contrast is reported beside its firing rate"
             ),
             "modal_verdict": (
                 "with the dev-fidelity effect (z = 1.20) the clause fires with probability "
@@ -253,6 +327,14 @@ def build_report() -> dict:
                 f"{1.0 - level:.4f} - so a cleared null clause is not evidence that adaptive "
                 "beats doing nothing, and the verdict's value claim then rests on the "
                 "registered cost/band/control rules exactly as registered"
+            ),
+            "anchors_by_clause": (
+                "the clause table was anchored on the one contrast that had been measured "
+                "(the null clause's, z = 1.20); section 5.66 measured the other two at the "
+                "same fidelity on fresh seeds under the declared policies, and "
+                "``dev_fidelity_anchors_by_clause`` now carries each clause's own contrast "
+                "and the firing rate at it - so the declared verdict's three clauses are "
+                "read against three measured analogues rather than one"
             ),
         },
     }

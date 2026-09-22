@@ -40,6 +40,17 @@ Nothing here adjudicates a verdict branch. It produces the missing anchor column
 the clause table, and it changes no criterion, gates nothing and adds nothing to the
 declared block.
 
+Two fields are added **after** the block ran, both derived from the rows registered
+above rather than from a new measurement, and both recorded here rather than quietly:
+``loss_blind_invariance`` (the churn arm's bit-equality across the three pair roots -
+the pool-matched arm's defining property, measured rather than assumed) and
+``verdict_reading_at_dev_fidelity`` (the same rows read through the verdict's own
+clause arithmetic and label precedence). The second exists because the A1 table and
+``v0_verdict.py`` report the section 5.5 comparison in *opposite* directions, so a
+reader checking one against the other would read the clause backwards; both directions
+are now stated together. Neither field changes a criterion, and neither is a verdict:
+the verdict's cost side is not evaluated on dev sessions.
+
     PYTHONPATH=src python scripts/dev_clause_anchor_study.py --smoke
     PYTHONPATH=src python scripts/dev_clause_anchor_study.py --run
     PYTHONPATH=src python scripts/dev_clause_anchor_study.py --summarize
@@ -424,6 +435,82 @@ def summarize() -> int:
             "signs_agree": (prefix_mean >= 0) == (spread_mean >= 0),
         }
 
+    # The pool-matched arm's defining property, checked behaviourally rather than assumed.
+    # It never probes, so its trajectory must not depend on `probe_candidate_policy` or
+    # `probe_selection`; bit-equality across the three pair roots is what that means
+    # concretely. It also has a reading for the clause table: the harm-guard and
+    # pool-matched contrasts are paired against the *same* churn trajectories, not three
+    # independent controls, so the two calibration rows are not independent evidence.
+    loss_blind_invariance = {
+        "churn_identical_across_pair_roots": all(
+            random_prefix[i] == random_spread[i] == random_control[i]
+            for i in range(len(SEEDS))
+        ),
+        "seeds": len(SEEDS),
+        "note": (
+            "the loss-blind (random) arm books only its rebuild bookings and never "
+            "probes, so its per-seed trajectory is independent of the probe policy and "
+            "the selection rule"
+        ),
+    }
+
+    # What the verdict's own clause arithmetic says about this block, derived from the A1
+    # rows above rather than recomputed, so each win count has one source of truth.
+    #
+    # This is added after the outcome was seen, and the reason is the direction error it
+    # prevents: `clause_row` reports each clause's *comparison arm* winning (churn for the
+    # harm guard, null for the do-nothing clause), while `v0_verdict.py`'s section 5.5
+    # clause fires on the *loss-blind arm* winning (`control_passes_gate`). Read row by
+    # row against the verdict's code, the pool-matched row's direction is inverted. Both
+    # directions are reported here so neither has to be inferred.
+    #
+    # It is not a verdict: the verdict's cost side is not evaluated (these are dev
+    # sessions, and no declared-block dataset exists), and the label below is the
+    # quality/cost side's alone.
+    def treatment_wins(name: str) -> int:
+        row = clauses[name]
+        return int(row["n"] - row["comparison_wins"])
+
+    adaptive_wins_vs_churn = treatment_wins("harm_guard_spread")
+    loss_blind_wins_vs_churn = treatment_wins("pool_matched_control")
+    adaptive_wins_vs_null = treatment_wins("null_clause_spread")
+    adaptive_clears_bar = adaptive_wins_vs_churn >= POOL_CONTROL_WIN_LIMIT
+    control_clears_bar = loss_blind_wins_vs_churn >= POOL_CONTROL_WIN_LIMIT
+    indistinguishable = not adaptive_clears_bar and not control_clears_bar
+    harm_guard_clear = (len(SEEDS) - adaptive_wins_vs_churn) < HARM_GUARD_LOSS_LIMIT
+    null_clause_rejects = (
+        len(SEEDS) - adaptive_wins_vs_null
+    ) >= NULL_WIN_LIMIT
+    # The verdict's label precedence, quality side only: harm guard, then the
+    # pool-matched reading, then the no-edge premise, then the do-nothing clause.
+    if not harm_guard_clear:
+        label = "PASS_COST_ONLY_HARM_GUARD_REJECTS"
+    elif control_clears_bar:
+        label = "PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES"
+    elif indistinguishable:
+        label = "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE"
+    elif null_clause_rejects:
+        label = "PASS_COST_ONLY_NULL_CLAUSE_REJECTS"
+    else:
+        label = "no quality-side clause fires"
+    verdict_reading = {
+        "root": "pair_spread / control_spread (the declared primary's policies)",
+        "adaptive_wins_vs_churn": adaptive_wins_vs_churn,
+        "loss_blind_wins_vs_churn": loss_blind_wins_vs_churn,
+        "adaptive_wins_vs_null": adaptive_wins_vs_null,
+        "win_limit": POOL_CONTROL_WIN_LIMIT,
+        "harm_guard_clear": harm_guard_clear,
+        "control_passes_gate": control_clears_bar,
+        "indistinguishable": indistinguishable,
+        "null_clause_rejects": null_clause_rejects,
+        "label_if_the_declared_block_read_like_this": label,
+        "what_this_is": (
+            "the verdict's own clause arithmetic read off this block's registered rows; "
+            "the cost side is not evaluated here and no branch of the declared verdict "
+            "is adjudicated"
+        ),
+    }
+
     per_seed = [
         {
             "seed": seed,
@@ -518,6 +605,8 @@ def summarize() -> int:
         "anchor_clauses": list(ANCHOR_CLAUSES),
         "replication_check": replication,
         "policy_check": policy_rows,
+        "verdict_reading_at_dev_fidelity": verdict_reading,
+        "loss_blind_invariance": loss_blind_invariance,
         "per_seed": per_seed,
         "built_in_checks": built_in_checks,
         "bit_reproducible": False,

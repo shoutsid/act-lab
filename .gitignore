@@ -80,4 +80,10 @@ artifacts/v0-session-logs/*
 !artifacts/null-pair-rehearsal/
 artifacts/null-pair-rehearsal/*
 !artifacts/null-pair-rehearsal/rehearsal.json
+# The section 5.14 clause-power reading (2026-09-20, extended 2026-09-22): the artifact is
+# the record the journal names as where the reading lives, and
+# `tests/test_null_clause_power.py` asserts the committed file equals a fresh
+# `build_report()`. It was left ignored by the blanket `artifacts/*` rule rather than by
+# any decision, so the test could only pass on the machine that had generated it.
+!artifacts/null-clause-power.json
 .DS_Store
