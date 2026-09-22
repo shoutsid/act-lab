@@ -96,10 +96,11 @@ reader diagnosing a lost publish would otherwise reasonably stop on it.
 | | |
 |---|---|
 | Window | `--hours 7`, finished at **6.14 h** of the platform's 8-hour cap |
-| Pairs | **4** (15000-15003) in 5.88 h = **1.415 h** each |
-| Pair time the schedule predicted | line 28, `pair time 1.41 h (2 arm(s) in 1 wave(s) of 24576000 tokens at 5194 tokens/s + 0.1 h event overhead)` - **accurate to 0.4%** |
+| Pairs | **4** (15000-15003), consuming 5.88 h of the child's 7 h window |
+| Pair time the schedule predicted | line 28, `pair time 1.41 h (2 arm(s) in 1 wave(s) of 24576000 tokens at 5194 tokens/s + 0.1 h event overhead)`, against `4 x 1.41 = 5.64 h` of a 5.88 h consumption - so the schedule is right to within the 0.24 h of startup the child pays too |
 | Why it stopped at 4 | line 41, `seed 15004: remaining 1.12 h does not fit pair 1.41 h + 45 min reserve (rule 1)` |
-| The unused tail | 1.12 h. Structural, not a defect: a pair needs `1.41 + 0.75 = 2.16 h` of clock, and four pairs consume 5.66 h, so **no window under 8.16 h fits a fifth** on this pair time. A smaller reserve would not have helped - 1.12 h is below the 1.41 h pair itself. |
+| The unused tail | 1.12 h. Structural, not a defect: a fifth pair needs `1.41 + 0.75 = 2.16 h` of clock and the child had consumed 5.88 h by then, so the window would have to be **at least 8.04 h** - and the platform's cap is 8 h *total*, which must also cover boot (226 s) and the publish (12 min). A smaller reserve would not have helped either: 1.12 h is below the 1.41 h pair itself. |
+| Pair time, against the schedule | The child consumed **5.88 h for 4 pairs** against `4 x 1.41 = 5.64 h` scheduled, so the schedule is right to within the **0.24 h** of startup the child also pays (the restore attempt and its `training from scratch` decision). The log carries **no per-pair durations** - every child line arrived in one batch at exit, which is the buffering finding above, not an omission here. |
 | Per-seed payload | 25.42 GiB / 4 = **6.36 GiB**, matching the runbook's ~6.4 GiB per seed |
 | The arms' own numbers | line 31-40: random vs adaptive final loss per seed, all within 1.2e-3 of `ln(32768) = 10.3972` (see `docs/IMPLEMENTATION_STATUS.md`, 2026-09-21, for why that is the expected scale on synthetic tokens) |
 
