@@ -101,6 +101,37 @@ def test_the_week_pivot_is_the_second_queue_not_the_pass_mark() -> None:
     assert at_pivot["gpu_weeks_left"] == 1
 
 
+def test_the_null_amendment_is_the_other_route_to_one_week() -> None:
+    """The two recorded options compose, and that is what lowers the pivot to the bar.
+
+    Two queues on the TPU reach one week only at 2.417. **One** queue reaches it at the
+    rule's own 2.0x if the null queue carries two seeds per pair - the amendment the journal
+    already prices - because that queue is the only one-arm one, so halving its GPU hours is
+    what closes the 34.63 -> 25.97 gap. Recording the composition here is what stops it being
+    discovered after a verdict lands between the two numbers.
+    """
+    at_bar = tpu_probe.week_capacity(tpu_probe.PORT_THRESHOLD_MULTIPLE)
+    amended_null = (
+        tpu_probe.GPU_HOURS_PER_QUEUE / tpu_probe.NULL_SEEDS_PER_PAIR_IF_AMENDED
+    )
+    assert at_bar["carries_two_queues"] is False
+    assert at_bar["one_week_with_one_queue_and_the_amendment"] is True
+    assert at_bar["gpu_null_queue_hours_if_amended"] == pytest.approx(amended_null, abs=0.01)
+    assert at_bar["gpu_hours_left_with_one_queue_and_the_amendment"] == pytest.approx(
+        tpu_probe.GPU_HOURS_PER_QUEUE + amended_null, abs=0.02
+    )
+    assert (
+        at_bar["gpu_hours_left_with_one_queue_and_the_amendment"]
+        <= tpu_probe.GPU_QUOTA_HOURS
+    )
+
+    # A rate that cannot carry even one queue on the TPU gets neither route, amendment or
+    # not: the fit needs the pair queue inside the TPU's own week as well.
+    slow = tpu_probe.week_capacity(1.5)
+    assert slow["pair_queue_hours"] > tpu_probe.TPU_QUOTA_HOURS
+    assert slow["one_week_with_one_queue_and_the_amendment"] is False
+
+
 def test_the_capacity_reading_rides_with_the_verdict() -> None:
     """A PORT between the bar and the pivot must not be read as "the block fits a week"."""
     decision = tpu_probe.evaluate(

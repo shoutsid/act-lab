@@ -181,6 +181,12 @@ def queue_tpu_hours(multiple: float, *, arms: int = DECLARED_ARMS_PER_SEED) -> f
 #: one pair queue (two).
 _TWO_QUEUES_ARMS = (1, DECLARED_ARMS_PER_SEED)
 
+#: The status journal's registered amendment Option 1: two seeds per null pair, one arm each.
+#: It is the only one-arm queue, so this halves its GPU hours (6 pairs instead of 12 at the
+#: same pair time) without touching a seed's tokens - and it is what makes the one-week block
+#: reachable with a *single* queue on the TPU. See :func:`week_capacity`.
+NULL_SEEDS_PER_PAIR_IF_AMENDED = 2
+
 
 def _multiple_that_fits(arms: tuple[int, ...]) -> float:
     """The multiple at which this set of queues fits the TPU's week."""
@@ -206,6 +212,13 @@ def week_capacity(multiple: float) -> dict[str, Any]:
     does. A reading between the two is a real outcome - a port worth making that still
     leaves the GPU side two weeks - not a rounding of the bar. ``gpu_hours_left`` is a
     floor: a session also pays boot, restore and its exit publish.
+
+    Two routes reach one week and they compose, which is why both are reported: two queues
+    on the TPU at ``ONE_GPU_WEEK_MULTIPLE``, or **one**    queue on the TPU plus the recorded
+    null-queue amendment (two seeds per pair, halving that queue's GPU hours), which lands at
+    the rule's own bar instead. The second is reported as
+    ``gpu_hours_left_with_one_queue_and_the_amendment`` and needs no new measurement - only
+    the registration the journal already prices.
     """
     pair = queue_tpu_hours(multiple)
     null = queue_tpu_hours(multiple, arms=1)
@@ -214,6 +227,8 @@ def week_capacity(multiple: float) -> dict[str, Any]:
     # cannot be left to land on the wrong side of its own definition.
     carry_two = pair + null <= TPU_QUOTA_HOURS + 1e-9
     gpu_left = (QUEUES_PER_CAMPAIGN - (2 if carry_two else 1)) * GPU_HOURS_PER_QUEUE
+    amended_null = GPU_HOURS_PER_QUEUE / NULL_SEEDS_PER_PAIR_IF_AMENDED
+    one_queue_amended = GPU_HOURS_PER_QUEUE + amended_null
     return {
         "multiple": round(multiple, 3),
         "pair_queue_hours": round(pair, 2),
@@ -223,6 +238,11 @@ def week_capacity(multiple: float) -> dict[str, Any]:
         "one_gpu_week_multiple": round(ONE_GPU_WEEK_MULTIPLE, 3),
         "gpu_hours_left": round(gpu_left, 2),
         "gpu_weeks_left": math.ceil(gpu_left / GPU_QUOTA_HOURS),
+        "gpu_null_queue_hours_if_amended": round(amended_null, 2),
+        "gpu_hours_left_with_one_queue_and_the_amendment": round(one_queue_amended, 2),
+        "one_week_with_one_queue_and_the_amendment": (
+            pair <= TPU_QUOTA_HOURS + 1e-9 and one_queue_amended <= GPU_QUOTA_HOURS
+        ),
     }
 
 
