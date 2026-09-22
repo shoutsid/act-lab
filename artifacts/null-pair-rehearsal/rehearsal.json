@@ -1,0 +1,111 @@
+{
+  "batch_size": 8,
+  "concurrent_seconds": 88.22,
+  "device": "cpu",
+  "differences": [],
+  "excluded_as_metadata": [
+    "wall_time_seconds",
+    "tokens_per_second",
+    "device"
+  ],
+  "identical": true,
+  "result_fields_compared": [
+    "mode",
+    "final_loss",
+    "validation_loss",
+    "quality",
+    "mutation_count",
+    "parameter_count",
+    "active_parameter_count",
+    "training_flops",
+    "search_flops",
+    "architecture_hash",
+    "mutation_history"
+  ],
+  "runs": {
+    "concurrent": {
+      "15024": {
+        "arms": [
+          {
+            "active_parameter_count": 7556160,
+            "architecture_hash": "b9fc55adb19931cf",
+            "final_loss": 9.061052083969116,
+            "mode": "null",
+            "mutation_count": 0,
+            "mutation_history": [],
+            "parameter_count": 14928960,
+            "quality": -9.061052083969116,
+            "search_flops": 0,
+            "training_flops": 4891921612800,
+            "validation_loss": 9.061052083969116
+          }
+        ],
+        "seed": 15024
+      },
+      "15025": {
+        "arms": [
+          {
+            "active_parameter_count": 7556160,
+            "architecture_hash": "a779f7f4f020f98c",
+            "final_loss": 9.054726600646973,
+            "mode": "null",
+            "mutation_count": 0,
+            "mutation_history": [],
+            "parameter_count": 14928960,
+            "quality": -9.054726600646973,
+            "search_flops": 0,
+            "training_flops": 4891921612800,
+            "validation_loss": 9.054726600646973
+          }
+        ],
+        "seed": 15025
+      }
+    },
+    "sequential": {
+      "15024": {
+        "arms": [
+          {
+            "active_parameter_count": 7556160,
+            "architecture_hash": "b9fc55adb19931cf",
+            "final_loss": 9.061052083969116,
+            "mode": "null",
+            "mutation_count": 0,
+            "mutation_history": [],
+            "parameter_count": 14928960,
+            "quality": -9.061052083969116,
+            "search_flops": 0,
+            "training_flops": 4891921612800,
+            "validation_loss": 9.061052083969116
+          }
+        ],
+        "seed": 15024
+      },
+      "15025": {
+        "arms": [
+          {
+            "active_parameter_count": 7556160,
+            "architecture_hash": "a779f7f4f020f98c",
+            "final_loss": 9.054726600646973,
+            "mode": "null",
+            "mutation_count": 0,
+            "mutation_history": [],
+            "parameter_count": 14928960,
+            "quality": -9.054726600646973,
+            "search_flops": 0,
+            "training_flops": 4891921612800,
+            "validation_loss": 9.054726600646973
+          }
+        ],
+        "seed": 15025
+      }
+    }
+  },
+  "seeds": [
+    15024,
+    15025
+  ],
+  "sequential_seconds": 108.39,
+  "steps": 40,
+  "threads_per_process": 4,
+  "what_this_is": "Rehearsal of the null queue's two-seeds-per-pair amendment: two seeds' null arms trained sequentially and concurrently in separate processes, compared on every field that is the result."
+}

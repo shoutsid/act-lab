@@ -72,4 +72,12 @@ artifacts/mixer-benchmark/*
 artifacts/v0-session-logs/*
 !artifacts/v0-session-logs/NOTES.md
 !artifacts/v0-session-logs/session-*-log.json
+# The two-seed concurrency rehearsal (2026-09-22): the blocker on the null queue's
+# two-seeds-per-pair amendment, which the journal prices at 8.49 GPU-h and which is also the
+# bar-level route to a one-week block. The record is the evidence - it carries both
+# scenarios' full result payloads, so the comparison can be re-run from the artifact alone -
+# and the two checkpoint trees stay local scratch.
+!artifacts/null-pair-rehearsal/
+artifacts/null-pair-rehearsal/*
+!artifacts/null-pair-rehearsal/rehearsal.json
 .DS_Store
