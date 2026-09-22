@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## The three launch commands, re-derived after every change this session (2026-09-22)
+
+| | |
+|---|---|
+| **What was checked, and why now** | The campaign restarts **2026-09-26** on block **15024-15035**, and this session changed the launch path (the section 5.47 treatment, the block guard, the dataset slugs, the child's stdout environment). So all three queues' commands were re-derived from the builder itself and read against what the runbook documents - a **zero-GPU** check, run *after* the changes rather than resting on the suite's doc/code agreement pin alone. |
+| **Primary** | `--mode pair-session --device cuda --hours 7 --seeds 15024-15035 --probe-candidate-policy spread --preserve-router-on-rebuild --new-expert clone --dataset-root artifacts/datasets --session-dir artifacts/v0-sessions --kaggle-dataset sid123123234/act-v0-5-2` |
+| **Control (section 2b)** | the same plus `--probe-selection random`, on `--dataset-root artifacts/datasets-control` / `--kaggle-dataset sid123123234/act-v0-5-2-control` |
+| **Null (section 2c)** | the same with `--session-arms null` and **no probe flag at all** (the null arm is policy-free by construction), on `artifacts/datasets-null` / `sid123123234/act-v0-5-2-null` |
+| **What the check settles** | All three carry the section 5.47 rebuild pair; all three name the **new** block, never the spent one; and the control and null dataset slugs **derive from the primary's** (`Queue.suffix`), so a re-reservation moves all three roots together instead of leaving two queues pointing at a block that is no longer the live one - which is the mismatch the run-time guard would otherwise have to refuse, days later, at the cost of a session. |
+| **Result** | The next session's command is the registered one, and no GPU hour was spent establishing that. |
+
 ## The null queue bills a two-device session to train one arm, and that device is free (2026-09-22)
 
 | | |
