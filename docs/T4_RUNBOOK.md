@@ -834,9 +834,23 @@ handoff each time (tens of GiB, minutes of billed GPU per pair) to bound a loss
 that only a crash can cause. The trade is deliberate: a session that dies
 before its exit publish loses every pair it trained, section 5.2 restarts those
 pairs from scratch, and the driver stops rather than re-pushing so the cause is
-fixed first. Watch the `remote publish:` line and the push duration in the
-exit log; if a push ever takes longer than the pairs it protects, revisit this
-choice with that number rather than an assumption.
+fixed first.
+
+**Measured 2026-09-22, and the trade is confirmed rather than assumed.** The
+session that trained seeds 15000-15003 pushed **25.42 GiB in 12.0 min** (the
+payload from its own log line, the duration from the gap between the child's
+exit - `7.00 - 1.12 h` remaining, printed by the child itself - and the
+driver's `session finished after 6.14 h`), so the upload runs at **36.0 MiB/s**.
+That is an upper bound on the push, since the `_keep` calls and the closing
+disk report share those 12 minutes, and it is **1.4x slower** than the ~51 MB/s
+this document previously inferred from a download. Priced on it: the exit
+scheme costs **152.5 GiB over the block's three sessions (1.20 h)** against
+**495.7 GiB / 3.91 h** for a per-seed scheme - **3.25x the bytes** - and this
+session's 12.0 min push protected **339 min** of trained pairs, so the revisiting
+criterion above is met with room to spare. The 45-minute reserve stands and is
+sized for the **last** session (12 seeds = 76.3 GiB = **36 min**), not for this
+one. Evidence and the full derivation: `artifacts/v0-session-logs/NOTES.md`,
+with the kernel log itself committed beside it.
 
 ### Reading a session that died
 

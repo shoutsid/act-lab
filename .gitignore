@@ -63,4 +63,13 @@ artifacts/arch-zoo-*/*
 artifacts/mixer-benchmark/*
 !artifacts/mixer-benchmark/FINDINGS.md
 !artifacts/mixer-benchmark/mixer_throughput.json
+# Campaign session logs (2026-09-22): the platform's own log for a session that ran to
+# completion, which is the only measurement anywhere of what the exit publish costs
+# (25.42 GiB in 12 min) and of the child-output buffering that starved four failure
+# captures. A log is evidence for a number here, so the filename pattern is stable -
+# `session-<first>-<last>-log.json` - for the same reason the arch-zoo arm files are.
+!artifacts/v0-session-logs/
+artifacts/v0-session-logs/*
+!artifacts/v0-session-logs/NOTES.md
+!artifacts/v0-session-logs/session-*-log.json
 .DS_Store
