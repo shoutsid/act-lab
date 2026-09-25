@@ -4480,3 +4480,37 @@ catchable at all: the repository's numbers about its speed already disagreed by 
 disagreement was recorded rather than smoothed over. The mistake here was the same shape in the
 opposite direction - a made-to-look-good ratio quoted without checking the file that had already
 measured it - so the fix is to keep the closure *adjacent to* the ratio in the same document.
+
+## The dispatcher became a library facility, off by default, after the cache turned out closed (2026-09-25)
+
+**Where this leaves the "build the KV cache" request.** The cache is closed (entry above), so the only
+speedup still open on the path to a benchmark number is the one the same note prices: the dense expert
+form executes 1.934x the arithmetic the routing contract books, that is 48.3% of every forward pass, and
+because the experts are 68.0% of the parameters the saving reaches HumanEval - which is pure forward
+work - without touching the generation protocol.
+
+**What was built.** `act.model.dispatch`, with `grouped_forward` plus three switches:
+`use_grouped(model)` rebinds each block's MoE in place and returns how many blocks it switched,
+`use_dense(model)` removes the rebinding, and `dispatch_of(model)` reports `dense`, `grouped` or
+`mixed:n/total` so a run can record what it actually executed. `scripts/moe_dispatch_benchmark.py` now
+imports the dispatcher from the library instead of carrying its own copy, so the thing that is measured
+is the thing that would be used.
+
+**It is not on by default, and that is the design.** The switch is in-place and reversible rather than a
+config field, because it does not change what a model *is* - so it must not appear in a checkpoint, in
+a config, or in the architecture column of a benchmark row. Nothing in the package switches a model
+over; a caller that has the measurement says so explicitly. The switch also refuses a module with no
+`blocks`/`moe` rather than silently doing nothing, because a no-op would let a caller believe it had
+measured a dispatcher it never ran.
+
+**Pinned at the level a caller sees, not only at the layer.** The layer-level identity was already
+measured at 5.1e-16; `tests/test_moe_dispatch.py` now also pins a whole model's logits in float64 under
+`use_grouped` (and that `use_dense` restores the class's own implementation bit-for-bit), plus a seeded
+greedy completion that produces **the same token ids** under either dispatch - which is the property a
+benchmark row actually is, since a row is a string of sampled tokens. Eight tests in that module.
+
+**What still has to happen before it is used anywhere.** The crossover between the forms has to be
+measured at the code-LM shape on the card, which is busy until the arms and the benchmark rows are
+done. Until then the campaign's rows keep the dense path they were registered with, and the wiring
+point for the student's generator is `make_ours_generator` in `scripts/code_bench.py` - one call, once
+there is a number that says which form to call. 1849 tests, 328/328 claims.

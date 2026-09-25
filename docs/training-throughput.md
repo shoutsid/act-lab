@@ -102,6 +102,15 @@ undecided is only which form is faster at each shape. The script refuses to time
 forms that disagrees, and prices each form with *its own* estimator so a rate cannot be
 credited with arithmetic it did not do. The measurement decides; this note does not.
 
+The dispatcher itself now lives in the library - `act.model.dispatch`, with `use_grouped(model)`,
+`use_dense(model)` and `dispatch_of(model)` to switch a model in place and to record which
+dispatch a run used. It is deliberately **not a default and not reachable from a config**: it
+does not change what a model *is*, so it must not appear in a checkpoint or in an architecture
+column, only in the record of how a run was executed. `tests/test_moe_dispatch.py` pins the
+identity at the level a caller sees - a whole model's logits in float64, and the same greedy
+completion token by token - so once the benchmark says which form is faster at this shape, taking
+it is a one-line call at each call site that wants it.
+
 ## Lever 2 looked like ~300x and is closed: a cache cannot reproduce this generator
 
 `train_code_lm.generate` and `code_bench.sample_token` both sample one token per **full

@@ -20,7 +20,13 @@ from pathlib import Path
 import pytest
 import torch
 
-from act.model.v0_moe import V0MoEConfig, _MoEFeedForward
+from act.model.dispatch import (
+    dispatch_of,
+    grouped_forward,
+    use_dense,
+    use_grouped,
+)
+from act.model.v0_moe import V0MoEConfig, V0MoECausalLM, _MoEFeedForward
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -59,7 +65,7 @@ def test_grouped_dispatch_is_the_same_function_as_both_existing_forms() -> None:
         dense = feed_forward(hidden)
         dense_load = feed_forward.last_load.clone()
         eager = feed_forward.eager_forward(hidden)
-        grouped = bench.grouped_forward(feed_forward, hidden)
+        grouped = grouped_forward(feed_forward, hidden)
 
     assert torch.allclose(dense, eager, atol=1e-12)
     assert torch.allclose(dense, grouped, atol=1e-12)
@@ -89,7 +95,7 @@ def test_grouped_dispatch_skips_an_expert_that_receives_no_rows() -> None:
 
     with torch.no_grad():
         dense = feed_forward(hidden)
-        grouped = bench.grouped_forward(feed_forward, hidden)
+        grouped = grouped_forward(feed_forward, hidden)
 
     assert torch.allclose(dense, grouped, atol=1e-12)
     load = feed_forward.last_load
@@ -190,3 +196,79 @@ def test_each_form_is_priced_by_the_arithmetic_it_executes() -> None:
     grouped = bench.flops_per_token(config, "grouped")
     assert dense / grouped == pytest.approx(1.934, abs=0.001)
     assert set(bench.FORMS) == {"dense", "eager", "grouped"}
+
+
+def test_switching_a_whole_model_to_grouped_does_not_change_its_logits() -> None:
+    """The layer-level identity is not enough: the switch is applied to a model, in place.
+
+    `use_grouped` rebinds each block's MoE, so what a caller actually gets is a whole model's
+    behaviour. Pinned at the output rather than at the layer, in float64, and then reversed to
+    check that `use_dense` really restores the class's own implementation - a switch that can go
+    on but not off would be a one-way edit of a loaded checkpoint.
+    """
+
+    config = tiny_config()
+    torch.manual_seed(7)
+    model = V0MoECausalLM(config).to(torch.float64).eval()
+    tokens = torch.randint(0, config.vocab_size, (2, 9))
+
+    with torch.no_grad():
+        before = model(tokens)
+    assert dispatch_of(model) == "dense"
+
+    assert use_grouped(model) == config.depth
+    assert dispatch_of(model) == "grouped"
+    with torch.no_grad():
+        after = model(tokens)
+    assert torch.allclose(before, after, atol=1e-12)
+
+    assert use_dense(model) == config.depth
+    assert dispatch_of(model) == "dense"
+    with torch.no_grad():
+        restored = model(tokens)
+    assert torch.equal(before, restored)
+
+
+def test_a_seeded_generation_is_the_same_tokens_under_either_dispatch() -> None:
+    """What a caller can see: the same completion, not merely close logits.
+
+    This is the check that matters for a benchmark row, because a row is a *string* of sampled
+    tokens. Greedy so the comparison is exact rather than probabilistic, on a model small enough
+    that a flip would still be meaningful.
+    """
+
+    config = tiny_config()
+    torch.manual_seed(11)
+    model = V0MoECausalLM(config).to(torch.float32).eval()
+    prompt = torch.randint(0, config.vocab_size, (1, 6))
+
+    def complete(model: V0MoECausalLM) -> list[int]:
+        tokens = prompt.clone()
+        produced: list[int] = []
+        with torch.no_grad():
+            for _ in range(8):
+                logits = model(tokens)[:, -1, :]
+                next_id = int(logits.argmax(dim=-1))
+                produced.append(next_id)
+                tokens = torch.cat([tokens, torch.tensor([[next_id]])], dim=1)
+        return produced
+
+    dense = complete(model)
+    use_grouped(model)
+    grouped = complete(model)
+
+    assert dense == grouped
+    assert len(dense) == 8
+
+
+def test_the_switch_refuses_a_module_that_is_not_a_model() -> None:
+    """An in-place switch has to fail loudly on the wrong object rather than silently no-op.
+
+    A no-op would let a caller believe it had measured the dispatcher it did not run, which is
+    the same failure a silent fallback has everywhere else in this project.
+    """
+
+    with pytest.raises(ValueError):
+        use_grouped(torch.nn.Linear(4, 4))
+    with pytest.raises(ValueError):
+        dispatch_of(torch.nn.Linear(4, 4))

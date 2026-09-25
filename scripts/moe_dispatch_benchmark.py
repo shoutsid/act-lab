@@ -16,11 +16,12 @@ Three forms are timed at one shape, one dtype, one device:
 
 * ``dense``   - the module's ``forward``, what the training loop executes today;
 * ``eager``   - the module's ``eager_forward``, the reference dispatch;
-* ``grouped`` - the candidate: route once, sort the ``(token, slot)`` rows by expert, run one
-  contiguous matmul pair per expert, and scatter the gate-weighted rows back with a single
-  ``index_add_``. It does the contracted arithmetic with a bounded number of launches,
-  instead of the dense form's 2x arithmetic or the eager form's per-expert masking and
-  ``nonzero`` passes.
+* ``grouped`` - ``act.model.dispatch.grouped_forward``: route once, sort the ``(token, slot)``
+  rows by expert, run one contiguous matmul pair per expert, and scatter the gate-weighted rows
+  back with a single ``index_add_``. It does the contracted arithmetic with a bounded number of
+  launches, instead of the dense form's 2x arithmetic or the eager form's per-expert masking and
+  ``nonzero`` passes. It lives in the library rather than here because the switch it implies has
+  to be available to a caller that has measured it, not only to this script.
 
 Equivalence is checked **before** anything is timed: all three forms are run in float64 on a
 small batch and compared to each other, and a set of forms that disagrees is refused rather
@@ -43,6 +44,7 @@ from pathlib import Path
 
 import torch
 
+from act.model.dispatch import grouped_forward
 from act.model.v0_moe import V0MoEConfig, _MoEFeedForward
 from act.search.architecture_eval import (
     estimate_dense_runtime_flops_per_token,
@@ -71,39 +73,6 @@ FORM_ARITHMETIC = {
     "eager": "contracted",
     "grouped": "contracted",
 }
-
-
-def grouped_forward(feed_forward: _MoEFeedForward, hidden: torch.Tensor) -> torch.Tensor:
-    """The candidate dispatch: one sort, one contiguous matmul pair per expert, one scatter.
-
-    Routing is delegated to ``_route`` so the routing contract - including the recorded
-    ``last_load`` bookkeeping - is shared with the other two forms rather than reimplemented.
-    Rows are ordered by expert so each expert's tokens are contiguous; experts that received
-    no rows are skipped rather than run on an empty batch.
-    """
-    flat = hidden.reshape(-1, hidden.shape[-1])
-    weights, indices, _ = feed_forward._route(flat)
-    tokens, k = indices.shape
-
-    rows_of_expert = indices.reshape(-1)
-    # Row ``r`` of the flattened (token, slot) space belongs to token ``r // k`` and carries
-    # gate weight ``weights[r // k, r % k]`` - which is exactly ``weights.reshape(-1)[r]``,
-    # because the top-k axis is the minor one.
-    row_gate = weights.reshape(-1)
-    order = torch.argsort(rows_of_expert, stable=True)
-    counts = torch.bincount(rows_of_expert, minlength=len(feed_forward.experts))
-
-    output = torch.zeros_like(flat)
-    start = 0
-    for expert_index, expert in enumerate(feed_forward.experts):
-        count = int(counts[expert_index])
-        if count == 0:
-            continue
-        rows = order[start : start + count]
-        start += count
-        expert_output = expert(flat[rows // k])
-        output.index_add_(0, rows // k, expert_output * row_gate[rows].unsqueeze(-1))
-    return output.reshape_as(hidden)
 
 
 def form_forward(feed_forward: _MoEFeedForward, hidden: torch.Tensor, form: str) -> torch.Tensor:
