@@ -98,6 +98,7 @@ where it is.
 | `docs/IMPLEMENTATION_STATUS.md` | The implementation tracker. Append-only and newest-first; each entry records what was found, what was fixed, and what finding it cost. Superseded entries stay as written. | What was done, and when |
 | `docs/T4_RUNBOOK.md` | The operational runbook for Kaggle sessions: pre-flight checks, the session plan, the exact commands. | How to run a session |
 | `artifacts/ARCH_SEARCH_FINDINGS.md` | The architecture-search synthesis behind the section below: matched-budget identifiability, the crossed factorial, the confirmation arms. | The search evidence in detail |
+| `docs/width-control-design.md` | A **design note, not a record**: what a width mutation costs on this model (100% of the parameters, all 254 tensors), the constraints the model's own declared-config rule imposes on it, the function-preservation contract it would have to meet, and the four outcomes declared before it runs. Nothing in it is a measurement. | What the next gate should be, and what would make it worth its hours |
 
 Per-arm material lives beside each arm under `artifacts/*/`:
 
