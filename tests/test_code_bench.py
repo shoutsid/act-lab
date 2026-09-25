@@ -190,7 +190,15 @@ def test_a_checkpoint_path_is_reported_in_a_form_both_callers_can_write(tmp_path
     scan had run, which is how it survived the tests and reached a smoke run.
     """
     monkeypatch.chdir(code_bench.ROOT)
-    relative = Path("artifacts/code-lm/checkpoints/match-distill.pt")
+    # A checkpoint path the campaign really passes, spelled as a path that is *not* a file:
+    # `display_path` formats it and never opens it, but `tests/test_report_artifact_links.py`
+    # cannot tell a name from a read - it fires on any path literal that resolves to a
+    # gitignored file - so naming `match-distill.pt` here made a formatting test look like a
+    # data dependency, and it only failed once the campaign had written that checkpoint, which
+    # is exactly the wrong moment for an unrelated failure. The subject of this test is the
+    # relative-versus-absolute shape, and that does not need the file to exist.
+    relative = Path("artifacts/code-lm/checkpoints/display-path-probe.pt")
+    assert not (code_bench.ROOT / relative).exists(), "this test must not name a real artifact"
     assert code_bench.display_path(relative) == str(relative)
     assert code_bench.display_path(code_bench.ROOT / relative) == str(relative)
     # A checkpoint outside the repository is named where it is, not forced into a shape

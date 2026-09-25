@@ -4302,3 +4302,34 @@ alternative, which is to stop describing the program as searching architecture a
 architecture result (width is the lever, shallow beats deep, heads are free but only at wide
 width) beside the topology result (mutation helps, selection does not). Those are both
 publishable; a fifth arm on expert capacity is neither.
+
+## The campaign was stopped and would have stayed stopped: the week was about to expire unused (2026-09-25)
+
+The Gate-4 campaign has been down since **2026-09-21 15:22** (the kernel's last run, and it ended
+`ERROR`). Its cause was already in this log - the child's output was block-buffered so the capture
+starved, and the three fixes that answer it (`91ac0e8` unbuffers the child, `812bce1` restarts the
+capture and keeps the fullest channel rather than the first, the tees and the `finally` keeps)
+**have never run on Kaggle**. What had not been done is the thing the health check asks for in as
+many words - *read the cause before pushing* - and the state was that nobody was going to.
+
+| | |
+|---|---|
+| **What was wrong with the report an operator acts on** | `campaign_health.py` printed `published seeds : None of None complete` for all three queues. Two defects behind one line: the live block's dataset (`act-v0-5-2`) has no versions until its first session publishes, so the listing raised; `health()` caught it and set the counts to `None`; and **the reason was dropped**, never printed. So the one line that says how far the campaign has got read like a broken report, and the cause it had in hand was invisible. |
+| **What the reason actually was** | Not "no versions yet", which is what this entry's author assumed before printing it: **`403 Client Error: Forbidden`** on `datasets.DatasetApiService/ListDatasetFiles` for `act-v0-5-2`. Kaggle answers **403, not 404, for a private dataset that does not exist** - a fact the session path already encodes (`_is_missing_dataset_error` treats 403/404 as "nothing to restore yet", at both its call sites) and that the health report was throwing away. |
+| **Fixed** | The report now prints `published seeds : unreadable - <reason> (of 12 declared)` when the listing fails, and the ordinary `N of 12 complete` when it does not. The denominator is a registered constant, so it survives a read failure; the numerator does not, and the two states - *unreadable* and *empty* - are the ones an operator has to tell apart. Pinned by a test that raises from the listing and asserts the reason and the denominator are printed and `None of None` is not. |
+| **Verified before relaunching, on the cheap channels** | (1) **Quota**: 1.07 h against a 7 h window, so the driver must wait; `--max-waits` defaults to 2 and each wait sleeps to the payload's own `refreshAt`, so one wait clears the 00:00 UTC refresh rather than expiring first. (2) **Code dataset**: the driver republished `act-lab-code` at HEAD (`6885e02`) as its first act - a queued probe mounts whatever version is latest, and `tpu_probe.py` is unchanged since the probe's own commit, so the TPU kernel in flight is unaffected. (3) **The missing dataset is a bootstrap, not a failure**: `publish_on_exit` falls back to `dataset_create_new` on 403/404, so the first session creates `act-v0-5-2` when it publishes, and `restore_latest` treats the same 403 as "session 1 has nothing to restore" - checked at both call sites rather than assumed from the docstring. (4) **The treatment guard**: a session refuses to extend a block whose published treatment differs, so the re-reserved block cannot be mixed with the four untreated seeds. (5) **The driver's own stopping rule**: exit 1 (session failed) and exit 4 (completed without advancing) stop the campaign and say so, rather than spending the week repeating a broken session. |
+| **What was done** | `scripts/run_gate4_campaign.sh` was relaunched detached. Its own log begins with the health report, republishes the code dataset, and then says: *"only 1.07 GPU-h of the weekly quota is left and a session declares 7 h ... waiting rather than billing a partial session"*. At **00:00 UTC** it pushes a session for the `session` queue, then `control`, then `null`, then the verdict - unattended, because the alternative is that the hours expire. |
+| **The honest risk** | The first session of the new block is also the first run of three fixes that have never executed on Kaggle. If it dies, the driver stops at exit 1 rather than looping, and the cause is now read from four channels with the longest winning - so the failure costs one window, not the week. The block it trains is the re-reserved one (`15024-15035`, all three queues together), which is why this is worth a session rather than a fifth read of the same numbers. |
+| **Cost** | ~18.4 GPU-h per queue, against 30 in the week; the three queues are ~47-52 h, so the campaign needs two weeks of refreshes and the driver sequences them. Nothing about this spends the local card, which is mid-campaign on the code-LM leg. |
+
+**One more thing surfaced by running the suite while the campaign trains: a check that fires only
+when the artifact exists.** `tests/test_report_artifact_links.py` asserts that a test cannot read
+a gitignored artifact, and it fired on `tests/test_code_bench.py` naming
+`artifacts/code-lm/checkpoints/match-distill.pt` - a path the *campaign had just started writing*.
+The test only formats that path (`display_path` never opens it), so the report was a false positive;
+but the checker cannot tell a name from a read, and its trigger is therefore data-dependent: it is
+silent while the checkpoint is absent and fails once the campaign creates it, which is the worst
+moment for an unrelated failure and the reason it was not seen in any earlier run today. Fixed on
+the side that is wrong - the test now names a path that is not a file, and asserts it is not, so the
+subject (relative-versus-absolute formatting) is unchanged and the check keeps its teeth for tests
+that really read something. 1827 tests pass.

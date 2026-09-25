@@ -315,8 +315,15 @@ def health(
     try:
         seeds = published_seeds(queue.dataset)
         progress = seed_progress(seeds)
+        seeds_error = None
     except RuntimeError as error:
-        seeds, progress = {}, {"error": str(error)}
+        # "Cannot tell" and "zero" are different states and the report has to say which
+        # one it is in. It did not: a dataset that has no versions yet (the live block,
+        # `act-v0-5-2`, before its first session) raised here, the counts became ``None``,
+        # and the *reason* was dropped - so the line read "published seeds : None of None
+        # complete" at exactly the moment an operator decides whether to push, which looks
+        # like a broken report rather than like a block that has not started.
+        seeds, progress, seeds_error = {}, {}, str(error)
     holder = lock_holder(queue.kernel_id)
 
     live = kaggle_queue.should_adopt(status)
@@ -350,6 +357,11 @@ def health(
             "complete": progress.get("complete"),
             "partial": progress.get("partial"),
             "next": progress.get("next_seed"),
+            "error": seeds_error,
+            # The denominator is a registered constant, so it survives a read failure even
+            # though the numerator does not - and a reader who is told one of the two can
+            # tell an unreadable dataset from an empty one.
+            "declared": len(DECLARED_SEEDS),
         },
         "readout": (
             seed_readout(queue.dataset, progress["complete"])
@@ -379,11 +391,20 @@ def report(state: dict) -> str:
     quota = state["quota"]
     seeds = state["seeds"]
     holder = state["driver_lock"]
+    # "Cannot tell" is printed as such, with its reason: see the note in `health` - this
+    # line read "None of None complete" for a live block whose dataset has no versions yet,
+    # which looks like a broken report rather than like a block whose first session has not
+    # run, and it printed no reason at all.
+    published = (
+        f"unreadable - {seeds['error']} (of {seeds.get('declared')} declared)"
+        if seeds.get("error")
+        else f"{seeds['complete_count']} of {seeds['declared_count']} complete"
+        + (f" ({', '.join(str(s) for s in seeds['complete'])})" if seeds["complete"] else "")
+        + (f"; partial {seeds['partial']}" if seeds["partial"] else "")
+    )
     lines = [
         f"Gate-4 campaign health ({state['queue']} queue)",
-        f"  published seeds : {seeds['complete_count']} of {seeds['declared_count']} complete"
-        + (f" ({', '.join(str(s) for s in seeds['complete'])})" if seeds["complete"] else "")
-        + (f"; partial {seeds['partial']}" if seeds["partial"] else ""),
+        f"  published seeds : {published}",
         f"  session kernel  : {state['session_status']}"
         + (f", driver lock held by pid {holder['pid']}" if holder and "pid" in holder else ""),
         f"  quota           : {quota['remaining_hours']} h remaining of {quota['total_hours']}"

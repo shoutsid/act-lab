@@ -206,6 +206,49 @@ def test_an_error_with_nothing_live_is_failed(monkeypatch: pytest.MonkeyPatch) -
     assert state["verdict"] == "FAILED"
 
 
+def test_an_unreadable_dataset_says_cannot_tell_and_names_the_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Measured 2026-09-25, on this report's own output, at the moment of deciding to push.
+
+    The live block's dataset (`act-v0-5-2`) has no versions until its first session
+    publishes, so the listing raised, the counts became ``None`` and the reason was dropped:
+    the line read "published seeds : None of None complete". That is not a state - it is a
+    report bug - and the two states it conflated are the ones an operator has to tell apart:
+    a dataset that is *unreadable* (ask again, or read the cause) and one that is *empty*
+    (nothing has run yet, which is expected for a re-reserved block).
+    """
+
+    def unreadable(dataset_id: str) -> dict:
+        raise RuntimeError(f"act-v0-5-2 has no versions yet")
+
+    monkeypatch.setattr(campaign_health, "published_seeds", unreadable)
+    monkeypatch.setattr(campaign_health.kaggle_queue, "active_status", lambda kernel: "ERROR")
+    monkeypatch.setattr(
+        campaign_health.kaggle_queue,
+        "active_quota",
+        lambda: {
+            "remaining_hours": 1.07,
+            "used_hours": 28.93,
+            "total_hours": 30.0,
+            "refresh_at": "2026-09-26T00:00:00",
+        },
+    )
+    monkeypatch.setattr(campaign_health, "lock_holder", lambda kernel: None)
+
+    state = campaign_health.health("session")
+    text = campaign_health.report(state)
+    assert "unreadable" in text
+    assert "act-v0-5-2 has no versions yet" in text
+    # The denominator is a registered constant, so it survives the read failure; without it
+    # an operator cannot tell how far the block is *meant* to go.
+    assert f"of {len(campaign_health.DECLARED_SEEDS)} declared" in text
+    assert "None of None" not in text
+    assert "None" not in text
+    # The verdict still follows the kernel's status, which is what it has to act on.
+    assert state["verdict"] == "FAILED"
+
+
 def test_nothing_live_with_no_quota_is_waiting_not_stalled(monkeypatch: pytest.MonkeyPatch) -> None:
     """A week that cannot fit a session is expected; the driver's own wait covers it."""
     state = _state(monkeypatch, status="COMPLETE", remaining=3.0, complete=[15000])
