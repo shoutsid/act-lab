@@ -4514,3 +4514,72 @@ measured at the code-LM shape on the card, which is busy until the arms and the 
 done. Until then the campaign's rows keep the dense path they were registered with, and the wiring
 point for the student's generator is `make_ours_generator` in `scripts/code_bench.py` - one call, once
 there is a number that says which form to call. 1849 tests, 328/328 claims.
+
+## The width mutation's named obstacle is two scalars, not a wall (2026-09-25)
+
+**The note asserted; this measures.** `docs/width-control-design.md` said a width mutation needs a
+function-preserving widening, that **RMSNorm is the obstacle**, and that the test should show
+**bit-identity**. Both claims are now checked against an implementation, and one of them was wrong.
+
+**What was built, and why it could land mid-campaign.** `src/act/model/widen.py` -
+`widen_config` / `widen_model` / `widening_report` - with `tests/test_width_widen.py`. It is a *new
+file*: `v0_moe.py` and `train_code_lm.py` are untouched, so the two arms' provenance ("no file they
+import changed") still holds where an edit to the model would have broken it. The freeze recorded in
+the design note still governs anything the arms read.
+
+**The mechanism is zero extension, not the Net2Net duplication the note proposed.** The new
+coordinates are zero, the new heads emit zero, every new input column and output row is zero, so
+nothing is duplicated and there is no split factor to get wrong. The one term that cannot be zeroed
+away is the normalisation, and it is exactly compensable - by **two** scalars, which is where the
+first version was wrong:
+
+| state of the compensation | logits against the un-widened model |
+|---|---|
+| neither half | **5.79e-4** |
+| weight scaled by `sqrt(h/h')`, epsilon left alone | >100x the compensated error |
+| epsilon scaled by `h/h'`, weight left alone | >100x the compensated error |
+| both halves, at the student's shape (768 -> 1024, 12 -> 16 heads) | **2.50e-06 absolute, 9.7e-07 relative** |
+
+The missed half is the epsilon, and the reason is structural: `_RMSNorm` computes
+`x * rsqrt(mean(x^2) + eps) * w`, and the epsilon sits *inside* the root-mean-square. Widening makes
+`mean(x'^2) = mean(x^2)·h/h'`, so what is left over is `rsqrt(a/h' + eps)` against `rsqrt(a/h + eps)`
+for the token's own `a = ||x||^2` - an activation-dependent discrepancy that no constant weight can
+cancel. Scaling the epsilon by `h/h'` makes the two radicands proportional for every input, and the
+pair is then an identity. A norm guard of `1e-6` is not negligible against a fresh model's activation
+scale, which is why the weight-only version was off by 5.79e-4 rather than by rounding.
+
+**The contract is met, but the bar as drafted was unreachable and the draft was what was wrong.**
+`_RMSNorm` computes its statistic in float32 **by design**, so a widened norm rounds in the last place
+of that cast, and the residue does not improve in float64 (6.90e-08 there against 5.96e-08 on a toy,
+which is what identifies the floor as the model's own normalisation rather than the graft). So the
+contract is *"the same function to within the model's own normalisation rounding"*, adopted with its
+reason stated, rather than by relaxing an assertion until it passed. The note and its sequenced actions
+now say so, and the tests pin both halves of the compensation as load-bearing inequalities against the
+compensated error rather than against magic constants.
+
+**What a graft costs at the student's shape** - and the two numbers that matter are the second and
+third columns, not the first:
+
+| step | total parameters | active parameters |
+|---|---|---|
+| h768 -> h896 (12 -> 14 heads) | 166,423,296 -> 199,665,536 (**1.200x**) | 81,488,640 -> 100,575,104 (**1.234x**) |
+| h768 -> h1024 (12 -> 16 heads) | 166,423,296 -> 234,480,640 (**1.409x**) | 81,488,640 -> 121,234,432 (**1.488x**) |
+| h768 -> h1152 (12 -> 18 heads) | 166,423,296 -> 270,868,608 (**1.628x**) | 81,488,640 -> 143,466,624 (**1.761x**) |
+
+The active cost runs ahead of the parameter cost at every step, which is the same asymmetry section 8
+records from the other direction, and it is why a width schedule's win is ambiguous between capacity and
+compute unless section 5's three controls are run.
+
+**Two properties that a search operator has to respect.** The new coordinates start at **exactly zero
+gradient** - the graft is a saddle, measured for three different routes to the loss (a norm entry, a new
+head's qkv rows, an expert's new input columns) - so an operator built on this owes them a perturbation,
+or the controller widens a model and nothing happens. And two things are **refused rather than
+approximated**: a shrinking step (pruning is a different operator with a different information loss, and
+one name for both is how a mutation budget gets spent on the wrong one) and a `gdn`/`hybrid` layer,
+whose `head_dim x head_dim` recurrence state changes geometry when a width step adds heads.
+
+**What this leaves the gate.** The admission bar's item (a) - "the preservation test exists and passes" -
+is now met and is a measurement rather than a plan. What remains is the *operator* itself: a mutation
+that widens a partly trained model, records the graft in the run's own signature, perturbs the new
+coordinates, and is costed from committed figures - plus the freeze on whatever the arms import. 1856
+tests, 328/328 claims.

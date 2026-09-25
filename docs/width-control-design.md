@@ -85,30 +85,70 @@ Two things follow, and both are load-bearing rather than incidental.
 
 ## 4. The mechanism, and the contract it has to meet
 
-The only mutation shape with a chance of being informative is a **function-preserving
-widening**: add k hidden units (k a multiple of 128, so k/64 heads) by duplicating existing
-units, and split every weight that touches a duplicated unit so the model's next-token logits
-are unchanged on a fixed batch. That is the Net2Net identity, and the project already uses this
-shape of contract — `activation_checkpointing` is a *trajectory-inert* lever, verified
-bit-identical (sections 5.37/5.37.1), and the KV-cache work on the code-LM student was stopped
-precisely by such a measurement (the cached and uncached forwards agreed to 5.96e-08 until the
-window rolled, which is a different model).
+The mutation shape with a chance of being informative is a **function-preserving widening**, and
+as of 2026-09-25 it is implemented and measured: `src/act/model/widen.py` returns a model of a
+requested width that computes the same function as the one handed in, checked in
+`tests/test_width_widen.py`.
 
-**The named obstacle, so it is not discovered mid-run: RMSNorm is width-dependent.** Duplicating
-units changes both the sum of squares and the count the root-mean-square divides by, so a naive
-duplication is *not* function-preserving through a normalisation, and this model normalises
-before every mixer and before the MoE. Either the split is scaled to compensate per norm (and
-the compensation's exactness is what the test has to establish), or the contract is weakened to
-"the loss moves by less than the effect being measured" — which is a *worse* contract and must
-be declared as such rather than quietly adopted. The test is the same shape in either case: a
-fixed batch, logits before and after the mutation, and a bit-identity assertion that fails
-loudly.
+It is **not** the Net2Net duplication this section first proposed, and the difference is the whole
+result. Duplicating units and splitting the weights that touch them needs a per-unit split factor
+and a matching compensation at every consumer. What works instead is **zero extension**: the new
+coordinates are zero, the new heads emit zero, and every new input column and output row is zero,
+so nothing is duplicated and there is no split to get wrong. The project already reasons in this
+shape of contract — `activation_checkpointing` is a *trajectory-inert* lever verified
+bit-identical (sections 5.37/5.37.1) — and the KV-cache work on the code-LM student was stopped by
+exactly such a measurement.
 
-If exactness cannot be reached, the honest fallback is not a weaker contract — it is the
-observation the project already made about cloning: **the value came from copy-and-preserve, not
-from adding capacity**. A widening that re-instantiates a unit from scratch is a *grow*, and
-grow is the operation this project measured as the more expensive half of the mutation penalty
-(5.25) and the one cloning inverted (5.26).
+**The named obstacle was RMSNorm, and it is exactly compensable — as two scalars, not one.** The
+widened stream is `x' = [x, 0]`, so `mean(x'^2) = mean(x^2) · h/h'` and the normalised coordinates
+come out scaled by `sqrt(h'/h)`; scaling the copied weight by `sqrt(h/h')` cancels that. But the
+epsilon sits *inside* that root-mean-square, so what remains is `rsqrt(a/h' + eps)` against
+`rsqrt(a/h + eps)` for the token's own `a = \|x\|^2` — which no constant weight can fix, because the
+discrepancy depends on the activation. Scaling the epsilon by `h/h'` makes the two radicands
+proportional for **every** input, and the pair is an identity. Measured, each half is load-bearing:
+
+| state of the compensation | logits against the un-widened model |
+|---|---|
+| neither half | **5.79e-4** |
+| weight scalar only, epsilon left alone | >100x the compensated error |
+| epsilon scaled only, weight left alone | >100x the compensated error |
+| both halves, at the student's shape (768 -> 1024, 12 -> 16 heads) | **2.50e-06 absolute, 9.7e-07 relative** |
+
+So the contract this section demanded is met, but **not in the form it asked for**: bit-identity is
+the wrong target for this operator. `_RMSNorm` computes its statistic in float32 *by design*, so a
+widened norm rounds in the last place of that cast, and the residue does not improve with a float64
+model (6.90e-08 there against 5.96e-08 on a toy) — which is what identifies the floor as the
+model's own normalisation rather than as the graft. The honest contract is "the same function to
+within the model's own normalisation rounding", and that is the sentence the test carries.
+
+**Cost of one graft at the student's shape** (`widening_report`; vocabulary 32,256, context 512,
+depth 12, 8 experts, 2 active, width 768):
+
+| step | total parameters | active parameters |
+|---|---|---|
+| h768 -> h896 (12 -> 14 heads) | 166,423,296 -> 199,665,536 (**1.200x**) | 81,488,640 -> 100,575,104 (**1.234x**) |
+| h768 -> h1024 (12 -> 16 heads) | 166,423,296 -> 234,480,640 (**1.409x**) | 81,488,640 -> 121,234,432 (**1.488x**) |
+| h768 -> h1152 (12 -> 18 heads) | 166,423,296 -> 270,868,608 (**1.628x**) | 81,488,640 -> 143,466,624 (**1.761x**) |
+
+The active cost runs ahead of the parameter cost at every step (1.488x against 1.409x), which is the
+asymmetry section 8 records from the other direction, and it is why a width schedule's win is
+ambiguous between *capacity* and *compute* unless section 5's controls are run.
+
+**And the new coordinates start at exactly zero gradient** — the graft is a saddle. That is a
+property of any zero extension rather than a defect, and it means a search operator built on this
+owes the new coordinates a perturbation rather than a training step; otherwise the controller widens
+a model and nothing happens. Measured for three routes to the loss (a norm entry, a new head's qkv
+rows, an expert's new input columns).
+
+Two things are **refused rather than approximated**, both pinned by test: a *shrinking* step — that
+is pruning, a different operator with a different information loss, and slipping both under one name
+is how a mutation budget gets spent on the wrong one — and a **recurrent (`gdn`/`hybrid`) layer**,
+whose `head_dim x head_dim` state changes geometry when a width step adds heads, so no zero extension
+preserves it. If exactness had *not* been reachable, the fallback would not have been a weaker
+contract: it would have been the observation the project already made about cloning, that **the value
+came from copy-and-preserve rather than from adding capacity** — a widening that re-instantiates a
+unit from scratch is a *grow*, which is the more expensive half of the measured mutation penalty
+(5.25) and the half cloning inverted (5.26).
 
 ## 5. The design, if the contract holds
 
@@ -143,16 +183,22 @@ reader can compare against an outside model (which is what the code-LM leg is fo
 
 ## 7. Sequenced actions
 
-1. **Implementation, when the tree is safe to edit.** The code-LM campaign's two arms are in
-   flight from the current `src/act/model`, and the second one starts after the first finishes.
-   Editing the model between them would make the arms two different experiments, and nothing in
-   their reports would say so, so the tree is frozen until both arms and the benchmark rows are
-   done. That is not a hypothetical hazard: this session's own KV-cache experiment touched
-   `src/act/model/v0_moe.py` and reverted it, and the only thing that made it harmless is that
-   the revert restored the file to byte-identity with `HEAD` before arm 1 started.
-2. **The preservation test first**, in the project's own idiom: a fixed batch, logits before and
-   after, bit-identity, and a refusal for any layer type the widening cannot make exact (the
-   probe's KV-cache work is the precedent for refusing a layer rather than degrading quietly).
+1. **The mechanism is built, and it landed because it is a new file rather than an edit.**
+   `src/act/model/widen.py` and `tests/test_width_widen.py` do not touch `v0_moe.py` or
+   `train_code_lm.py`, which is what let them land while the campaign's two arms are still in
+   flight: the arms' provenance is that no file they import changed, and a new module satisfies
+   that where an edit to the model would not. The freeze this section recorded is still what
+   governs item 4 below — nothing the arms read has moved. What remains is the *operator*: a
+   mutation that widens a partly trained model, records the graft in the run's own signature, and
+   perturbs the new coordinates, which start at exactly zero gradient.
+2. **The preservation test exists and passes**, so the admission bar's item (a) is met: a fixed
+   batch, logits before and after, across every position, with both halves of the norm
+   compensation shown to be load-bearing and a refusal for the layer type the widening cannot make
+   exact. One thing the test changed: the bar was written as **bit-identity**, and the measurement
+   says the achievable contract is the model's own normalisation rounding (2.50e-06 absolute,
+   9.7e-07 relative at the student's shape), because `_RMSNorm` computes its statistic in float32
+   by design. That is a weaker contract than the bar as drafted, and it is adopted with its reason
+   rather than by lowering the assertion until it passed.
 3. **The cost, from committed figures, before the arm is pushed.** The measured rates are in
    `artifacts/arch-zoo/PERFORMANCE_NOTES.md` and in the code-LM leg's reports; a width arm at
    this model's shape must be priced at ~1.1-1.4× the `match` student's per-token cost for the
