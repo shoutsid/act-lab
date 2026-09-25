@@ -24,12 +24,18 @@ from __future__ import annotations
 
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
 CAMPAIGN = ROOT / "scripts" / "run_code_lm_campaign.sh"
+
+import code_bench  # noqa: E402
+import code_lm_table  # noqa: E402
+import push_code_bench  # noqa: E402
 
 
 def invocations(script: str, needle: str) -> list[list[str]]:
@@ -130,6 +136,41 @@ def test_targets_are_scored_over_exactly_the_tokens_the_arms_train_on(script: st
     scored = unquoted(flags(targets[0])["--score-tokens"])
     for arm in invocations(script, "--stage train"):
         assert unquoted(flags(arm)["--score-tokens"]) == scored
+
+
+def test_the_tags_the_campaign_writes_are_the_roles_the_table_resolves(script: str) -> None:
+    """A tag renamed in the shell script breaks the table, thirteen hours later.
+
+    ``code_lm_table`` matches student roles as ``ours-<scale>-<arm>`` and the fixed two
+    by name, and it refuses a missing role rather than printing a short table. That
+    refusal is correct and, at the end of this campaign, also expensive - so the two
+    spellings are checked against each other here, against the table's own resolver
+    rather than against a copy of its rule.
+    """
+    tags = {unquoted(flags(row)["--tag"]).replace("$SCALE", "match")
+            for row in invocations(script, "code_bench.py --model")}
+    resolved = code_lm_table.resolve_roles({tag: {"bytes": {}} for tag in tags}, "match")
+    assert set(resolved) == set(code_lm_table.ROLES)
+    assert {tag for tag, _ in resolved.values()} == tags, "a tag no role claims is a row nobody reads"
+
+
+def test_the_local_and_kaggle_rows_default_to_the_same_held_out_text(script: str) -> None:
+    """One limit in three files, or the two halves of the evidence are not one experiment.
+
+    The shell default is evaluated by bash rather than parsed, because it is written as
+    ``${BENCH_BYTES:-...}`` and the arithmetic-free way to know what it resolves to is to
+    ask the shell that resolves it.
+    """
+    line = next((line for line in script.splitlines() if line.startswith("BENCH_BYTES=")), None)
+    assert line is not None
+    resolved = subprocess.run(
+        ["bash", "-c", f"unset BENCH_BYTES; {line}; echo $BENCH_BYTES"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    assert int(resolved) == code_bench.DEFAULT_BYTES_LIMIT
+    assert push_code_bench.DEFAULT_BYTES_LIMIT == code_bench.DEFAULT_BYTES_LIMIT
 
 
 def test_the_script_fails_fast_and_echoes_its_budget(script: str) -> None:

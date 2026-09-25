@@ -72,6 +72,15 @@ WINDOW = 512
 Holding it fixed is what makes the teacher's and the baseline's numbers a
 comparison rather than two measurements."""
 
+DEFAULT_BYTES_LIMIT = 4_000_000
+"""Held-out bytes scored when nobody says otherwise, as one definition.
+
+Two other files pin this number: ``run_code_lm_campaign.sh`` as its ``BENCH_BYTES``
+default, and ``push_code_bench.py`` as the limit it asks Kaggle for. They have to agree,
+because bits per byte is only comparable at one limit and the disagreement shows up at
+table time - after the local card has spent nine hours and the Kaggle run has spent GPU
+quota. ``tests/test_code_lm_campaign.py`` reads all three."""
+
 STOP_SEQUENCES = ("\nclass ", "\ndef ", "\n#", "\nif __name__", "\nprint(", "\n@", "\n\n\n")
 """Truncation points for a completion, as the published code-eval harnesses use.
 Without them a model that keeps emitting plausible Python after the answer gets
@@ -423,7 +432,7 @@ def main() -> int:
     parser.add_argument("--timeout", type=float, default=10.0, help="seconds per HumanEval program")
     parser.add_argument("--limit", type=int, default=0, help="first N HumanEval problems (0 = all)")
     parser.add_argument(
-        "--bytes-limit", type=int, default=4_000_000,
+        "--bytes-limit", type=int, default=DEFAULT_BYTES_LIMIT,
         help="held-out bytes to score (0 = all); identical across models by construction",
     )
     parser.add_argument("--seed", type=int, default=1234)

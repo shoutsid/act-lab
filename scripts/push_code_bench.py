@@ -56,7 +56,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
+import code_bench  # noqa: E402
 import kaggle_queue  # noqa: E402
+
+#: Imported rather than repeated: the limit is part of the scoring protocol, and a push
+#: at a different one produces rows the comparison table has to refuse.
+DEFAULT_BYTES_LIMIT = code_bench.DEFAULT_BYTES_LIMIT
 
 KERNEL_SLUG = "act-code-bench"
 ENTRY_NAME = "run-code-bench.py"
@@ -268,7 +273,7 @@ def _kaggle(argv: list[str]) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--bytes-limit", type=int, default=4_000_000,
+    parser.add_argument("--bytes-limit", type=int, default=DEFAULT_BYTES_LIMIT,
                         help="held-out bytes to score; must match the local campaign's value")
     parser.add_argument("--suite", default="bytes",
                         help="benchmark suites; HumanEval is left local on purpose (see the module docstring)")
