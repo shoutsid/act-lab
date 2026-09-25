@@ -179,6 +179,23 @@ def test_a_missing_held_out_text_asks_for_the_stage_that_writes_it(tmp_path, mon
         code_bench.held_out_text(0)
 
 
+def test_a_checkpoint_path_is_reported_in_a_form_both_callers_can_write(tmp_path, monkeypatch):
+    """The campaign passes a repository-relative path, a reader passes an absolute one.
+
+    ``Path.relative_to`` on the argument as given raises for the first - a relative path
+    against an absolute root - and it raised *after* the model had loaded and the whole
+    scan had run, which is how it survived the tests and reached a smoke run.
+    """
+    monkeypatch.chdir(code_bench.ROOT)
+    relative = Path("artifacts/code-lm/checkpoints/match-distill.pt")
+    assert code_bench.display_path(relative) == str(relative)
+    assert code_bench.display_path(code_bench.ROOT / relative) == str(relative)
+    # A checkpoint outside the repository is named where it is, not forced into a shape
+    # it does not have.
+    outside = tmp_path / "elsewhere.pt"
+    assert code_bench.display_path(outside) == str(outside)
+
+
 def test_model_logits_accepts_both_shapes_a_scorer_meets():
     tensor = torch.zeros(1, 2, 3)
 

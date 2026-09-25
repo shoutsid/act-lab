@@ -91,6 +91,21 @@ def _log(message: str) -> None:
     print(f"[{time.strftime('%H:%M:%S')}] {message}", flush=True)
 
 
+def display_path(path: Path) -> str:
+    """A checkpoint's path as a reader can find it: repository-relative when it is inside.
+
+    ``--model ours:artifacts/...`` is what the campaign passes and ``--model
+    ours:/abs/path`` is what a reader types, and the report needs one spelling for both.
+    Calling ``relative_to`` on the argument as given raises ``ValueError`` for the first
+    (a relative path against an absolute root) - after the model has loaded and the whole
+    scan has run, which is how this reached a smoke test rather than a test suite.
+    """
+    try:
+        return str(path.resolve().relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
 def held_out_text(byte_limit: int = 0) -> str:
     """The held-out Python text, optionally cut to a fixed prefix of ``byte_limit`` bytes.
 
@@ -266,7 +281,7 @@ def score_ours(checkpoint: Path, scale: str, text: str, device: torch.device) ->
     return {
         "model": f"ours:{scale}",
         "kind": "ours",
-        "checkpoint": str(checkpoint.relative_to(ROOT)),
+        "checkpoint": display_path(checkpoint),
         "step": payload.get("step"),
         "tokenizer": trainer.tokenizer_id(),
         "parameters": int(total),

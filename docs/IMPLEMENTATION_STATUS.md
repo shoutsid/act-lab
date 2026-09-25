@@ -3836,6 +3836,21 @@ nothing left on disk to show for the quota it spent. The report files are the ar
 The fixed scan was pushed as kernel version 3 (0.09 GPU-h spent on the failed attempt,
 1.21 h remaining before the midnight UTC refresh).
 
+**A second failure was waiting on the same path, and running it found that one too.**
+With the ragged window fixed, `code_bench.py --model ours:artifacts/...` died in
+`score_ours` - the report records the checkpoint as `checkpoint.relative_to(ROOT)`, and
+the campaign passes a *relative* path against an *absolute* root, which is a
+`ValueError`. It would have hit the campaign's four benchmark rows the same way, after
+thirteen hours. Both bugs sat on a code path the suite covered only through `hf:`
+models and hand-built dicts, so the check that found them was a real run at a small
+scale: `--model ours:artifacts/code-lm/checkpoints/toy-distill.pt --scale toy --suite
+bytes --bytes-limit 200000` on the real held-out text, three seconds on CPU. That run
+is also the producer-consumer contract verified on real data rather than on a fixture:
+125 windows, the 125th being the 315-token tail scored as 314, `sum(window_nlls)`
+equal to `nats` to four decimals, and the tokenizer id equal to
+`train_code_lm.tokenizer_id()`, which is the string `code_lm_table` refuses to pair two
+arms without.
+
 Two more things only showed up while writing the tests. A **zero difference is free to
 change sign** under the permutation, so the two-ties-two-positives case counts 8 of 16
 assignments and not 4 - the first draft of the test asserted 0.25 and was wrong about
