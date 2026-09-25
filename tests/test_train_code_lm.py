@@ -224,7 +224,31 @@ def test_a_checkpoint_that_says_nothing_about_its_run_is_refused():
     with pytest.raises(SystemExit, match="which run they belong to"):
         code_lm.checkpoint_matches({"model": {}, "step": 20}, campaign, Path("old.pt"))
     # The same run's own checkpoint passes through, or a crash could not be resumed at all.
-    code_lm.checkpoint_matches({"run": dict(campaign)}, campaign, Path("match-ce.pt"))
+    resumable = {"run": dict(campaign), "draws": torch.Generator().manual_seed(0).get_state()}
+    code_lm.checkpoint_matches(resumable, campaign, Path("match-ce.pt"))
+
+
+def test_a_checkpoint_without_the_draw_state_is_refused():
+    """Weights and optimiser right, windows in a different sequence, and it looks finished.
+
+    The draw generator is seeded once per launch rather than saved, so resuming without its
+    state replays the early windows - the weights continue, the *data order* restarts, and the
+    arm's claim to have seen the same windows in the same order as the other arm stops being
+    true. Measured here rather than argued: the state is enough to reproduce the next draws.
+    """
+    campaign = code_lm.run_signature("match", "ce", 30_000, 11_250, 8)
+    with pytest.raises(SystemExit, match="does not record the window draws"):
+        code_lm.checkpoint_matches({"run": dict(campaign)}, campaign, Path("match-ce.pt"))
+
+    generator = torch.Generator().manual_seed(11)
+    torch.randint(0, 30_000, (8,), generator=generator)
+    state = generator.get_state()
+    resumed = torch.Generator()
+    resumed.set_state(state)
+    assert torch.equal(
+        torch.randint(0, 30_000, (8,), generator=generator),
+        torch.randint(0, 30_000, (8,), generator=resumed),
+    ), "the saved state must be where the draws had got to, not a fresh sequence"
 
 
 def test_the_payload_records_the_run_it_is_a_checkpoint_of():
@@ -242,9 +266,12 @@ def test_the_payload_records_the_run_it_is_a_checkpoint_of():
     )
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
     run = code_lm.run_signature("match", "ce", 30_000, 11_250, 8)
-    payload = code_lm.checkpoint_payload(model, optimizer, 500, [], run)
+    generator = torch.Generator().manual_seed(11)
+    torch.randint(0, 30_000, (8,), generator=generator)
+    payload = code_lm.checkpoint_payload(model, optimizer, 500, [], run, generator.get_state())
     assert payload["run"] == run
     assert payload["step"] == 500
+    assert torch.equal(payload["draws"], generator.get_state())
     # A copy, so a later edit of the caller's dict cannot change what was written down.
     run["max_steps"] = 1
     assert payload["run"]["max_steps"] == 11_250

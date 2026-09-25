@@ -4085,6 +4085,25 @@ comparable - the first is progress, the second is the measurement - so the repor
 number against the baseline's published one, which is exactly the comparison the table exists
 to make properly.
 
+### A resumed arm would have replayed its windows instead of continuing them
+
+Third finding from the same audit, found by asking what a *faithful* resume needs rather than
+by watching something fail. The checkpoint carries the weights and the optimiser moments; it
+did not carry the window draws. The draw generator is seeded once per launch, so a resume
+restarts the sequence at its first element: the arm retrains on windows it has already seen
+and never reaches some of the later ones. The window *set* is still the same and the weights
+are still continuing, so nothing looks wrong - but the leg's claim is that the two arms see
+the same windows **in the same order**, and a crash-and-resume on one arm would have broken
+that quietly while every number stayed plausible. Given that this leg has already produced two
+silent *the-arms-are-not-the-same-experiment* defects, a third that only appears if a crash
+happens is worth closing before the crash rather than after.
+
+`generator.get_state()` is now written into the payload and `checkpoint_matches` refuses a
+checkpoint that does not carry it - so both requirements a resume has, that it is this run and
+that the draws are where they stopped, are checked in one place and refuse in the same
+direction. The test measures the property instead of the shape: the saved state must reproduce
+the *next* draws, not merely equal another state tensor.
+
 ### When the campaign finishes
 
 Measured start, for the next session's estimate: the teacher-labels stage began around

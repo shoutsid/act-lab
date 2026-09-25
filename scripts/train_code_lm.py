@@ -673,10 +673,18 @@ def run_mismatches(saved: dict, wanted: dict) -> list[str]:
 
 
 def checkpoint_matches(payload: dict, run: dict, path: Path) -> None:
-    """Refuse a checkpoint that is not this run's; return quietly when it is.
+    """Refuse a checkpoint that cannot be resumed from *as this run*; return quietly when it can.
 
-    Refusing costs a stage that has not started, and it is the direction that cannot be
-    quietly wrong - an adopted checkpoint is a different experiment reported as this one.
+    Two things are required, and both are about the resume being faithful rather than merely
+    possible. It must belong to this run - an adopted checkpoint is a different experiment
+    reported as this one. And it must carry the state of the window-draw generator: without
+    it the draws restart at the beginning of the sequence, so a resumed arm replays the early
+    windows it has already trained on and never reaches some of the later ones. The weights
+    and the optimiser are right, the windows are a different sequence, and the run looks
+    finished either way.
+
+    Refusing costs a stage that has not started, which is the direction that cannot be quietly
+    wrong.
     """
     saved = payload.get("run")
     if not saved:
@@ -690,6 +698,13 @@ def checkpoint_matches(payload: dict, run: dict, path: Path) -> None:
             f"{path} belongs to a different run ({'; '.join(mismatched)}); adopting it would "
             "start this arm from another run's weights and optimiser moments. Move it aside "
             "to start this run from step 1."
+        )
+    if payload.get("draws") is None:
+        raise SystemExit(
+            f"{path} does not record the window draws it had made, so resuming would replay "
+            "the early windows instead of continuing; the arm would see a different sequence "
+            "of the same windows and the two arms would no longer share one order. Move it "
+            "aside to start from step 1."
         )
 
 
@@ -708,7 +723,9 @@ def tokens_trained(max_steps: int, start_step: int, batch_size: int) -> dict:
     }
 
 
-def checkpoint_payload(model, optimizer, step: int, history: list[dict], run: dict) -> dict:
+def checkpoint_payload(
+    model, optimizer, step: int, history: list[dict], run: dict, draws: torch.Tensor
+) -> dict:
     by_id = {id(parameter): name for name, parameter in model.named_parameters()}
     moments: dict[str, dict] = {}
     for group in optimizer.param_groups:
@@ -730,6 +747,10 @@ def checkpoint_payload(model, optimizer, step: int, history: list[dict], run: di
         # Which run this belongs to, so the next launch can tell whether adopting it is
         # resuming this experiment or starting a different one from its middle.
         "run": dict(run),
+        # And where the window draws had got to. Without this a resume restarts the sequence,
+        # so the arm replays what it has seen and misses what it has not - the reason
+        # ``checkpoint_matches`` refuses a payload without it.
+        "draws": draws,
     }
 
 
@@ -969,6 +990,7 @@ def stage_train(
     if latest.is_file():
         payload = torch.load(latest, map_location=device, weights_only=False)
         checkpoint_matches(payload, run, latest)
+        generator.set_state(payload["draws"])
         model.load_state_dict(payload["model"])
         optimizer_state = restore_optimizer(model, optimizer, payload, latest, reset=reset_optimizer)
         start_step = payload["step"]
@@ -1016,7 +1038,10 @@ def stage_train(
             history.append(entry)
             _log(f"  eval: val loss {value:.4f} perplexity {perplexity:.2f}")
         if step % CHECKPOINT_EVERY == 0 or step == max_steps:
-            torch.save(checkpoint_payload(model, optimizer, step, history, run), latest.with_suffix(".tmp"))
+            torch.save(
+                checkpoint_payload(model, optimizer, step, history, run, generator.get_state()),
+                latest.with_suffix(".tmp"),
+            )
             latest.with_suffix(".tmp").replace(latest)
 
     final_loss, final_perplexity = evaluate(model, val_tokens, device)
