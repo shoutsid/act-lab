@@ -3874,9 +3874,24 @@ card will use:
 | teacher | `deepseek-ai/deepseek-coder-1.3b-base` (1.3B) | **0.4686** | 278 s |
 | baseline | `bigcode/tiny_starcoder_py` (164M) | **0.5372** | 92 s |
 
-Saved to `artifacts/code-lm/bench/kaggle/` rather than printed and deleted. They are also
-the first real-data exercise of the whole byte path: the same `window_nlls`, the same
-ragged tail, the same report shape.
+Saved to `artifacts/code-lm/bench/kaggle/` rather than printed and deleted - and then
+**committed**, because the journal quotes these numbers and a record that cites a path
+the blanket `artifacts/*` rule hides is a record that cannot be re-read. `tests/
+test_code_lm_evidence.py` reads them back through the same reader the table uses, pins
+both numbers at the four decimals the journal writes, checks the kernel reported no
+failed stage, and reconstructs the ragged tail from the artifact (1,289,028 tokens and
+2,518 windows for the teacher, 1,106,839 and 2,162 for the baseline, so the last window
+is a 325- and a 407-token window respectively - the shape that crashed the first run).
+They are also the first real-data exercise of the whole byte path.
+
+One asymmetry worth knowing before anyone asks for a teacher-versus-student paired test:
+an `hf:` row records its tokenizer as a repository id, while a student row records
+`tokenizer_id()`, which is that id plus a hash of the tokenizer file. The two student arms
+agree and are the pair this leg tests; a teacher-to-student pair shares the BPE in fact
+but not in that string, so the table refuses it rather than comparing window 7 of one
+model with window 7 of another. Recorded in `code_lm_table.report_tokenizer` rather than
+loosened, because the obvious fix - compare the part before the `@` - would accept two
+different tokenizers from the same repository.
 
 Three things to read in them. **The reference scale**: a uniform distribution over the
 teacher's 32,256 tokens is about 3.8 bits/byte on ~3.9 bytes per token, so both rows are

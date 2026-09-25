@@ -157,7 +157,21 @@ def window_losses(tag: str, report: dict) -> list[float]:
 
 
 def report_tokenizer(tag: str, report: dict) -> str:
-    """The tokenization the ids came from. Pairing two models assumes it is the same one."""
+    """The tokenization the ids came from. Pairing two models assumes it is the same one.
+
+    Two spellings reach this field and they are not interchangeable text: an ``hf:`` row
+    records the tokenizer's ``name_or_path`` - a repository id - while a student row
+    records ``train_code_lm.tokenizer_id()``, which is that same repository id with a hash
+    of the tokenizer file appended. The two student arms therefore always agree, which is
+    the pair this leg tests. A teacher-versus-student pair shares a tokenizer *in fact*
+    (the student is trained on the teacher's BPE) but not in this string, so it would be
+    refused here until both sides record one content hash.
+
+    Refusing is the safe direction - it stops a pairing whose windows would be different
+    pieces of text - and it is stated rather than worked around because the obvious fix
+    (comparing the prefix before the ``@``) would accept two tokenizers that merely come
+    from the same repository revision range.
+    """
     tokenizer = (report.get("bytes") or {}).get("tokenizer")
     if not tokenizer:
         raise SystemExit(

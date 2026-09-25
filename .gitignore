@@ -33,6 +33,20 @@ artifacts/real-proof/*
 !artifacts/real-lm/
 artifacts/real-lm/*
 !artifacts/real-lm/report.json
+# The code-LM leg's cross-machine rows (2026-09-25): two of the four rows the
+# comparison table is made of, measured by scripts/push_code_bench.py on Kaggle's T4 at
+# the same protocol and the same 4 MB held-out prefix. They are committed because the
+# journal quotes their numbers and because a run that spent GPU quota should leave an
+# artifact rather than scrollback - the driver used to delete the directory they arrived
+# in. The local card scores all four models so HumanEval's sampled decoding is not split
+# across devices, so these are a check on the protocol, not a table input. 116 KB.
+!artifacts/code-lm/
+artifacts/code-lm/*
+!artifacts/code-lm/bench/
+artifacts/code-lm/bench/*
+!artifacts/code-lm/bench/kaggle/
+artifacts/code-lm/bench/kaggle/*
+!artifacts/code-lm/bench/kaggle/*.json
 # The held-out stream the real-LM proof is scored on (2026-09-25). A perplexity
 # with nothing beside it proves nothing - 5.5 could be good or terrible - so the
 # record carries reference baselines, and those are recomputed from this file.

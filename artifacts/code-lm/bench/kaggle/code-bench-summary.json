@@ -1,0 +1,24 @@
+{
+  "failed": [],
+  "suite": "bytes",
+  "summary": {
+    "baseline.json": {
+      "architecture": [
+        "GPTBigCodeForCausalLM"
+      ],
+      "bits_per_byte": 0.5372319445320815,
+      "bytes_limit": 4000000,
+      "model": "bigcode/tiny_starcoder_py",
+      "parameters": 164144128
+    },
+    "teacher.json": {
+      "architecture": [
+        "LlamaForCausalLM"
+      ],
+      "bits_per_byte": 0.4685697851466369,
+      "bytes_limit": 4000000,
+      "model": "deepseek-ai/deepseek-coder-1.3b-base",
+      "parameters": 1346471936
+    }
+  }
+}
