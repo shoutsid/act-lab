@@ -19,7 +19,11 @@ What moves and what does not is a deliberate split, not a convenience:
 
 The kernel carries no output back beyond a few kilobytes of JSON, and it is driven
 the same way as the other pushed kernels here (``--stage-only``, ``--status``,
-``--fetch``).
+``--fetch``). ``--fetch`` prints the kernel's log as well as its output files - the
+first version printed only the files, so a run that failed arrived as a summary with
+empty rows - and ``--save`` keeps those files, because ``kaggle kernels output`` writes
+into a temporary directory that the fetch then deletes, which is how a run reported two
+numbers and left nothing on disk to show for the GPU quotas it spent.
 
 Three Kaggle facts this encodes, all recorded in ``docs/T4_RUNBOOK.md`` because each
 already cost a run:
@@ -36,13 +40,14 @@ already cost a run:
     PYTHONPATH=src .venv/bin/python scripts/push_code_bench.py --stage-only
     PYTHONPATH=src .venv/bin/python scripts/push_code_bench.py
     PYTHONPATH=src .venv/bin/python scripts/push_code_bench.py --status
-    PYTHONPATH=src .venv/bin/python scripts/push_code_bench.py --fetch
+    PYTHONPATH=src .venv/bin/python scripts/push_code_bench.py --fetch --save artifacts/code-lm/bench/kaggle
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -234,6 +239,24 @@ def default_models() -> list[tuple[str, str]]:
     ]
 
 
+def save_fetched(output: Path, directory: Path) -> list[Path]:
+    """Keep the fetched output files somewhere durable, and say where.
+
+    ``kaggle kernels output`` writes into a temporary directory that the fetch then
+    deletes, so a run that reported two numbers had nothing left on disk to show for
+    the ten minutes of GPU quota it spent. The reports are the artifact; printing them
+    is a convenience on top of that, not a substitute.
+    """
+    directory.mkdir(parents=True, exist_ok=True)
+    written = []
+    for path in sorted(output.rglob("*.json")):
+        target = directory / path.name
+        if path.resolve() != target.resolve():
+            shutil.copyfile(path, target)
+        written.append(target)
+    return written
+
+
 def _kaggle(argv: list[str]) -> int:
     print(f"$ {' '.join(argv)}", flush=True)
     proc = subprocess.run(argv, capture_output=True, text=True)
@@ -254,6 +277,8 @@ def main() -> int:
     parser.add_argument("--stage-only", action="store_true", help="write the folder, do not push")
     parser.add_argument("--status", action="store_true", help="print the kernel's status")
     parser.add_argument("--fetch", action="store_true", help="download the kernel's output")
+    parser.add_argument("--save", type=Path, default=None,
+                        help="directory to keep the fetched reports in; without it they are only printed")
     args = parser.parse_args()
 
     owner = kaggle_queue.code_dataset_id().split("/")[0]
@@ -266,10 +291,18 @@ def main() -> int:
     if args.status:
         return _kaggle(["kaggle", "kernels", "status", ref])
     if args.fetch:
+        saved: list[Path] = []
         with tempfile.TemporaryDirectory(prefix="code-bench-out-") as temporary:
             code = _kaggle(["kaggle", "kernels", "output", ref, "-p", temporary])
             for path in sorted(Path(temporary).rglob("*.json")):
                 print(f"--- {path.name}\n{path.read_text(encoding='utf-8', errors='replace')[:8000]}")
+            # Inside the ``with``: the temporary directory is what is about to be deleted.
+            if args.save:
+                saved = save_fetched(Path(temporary), args.save)
+        if args.save:
+            print(f"\nkept {len(saved)} fetched file(s) in {args.save}")
+            for path in saved:
+                print(f"  {path}")
         # The log is fetched as well as the files, and printed even though it is not a
         # result. `kaggle kernels output` returns files and never a log, so a fetch that
         # only ran that command cannot tell a run that produced nothing from one that

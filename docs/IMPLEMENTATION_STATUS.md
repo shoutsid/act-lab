@@ -3830,6 +3830,11 @@ uses those exact numbers. Worth recording about the fetch itself: `--fetch` prin
 the kernel log and the two empty output files, which is the difference between "the
 run produced nothing" and "the run failed at `scripts/code_bench.py` line 137" - the
 version of this driver that printed only the JSON would have reported the former.
+`--fetch` also gained `--save`: `kaggle kernels output` writes into a temporary
+directory that the fetch then deletes, so the run that produced those two numbers had
+nothing left on disk to show for the quota it spent. The report files are the artifact.
+The fixed scan was pushed as kernel version 3 (0.09 GPU-h spent on the failed attempt,
+1.21 h remaining before the midnight UTC refresh).
 
 Two more things only showed up while writing the tests. A **zero difference is free to
 change sign** under the permutation, so the two-ties-two-positives case counts 8 of 16

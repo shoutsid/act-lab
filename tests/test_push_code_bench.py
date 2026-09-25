@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import sys
 from pathlib import Path
 
@@ -146,6 +147,63 @@ def test_a_live_session_stops_the_republish(tmp_path, monkeypatch, capsys):
     assert "refusing to publish" in capsys.readouterr().err
     assert reached["published"] == []
     assert reached["kaggle"] == []
+
+
+def test_the_fetched_reports_are_kept_rather_than_deleted_with_the_temp_dir(tmp_path, monkeypatch, capsys):
+    """A fetch that only printed left nothing on disk to show for the GPU hours."""
+    monkeypatch.setattr(push_code_bench, "WORK", tmp_path / "work")
+    monkeypatch.setattr(kaggle_queue, "code_dataset_id", lambda: "someone/act-lab-code")
+    monkeypatch.setattr(kaggle_queue, "fetch_kernel_log", lambda kernel: "log text")
+    report = {"model": "hf:deepseek-ai/deepseek-coder-1.3b-base", "bytes": {"bits_per_byte": 0.5}}
+
+    def fake_kaggle(argv):
+        destination = Path(argv[argv.index("-p") + 1])
+        (destination / "teacher.json").write_text(json.dumps(report))
+        (destination / "code-bench-summary.json").write_text(json.dumps({"summary": {}}))
+        return 0
+
+    monkeypatch.setattr(push_code_bench, "_kaggle", fake_kaggle)
+    save = tmp_path / "bench" / "kaggle"
+    monkeypatch.setattr(
+        sys, "argv", ["push_code_bench", "--fetch", "--save", str(save)]
+    )
+
+    assert push_code_bench.main() == 0
+    out = capsys.readouterr().out
+    assert (save / "teacher.json").is_file()
+    assert (save / "code-bench-summary.json").is_file()
+    assert json.loads((save / "teacher.json").read_text())["bytes"]["bits_per_byte"] == 0.5
+    assert "kept 2 fetched file(s)" in out
+    assert "log text" in out, "the log is the only record of how the run got there"
+
+
+def test_a_fetch_without_save_keeps_nothing_and_still_prints_the_files(tmp_path, monkeypatch, capsys):
+    """Printing is what ``--fetch`` did before; ``--save`` is opt-in, not a new requirement."""
+    monkeypatch.setattr(push_code_bench, "WORK", tmp_path / "work")
+    monkeypatch.setattr(kaggle_queue, "code_dataset_id", lambda: "someone/act-lab-code")
+    monkeypatch.setattr(kaggle_queue, "fetch_kernel_log", lambda kernel: "")
+
+    def fake_kaggle(argv):
+        destination = Path(argv[argv.index("-p") + 1])
+        (destination / "teacher.json").write_text(json.dumps({"bytes": {}}))
+        return 0
+
+    monkeypatch.setattr(push_code_bench, "_kaggle", fake_kaggle)
+    monkeypatch.setattr(sys, "argv", ["push_code_bench", "--fetch"])
+
+    assert push_code_bench.main() == 0
+    assert "--- teacher.json" in capsys.readouterr().out
+    assert not list(tmp_path.rglob("teacher.json"))
+
+
+def test_saving_a_fetched_file_does_not_copy_it_onto_itself(tmp_path):
+    """``shutil.copyfile`` raises on identical paths, and a caller can point at the source."""
+    folder = tmp_path / "out"
+    folder.mkdir()
+    (folder / "teacher.json").write_text(json.dumps({"bytes": {}}))
+    written = push_code_bench.save_fetched(folder, folder)
+    assert written == [folder / "teacher.json"]
+    assert (folder / "teacher.json").is_file()
 
 
 def test_staging_writes_a_folder_kaggle_accepts(tmp_path, monkeypatch):
