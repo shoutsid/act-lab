@@ -252,6 +252,16 @@ The entry to add when the tree is safe to edit:
 "wide": dict(hidden_size=1024, depth=6, attention_heads=16, expert_count=8, active_experts=2, expert_width=1100),
 ```
 
+**This arm is trained from scratch, and it is not the adaptive gate of section 5.** The two are
+different experiments that share a gene, and conflating them would spend the arm on the wrong
+question: this one asks whether the architecture search's width finding survives at a scale where
+the model can do something (it changes width *and* depth, at a matched total budget, from a random
+init), while the gate asks whether a controller can *choose* to widen a model that has already
+trained. The mechanism in `src/act/model/widen.py` serves the second: it grows the residual stream
+at **fixed depth**, so the shape it can reach from the code-LM student is h768 d12 -> h1024 d12
+(234,480,640 parameters), not this section's h1024 d6. Reaching an arm's shape by pruning depth is
+a different operator with a different information loss, and is not what widening does.
+
 It is two arms, not one: `ours-wide-distill` against `ours-match-distill`, and `ours-wide-ce`
 against `ours-match-ce`, so the width effect is read within each objective and the objective
 effect is read within each shape. The declared headline is `wide - match` at matched total
