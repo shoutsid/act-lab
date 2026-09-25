@@ -187,6 +187,81 @@ def test_a_directory_without_write_permission_is_not_usable(tmp_path):
     assert code_lm._nearest_writable(locked)
 
 
+# --- which run a checkpoint belongs to --------------------------------------
+
+
+def test_a_checkpoint_from_another_run_is_not_adopted():
+    """The failure this prevents was on disk, not hypothetical.
+
+    ``artifacts/code-lm/checkpoints/match-ce.pt`` held a 20-step smoke run. The campaign's
+    control arm would have adopted it - same scale, so the state dict loads - started at
+    step 21, and reported the full 11,250-step budget while two runs' worth of weights sat
+    in one arm. Nothing raises in that case: the end of this leg is "the two arms differ
+    only in their objective", and that arm's weights came from another run.
+    """
+    smoke = code_lm.run_signature("match", "ce", windows=30_000, max_steps=20, batch_size=8)
+    campaign = code_lm.run_signature("match", "ce", windows=30_000, max_steps=11_250, batch_size=8)
+    assert code_lm.run_mismatches(smoke, campaign) == ["max_steps 20 -> 11250"]
+    with pytest.raises(SystemExit, match="max_steps 20 -> 11250"):
+        code_lm.checkpoint_matches({"run": smoke}, campaign, Path("match-ce.pt"))
+    # And the arm it is compared against is a different run for the same reason.
+    with pytest.raises(SystemExit, match="mode"):
+        code_lm.checkpoint_matches(
+            {"run": code_lm.run_signature("match", "distill", 30_000, 11_250, 8)},
+            campaign,
+            Path("match-ce.pt"),
+        )
+
+
+def test_a_checkpoint_that_says_nothing_about_its_run_is_refused():
+    """The old payload shape cannot be shown to be this run, so it is not assumed to be.
+
+    A checkpoint written before this check holds ``model``, ``optimizer``, ``step`` and
+    ``history`` and nothing else. Adopting one silently is what the missing field used to
+    mean; refusing costs a stage that has not started.
+    """
+    campaign = code_lm.run_signature("match", "ce", 30_000, 11_250, 8)
+    with pytest.raises(SystemExit, match="which run they belong to"):
+        code_lm.checkpoint_matches({"model": {}, "step": 20}, campaign, Path("old.pt"))
+    # The same run's own checkpoint passes through, or a crash could not be resumed at all.
+    code_lm.checkpoint_matches({"run": dict(campaign)}, campaign, Path("match-ce.pt"))
+
+
+def test_the_payload_records_the_run_it_is_a_checkpoint_of():
+    model = code_lm.V0MoECausalLM(
+        code_lm.V0MoEConfig(
+            vocab_size=32,
+            context_size=32,
+            hidden_size=16,
+            depth=2,
+            attention_heads=2,
+            experts_per_layer=(2, 2),
+            active_experts=2,
+            expert_width=16,
+        )
+    )
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+    run = code_lm.run_signature("match", "ce", 30_000, 11_250, 8)
+    payload = code_lm.checkpoint_payload(model, optimizer, 500, [], run)
+    assert payload["run"] == run
+    assert payload["step"] == 500
+    # A copy, so a later edit of the caller's dict cannot change what was written down.
+    run["max_steps"] = 1
+    assert payload["run"]["max_steps"] == 11_250
+
+
+def test_the_report_separates_the_budget_from_what_the_arm_saw():
+    """Equal on a fresh run, different after an adoption - and only one of them is work done."""
+    fresh = code_lm.tokens_trained(max_steps=11_250, start_step=0, batch_size=8)
+    assert fresh["tokens_budget"] == fresh["tokens_seen"] == 46_080_000
+    assert (fresh["steps_trained"], fresh["resumed_from_step"]) == (11_250, 0)
+
+    adopted = code_lm.tokens_trained(max_steps=11_250, start_step=20, batch_size=8)
+    assert adopted["tokens_budget"] == 46_080_000
+    assert adopted["tokens_seen"] == 11_230 * 8 * 512, "the arm did not train the adopted 20 steps"
+    assert adopted["resumed_from_step"] == 20
+
+
 # --- the teacher's identity, when it is on disk -----------------------------
 
 

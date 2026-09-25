@@ -4008,6 +4008,40 @@ pointed at those same two student rows alone, prints the paired line with no tea
 baseline present at all - which is the whole reason the benchmark row is now written per
 suite.
 
+### The control arm would have started from another run's weights
+
+An audit of the two training arms - the one stage that had not been walked through the way
+the benchmark stage was, and the one that runs for eight and a half hours - found the
+equivalent of this leg's first defect, one day on. Stage 2 has no `--force` and no resume
+flag: `stage_train` adopts `checkpoints/<scale>-<mode>.pt` if it exists. `match-ce.pt`
+existed, 2.0 GB, written at 15:32 by a **20-step smoke run** (its payload: `step: 20`, one
+history entry, val loss 8.56). The distilled arm would have started from its seeded
+initialisation at step 1; the control arm would have loaded those weights and optimiser
+moments, logged `resumed at step 20`, trained 11,230 steps and reported the full budget. The
+two arms would not have been the same experiment, and the numbers would have looked
+*more* alike than they should - which is the direction nobody checks.
+
+**Fixed twice over.** The checkpoint payload now carries the run it belongs to - scale,
+mode, seed, batch size, max steps, window count - and `checkpoint_matches` refuses a
+checkpoint whose run differs, and refuses one that carries no run at all rather than assuming
+it is this one. Running the new guard against the actual file gives `max_steps 20 -> 11250`
+(or, for the older payload, "written before checkpoints recorded which run they belong to").
+The smoke checkpoint and its report moved to `artifacts/code-lm/smoke/` (nothing destroyed,
+and the smoke run's own numbers are not sitting where the control arm's result will land).
+And the report now says what the arm *did* as well as what it was run to: `tokens_budget` next
+to `tokens_seen`, `steps_trained` and `resumed_from_step`. They are equal until something is
+adopted, and that equality is the thing a reader was implicitly trusting.
+
+**What the audit found sound, for the record.** The arms' parity does not rest on convention
+only. Initialisation is one `torch.manual_seed(SEED)` immediately before the model is built,
+with nothing consuming the torch RNG in between. The window draws come from a generator seeded
+explicitly and used by nothing else, so the two arms' sequences cannot desynchronise even
+though one of them does more work per step. The window range is pinned by the requested token
+budget and deliberately not by how much the teacher scored (defect 1 of this leg, and the
+reason it is now stated in the code). Optimiser, schedule, gradient clipping, evaluation
+batches and checkpoint cadence are single code paths, not per-arm copies. The objective is
+the only thing that branches: `(1 - 0.5) * ce + 0.5 * kl` against `ce`.
+
 ### When the campaign finishes
 
 Measured start, for the next session's estimate: the teacher-labels stage began around

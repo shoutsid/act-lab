@@ -642,7 +642,73 @@ def stage_targets(stream_tokens: int, batch_windows: int, force: bool = False) -
 # here the moments are stored by name from the start.
 
 
-def checkpoint_payload(model, optimizer, step: int, history: list[dict]) -> dict:
+def run_signature(scale: str, mode: str, windows: int, max_steps: int, batch_size: int) -> dict:
+    """What makes two invocations the *same run*, for the purpose of adopting a checkpoint.
+
+    A campaign re-launched after a crash has to resume where it stopped, and the only thing
+    that makes resuming safe is knowing the checkpoint came from this run rather than from
+    another one with the same shapes. The failure it prevents is silent and was found on
+    disk: a 20-step smoke run leaves ``match-ce.pt`` behind, the real arm adopts it, starts
+    at step 21 and reports the full budget - so the control arm began from different weights
+    than the arm it is compared against and the difference between them was no longer the
+    objective. Nothing raises in that case; the numbers just stop meaning what they say.
+    """
+    return {
+        "scale": scale,
+        "mode": mode,
+        "seed": SEED,
+        "batch_size": batch_size,
+        "max_steps": max_steps,
+        "windows": windows,
+    }
+
+
+def run_mismatches(saved: dict, wanted: dict) -> list[str]:
+    """The fields on which a checkpoint's run and this invocation disagree, for a refusal."""
+    return [
+        f"{key} {saved.get(key)!r} -> {wanted.get(key)!r}"
+        for key in sorted(set(saved) | set(wanted))
+        if saved.get(key) != wanted.get(key)
+    ]
+
+
+def checkpoint_matches(payload: dict, run: dict, path: Path) -> None:
+    """Refuse a checkpoint that is not this run's; return quietly when it is.
+
+    Refusing costs a stage that has not started, and it is the direction that cannot be
+    quietly wrong - an adopted checkpoint is a different experiment reported as this one.
+    """
+    saved = payload.get("run")
+    if not saved:
+        raise SystemExit(
+            f"{path} was written before checkpoints recorded which run they belong to, so "
+            "resuming from it cannot be shown to be this run. Move it aside to start from step 1."
+        )
+    mismatched = run_mismatches(saved, run)
+    if mismatched:
+        raise SystemExit(
+            f"{path} belongs to a different run ({'; '.join(mismatched)}); adopting it would "
+            "start this arm from another run's weights and optimiser moments. Move it aside "
+            "to start this run from step 1."
+        )
+
+
+def tokens_trained(max_steps: int, start_step: int, batch_size: int) -> dict:
+    """What an arm actually saw, against the budget it was run to.
+
+    The two differ exactly when a checkpoint was adopted. A resumed arm reports the whole
+    budget either way, and a reader who takes the budget for what the arm saw credits it
+    with work that another run did - which is the same mistake in the other direction.
+    """
+    return {
+        "tokens_budget": max_steps * batch_size * CONTEXT_SIZE,
+        "tokens_seen": (max_steps - start_step) * batch_size * CONTEXT_SIZE,
+        "steps_trained": max_steps - start_step,
+        "resumed_from_step": start_step,
+    }
+
+
+def checkpoint_payload(model, optimizer, step: int, history: list[dict], run: dict) -> dict:
     by_id = {id(parameter): name for name, parameter in model.named_parameters()}
     moments: dict[str, dict] = {}
     for group in optimizer.param_groups:
@@ -661,6 +727,9 @@ def checkpoint_payload(model, optimizer, step: int, history: list[dict]) -> dict
         },
         "step": step,
         "history": history,
+        # Which run this belongs to, so the next launch can tell whether adopting it is
+        # resuming this experiment or starting a different one from its middle.
+        "run": dict(run),
     }
 
 
@@ -873,11 +942,13 @@ def stage_train(
     generator = torch.Generator().manual_seed(SEED)
     CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
     latest = CHECKPOINT_DIR / f"{scale}-{mode}.pt"
+    run = run_signature(scale, mode, windows, max_steps, batch_size)
     start_step = 0
     history: list[dict] = []
     optimizer_state = "fresh (no checkpoint)"
     if latest.is_file():
         payload = torch.load(latest, map_location=device, weights_only=False)
+        checkpoint_matches(payload, run, latest)
         model.load_state_dict(payload["model"])
         optimizer_state = restore_optimizer(model, optimizer, payload, latest, reset=reset_optimizer)
         start_step = payload["step"]
@@ -925,7 +996,7 @@ def stage_train(
             history.append(entry)
             _log(f"  eval: val loss {value:.4f} perplexity {perplexity:.2f}")
         if step % CHECKPOINT_EVERY == 0 or step == max_steps:
-            torch.save(checkpoint_payload(model, optimizer, step, history), latest.with_suffix(".tmp"))
+            torch.save(checkpoint_payload(model, optimizer, step, history, run), latest.with_suffix(".tmp"))
             latest.with_suffix(".tmp").replace(latest)
 
     final_loss, final_perplexity = evaluate(model, val_tokens, device)
@@ -966,7 +1037,9 @@ def stage_train(
             "batch_size": batch_size,
             "batch_tokens": tokens_per_step,
             "epochs_over_stream": epochs,
-            "tokens_seen": max_steps * tokens_per_step,
+            # Both of these, because they are equal only when nothing was adopted.
+            **tokens_trained(max_steps, start_step, batch_size),
+            "run": run,
             "train_windows": windows,
             "train_tokens": windows * CONTEXT_SIZE,
             "stream_tokens": int(stream.shape[0]),
