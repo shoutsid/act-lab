@@ -38,6 +38,20 @@ def test_bits_per_byte_divides_nats_by_bytes_not_tokens():
     assert code_bench.bits_per_byte(1.0, 1) == pytest.approx(1 / math.log(2))
 
 
+class _Uniform:
+    """A model that always predicts a flat distribution over ``vocab`` tokens.
+
+    Its loss is ln(V) for every scored token, so any error in how many tokens are
+    scored shows up in the total directly instead of hiding in a rate.
+    """
+
+    def __init__(self, vocab):
+        self.vocab = vocab
+
+    def __call__(self, tokens):
+        return torch.zeros(tokens.shape[0], tokens.shape[1], self.vocab)
+
+
 def test_window_scan_scores_every_token_but_the_first_of_each_window():
     """A uniform model's loss is ln(V) per scored token, so the count is visible.
 
@@ -49,13 +63,68 @@ def test_window_scan_scores_every_token_but_the_first_of_each_window():
     total_tokens = code_bench.WINDOW * 3 + 1
     ids = np.arange(total_tokens, dtype=np.int32) % vocab
 
-    class Uniform:
-        def __call__(self, tokens):
-            return torch.zeros(tokens.shape[0], tokens.shape[1], vocab)
-
-    nats = code_bench.nll_of_ids(Uniform(), ids, torch.device("cpu"), batch=2)
+    nats, per_window = code_bench.window_nlls(_Uniform(vocab), ids, torch.device("cpu"), batch=2)
     expected_scored = 3 * code_bench.WINDOW
     assert nats == pytest.approx(expected_scored * math.log(vocab), rel=1e-6)
+    assert len(per_window) == 3
+    assert sum(per_window) == pytest.approx(nats, rel=1e-6)
+    assert all(value == pytest.approx(code_bench.WINDOW * math.log(vocab), rel=1e-6) for value in per_window)
+
+
+def test_the_per_window_nlls_are_a_paired_test_the_table_can_use():
+    """The returned list is the part that makes a comparison testable.
+
+    Two models that share a tokenizer see identical window boundaries, so their
+    difference is one number per window and can be tested paired. That only works
+    if the list is per window, in order, and its length is the window count the
+    report advertises - a shuffled or batched list would still sum to the total
+    and would silently break the pairing.
+    """
+    vocab = 12
+    total_tokens = code_bench.WINDOW * 4 + 1
+    ids = np.arange(total_tokens, dtype=np.int32) % vocab
+
+    wider = 33  # ln(33) - ln(12) nats per token worse than the first model
+    base_nats, base = code_bench.window_nlls(_Uniform(vocab), ids, torch.device("cpu"), batch=3)
+    worse_nats, worse = code_bench.window_nlls(_Uniform(wider), ids, torch.device("cpu"), batch=3)
+    assert base == sorted(base)  # a uniform model is flat, so every window is equal
+    assert len(base) == len(worse) == 4
+    # Identical windows, so the per-window difference is a constant, window by window.
+    shift = code_bench.WINDOW * (math.log(wider) - math.log(vocab))
+    for low, high in zip(base, worse):
+        assert high - low == pytest.approx(shift, rel=1e-6)
+    assert worse_nats - base_nats == pytest.approx(4 * shift, rel=1e-6)
+
+
+def test_a_window_scan_reports_one_value_per_non_overlapping_window():
+    """Windows tile the stream: the count follows from the length, not from the batch.
+
+    A window is one token longer than ``WINDOW`` because the last token is a target
+    and the first is its context, so three windows need ``3 * WINDOW + 1`` tokens.
+    """
+    vocab = 5
+    ids = np.arange(code_bench.WINDOW * 3 + 1, dtype=np.int32) % vocab
+
+    _, per_window = code_bench.window_nlls(_Uniform(vocab), ids, torch.device("cpu"), batch=1)
+    assert len(per_window) == 3
+
+
+def test_a_trailing_fragment_too_short_to_carry_context_is_dropped():
+    """A handful of leftover tokens is not a window: there is too little context
+    for the loss on it to mean anything, and counting it would weight it as equal
+    to a full window. The last full window is kept and the fragment is not."""
+    vocab = 5
+    ids = np.arange(code_bench.WINDOW + 3, dtype=np.int32) % vocab
+
+    total, per_window = code_bench.window_nlls(_Uniform(vocab), ids, torch.device("cpu"), batch=1)
+    assert len(per_window) == 1
+    assert total == pytest.approx(code_bench.WINDOW * math.log(vocab), rel=1e-6)
+
+
+def test_a_stream_too_short_to_score_is_refused_rather_than_answered_with_nan():
+    ids = np.zeros(4, dtype=np.int32)
+    with pytest.raises(SystemExit, match="too short"):
+        code_bench.window_nlls(_Uniform(3), ids, torch.device("cpu"))
 
 
 def test_a_completion_is_cut_at_the_first_top_level_boundary():

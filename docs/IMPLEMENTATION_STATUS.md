@@ -3785,3 +3785,45 @@ quietly lose a row. It refuses a missing role and refuses rows measured at diffe
 `bytes_limit` values - the second because bits per byte is only comparable on the same
 held-out text, and the limit is a per-machine decision (4 MB of prefix locally,
 escalating the teacher's pass from hours to minutes).
+
+### The distillation claim is a paired test now, not two four-decimal numbers
+
+The two student arms are scored on the *same* 512-token windows of the *same* held-out
+file, with the *same* tokenizer, differing only in the objective. That is a paired
+experiment, and it was being reported as two aggregates and a subtraction - a format in
+which a 0.0004 bits/byte difference is indistinguishable from numerical dust, which is
+exactly what the two arms' difference is expected to be at this budget. Scoring now
+returns the per-window losses alongside the total (`code_bench.window_nlls`, replacing
+the total-only `nll_of_ids`), each row records its window count and its tokenizer
+identity, and `code_lm_table.paired_contrast` tests the differences:
+
+- **the result is the interval, not the p.** Mean gain in bits/byte with a 95% `t`
+  interval, over the paired differences, plus the count of windows that moved each way
+  - so a reader can see whether the effect is carried by a few windows or by all of
+  them.
+- **the p-value is a sign-flip permutation**, matching `act.search.architecture_report`:
+  enumerated exactly while `2 ** n` assignments fit under a 1,000,000 cap, otherwise
+  200,000 Monte-Carlo draws under a fixed seed with `np.random.default_rng`, in batches
+  because 2,500 windows one draw at a time is minutes. The paired `t` p is printed
+  beside it as a reference.
+- **it is reported as a lower bound, and says so in the output.** Windows cut from one
+  file are not independent, and nothing in this pipeline measures the dependency; the
+  line under the test tells the reader to read the interval as the result.
+- **six ways of producing a plausible-looking but unpaired comparison are errors**, not
+  notes: window lists that disagree with their own total or their own window count
+  (two halves of one report from different runs), arms tokenized differently, arms with
+  different window counts, arms with different held-out byte counts, a report with no
+  per-window losses at all (pre-refactor, so a total), a report with no tokenizer
+  identity, and fewer than 30 windows.
+
+Two things only showed up while writing the tests. A **zero difference is free to
+change sign** under the permutation, so the two-ties-two-positives case counts 8 of 16
+assignments and not 4 - the first draft of the test asserted 0.25 and was wrong about
+its own arithmetic, which is a good argument for the exact branch existing at all. And a
+**trailing fragment of under 8 tokens is not a window**: the scan drops it rather than
+weighting nine tokens of context equally with 512, and that is now pinned by a test
+rather than left as a line of code nobody could see.
+
+Not yet done, and deliberately: no claims were added to `scripts/verify_record.py` for
+this leg, because the campaign's two arms are still training and there is no table to
+claim from yet.

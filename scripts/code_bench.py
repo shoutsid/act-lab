@@ -120,27 +120,36 @@ def model_logits(model, tokens: torch.Tensor) -> torch.Tensor:
 
 
 @torch.no_grad()
-def nll_of_ids(model, ids: np.ndarray, device: torch.device, batch: int = 4) -> float:
-    """Total negative log-likelihood in nats over causal 512-token windows.
+def window_nlls(model, ids: np.ndarray, device: torch.device, batch: int = 4) -> tuple[float, list[float]]:
+    """Negative log-likelihood in nats, in total and per 512-token window.
 
-    Windows do not overlap and the first token of each window has no context and
-    is not scored, so the sum covers every token but one per window. Every model
-    carries that same one-token-per-window omission, which is why the comparison
-    survives it.
+    Windows do not overlap and the first token of each window has no context and is
+    not scored, so the sum covers every token but one per window. Every model carries
+    that same one-token-per-window omission, which is why the comparison survives it.
+
+    The per-window list is the part that makes the headline *testable* rather than
+    merely precise. A total to four decimals cannot distinguish an effect from
+    numerical dust, and two students that share a tokenizer are scored on identical
+    windows - so their difference can be tested as a paired one (same text, same
+    window boundaries, one difference per window) instead of compared as two
+    independent means. A paired test on ~2,500 windows resolves effects that a
+    four-decimal aggregate hides. It is only valid between models that tokenize the
+    text the same way, which is why it is recorded per model and left to the caller
+    to pair correctly.
     """
-    total = 0.0
-    scored = 0
+    window_values: list[float] = []
     starts = range(0, len(ids) - 1, WINDOW)
     pending: list[np.ndarray] = []
 
-    def flush(block: list[np.ndarray]) -> tuple[float, int]:
+    def flush(block: list[np.ndarray]) -> None:
         seq = np.stack(block).astype(np.int64)
         tokens = torch.from_numpy(seq).to(device)
         logits = model_logits(model, tokens[:, :-1])
         loss = torch.nn.functional.cross_entropy(
-            logits.reshape(-1, logits.shape[-1]).float(), tokens[:, 1:].reshape(-1), reduction="sum"
+            logits.reshape(-1, logits.shape[-1]).float(), tokens[:, 1:].reshape(-1), reduction="none"
         )
-        return float(loss), int(tokens[:, 1:].numel())
+        per_window = loss.reshape(len(block), -1).sum(dim=1)
+        window_values.extend(float(value) for value in per_window)
 
     for start in starts:
         window = ids[start : start + WINDOW + 1]
@@ -148,17 +157,13 @@ def nll_of_ids(model, ids: np.ndarray, device: torch.device, batch: int = 4) -> 
             continue
         pending.append(window)
         if len(pending) >= batch:
-            part, count = flush(pending)
-            total += part
-            scored += count
+            flush(pending)
             pending = []
     if pending:
-        part, count = flush(pending)
-        total += part
-        scored += count
-    if not scored:
+        flush(pending)
+    if not window_values:
         raise SystemExit("held-out text is too short to score")
-    return total
+    return float(sum(window_values)), window_values
 
 
 @torch.no_grad()
@@ -185,19 +190,25 @@ def score_hf(source: str, text: str, device: torch.device) -> dict:
         f"{source}: {architecture} {parameters/1e6:.1f}M parameters, "
         f"{len(ids):,} tokens for {len(text.encode()):,} bytes"
     )
-    nats = nll_of_ids(model, ids, device)
+    nats, per_window = window_nlls(model, ids, device)
     del model
     torch.cuda.empty_cache()
     return {
         "model": source,
         "kind": "hf",
         "architecture": architecture,
+        # Identity of the tokenization the ids came from. Two models are only
+        # pairable window by window if this agrees, and ``scripts/code_lm_table.py``
+        # refuses to pair them otherwise.
+        "tokenizer": getattr(tokenizer, "name_or_path", None) or source,
         "parameters": int(parameters),
         "tokens": int(len(ids)),
         "nats": nats,
         "held_out_bytes": len(text.encode()),
         "bits_per_byte": bits_per_byte(nats, len(text.encode())),
         "loss_per_token": nats / max(1, len(ids) - len(ids) // WINDOW),
+        "windows": len(per_window),
+        "window_nlls": per_window,
     }
 
 
@@ -227,7 +238,7 @@ def score_ours(checkpoint: Path, scale: str, text: str, device: torch.device) ->
         f"{checkpoint.name}: step {payload.get('step')}, {total/1e6:.1f}M total / "
         f"{active/1e6:.1f}M active parameters, {len(ids):,} tokens"
     )
-    nats = nll_of_ids(model, ids, device)
+    nats, per_window = window_nlls(model, ids, device)
     del model
     torch.cuda.empty_cache()
     return {
@@ -235,6 +246,7 @@ def score_ours(checkpoint: Path, scale: str, text: str, device: torch.device) ->
         "kind": "ours",
         "checkpoint": str(checkpoint.relative_to(ROOT)),
         "step": payload.get("step"),
+        "tokenizer": trainer.tokenizer_id(),
         "parameters": int(total),
         "active_parameters": int(active),
         "tokens": int(len(ids)),
@@ -242,6 +254,8 @@ def score_ours(checkpoint: Path, scale: str, text: str, device: torch.device) ->
         "held_out_bytes": len(text.encode()),
         "bits_per_byte": bits_per_byte(nats, len(text.encode())),
         "loss_per_token": nats / max(1, len(ids) - len(ids) // WINDOW),
+        "windows": len(per_window),
+        "window_nlls": per_window,
     }
 
 

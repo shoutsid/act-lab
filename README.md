@@ -462,6 +462,17 @@ loss curve would show it: `tests/test_train_code_lm.py` checks the bucket in bot
 directions - a student that ignores the teacher's tail is charged for it, and one that
 matches it scores exactly zero.
 
+The two student arms share one tokenizer and are scored on the same 512-token windows
+of the same held-out text, which makes their difference a *paired* measurement rather
+than two independent ones: window 7 of one arm covers the same Python as window 7 of
+the other, so the difficulty of the text cancels and only the objective is left. Every
+row therefore records its per-window losses beside its total, and
+`scripts/code_lm_table.py` runs a sign-flip permutation test over the paired
+differences and refuses to render a table without one. The mean difference and its 95%
+interval are the result; the p-value only says whether it needs a caveat, and it is
+reported as a lower bound rather than as proof, because windows cut from one file are
+not independent and nothing here can correct for that.
+
 Measured on the development GTX 1070 (8 GiB): the teacher loads in 2.8 s and scores
 **1,050 tokens/s**; the student trains at **~2,950 tokens/s**. That sets the campaign
 budget at 15.36M teacher-labelled tokens (4.05 h) and 11,250 steps per arm (46.08M
