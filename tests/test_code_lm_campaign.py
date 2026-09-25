@@ -119,7 +119,7 @@ def test_every_benchmark_row_is_scored_on_the_same_held_out_text(script: str) ->
 
 
 def test_the_fast_benchmark_rows_are_scored_before_the_slow_ones(script: str) -> None:
-    """The order of four invocations, pinned because it is worth fifteen hours of waiting.
+    """The order of four invocations, pinned because it is worth most of a day of waiting.
 
     A row lands in ``artifacts/code-lm/bench/`` when its byte scan finishes and the table
     needs all four, so with the two student arms first - their HumanEval halves are hours

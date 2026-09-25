@@ -4024,8 +4024,11 @@ width squared, which is **~8x** from `toy` to `match`, so **3-8 h per student ar
 honest estimate and the low end should be read as luck. The `hf:` rows are cheap by
 comparison (their generate path keeps a KV cache, and the byte scans total under an hour).
 Plan on the labelling stage finishing near **18:50**, the arms near **03:15**, and every
-number the table reads landing **about fifteen minutes after that** - not by 09:00 and not
-at the end of the stage. Two changes put it there. Each row is written to
+number the table reads landing **about forty minutes after that** - not by 09:00 and not at
+the end of the stage. (Forty and not fifteen: the two `hf:` rows are fast, but the teacher's
+own HumanEval half is ~19 min of *sequential* generation on this card - 512 single-token
+forwards per problem over 164 problems - so it, not the byte scans, is what the fast rows
+cost.) Two changes put it there. Each row is written to
 `artifacts/code-lm/bench/` **when its byte scan finishes** rather than at the end of its
 HumanEval half, and the benchmark stage now scores the two `hf:` rows first and the two
 students last: the fast rows are minutes against the students' hours, and the table needs all
@@ -4070,7 +4073,7 @@ The order that turns that into a record:
    the Kaggle files are two of those same two rows measured elsewhere (0.4686 and
    0.5372 below). Comparing them to the local rows is a check on the protocol, and the
    table's device column now names the card so a mix is visible rather than silent.
-2. **The paired contrast first, the table second.** Both are available about fifteen minutes
+2. **The paired contrast first, the table second.** Both are available about forty minutes
    into the benchmark stage, and the paired line is the leg's headline - read it first. The
    interval is the result and the p-value is a lower bound, since windows cut from one file
    are not independent:
