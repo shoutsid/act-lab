@@ -1033,8 +1033,15 @@ def fetch_kernel_log(kernel: str) -> str:
     ``kaggle kernels output`` returns the kernel's *files* and has never
     returned a log, so a driver that only ran that command could not tell an
     empty log from a log it never requested - and reported the second as the
-    first. Measured 2026-09-21: this returns nothing for a failed run and a full
-    log for a completed one.
+    first.
+
+    Measured 2026-09-21 on the accelerator session: nothing for a run that ended
+    ERROR, a full log for one that completed. Measured again 2026-09-25 on a pushed
+    *script* kernel (``act-code-bench``): 14,241 characters for a run that ended
+    ERROR, and nothing for the same kernel while it was still RUNNING. So for a
+    script kernel an empty answer means "not finished yet", not "the log is gone" -
+    the session's rule is not this one, and the returned text is JSON-lines with the
+    output escaped inside ``data`` fields rather than plain text.
     """
     result = _run(["kaggle", "kernels", "logs", kernel])
     return (result.stdout or "").strip()

@@ -861,6 +861,20 @@ log, and the platform keeps **no log at all** for a session it kills - verified
 completed and nothing whatsoever for the one that ended ERROR, so a failure has
 to be captured while it is happening or not at all.
 
+**Correction, 2026-09-25, on a pushed *script* kernel** (`act-code-bench`, which
+is not the accelerator session above). `kaggle kernels logs` returned a **14,241
+character** log for that kernel after it ended **ERROR**, and returned **nothing**
+for the next version of the same kernel while it was still `RUNNING`. So the two
+readings are inverted for this kernel type: an empty log means the run has not
+finished, and it is no longer evidence that the log is lost. Same command,
+different kernel type and probably a different platform path - do not carry the
+session's rule over to a pushed script kernel, and do not read an empty log here
+as "the failure output is gone". A second difference: this log arrives as
+JSON-lines - one record per stream write, `{"stream_name", "time", "data"}` with
+escaped newlines in `data` - so it prints as a wall of quotes and reassembles with
+`jq -r '.[].data'`. The traceback that diagnosed the 2026-09-25 ragged-window
+bug was in the last 6,000 characters of it.
+
 So the driver **streams and captures**: `kaggle kernels logs -f <kernel>` runs
 for the whole wait, writing into `/tmp/act-queue-<queue>-*/live-<queue>.log`,
 and the failure path reads four channels - that live capture, the child's stream
