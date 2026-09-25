@@ -4042,6 +4042,29 @@ reason it is now stated in the code). Optimiser, schedule, gradient clipping, ev
 batches and checkpoint cadence are single code paths, not per-arm copies. The objective is
 the only thing that branches: `(1 - 0.5) * ce + 0.5 * kl` against `ce`.
 
+### The training report's bits per byte was smaller than its own uniform floor
+
+The same audit found a units error in the number each arm's report is read for.
+`evaluate_bits` divided a per-*token* loss by the whole held-out **byte** count, dropping the
+tokens-to-bytes factor that is the entire reason the metric exists - a per-token loss and a
+per-byte loss are related by how many tokens the text took. The 20-step smoke report, kept in
+`artifacts/code-lm/smoke/`, states it plainly: `4.308e-07` bits/byte in the validation block,
+beside `4.8154` for the uniform floor in the references block of the *same file*. Two numbers
+in one report cannot be on scales nine million apart, and the factor is exactly that - the
+val stream's **9,228,190 tokens over 28,682,299 bytes** (3.11 bytes/token). Its final val loss
+of 8.5647 nats per token is **3.9755** bits/byte, which is a 20-step student sitting just under
+the floor of 4.8154 and looks like what it is.
+
+Nothing quoted in the record rests on it: the benchmark's bits per byte is a *total* over the
+bytes of the text and always went through `scripts/code_bench.py`, whose numbers (0.4686 for
+the teacher, 0.5372 for the baseline) are the ones the leg is measured by. But the arm reports
+are what will be read for how the two arms trained, the training log prints this field at the
+end of every arm, and the error would have been **equal in both arms** - so the comparison
+would have looked fine and the number would have been wrong in the one place a reader looks
+for absolute scale. `evaluate_bits` now takes the token count, both callers pass
+`len(val_tokens)`, and two tests hold it: the arithmetic itself, and the invariant that a
+predictor which is exactly uniform must score exactly the uniform floor.
+
 ### When the campaign finishes
 
 Measured start, for the next session's estimate: the teacher-labels stage began around

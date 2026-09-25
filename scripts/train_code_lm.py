@@ -821,8 +821,19 @@ def distillation_terms(student_logits: torch.Tensor, targets: dict, windows: np.
     return (top_term + rest_term).mean(), teacher_p, student_top
 
 
-def evaluate_bits(student_loss_nats: float, held_out_bytes: int) -> float:
-    return student_loss_nats / math.log(2) / held_out_bytes
+def evaluate_bits(student_loss_nats: float, held_out_bytes: int, tokens: int) -> float:
+    """Bits per byte from a per-*token* loss, which is where the tokens-to-bytes factor goes.
+
+    ``evaluate`` returns nats per token; bits per byte divides by the bytes of the *text*;
+    the two are related by how many tokens that text took, which is exactly what makes this
+    metric comparable across tokenizers and the reason it is used here at all. Dividing by
+    the raw byte count instead - what this did - leaves a number smaller than the uniform
+    floor by the token count. Measured on the stale 20-step smoke report, which is kept in
+    ``artifacts/code-lm/smoke/``: 8.5647 nats per token over 28,707,445 bytes was written as
+    4.3e-07 bits/byte, while the references block beside it - computed the other way - gives
+    4.79 for the uniform floor. Both cannot be on one scale.
+    """
+    return student_loss_nats / math.log(2) / (held_out_bytes / tokens)
 
 
 @torch.no_grad()
@@ -989,7 +1000,7 @@ def stage_train(
         if step % EVAL_EVERY == 0 or step == max_steps:
             value, perplexity = evaluate(model, val_tokens, device)
             entry = {"step": step, "train_loss": loss.item(), "val_loss": value, "perplexity": perplexity,
-                     "bits_per_byte": evaluate_bits(value, held_out_bytes)}
+                     "bits_per_byte": evaluate_bits(value, held_out_bytes, len(val_tokens))}
 
             if targets is not None:
                 entry["train_kl"] = float(kl.item()) if kl is not None else None
@@ -1051,7 +1062,7 @@ def stage_train(
         "validation": {
             "final_val_loss": final_loss,
             "final_perplexity": final_perplexity,
-            "bits_per_byte": evaluate_bits(final_loss, held_out_bytes),
+            "bits_per_byte": evaluate_bits(final_loss, held_out_bytes, len(val_tokens)),
             "uniform_floor_loss": uniform_floor,
             "held_out_bytes": held_out_bytes,
             "history": history,

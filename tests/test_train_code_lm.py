@@ -262,6 +262,40 @@ def test_the_report_separates_the_budget_from_what_the_arm_saw():
     assert adopted["resumed_from_step"] == 20
 
 
+# --- the training report's arithmetic ---------------------------------------
+
+
+def test_bits_per_byte_carries_the_tokens_to_bytes_factor():
+    """The report divided a per-*token* loss by the whole byte count instead of by bytes/token.
+
+    Caught on the 20-step smoke report, which is still in ``artifacts/code-lm/smoke/``:
+    8.5647 nats per token over 28,707,445 held-out bytes was written as **4.3e-07** bits/byte,
+    while the references block in that same report gives **4.79** for the uniform floor - two
+    numbers that cannot both be on one scale. Nothing quoted in the record rests on it (the
+    benchmark's bits per byte sums nats over the bytes of the text, in ``code_bench``), but
+    the arm reports carry it and the training log prints it.
+    """
+    nats, tokens, held_out_bytes = 8.5647, 8_964_000, 28_707_445
+    value = code_lm.evaluate_bits(nats, held_out_bytes, tokens)
+    assert value == pytest.approx(nats / math.log(2) / (held_out_bytes / tokens))
+    assert value > 1.0, "a number below the uniform floor by the token count is the bug"
+    assert code_lm.evaluate_bits(nats, held_out_bytes, 2 * tokens) == pytest.approx(2 * value)
+
+
+@needs_teacher
+def test_the_students_number_and_the_references_are_on_one_scale():
+    """A model that predicts exactly uniformly must score exactly the uniform floor.
+
+    That is the invariant the old formula broke, and it is checkable without training
+    anything: both numbers sit in the same report and must be in the same units.
+    """
+    tokens = np.arange(2_000)
+    held_out_bytes = 8_000
+    references = code_lm.reference_bits_per_byte(tokens, held_out_bytes)
+    uniform = code_lm.evaluate_bits(math.log(code_lm.vocab_size()), held_out_bytes, len(tokens) - 1)
+    assert uniform == pytest.approx(references["uniform"]["bits_per_byte"])
+
+
 # --- the teacher's identity, when it is on disk -----------------------------
 
 
