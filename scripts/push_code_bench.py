@@ -244,22 +244,10 @@ def default_models() -> list[tuple[str, str]]:
     ]
 
 
-def save_fetched(output: Path, directory: Path) -> list[Path]:
-    """Keep the fetched output files somewhere durable, and say where.
-
-    ``kaggle kernels output`` writes into a temporary directory that the fetch then
-    deletes, so a run that reported two numbers had nothing left on disk to show for
-    the ten minutes of GPU quota it spent. The reports are the artifact; printing them
-    is a convenience on top of that, not a substitute.
-    """
-    directory.mkdir(parents=True, exist_ok=True)
-    written = []
-    for path in sorted(output.rglob("*.json")):
-        target = directory / path.name
-        if path.resolve() != target.resolve():
-            shutil.copyfile(path, target)
-        written.append(target)
-    return written
+#: The keep step of a fetch, shared with the TPU probe's driver because both fetch kernel
+#: output now and the question it answers - *did anything survive the fetch* - is the one the
+#: probe's v4 record was lost to (2026-09-25; see ``kaggle_queue.save_fetched``).
+save_fetched = kaggle_queue.save_fetched
 
 
 def _kaggle(argv: list[str]) -> int:

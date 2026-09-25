@@ -16,6 +16,7 @@ queue, which is what the 2026-09-22 run did inside a dtype the decision never re
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -460,6 +461,133 @@ def test_a_partial_or_mis_sized_seed_parallel_run_is_an_error_not_an_average(
         tpu_probe.measure_independent_seeds(
             xmp=_fake_xmp(partial, {}), devices=8, workers=8, steps=12, dtype="bf16",
             directory=str(tmp_path / "partial"),
+        )
+
+
+def test_the_aggregate_is_taken_by_a_process_that_has_touched_nothing(tmp_path: Path) -> None:
+    """The 2026-09-25 finding: the spawn needs a runtime nothing has initialized.
+
+    Measured, not assumed. The kernel v4 record was fetched this session and it *completed
+    four of its five phases* - bf16 throughput and rebuild, fp32 throughput and rebuild -
+    and lost ``independent_seeds`` to ``RuntimeError: Runtime is already initialized. Do not
+    use the XLA device before calling xmp.spawn.``. The condition is
+    ``torch_xla._internal.pjrt.run_multiprocess``'s own first line
+    (``_XLAC._xla_runtime_is_initialized()``), and this probe initializes the runtime before
+    the aggregate's turn on purpose: ``_device_report`` records the hardware with
+    ``xm.xla_device()``, and every dtype's throughput pass uses it. So the aggregate cannot
+    be measured in this process at all, however the phases are ordered - it is measured by a
+    child that has done nothing else.
+    """
+    argv = tpu_probe.seeds_child_arguments(
+        workers=8, steps=12, dtype="bf16", output=Path("/tmp/x/seeds.json")
+    )
+    assert argv[0] == sys.executable
+    assert argv[1].endswith("tpu_probe.py")
+    assert "--seeds-only" in argv
+    assert argv[argv.index("--workers") + 1] == "8"
+    assert argv[argv.index("--steps") + 1] == "12"
+    assert argv[argv.index("--dtype") + 1] == "bf16"
+    assert argv[argv.index("--output") + 1] == "/tmp/x/seeds.json"
+
+    request = tpu_probe.seeds_only_request(
+        argparse.Namespace(workers=8, steps=12, dtype="both")
+    )
+    # The mechanism itself: the child does not ask for the device count, because asking
+    # initializes the runtime the spawn requires untouched. The ranks that ran are the check
+    # instead - torch_xla derives the process count from the TPU topology when told None.
+    assert request["devices"] is None
+    assert request["workers"] == 8
+    assert request["dtype"] == "bf16"  # what evaluate reads, not the fp32 diagnostic
+    assert tpu_probe.aggregate_dtype("fp32") == "fp32"
+    assert tpu_probe.aggregate_dtype("both") == tpu_probe.MEASUREMENT_ORDER[0]
+
+
+@pytest.mark.parametrize("workers", [0, -1])
+def test_the_child_refuses_to_measure_an_empty_aggregate(workers: int) -> None:
+    """``--workers 0`` means "skip the parallel pass" in the main run; in the child it is
+    the one thing it exists to do, so it must not be a spawn of no processes."""
+    with pytest.raises(ValueError, match="at least 1"):
+        tpu_probe.seeds_only_request(
+            argparse.Namespace(workers=workers, steps=12, dtype="bf16")
+        )
+
+
+def test_the_parent_records_where_the_aggregate_came_from(tmp_path: Path) -> None:
+    """The child's own record is what the parent keeps, plus how it was taken.
+
+    Read as one object rather than re-derived: the aggregate is the number the port
+    headline is divided from, so the parent must not recompute it from a summary. The
+    marker exists because a reader has to be able to tell this from the measurement that
+    cannot spawn - three runs produced that one, and no record said which it was.
+    """
+    fake = tmp_path / "fake-probe.py"
+    fake.write_text(
+        "import argparse, json, sys\n"
+        "p = argparse.ArgumentParser(); p.add_argument('--seeds-only', action='store_true')\n"
+        "p.add_argument('--workers', type=int); p.add_argument('--steps', type=int)\n"
+        "p.add_argument('--dtype'); p.add_argument('--output')\n"
+        "a = p.parse_args()\n"
+        "assert a.seeds_only and a.workers == 8 and a.dtype == 'bf16', a\n"
+        "json.dump({'independent_seeds': {'workers': a.workers,\n"
+        "    'aggregate_tokens_per_second': 1234.5, 'completed': a.workers}},\n"
+        "    open(a.output, 'w'))\n",
+        encoding="utf-8",
+    )
+
+    block = tpu_probe.seeds_in_child(
+        workers=8, steps=12, dtype="bf16", timeout=60, probe=fake
+    )
+    assert block["aggregate_tokens_per_second"] == 1234.5
+    assert block["completed"] == 8
+    assert block["taken_in"] == "child-process"
+
+
+#: The argv a fake child accepts, parsed rather than re-implemented: only the assertions
+#: after it differ between the two failures below.
+_FAKE_PARSER = (
+    "import argparse, json, sys\n"
+    "p = argparse.ArgumentParser(); p.add_argument('--seeds-only', action='store_true')\n"
+    "p.add_argument('--workers', type=int); p.add_argument('--steps', type=int)\n"
+    "p.add_argument('--dtype'); p.add_argument('--output')\n"
+    "a = p.parse_args()\n"
+)
+
+
+def test_a_child_that_died_carries_its_reason_into_the_failure(tmp_path: Path) -> None:
+    """A failure with a cause, not an exit code.
+
+    Two of this probe's three runs were diagnosed from the kernel log rather than from the
+    record, because the record could only say the phase raised. The child's stderr is what
+    names the cause, and it has to travel with the failure.
+    """
+    fake = tmp_path / "fake-probe.py"
+    fake.write_text(
+        _FAKE_PARSER + "print('RuntimeError: Runtime is already initialized', file=sys.stderr)\n"
+        "sys.exit(9)\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(RuntimeError) as raised:
+        tpu_probe.seeds_in_child(
+            workers=8, steps=12, dtype="bf16", timeout=60, probe=fake
+        )
+    message = str(raised.value)
+    assert "exited 9" in message
+    assert "Runtime is already initialized" in message
+
+
+def test_a_child_that_exited_cleanly_without_the_block_is_still_a_failure(
+    tmp_path: Path,
+) -> None:
+    """The quiet half: exit 0 and no aggregate is the outcome that would otherwise read as
+    a complete run with a missing key."""
+    fake = tmp_path / "fake-probe.py"
+    fake.write_text(
+        _FAKE_PARSER + "json.dump({'kind': 'x'}, open(a.output, 'w'))\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(RuntimeError, match="no independent_seeds block"):
+        tpu_probe.seeds_in_child(
+            workers=8, steps=12, dtype="bf16", timeout=60, probe=fake
         )
 
 

@@ -1,0 +1,73 @@
+{
+ "bf16": {
+  "parameters": 285336576,
+  "rebuild": {
+   "expert_count_after": 9,
+   "expert_id": "L11E8",
+   "experts_added": 1,
+   "first_step_seconds_including_compile": 29.235,
+   "rebuilt_layer": "L11",
+   "steady_step_seconds_mean": 10.797208,
+   "steady_step_seconds_min": 0.999326,
+   "steps": 4,
+   "tokens_per_second": 379.4,
+   "tokens_per_step": 4096
+  },
+  "throughput": {
+   "first_step_seconds_including_compile": 67.0673,
+   "steady_step_seconds_mean": 3.729824,
+   "steady_step_seconds_min": 0.979932,
+   "steps": 12,
+   "tokens_per_second": 1098.2,
+   "tokens_per_step": 4096
+  }
+ },
+ "completed": [
+  "bf16.throughput",
+  "bf16.rebuild",
+  "fp32.throughput",
+  "fp32.rebuild"
+ ],
+ "declared_pair_tokens_per_second_on_t4": 5083.4,
+ "device": {
+  "device_kind": "xla:0",
+  "memory_bytes_limit": null,
+  "memory_bytes_used": null,
+  "pytorch": "2.8.0+cpu",
+  "torch_xla": "2.8.0",
+  "xla_devices": 8
+ },
+ "errors": [
+  {
+   "error": "RuntimeError: Runtime is already initialized. Do not use the XLA device before calling xmp.spawn.",
+   "phase": "independent_seeds"
+  }
+ ],
+ "fp32": {
+  "parameters": 285336576,
+  "rebuild": {
+   "expert_count_after": 9,
+   "expert_id": "L11E8",
+   "experts_added": 1,
+   "first_step_seconds_including_compile": 28.0703,
+   "rebuilt_layer": "L11",
+   "steady_step_seconds_mean": 11.063923,
+   "steady_step_seconds_min": 1.012173,
+   "steps": 4,
+   "tokens_per_second": 370.2,
+   "tokens_per_step": 4096
+  },
+  "throughput": {
+   "first_step_seconds_including_compile": 69.1005,
+   "steady_step_seconds_mean": 3.653166,
+   "steady_step_seconds_min": 1.007948,
+   "steps": 12,
+   "tokens_per_second": 1121.2,
+   "tokens_per_step": 4096
+  }
+ },
+ "kind": "tpu-v0-session-probe",
+ "record_type": "hardware-probe",
+ "steps": 12,
+ "what_this_is": "A hardware probe of the declared 285M session shape on a TPU. No session trained and nothing here is a Gate-4 number: it reports throughput per core, the cost of a rebuild (a mutation or probed candidate), per-core memory, and the aggregate rate of one independent seed per core."
+}

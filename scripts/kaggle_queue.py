@@ -1027,6 +1027,31 @@ def capture_live_log(kernel: str, path: Path):
             thread.join(timeout=LIVE_LOG_STOP_SECONDS)
 
 
+def save_fetched(output: Path, directory: Path) -> list[Path]:
+    """Keep a fetched kernel's JSON records somewhere durable, and say where.
+
+    ``kaggle kernels output`` writes into a temporary directory that the caller then
+    deletes, so a fetch that only *printed* its files left nothing behind to show for the
+    minutes it spent - and the prints are gone with the terminal. Two drivers paid for this
+    separately. The code-bench fetch (2026-09-25) reported two numbers and deleted the two
+    reports. The TPU probe's fetch printed a **complete** run's record and deleted it: the
+    record on disk stayed the previous run's for three days, the rule written for that
+    record was never applied, and the diagnosis had to be re-done from the kernel log of a
+    kernel nobody had fetched.
+
+    Shared rather than copied, because the thing that has to stay true is *where the
+    artifact is*, and a second copy of this function is a second answer to it.
+    """
+    directory.mkdir(parents=True, exist_ok=True)
+    written = []
+    for path in sorted(output.rglob("*.json")):
+        target = directory / path.name
+        if path.resolve() != target.resolve():
+            shutil.copyfile(path, target)
+        written.append(target)
+    return written
+
+
 def fetch_kernel_log(kernel: str) -> str:
     """Ask the platform for a kernel's execution log after the fact.
 

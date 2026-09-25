@@ -4231,3 +4231,48 @@ The order that turns that into a record:
    was first written - see the entry above - so a large gap from 7.84% is now a reason
    to suspect the harness or the subprocess timeout rather than the token budget. The
    check is cheap either way: `--suite humaneval --limit 20` on the baseline.
+
+## The TPU probe's deciding measurement needed its own process, and the fetch had been deleting it (2026-09-25)
+
+The TPU half of this project has been blocked behind one number since 2026-09-21: the
+aggregate rate of eight independent seeds. `scripts/tpu_probe.py` measures it, the
+pre-registered rule in the same file reads it, and `scripts/push_tpu_probe.py` runs it on
+Kaggle's separate TPU quota. What this session found is that the kernel **had already
+measured everything else and nobody had read the result** - and that the fetch was the
+reason, not the platform.
+
+| | |
+|---|---|
+| **What was on disk** | `artifacts/tpu-probe/output/tpu-probe.json`, 2,075 bytes, mtime 2026-09-22 21:02. The record of kernel **v3**: four phases completed, `independent_seeds` in `errors`, verdict `INCONCLUSIVE` (exit 3). The watcher that fetched it is dead, and its verdict was never applied or written down. |
+| **What the kernel actually was** | `sid123123234/act-tpu-probe` reported `KernelWorkerStatus.COMPLETE` - v4, pushed 2026-09-22 at `1664194` after the four defects v3 exposed were fixed. It finished **three days ago** and no reader had seen it. |
+| **Why nobody had** | `push_tpu_probe.py --fetch` unpacked the kernel output into a `TemporaryDirectory`, printed each file, and let the `with` block delete it. So the fetch that finally ran here printed v4's record and kept nothing - the on-disk copy stayed v3's, which is why the file and the printout were byte-identical. The same defect was fixed in `push_code_bench.py` on this same day (`--save` + `save_fetched`) and not in the other fetch. |
+| **What v4 measured** | Four of its five phases: bf16 throughput **1,098.2 tokens/s** (first step including compile 67.07 s, steady mean 3.73 s, min 0.98 s), bf16 rebuild **379.4 tokens/s** (first 29.24 s, steady 10.80 s), fp32 throughput **1,121.2**, fp32 rebuild **370.2**, on `xla:0` with `xla_devices: 8`, torch 2.8.0+cpu / torch_xla 2.8.0. |
+| **What it did not** | `independent_seeds`: `RuntimeError: Runtime is already initialized. Do not use the XLA device before calling xmp.spawn.` The rule needs `independent_seeds.aggregate_tokens_per_second` and `.workers`, so the run is `INCONCLUSIVE` - never a pass, which is the property `evaluate` was built with. |
+| **The mechanism, verified rather than guessed** | `torch_xla._internal.pjrt.run_multiprocess` opens with `if torch_xla._XLAC._xla_runtime_is_initialized(): raise RuntimeError(...)` (torch_xla 2.8.0 source, and the same line in the traceback at pytorch/xla#9303). The probe initializes that runtime **before the aggregate's turn by design**: `_device_report` calls `xm.xla_device()` to record the hardware, and every dtype's throughput pass uses it. `independent_seeds()` then asked for the device count with `xm.get_xla_supported_devices()` immediately before spawning, which initializes it too. |
+| **So the fix was not the ordering** | The phase order was already "what a failure costs the decision" - bf16 first, aggregate second, fp32 diagnostic last - and it is *registered*, so it is not what was wrong. Nothing about ordering can help: the runtime is initialized before the first phase runs, so the spawn is illegal in that process however the phases are arranged. The measurement needs a process that has done nothing else. |
+| **The authoritative detail that ruled out a stale dataset** | The mounted probe was the fixed revision, not an old one: the run's warnings cite lines 445, 481, 497, 503 and 574 of `/kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/tpu_probe.py`, and those are the same `xm.xla_device()` / `mark_step()` lines in the working tree. v4's four fixes - `nprocs=None`, the rank-completeness check, the steady-sum aggregate, the device-count check - were all in the tree that ran. None of them was this defect. |
+| **Fixed** | `seeds_in_child()` runs the aggregate in a fresh interpreter (`sys.executable` + the same probe + `--seeds-only`), reads the child's record and returns its `independent_seeds` block with `taken_in: "child-process"` recorded beside the numbers. `seeds_only_request()` is the mechanism as data: `devices: None`. A child that dies carries its own stderr into the failure, and one that exits 0 without the block is a failure too - both were silent losses before. `spawn_arguments`' `nprocs=None` is unchanged. |
+| **And the pre-spawn device count is gone** | It could only be taken by initializing the runtime the spawn needs untouched, so it was part of the cause rather than a guard. With `nprocs=None` torch_xla derives the process count from the TPU's own topology, so the *number of rank reports* is the device count that mattered; requiring all `workers` of them keeps the property (`devices=4, workers=8` and `7 of 8 ranks` are both errors, pinned) with no pre-spawn device query. |
+| **And the fetch keeps what it fetches** | `--fetch --save DIR` keeps the record, fetches the kernel log beside it, names every file it kept, and prints the pre-registered verdict for the record that just landed. `save_fetched` moved to `kaggle_queue.py`, because two drivers fetch kernel output now and a second copy would be a second answer to "did anything survive the fetch" - the question that cost this run three days. |
+
+**The reading of the four numbers that did arrive, stated before the fifth is measured.**
+The aggregate is the sum of eight ranks' steady rates, and each rank has its own chip and its
+own HBM, so eight cores should land near eight times the single-core rate: **1.73x the T4
+pair for bf16, 1.76x for fp32**, against a declared bar of **2.0x**. The per-core rate that
+would clear the bar is **1,270.8 tokens/s**; both dtypes are below it. fp32 also came out
+*faster* than bf16 by 2%, so the bf16 protocol amendment that the rule assumes buys nothing
+on this hardware. On the evidence in hand the v5 measurement is as likely to confirm
+`DO-NOT-PORT` as to open the port - which is exactly why it is worth taking rather than
+inferring: the rule reads the aggregate, this is a proxy for it, and the whole discipline of
+this project is that a pre-registered measurement is not replaced by a plausible guess. The
+run costs a few TPU minutes out of 19.67 h available; the kernel is pushed and a watcher is
+armed, and the verdict will be applied where the record lands.
+
+**What this changes about which resource is worth spending.** The GPU week is 1.07 h of 30
+(Wednesday-to-Wednesday, refresh 2026-09-26T00:00Z) and the local card is mid-campaign until
+~03:30 UTC, while the TPU week is 19.67 h of 20 -- so the TPU is the only accelerator with
+room right now, and it was unusable for one reason: a probe that could not produce the number
+its own rule reads. Three runs had failed to produce it, each on a defect in *our* probe - a
+148 s crash with no record (09-21), an fp32 rebuild that took the whole run (09-22), and this
+runtime check (09-22 evening) - and the first two are already contained by `_run_phase` and
+`MEASUREMENT_ORDER`. This is the third, and it is contained by a process boundary.

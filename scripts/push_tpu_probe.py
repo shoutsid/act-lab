@@ -22,7 +22,15 @@ The probe itself is `scripts/tpu_probe.py`; this script only stages and pushes i
     PYTHONPATH=src .venv/bin/python scripts/push_tpu_probe.py            # stage and push
     PYTHONPATH=src .venv/bin/python scripts/push_tpu_probe.py --stage-only
     PYTHONPATH=src .venv/bin/python scripts/push_tpu_probe.py --status
-    PYTHONPATH=src .venv/bin/python scripts/push_tpu_probe.py --fetch
+    PYTHONPATH=src .venv/bin/python scripts/push_tpu_probe.py --fetch --save artifacts/tpu-probe/output
+
+``--fetch`` without ``--save`` prints the record and deletes it with the temporary
+directory it was unpacked into, which is how a **complete** run's measurement stayed
+unfetched for three days (2026-09-25): the record on disk was the run before it, the
+pre-registered rule was never applied to the run that finished, and the diagnosis that
+followed was done from a kernel log instead of from the record it was written for. The
+fetch now keeps what it finds, names the file it kept, and applies the rule where the
+record lands - the same three things the watcher shell script does.
 """
 
 from __future__ import annotations
@@ -39,9 +47,15 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import kaggle_queue  # noqa: E402
 import kaggle_t4  # noqa: E402
+import tpu_probe  # noqa: E402
 
 KERNEL_SLUG = "act-tpu-probe"
 ENTRY_NAME = "run-tpu-probe.py"
+#: What the probe writes into the kernel's output, and so the name a fetch looks for. The
+#: entry template below spells the same path out as a literal (a script kernel receives only
+#: its own text, so it cannot import this), and a test pins the two to each other: a rename on
+#: one side alone means a fetch that finds nothing and prints a log instead of a measurement.
+RECORD_NAME = "tpu-probe.json"
 WORK = ROOT / "artifacts" / "tpu-probe"
 
 #: The entry file. A script kernel gets only this text, so it must be self-sufficient:
@@ -200,6 +214,11 @@ def main() -> int:
     parser.add_argument("--stage-only", action="store_true", help="write the folder, do not push")
     parser.add_argument("--status", action="store_true", help="print the kernel's status")
     parser.add_argument("--fetch", action="store_true", help="download the kernel's output")
+    parser.add_argument(
+        "--save", type=Path, default=None,
+        help="directory to keep the fetched record and log in; without it they are only "
+        "printed and then deleted with the temporary directory",
+    )
     args = parser.parse_args()
 
     owner = kaggle_queue.code_dataset_id().split("/")[0]
@@ -212,12 +231,36 @@ def main() -> int:
     if args.status:
         return _kaggle(["kaggle", "kernels", "status", ref])
     if args.fetch:
+        saved: list[Path] = []
         with tempfile.TemporaryDirectory(prefix="tpu-probe-out-") as temporary:
-            _kaggle(["kaggle", "kernels", "output", ref, "-p", temporary])
+            code = _kaggle(["kaggle", "kernels", "output", ref, "-p", temporary])
             for path in sorted(Path(temporary).rglob("*")):
                 if path.is_file():
                     print(f"--- {path.name}\n{path.read_text(encoding='utf-8', errors='replace')[:8000]}")
-        return 0
+            # Inside the ``with``: this is the directory about to be deleted.
+            if args.save:
+                saved = kaggle_queue.save_fetched(Path(temporary), args.save)
+        # The log is fetched as well as the record, and kept beside it: `kernels output`
+        # returns files and never a log, and the reason a run failed is in the log (the
+        # measurement it did produce is in the record). This fetch is what diagnosed v4
+        # from the log; both are one request away here, so both come back.
+        log = kaggle_queue.fetch_kernel_log(ref)
+        if args.save:
+            target = args.save / f"{Path(ref).name}.log"
+            target.write_text(log, encoding="utf-8")
+            print(f"\nkept {len(saved) + 1} file(s) in {args.save}")
+            for path in [*saved, target]:
+                print(f"  {path}")
+        print(f"\n--- kernel log ({len(log)} chars, last 6000)\n{log[-6000:]}")
+        # The rule is applied where the record lands, by the same function the runbook
+        # names - a verdict that needs a second hand-run command is one that can be left
+        # unread, and this one was left unread for three days.
+        if args.save and (args.save / RECORD_NAME).is_file():
+            verdict = tpu_probe.evaluate(
+                json.loads((args.save / RECORD_NAME).read_text(encoding="utf-8"))
+            )
+            print(f"\n--- pre-registered decision\n{json.dumps(verdict, indent=1, sort_keys=True)}")
+        return code
     if args.stage_only:
         return 0
 

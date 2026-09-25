@@ -47,6 +47,17 @@ artifacts/code-lm/bench/*
 !artifacts/code-lm/bench/kaggle/
 artifacts/code-lm/bench/kaggle/*
 !artifacts/code-lm/bench/kaggle/*.json
+# The TPU probe's record (2026-09-25): the one measurement the pre-registered port rule
+# reads was missing from it, and the four phases that did run are the numbers quoted in
+# the journal - including the per-core rates that sit below the rate eight cores would
+# need to clear the rule's own 2x bar. Committed because the entry quotes them, and
+# because the fetch that produced it deleted its own output for three days, which is how
+# a `COMPLETE` kernel went unread. 2 KB; the kernel and its logs stay scratch.
+!artifacts/tpu-probe/
+artifacts/tpu-probe/*
+!artifacts/tpu-probe/output/
+artifacts/tpu-probe/output/*
+!artifacts/tpu-probe/output/tpu-probe.json
 # The held-out stream the real-LM proof is scored on (2026-09-25). A perplexity
 # with nothing beside it proves nothing - 5.5 could be good or terrible - so the
 # record carries reference baselines, and those are recomputed from this file.
