@@ -19,6 +19,7 @@ import gzip
 import inspect
 import math
 import sys
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -250,6 +251,34 @@ def test_a_tight_cut_on_a_peaked_distribution_collapses_to_one_token():
     logits = torch.tensor([8.0, 0.0, 0.0])
     generator = torch.Generator().manual_seed(0)
     assert {code_bench.sample_token(logits, 1.0, 0.5, generator) for _ in range(50)} == {0}
+
+
+def test_the_sampler_takes_a_tensor_that_requires_grad_without_complaining():
+    """The student hands over raw model output, which carries ``requires_grad``.
+
+    Converting it to a scalar warns once per token - 512 times per problem, per model -
+    in a log that is the only account of a three-hour stage.
+    """
+    logits = torch.randn(16, requires_grad=True)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        token = code_bench.sample_token(logits, 0.2, 0.95, torch.Generator().manual_seed(0))
+    assert isinstance(token, int) and 0 <= token < 16
+    assert not [item for item in caught if "requires_grad" in str(item.message)]
+
+
+def test_both_generators_generate_without_tracking_gradients():
+    """A ``no_grad`` block per generator, checked in the source because the alternative
+    is loading a checkpoint and a tokenizer to observe an absence.
+
+    512 sequential forwards with a graph attached is memory held for a backward pass that
+    never comes - and the students' HumanEval is the longest stage of this campaign.
+    """
+    source = Path(code_bench.__file__).read_text()
+    ours = source.split("def make_ours_generator", 1)[1].split("def main", 1)[0]
+    assert "with torch.no_grad():" in ours
+    hf = source.split("def make_hf_generator", 1)[1].split("def make_ours_generator", 1)[0]
+    assert "with torch.no_grad():" in hf, "model.generate is also inference"
 
 
 def test_the_sampler_always_returns_a_usable_token_index():

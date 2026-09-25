@@ -345,6 +345,10 @@ def sample_token(logits: torch.Tensor, temperature: float, top_p: float, generat
     prefix of the sorted distribution whose mass reaches ``top_p`` and the rest is
     dropped and the survivor renormalised.
     """
+    # Nothing here is ever differentiated, and the callers hand over whatever the model
+    # returned - which for the student carries ``requires_grad``. Converting that to a
+    # scalar warns once per token, i.e. 512 times per problem per model.
+    logits = logits.detach()
     if temperature <= 0:
         return int(logits.argmax(dim=-1))
     probabilities = torch.softmax(logits.float() / temperature, dim=-1)
@@ -482,13 +486,17 @@ def make_ours_generator(
         tokens = torch.tensor([ids[-WINDOW:]], dtype=torch.long, device=device)
         generator = torch.Generator(device="cpu").manual_seed(seed)
         produced: list[int] = []
-        for _ in range(max_new_tokens):
-            logits = model(tokens[:, -WINDOW:])[:, -1, :]
-            # The same sampler the transformers rows go through, so the protocol is one
-            # protocol rather than one per model family.
-            next_id = sample_token(logits[0], temperature, top_p, generator)
-            produced.append(next_id)
-            tokens = torch.cat([tokens, torch.tensor([[next_id]], device=device)], dim=1)
+        # Inference, and 512 forwards deep: without this the whole window's activations
+        # are retained per step for a backward pass that never comes. The ``hf:`` path
+        # gets the same thing from ``model.generate``.
+        with torch.no_grad():
+            for _ in range(max_new_tokens):
+                logits = model(tokens[:, -WINDOW:])[:, -1, :]
+                # The same sampler the transformers rows go through, so the protocol is
+                # one protocol rather than one per model family.
+                next_id = sample_token(logits[0], temperature, top_p, generator)
+                produced.append(next_id)
+                tokens = torch.cat([tokens, torch.tensor([[next_id]], device=device)], dim=1)
         return tokenizer.decode(produced)
 
     return generate, tokenizer, model

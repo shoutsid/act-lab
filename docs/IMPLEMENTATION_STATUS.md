@@ -3927,9 +3927,25 @@ that touches the GPU waits its turn.
 
 Measured start, for the next session's estimate: the teacher-labels stage began around
 15:00 and was logging **1,042-1,046 teacher tokens/s**, so the 15.36M labelled tokens
-land near **19:10**; the two arms are 4.34 h each (measured ~2,950 student tokens/s), the
-benchmark stage last. Total ends roughly **06:00-07:00**, and `/tmp/code-campaign.log` is
-where it says so - the log is empty until the labelling stage hands over.
+land near **19:10**; the two arms are 4.34 h each (measured ~2,950 student tokens/s). That
+puts the benchmark stage's start near **03:40** and its end depends on the one number
+nobody had priced: **the students' HumanEval**. The student has no KV cache, so one
+generated token is a full 512-token forward, and at the published 512-token budget that
+is 512 forwards per problem over 164 problems, twice. Measured on the development card
+*while the campaign held it*: 89 s for four problems for the toy student (30.1M total /
+19.5M active), i.e. ~22 s per problem; the `match` student's 81.5M active parameters are
+about 4x that, so a contended estimate is **1.5-4 h per student arm**, less on a free
+card once the arms are done. The `hf:` rows are cheap by comparison (their generate path
+keeps a KV cache, and the byte scans total under an hour). Plan on the campaign ending
+between **06:00 and 09:00**, and read `/tmp/code-campaign.log` for the truth - it is empty
+until the labelling stage hands over.
+
+If that HumanEval half turns out to be the bottleneck, the levers in order of honesty
+are: a KV cache in the student's attention (a real change to `src/act/model`, worth its
+own verification), scoring fewer problems with `--limit` and saying so, or leaving the
+students' pass@1 out and reporting bits/byte only. **Not** reducing `--max-new-tokens`:
+that is the protocol the baseline's published number was measured under, and the whole
+reason the baseline row is in the table.
 
 The order that turns that into a record:
 
