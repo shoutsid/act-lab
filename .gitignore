@@ -57,7 +57,10 @@ artifacts/code-lm/bench/kaggle/*
 artifacts/tpu-probe/*
 !artifacts/tpu-probe/output/
 artifacts/tpu-probe/output/*
-!artifacts/tpu-probe/output/tpu-probe.json
+# Named by the kernel version that produced it, not "the latest record": a fetch lands in
+# this directory and would otherwise overwrite the evidence under it. Each record is added
+# here when the journal cites its numbers, which is what makes them re-readable.
+!artifacts/tpu-probe/output/tpu-probe-v4.json
 # The held-out stream the real-LM proof is scored on (2026-09-25). A perplexity
 # with nothing beside it proves nothing - 5.5 could be good or terrible - so the
 # record carries reference baselines, and those are recomputed from this file.

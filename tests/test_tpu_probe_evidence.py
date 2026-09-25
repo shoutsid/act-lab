@@ -29,7 +29,11 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import tpu_probe  # noqa: E402
 
-RECORD = ROOT / "artifacts" / "tpu-probe" / "output" / "tpu-probe.json"
+#: The record of kernel **v4**, named by the run that produced it rather than "the latest":
+#: a fetch lands in this directory as ``tpu-probe.json`` and would otherwise overwrite the
+#: evidence the journal quotes. v5 is pushed and being watched; when its record is cited, it
+#: joins this one as ``tpu-probe-v5.json``.
+RECORD = ROOT / "artifacts" / "tpu-probe" / "output" / "tpu-probe-v4.json"
 
 #: The four measurements that ran, as the journal quotes them.
 DOCUMENTED = {"bf16": (1098.2, 379.4), "fp32": (1121.2, 370.2)}
