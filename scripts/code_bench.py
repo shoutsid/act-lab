@@ -291,6 +291,11 @@ def score_ours(checkpoint: Path, scale: str, text: str, device: torch.device) ->
     model.load_state_dict(payload["model"])
     model.eval()
     total, active = estimated_parameter_count(config)
+    # The class, in the same shape ``score_hf`` records its architectures: the table's
+    # architecture column is what makes this leg's comparison readable at a glance, and
+    # without it both student rows printed as the bare word "ours". Taken before the model
+    # is dropped below, which is where the first attempt at this line raised.
+    architecture = [type(model).__name__]
     tokenizer = trainer.shared_tokenizer()
     ids = np.asarray(tokenizer.encode(text).ids, dtype=np.int32)
     _log(
@@ -303,6 +308,7 @@ def score_ours(checkpoint: Path, scale: str, text: str, device: torch.device) ->
     return {
         "model": f"ours:{scale}",
         "kind": "ours",
+        "architecture": architecture,
         "checkpoint": display_path(checkpoint),
         "step": payload.get("step"),
         "tokenizer": trainer.tokenizer_id(),

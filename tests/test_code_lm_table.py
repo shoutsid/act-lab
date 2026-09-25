@@ -430,6 +430,26 @@ def test_a_pass_at_1_with_no_recorded_decoding_is_refused(tmp_path: Path) -> Non
         code_lm_table.build_table(resolved, "match")
 
 
+def test_the_architecture_column_does_not_split_a_name_into_characters() -> None:
+    """It did, and only running the table on a hand-shaped row showed it.
+
+    ``score_hf`` records ``config.architectures``, a list, and the column joined whatever
+    it found. The first run of the table over four fabricated rows for this campaign's
+    checkpoint printed the two student rows as ``V, 0, M, o, E, C, a, u, s, a, l, L, M``.
+    """
+    report = bench_report(1.0)
+    report["bytes"]["architecture"] = "V0MoECausalLM"
+    row = code_lm_table.format_row("ours-distill", "ours-match-distill", report)
+    assert "| V0MoECausalLM |" in row
+    assert "V, 0" not in row
+
+    # A row that says nothing about its architecture falls back to its kind, rather than to
+    # the empty string, which is what a reader would take for a missing column.
+    report["bytes"].pop("architecture")
+    assert "| hf |" in code_lm_table.format_row("ours-distill", "t", report)
+    assert code_lm_table.architecture_names(report["bytes"]) == []
+
+
 def test_a_table_with_no_humaneval_rows_says_nothing_about_decoding(tmp_path: Path) -> None:
     """The bytes suite alone has no decoding to compare, and the column is not invented."""
     directory = complete(tmp_path, **{"baseline": bench_report(1.2, parameters=164_100_000)})

@@ -307,6 +307,46 @@ def test_the_students_window_is_recomputed_because_a_cache_cannot_reproduce_it()
     assert "cache=" not in ours, "a cache here would be a different model, not a faster one"
 
 
+def test_a_student_row_records_the_architecture_it_is(tmp_path, monkeypatch):
+    """The architecture column is this leg's comparison at a glance, and it was empty.
+
+    ``score_hf`` records ``config.architectures``; ``score_ours`` recorded nothing here, so
+    both student rows would have printed the bare word "ours" beside ``LlamaForCausalLM``
+    and ``GPTBigCodeForCausalLM`` - the sparse, learned-topology model indistinguishable in
+    the one column that names it. Recorded in the same list shape the ``hf:`` rows use.
+    """
+    import train_code_lm
+
+    config = train_code_lm.V0MoEConfig(
+        vocab_size=32,
+        context_size=32,
+        hidden_size=16,
+        depth=2,
+        attention_heads=2,
+        experts_per_layer=(2, 2),
+        active_experts=2,
+        expert_width=16,
+    )
+    checkpoint = tmp_path / "toy.pt"
+    torch.save({"model": train_code_lm.V0MoECausalLM(config).state_dict(), "step": 7}, checkpoint)
+
+    class Encoded:
+        ids = list(range(20))
+
+    class TinyTokenizer:
+        def encode(self, text):
+            return Encoded()
+
+    monkeypatch.setattr(train_code_lm, "student_config", lambda scale: config)
+    monkeypatch.setattr(train_code_lm, "shared_tokenizer", TinyTokenizer)
+    monkeypatch.setattr(train_code_lm, "tokenizer_id", lambda: "toy@0")
+
+    report = code_bench.score_ours(checkpoint, "toy", "def f():\n    return 1\n" * 3, torch.device("cpu"))
+    assert report["architecture"] == ["V0MoECausalLM"]
+    assert report["kind"] == "ours"
+    assert report["windows"] == 1
+
+
 def test_the_sampler_always_returns_a_usable_token_index():
     """The generators feed the result straight back in as an id."""
     generator = torch.Generator().manual_seed(0)

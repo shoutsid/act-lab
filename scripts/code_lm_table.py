@@ -349,13 +349,28 @@ def format_paired(paired: dict) -> str:
     )
 
 
+def architecture_names(block: dict) -> list[str]:
+    """The architecture column, which is a list of names and must not be joined blindly.
+
+    ``score_hf`` records ``config.architectures``, a list. A report written by hand - or by
+    an earlier ``score_ours``, which recorded nothing here - put a bare string in the field,
+    and joining that prints the name one character at a time. It was caught by running the
+    table over four fabricated rows before the campaign produced its own: the two student
+    rows read ``V, 0, M, o, E, C, a, u, s, a, l, L, M``.
+    """
+    architecture = block.get("architecture")
+    if not architecture:
+        return []
+    return [architecture] if isinstance(architecture, str) else list(architecture)
+
+
 def format_row(role: str, tag: str, report: dict) -> str:
     block = report["bytes"]
     total = block.get("parameters")
     active = block.get("active_parameters")
     total_text = f"{total / 1e6:.1f}M" if total else "-"
     active_text = f"{active / 1e6:.1f}M" if active else ("dense" if total else "-")
-    architecture = ", ".join(block.get("architecture") or []) or block.get("kind", "-")
+    architecture = ", ".join(architecture_names(block)) or block.get("kind", "-")
     # Four decimals is the precision the measurement supports; the third and fourth can
     # move with the accelerator's matmul kernels, so the comparison is read at two.
     bpb = f"{block['bits_per_byte']:.4f}"
@@ -384,7 +399,7 @@ def build_table(resolved: dict[str, tuple[str, dict]], scale: str) -> dict:
                 "bits_per_byte": block["bits_per_byte"],
                 "parameters": block.get("parameters"),
                 "active_parameters": block.get("active_parameters"),
-                "architecture": block.get("architecture"),
+                "architecture": architecture_names(block),
                 "pass_at_1": (report.get("humaneval") or {}).get("pass_at_1"),
                 # The name when the report has one: two accelerators are both "cuda".
                 "device": report.get("device_name") or report.get("device"),

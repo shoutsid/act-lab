@@ -3982,6 +3982,32 @@ Two things this leaves stated rather than implied: the student's generator keeps
 the cost of the students' HumanEval is unchanged by any of the above - the bytes half of
 the benchmark is 2,518 parallel window forwards, minutes, and was never the bottleneck.
 
+### The final table command was run before the rows it is waiting for existed
+
+Four rows were fabricated in `/tmp` out of the two real Kaggle byte rows - the teacher's
+own per-window losses rescaled by 0.98 and 1.00, relabelled with the student's
+`tokenizer_id()` so the pairing the table will actually do is the pairing that was tested -
+and the runbook's table command was run against them. It works end to end in **~6 s**, of
+which the 200,000-draw sign-flip over 2,518 windows is 5: the exact command in item 2 below
+has been executed, not just written down.
+
+It found a defect in the output that reading the code did not: the architecture column was
+`", ".join(block["architecture"] or [])`, so a report carrying a bare string printed the
+model's name one character at a time - the fabricated student rows came out as
+`V, 0, M, o, E, C, a, u, s, a, l, L, M`. Two things were wrong behind that. `score_ours`
+recorded no architecture at all (the `hf:` rows record `config.architectures`), so the two
+rows this leg is about would have read as the bare word "ours" in the one column that names
+their architecture; it now records `[type(model).__name__]`. And the column now normalises
+the field instead of joining whatever it finds, because the next writer to put a string
+there would have produced the same garbage silently. Both are pinned by test.
+
+The same run confirms the two states the runbook leans on. A partial directory refuses:
+`no report for role 'teacher' (the 1.3B model being condensed - the target) ... a table
+missing one reads as a result rather than as an unfinished run`. And the item-2 snippet,
+pointed at those same two student rows alone, prints the paired line with no teacher or
+baseline present at all - which is the whole reason the benchmark row is now written per
+suite.
+
 ### When the campaign finishes
 
 Measured start, for the next session's estimate: the teacher-labels stage began around
