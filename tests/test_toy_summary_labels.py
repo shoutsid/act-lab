@@ -227,6 +227,16 @@ def test_the_committed_summary_regenerates(profile: str) -> None:
         # divisor and label tests call and which fails once the block is
         # covered rather than skipping.
         pytest.skip(f"{profile} has no committed summary yet")
+    if not _shards_cover_the_block(profile):
+        # The record is committed and stays pinned by the label, level and bar
+        # tests above, which read only the summary; recomputing it needs the
+        # run's raw rows, which are local scratch. Stated as a skip rather than
+        # left to the study's ``SystemExit``, which read as a failure of the
+        # code under test wherever the shards were absent.
+        pytest.skip(
+            f"{profile}: the shard payloads that regenerate this record are not "
+            "in this checkout (local scratch)"
+        )
     fresh = study.summarize(profile, study.ALPHA)
     committed = json.loads(path.read_text())
     if name not in PSTDEV_VINTAGE:

@@ -146,7 +146,19 @@ def test_the_verdict_still_reports_this_branch(
 
     The strongest form of the pin: not the summary's stored numbers but the
     verdict function itself, on the shards on disk.
+
+    The shards are the run's raw rows and `.gitignore` keeps them as local
+    scratch, so this is the one test in the file that cannot run in a fresh
+    checkout; it is skipped there by name rather than allowed to surface the
+    study's ``SystemExit`` as a failure of the verdict. Every number the report
+    quotes stays pinned by the summary reads above.
     """
+    shards = study.SHARD_DIR / study.LONG_W24_PROFILE
+    if not list(shards.glob("shard*.json")):
+        pytest.skip(
+            f"{study.LONG_W24_PROFILE}: the shard payloads the verdict reads are "
+            "not in this checkout (local scratch)"
+        )
     assert study.long_w24_verdict(20, study.ALPHA) == 0
     out = capsys.readouterr().out
     assert "-> collapse confined to width 96: True" in out

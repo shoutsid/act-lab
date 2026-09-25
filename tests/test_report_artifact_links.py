@@ -22,6 +22,7 @@ loudly instead of silently, because it is invisible from inside a dirty tree.
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 import subprocess
@@ -149,16 +150,54 @@ def test_every_committed_summary_is_referenced() -> None:
 
 # --- artifacts a test reads must survive a fresh clone ------------------------
 
-#: ``artifacts/...`` path literals as a test file spells them - both the
-#: ``Path("artifacts/x.json")`` and ``ROOT / "artifacts/x.json"`` styles, since
-#: the literal is the same either way. A regex fragment inside a test's own
-#: source (``"artifacts/[A-Za-z...]+"``) matches too, and is discarded below by
-#: the resolve-to-a-file filter rather than by a special case.
+#: ``artifacts/...`` path literals as a test spells them, in either the
+#: ``Path("artifacts/x.json")`` or the ``ROOT / "artifacts/x.json"`` style.
 ARTIFACT_LITERAL = re.compile(r"artifacts/[A-Za-z0-9_./-]+")
+
+#: A call that says an artifact may be *absent* rather than reading it.
+SKIP_CALLS = frozenset({"skip", "skipif", "fail", "xfail"})
+
+
+def _called_name(func: ast.expr) -> str:
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    if isinstance(func, ast.Name):
+        return func.id
+    return ""
 
 
 def _artifact_literals_in(source: str) -> set[str]:
-    return set(ARTIFACT_LITERAL.findall(source))
+    """``artifacts/...`` paths the module uses, minus the ones it names to skip on.
+
+    Parsed rather than matched, because a test legitimately *names* a missing
+    artifact in two places that are not claims about it: a comment (which never
+    reaches the AST), and a ``pytest.skip``/``reason=`` message, which is a
+    string constant like any other. Excluding those is the difference between a
+    check aimed at reads and one that fires on the first test that explains why
+    it is skipping - which is the version this started as, and it failed on its
+    own author's skip reason immediately.
+    """
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:  # unparsable is not this check's business
+        return set()
+    named_to_skip: set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        keywords = {keyword.arg for keyword in node.keywords}
+        if _called_name(node.func) in SKIP_CALLS or "reason" in keywords:
+            named_to_skip |= {
+                id(inner) for inner in ast.walk(node)
+            }
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
+            continue
+        if id(node) in named_to_skip or "artifacts/" not in node.value:
+            continue
+        found |= set(ARTIFACT_LITERAL.findall(node.value))
+    return found
 
 
 def test_every_artifact_a_test_reads_is_not_gitignored() -> None:

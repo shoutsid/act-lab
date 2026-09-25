@@ -35,6 +35,18 @@ import capacity_sweep  # noqa: E402
 # is readable rather than needing two runs to compare.
 _MODE_LOSS = {"null": 1.0, "random": 2.0, "adaptive": 3.0}
 
+# `make_config` names `artifacts/real-lm/tokens.npy`, and ``V0SessionConfig``
+# refuses a data path that is not on disk - so every test that drives `main` or
+# builds a config needs the token stream, which is 1.9 GB of corpus the
+# blanket `artifacts/*` rule keeps as local scratch. In a fresh checkout those
+# tests used to die inside the config with "data stream not found" and read as
+# failures of the code under test. They are skipped there, and run wherever the
+# stream is - which is the only place the sweep itself can run.
+requires_real_corpus = pytest.mark.skipif(
+    not Path(capacity_sweep.DATA_PATH).is_file(),
+    reason="artifacts/real-lm/tokens.npy not present (local scratch)",
+)
+
 
 @dataclass
 class _Arm:
@@ -123,6 +135,7 @@ def test_an_empty_selection_is_refused_rather_than_run_as_nothing(tmp_path, monk
     assert "no seed given" in str(exit_info.value)
 
 
+@requires_real_corpus
 def test_the_reset_covers_the_directory_the_runs_actually_write(tmp_path, monkeypatch):
     """The defect: reset named ``<scale>-seed-<seed>``, runs wrote ``...-<arm>``.
 
@@ -153,6 +166,7 @@ def test_the_reset_covers_the_directory_the_runs_actually_write(tmp_path, monkey
     ]
 
 
+@requires_real_corpus
 def test_each_sweep_arm_records_the_arm_it_configures(tmp_path, monkeypatch):
     """The defect: ``adaptive`` and ``anti`` recorded the random arm.
 
@@ -183,6 +197,7 @@ def test_each_sweep_arm_records_the_arm_it_configures(tmp_path, monkeypatch):
     }
 
 
+@requires_real_corpus
 def test_each_run_asks_the_session_for_only_the_arm_it_reports() -> None:
     """The paired session trained an arm the sweep then discarded.
 
@@ -218,6 +233,7 @@ def test_the_arm_mode_map_covers_every_configured_arm() -> None:
     assert set(capacity_sweep.ARM_MODE) == set(capacity_sweep.ARM_CONFIGS)
 
 
+@requires_real_corpus
 def test_an_arm_the_session_did_not_return_is_an_error(tmp_path, monkeypatch, capsys):
     """A missing mode must fail loudly, not fall back to whatever arm is first.
 
@@ -244,6 +260,7 @@ def test_an_arm_the_session_did_not_return_is_an_error(tmp_path, monkeypatch, ca
     assert not (tmp_path / "threshold_sweep.json").exists()
 
 
+@requires_real_corpus
 def test_only_the_selected_runs_are_reset_and_reported(tmp_path, monkeypatch):
     """A selection must not reset, run, or report the axis it did not ask for."""
     reset: list[str] = []
