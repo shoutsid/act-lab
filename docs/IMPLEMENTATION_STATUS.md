@@ -4034,6 +4034,25 @@ only place a failure can now cost anything - and it can no longer cost the four 
 result is made of. Read `/tmp/code-campaign.log` for the truth; it is empty until the
 labelling stage hands over.
 
+**What this design can resolve, before the numbers arrive.** The paired interval is what the
+leg's claim will be read from, so it is worth knowing what size of gain it can see. From the
+two rows that already exist - per-window bits per byte, bytes per window taken as the mean
+because the reports do not break it down, which is second-order since most of a window's
+spread is the text's difficulty:
+
+| row | windows | mean | sd |
+|---|---|---|---|
+| teacher | 2,518 | 0.4686 | 0.1627 |
+| baseline | 2,162 | 0.5372 | 0.1954 |
+
+If the two arms' window losses were **independent** - the worst case, and a wrong model, since
+both arms share data, order, seed, architecture and step count - the paired 95% half-width at
+2,518 windows would be `1.96 * sqrt(2) * 0.1627 / sqrt(2518)` = **0.0090 bits/byte**. The
+gap this leg sits inside is 0.0690 (baseline to teacher), so a gain an eighth of that gap is
+resolved, and positive correlation between the arms only sharpens the interval further. The
+paired test is therefore not what limits this leg: the 15.36M labelled tokens are, and no
+number of windows changes that.
+
 If that HumanEval half turns out to be the bottleneck, the levers in order of honesty
 are: scoring fewer problems with `--limit` and saying so, or leaving the students' pass@1
 out and reporting bits/byte only. The KV cache that headed this list is **off it** - it was
