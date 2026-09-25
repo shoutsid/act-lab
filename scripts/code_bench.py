@@ -481,7 +481,10 @@ def make_ours_generator(
 
     def generate(prompt: str, seed: int) -> str:
         # Decoding one prompt at a time: the student has no KV cache, so each step
-        # recomputes the window, and batching would only trade that for padding.
+        # recomputes the window, and batching would only trade that for padding. A cache
+        # is the obvious optimisation and it cannot work here: rolling the window changes
+        # every cached token's activations, not just its rotation, so the measurement of
+        # that dead end lives in tests/test_code_bench.py rather than in an argument.
         ids = tokenizer.encode(prompt).ids
         tokens = torch.tensor([ids[-WINDOW:]], dtype=torch.long, device=device)
         generator = torch.Generator(device="cpu").manual_seed(seed)
@@ -500,6 +503,20 @@ def make_ours_generator(
         return tokenizer.decode(produced)
 
     return generate, tokenizer, model
+
+
+def save_report(out: Path, report: dict, complete: bool) -> Path:
+    """Write a report, saying whether the run that produced it finished.
+
+    ``complete`` exists because ``main`` writes the file once per *suite* rather than once
+    per run: a row that has been scanned for bits per byte and is then abandoned during its
+    HumanEval half is a real row with a real number in it, and it must not read as a
+    finished row that happens to be missing a pass@1.
+    """
+    report["complete"] = complete
+    report["suites_scored"] = sorted(name for name in ("bytes", "humaneval") if name in report)
+    out.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    return out
 
 
 def main() -> int:
@@ -530,6 +547,8 @@ def main() -> int:
         raise SystemExit(f"--model must be one of {', '.join(f'{p}:<value>' for p in MODEL_PREFIXES)}")
 
     RESULTS.mkdir(parents=True, exist_ok=True)
+    label = args.tag or args.model.replace("/", "_").replace(":", "-")
+    out = RESULTS / f"{label}.json"
     report: dict = {
         "model": args.model,
         "suite": sorted(requested),
@@ -547,6 +566,13 @@ def main() -> int:
         report["bytes"] = score_hf(target, text, device) if kind == "hf" else score_ours(Path(target), args.scale, text, device)
         report["bytes"]["bytes_limit"] = args.bytes_limit
         _log(f"bits/byte {report['bytes']['bits_per_byte']:.4f}")
+        # On disk before the long half starts. The students' HumanEval is hours of
+        # generation against a scan that takes minutes, so a failure there used to take the
+        # number this leg is about down with it - and, because the campaign script runs
+        # with ``set -e``, the other rows with it as well. It also means the paired
+        # contrast, which needs only the two student byte rows, is available minutes after
+        # the arms rather than hours after the last model.
+        save_report(out, report, complete=False)
 
     if "humaneval" in requested:
         problems = load_humaneval()
@@ -580,9 +606,7 @@ def main() -> int:
             report["humaneval"]["parameters"] = int(parameters)
         _log(f"pass@1 {report['humaneval']['pass_at_1']:.4f} on {len(problems)} problems")
 
-    label = args.tag or args.model.replace("/", "_").replace(":", "-")
-    out = RESULTS / f"{label}.json"
-    out.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    save_report(out, report, complete=True)
     _log(f"written {out}")
     return 0
 

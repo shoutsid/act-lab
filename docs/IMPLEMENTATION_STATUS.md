@@ -3938,6 +3938,50 @@ full 164-problem pass *while the campaign held the card* was a mistake: it compe
 the teacher-labelling stage, which is the critical path, and did not finish. Anything
 that touches the GPU waits its turn.
 
+### A KV cache cannot reproduce the student's HumanEval generation, so that lever is closed
+
+The checklist below listed a KV cache in the student's attention as the first lever on the
+1.5-4 h per arm the students' HumanEval costs. It was written in this session, measured,
+and removed again before it could reach the running campaign, and the reason is worth more
+than the code: **a cache cannot reproduce what that generator does, at any level of care.**
+
+What was built: an inference-only cache of pre-rotary keys and values threaded through
+`_SelfAttention` / `V0MoEBlock` / `V0MoECausalLM`, rolling with the window (`make_room`
+drops the oldest entries so positions can be re-numbered from zero), refusing `gdn`/`hybrid`
+layers whose recurrent state cannot be rolled back. It is exact where it looks like it
+should be exact: over a `context_size=8` toy, prefill-then-decode with no roll agrees with
+the uncached forward to **5.96e-08**, and after a roll the cached layer-0 *keys, values and
+query* all still agree to the uncached forward's to **5.6e-08 / 1.0e-07 / 3.0e-08**. That
+is the trap: every quantity that is easy to check matches.
+
+The generation that matters, however, is 139 steps of a 64-token window: there the cache
+reaches **1.03 max logit difference with 134 of 139 argmax flips** against the uncached
+forward. Localised, at the first roll, on a 2-layer attention-only model: the layer-0
+*output* of a token whose position changes between the two windows differs by **0.024**
+(it sits at position 1 in the prefill, where it can see the token before it, and at
+position 0 in the rolled window, where it cannot). So rolling the window does not only
+re-number and rotate the cached tokens - it re-runs each of them against a different key
+set, which changes their hidden states, which means the layer-1 keys stored during the
+prefill were never the layer-1 keys the uncached forward computes. No amount of storing
+or re-rotating fixes that; a cache is only available to a generator whose positions do
+not move, and this one's positions are re-numbered from the window start at every step.
+
+The alternative that *is* cacheable is monotonic positions (what the two `hf:` rows and
+the published harness do). That is a different generation protocol - and at
+`context_size=512` it extrapolates past every position the student was trained on, since
+training always fed windows numbered from zero - so adopting it would have to be recorded
+as a protocol change on one row's side of the table, mid-campaign, and would still not be
+the protocol the baseline's published figure was measured under. Not worth it for the row
+that exists as a scale reference. The lever list below is consequently `--limit` and
+bits/byte-only; `tests/test_code_bench.py` now carries this measurement as a test so the
+next session does not rebuild the cache.
+
+Two things this leaves stated rather than implied: the student's generator keeps the
+**prompt's tail** and generates into a window whose positions restart at the window start
+(the teacher and the baseline generate with monotonic positions and their own caches), and
+the cost of the students' HumanEval is unchanged by any of the above - the bytes half of
+the benchmark is 2,518 parallel window forwards, minutes, and was never the bottleneck.
+
 ### When the campaign finishes
 
 Measured start, for the next session's estimate: the teacher-labels stage began around
@@ -3948,17 +3992,26 @@ nobody had priced: **the students' HumanEval**. The student has no KV cache, so 
 generated token is a full 512-token forward, and at the published 512-token budget that
 is 512 forwards per problem over 164 problems, twice. Measured on the development card
 *while the campaign held it*: 89 s for four problems for the toy student (30.1M total /
-19.5M active), i.e. ~22 s per problem; the `match` student's 81.5M active parameters are
-about 4x that, so a contended estimate is **1.5-4 h per student arm**, less on a free
-card once the arms are done. The `hf:` rows are cheap by comparison (their generate path
-keeps a KV cache, and the byte scans total under an hour). Plan on the campaign ending
-between **06:00 and 09:00**, and read `/tmp/code-campaign.log` for the truth - it is empty
-until the labelling stage hands over.
+19.5M active), i.e. ~22 s per problem. Scaling that to `match` by the *active* parameter ratio (4.2x) is
+the optimistic end of the range; the work a forward actually does scales with depth times
+width squared, which is **~8x** from `toy` to `match`, so **3-8 h per student arm** is the
+honest estimate and the low end should be read as luck. The `hf:` rows are cheap by
+comparison (their generate path keeps a KV cache, and the byte scans total under an hour).
+Plan on the *table* being complete somewhere between **06:00 and 18:00** rather than by
+09:00, and read `/tmp/code-campaign.log` for the truth - it is empty until the labelling
+stage hands over.
+
+One thing now makes that wait shorter than it looks: each row is written to
+`artifacts/code-lm/bench/` **when its byte scan finishes**, not at the end of its HumanEval
+half (see the entry above). The two student byte rows land minutes after the arms exit, and
+the paired contrast needs only those two - so the leg's headline number is readable hours
+before the teacher and baseline rows exist locally.
 
 If that HumanEval half turns out to be the bottleneck, the levers in order of honesty
-are: a KV cache in the student's attention (a real change to `src/act/model`, worth its
-own verification), scoring fewer problems with `--limit` and saying so, or leaving the
-students' pass@1 out and reporting bits/byte only. **Not** reducing `--max-new-tokens`:
+are: scoring fewer problems with `--limit` and saying so, or leaving the students' pass@1
+out and reporting bits/byte only. The KV cache that headed this list is **off it** - it was
+built, measured and removed in this session, see the entry above - so `--limit` is now the
+first lever and it costs evidence rather than correctness. **Not** reducing `--max-new-tokens`:
 that is the protocol the baseline's published number was measured under, and the whole
 reason the baseline row is in the table.
 
@@ -3971,14 +4024,29 @@ The order that turns that into a record:
    the Kaggle files are two of those same two rows measured elsewhere (0.4686 and
    0.5372 below). Comparing them to the local rows is a check on the protocol, and the
    table's device column now names the card so a mix is visible rather than silent.
-2. `PYTHONPATH=src .venv/bin/python scripts/code_lm_table.py --json artifacts/code-lm/bench/table.json`
+2. **The paired contrast first, the table second.** The table needs all four roles and so
+   cannot be run until the last row exists; the paired contrast needs only the two student
+   rows, which stage 3 writes minutes after each byte scan. Read it as soon as they are
+   both on disk - the interval is the result and the p-value is a lower bound, since
+   windows cut from one file are not independent:
+   ```bash
+   PYTHONPATH=src .venv/bin/python - <<'PY'
+   import sys; sys.path.insert(0, "scripts")
+   import code_lm_table as table
+   reports = table.load_reports(table.BENCH)
+   tags = {role: "ours-match-" + role.split("-")[1] for role in ("ours-distill", "ours-ce")}
+   arms = {role: (tags[role], reports[tags[role]]) for role in tags}
+   print(table.format_paired(table.paired_contrast(arms)))
+   PY
+   ```
+3. `PYTHONPATH=src .venv/bin/python scripts/code_lm_table.py --json artifacts/code-lm/bench/table.json`
    - the headline table, and the paired contrast. It refuses to render without all four
    roles, so a partial campaign reports itself here rather than as a shorter table.
-3. Write the numbers into the README section and add the claims to
+4. Write the numbers into the README section and add the claims to
    `scripts/verify_record.py`, then run it and `scripts/check_record_freshness.py`.
    Claims last, because they are checked *against* the prose - a claim written before
    the sentence it guards is a check on a guess.
-4. HumanEval pass@1 for the baseline is the one number with an outside reference
+5. HumanEval pass@1 for the baseline is the one number with an outside reference
    (7.84% published at 512 tokens, temperature 0.2, top_p 0.95, many samples; ours is
    the same settings with one sample, so about ±1.7 points of noise sits on it). The
    decoding now matches the published protocol, which it did not when this checklist

@@ -451,6 +451,13 @@ which is noise rather than bias - about ±1.7 points at that rate over 164 probl
 the published number is a reference for the scale, not a target. The table refuses rows
 decoded differently, the same way it refuses rows scored on different held-out text.
 
+The student cannot be windowed the way the two `hf:` rows are - at a 512-token context, a
+300-token prompt plus 512 generated tokens does not fit - so it keeps the prompt's tail and
+generates into a window whose positions restart at the window start. That choice also rules
+out a key/value cache: rolling the window re-numbers every token in it and changes the
+cached tokens' *activations*, not just their rotation, so a cache is a different model
+rather than a faster one. The measurement is in `tests/test_code_bench.py`.
+
 ```bash
 PYTHONPATH=src python scripts/train_code_lm.py --fetch-teacher   # once; 2.7 GB
 bash scripts/run_code_lm_campaign.sh                            # score, both arms, benchmarks

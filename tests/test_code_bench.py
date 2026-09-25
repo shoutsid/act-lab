@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import gzip
 import inspect
+import json
 import math
 import sys
 import warnings
@@ -281,6 +282,31 @@ def test_both_generators_generate_without_tracking_gradients():
     assert "with torch.no_grad():" in hf, "model.generate is also inference"
 
 
+def test_the_students_window_is_recomputed_because_a_cache_cannot_reproduce_it():
+    """A measured dead end, pinned so that a later session does not rebuild it.
+
+    The obvious optimisation for this loop is a key/value cache, and one was built: it
+    holds pre-rotary keys and values, rolls with the window, and refuses ``gdn`` layers.
+    It is exact where it is easy to check - no roll yet, prefill-then-decode, 5.96e-08
+    against the uncached forward, and after a roll the cached layer-0 keys, values and
+    query still agree to 5.6e-08 / 1.0e-07 / 3.0e-08.
+
+    It is wrong where it counts. Over 139 steps of a 64-token window it reaches 1.03
+    logits of difference with **134 of 139 argmax flips**, because rolling the window does
+    not only re-number and rotate the cached tokens: it re-runs each of them against a
+    different key set. Measured at the first roll on a 2-layer model, the layer-0 output
+    of a token that moves from position 1 to position 0 changes by 0.024 - and that makes
+    the layer-1 keys stored during the prefill stale, which nothing in the cache can undo.
+    Only a generator whose positions do not move can be cached, and the published-protocol
+    alternative (monotonic positions, what the two ``hf:`` rows do) extrapolates past every
+    position the student was trained on at ``context_size=512``.
+    """
+    source = Path(code_bench.__file__).read_text()
+    ours = source.split("def make_ours_generator", 1)[1].split("def main", 1)[0]
+    assert "tokens[:, -WINDOW:]" in ours, "the window is what the model is asked about"
+    assert "cache=" not in ours, "a cache here would be a different model, not a faster one"
+
+
 def test_the_sampler_always_returns_a_usable_token_index():
     """The generators feed the result straight back in as an id."""
     generator = torch.Generator().manual_seed(0)
@@ -355,6 +381,74 @@ def test_pass_at_1_averages_over_problems_rather_than_over_samples():
     assert result["passed"] == 1
     assert result["pass_at_1"] == pytest.approx(0.5)
     assert [record["passed"] for record in result["records"]] == [False, True]
+
+
+# --- what is on disk while the long half runs -----------------------------------------
+
+
+BENCHMARK_ARGV = ["code_bench.py", "--model", "hf:bigcode/tiny_starcoder_py", "--tag", "baseline"]
+BYTES_BLOCK = {"bits_per_byte": 4.5, "nats": 1.0, "windows": 1, "window_nlls": [1.0]}
+
+
+def _stubbed_run(monkeypatch, tmp_path, scoring):
+    """The pieces ``main`` needs, with the corpus and the model replaced by one problem."""
+    monkeypatch.setattr(code_bench, "RESULTS", tmp_path)
+    monkeypatch.setattr(code_bench, "held_out_text", lambda limit: "def add(a, b):\n")
+    monkeypatch.setattr(code_bench, "score_hf", lambda target, text, device: dict(BYTES_BLOCK))
+    monkeypatch.setattr(code_bench, "load_humaneval", lambda: [PROBLEM])
+    monkeypatch.setattr(
+        code_bench,
+        "make_hf_generator",
+        lambda *args, **kwargs: (lambda prompt, seed: "", None, torch.nn.Linear(2, 3)),
+    )
+    monkeypatch.setattr(code_bench, "score_humaneval", scoring)
+    monkeypatch.setattr(sys, "argv", list(BENCHMARK_ARGV))
+    return tmp_path / "baseline.json"
+
+
+def test_the_bits_per_byte_number_survives_a_human_eval_that_dies(tmp_path, monkeypatch):
+    """The report is written per suite, not once at the end.
+
+    The students' HumanEval is the longest thing this campaign runs - hours of generation
+    after a bytes scan that takes minutes - and the end was the only moment anything was
+    written. A failure in the second half therefore took the number this leg is about with
+    it, and the campaign script's ``set -e`` would have taken the other three rows too.
+    """
+    seen = {}
+
+    def dying(generate, problems, timeout, samples, seed):
+        seen.update(json.loads(out.read_text()))
+        raise RuntimeError("the accelerator went away")
+
+    out = _stubbed_run(monkeypatch, tmp_path, dying)
+    with pytest.raises(RuntimeError, match="accelerator"):
+        code_bench.main()
+
+    assert seen["bytes"]["bits_per_byte"] == 4.5, "the scan's result was not on disk yet"
+    assert seen["complete"] is False, "a row that is still running must not read as finished"
+    assert seen["suites_scored"] == ["bytes"]
+    # And it is intact afterwards, rather than half-written by the failure.
+    final = json.loads(out.read_text())
+    assert final["bytes"]["bits_per_byte"] == 4.5
+    assert "humaneval" not in final
+
+
+def test_a_finished_report_says_so_and_names_the_suites_it_scored(tmp_path, monkeypatch):
+    """The other half of the marker: a finished run must not read as abandoned.
+
+    A reader deciding whether a pass@1 is missing because the row is still running or
+    because the run was scored with ``--suite bytes`` has these two fields to go on.
+    """
+
+    def scoring(generate, problems, timeout, samples, seed):
+        return {"problems": len(problems), "passed": 1, "pass_at_1": 1.0, "records": []}
+
+    out = _stubbed_run(monkeypatch, tmp_path, scoring)
+    assert code_bench.main() == 0
+    final = json.loads(out.read_text())
+    assert final["complete"] is True
+    assert final["suites_scored"] == ["bytes", "humaneval"]
+    assert final["humaneval"]["pass_at_1"] == 1.0
 
 
 @pytest.mark.skipif(not HUMANEVAL_PRESENT, reason="HumanEval not downloaded (it is fetched, not committed)")
