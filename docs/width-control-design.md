@@ -159,3 +159,56 @@ reader can compare against an outside model (which is what the code-LM leg is fo
    wider arms.
 4. **Then a decision, deliberately, with the quota in hand** — which is what the report says
    should happen with a width operation rather than adding it to a running queue.
+
+## 8. The first arm's shape, measured at a matched budget
+
+The recipe this note argues for has to be run *as a shape*, and the shape is not free: at a
+matched **total** parameter budget a wide-shallow student executes **more** active arithmetic
+than the deep one, because the residual stream and attention are entirely active while the
+experts that a depth cut removes are mostly inactive. So an arm has to say which budget it
+holds. Measured with `estimated_parameter_count` on the real model, vocabulary 32,256 (the
+student's) and context 512:
+
+| config | total | vs `match` | active | vs `match` | active/total |
+|---|---|---|---|---|---|
+| `match` h768 d12 H12 E8 A2 W768 | 166,423,296 | 1.000x | 81,488,640 | 1.000x | 0.490 |
+| wide h1024 d6 H16 E8 A2 W1100 | 166,392,832 | **1.000x** | 85,292,032 | 1.047x | 0.513 |
+| wide h1024 d6 H16 E8 A2 W1024 | 158,921,728 | 0.955x | 83,424,256 | 1.024x | 0.525 |
+| wide h896 d6 H14 E7 A2 W1568 | 166,232,192 | 0.999x | 81,936,512 | **1.005x** | 0.493 |
+| wide h1024 d5 H16 E8 A2 W1376 | 166,775,808 | 1.002x | 82,234,368 | 1.009x | 0.493 |
+| deep h896 d8 H14 E8 A2 W896 | 157,424,512 | 0.946x | 80,354,176 | 0.986x | 0.510 |
+
+That table's shape is not a needle in a haystack, and the search behind it is over the
+model's **own** legal grid rather than a convenient one: hidden multiple of 128 from 896 to
+1280 with `heads = hidden/64`, depth 4 to 13, expert count 2 to 16 with `active_experts = 2`
+(the class floor, which rejects 1), and expert width 256 to 2048 step 32. On that grid, **46**
+shapes hold both budgets within +/-2% (241 within +/-5%), so the choice below is a choice
+rather than the only option. The arm this note
+recommends is the second row, because it is the one that holds the routing regime
+(`E8 A2 W=h`) and the head geometry fixed while halving depth and raising width by a third —
+the two genes the crossed factorial actually priced. It buys that by spending 4.7% more
+active FLOPs per token than `match` at the same total parameters, which is a confound **in the
+wide arm's favour** and therefore has to be declared in the pre-registration rather than
+quietly absorbed. Rows four and five are the fallbacks if it is the *active*
+budget that has to be held: row four is the tightest joint fit the grid contains (`0.999x`
+total against `1.005x` active) and pays for it with the expert count as well, while row five
+keeps `E8` and moves the expert width instead. Either way the arm prices a joint change rather
+than the width gene alone, which is the trade to state rather than hide.
+
+Both recommended shapes satisfy the project's own kernel-alignment rule for a declared config
+(`hidden_size % 128 == 0`, `head_dim = 64`, `context_size % 128 == 0`), and neither is
+constructible any other way: at `head_dim = 64` every +128 of width is +2 heads (768/12 ->
+1024/16), which is the joint constraint section 3 records.
+
+The entry to add when the tree is safe to edit:
+
+```python
+"wide": dict(hidden_size=1024, depth=6, attention_heads=16, expert_count=8, active_experts=2, expert_width=1100),
+```
+
+It is two arms, not one: `ours-wide-distill` against `ours-match-distill`, and `ours-wide-ce`
+against `ours-match-ce`, so the width effect is read within each objective and the objective
+effect is read within each shape. The declared headline is `wide - match` at matched total
+parameters, reported with the 4.7% active-FLOP gap beside it, and the paired per-window test
+in `scripts/code_lm_table.py` is the estimator — the arms differ in exactly one declared
+thing, so its refusals do not fire.

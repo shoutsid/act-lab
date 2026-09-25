@@ -4333,3 +4333,86 @@ moment for an unrelated failure and the reason it was not seen in any earlier ru
 the side that is wrong - the test now names a path that is not a file, and asserts it is not, so the
 subject (relative-versus-absolute formatting) is unchanged and the check keeps its teeth for tests
 that really read something. 1827 tests pass.
+
+## The step loop is at half the card's peak, and the docstring that chose the expert form is 11x off (2026-09-25)
+
+**The question this answers.** The operator asked why a leg of this project takes the hours it
+takes, whether training speed is where the effort should be, and how to shorten the gap between a
+run and a result. That is a fair question about a leg that spends ~4.2 h labelling and ~4.7 h per
+arm, and the repository could not answer it, because its own stated speeds disagree by up to 75x.
+So it was answered by derivation from the estimators the project already has, and the answer
+reorders the levers.
+
+**The loop is not the problem.** GTX 1070 fp32 peak is `1920 x 2 x 1.683e9` = 6.46 TFLOP/s.
+Against it, the project's live rates convert like this:
+
+| run | config | tokens/s | executed FLOPs/token | implied | of peak |
+|---|---|---|---|---|---|
+| throughput benchmark, fp32 batch 8 | `DEV_V0_CONFIG` | 8,747 | 101.4 MFLOP | 0.89 TFLOP/s | 13.7% |
+| dev cycle end to end, 2026-09-19 | `DEV_V0_CONFIG` | 24,299 | 101.4 MFLOP | 2.46 TFLOP/s | 38% |
+| code-LM arm 1, today 20:10 | `match` (h768 d12) | 2,731 | 1,055.2 MFLOP | 2.88 TFLOP/s | 45% |
+
+The dev shape is launch-bound at 14.9M parameters; the code-LM shape converts to **45% of peak**.
+A perfect rewrite of an eager fp32 loop already at 45% buys well under 2x, so kernel-level and
+schedule-level tuning is the *smaller* half of the available speedup.
+
+**The larger half is arithmetic the routing contract does not require.** `_MoEFeedForward.forward`
+is the dense form: every expert applied to every token, then top-k selected. `estimate_flops_per_token`
+and `estimate_dense_runtime_flops_per_token` separate what the contract books from what the kernels
+do, and the ratio is **1.934x at `match`** (545.6 vs 1,055.2 MFLOP/token) and 1.774x at the dev
+shape - the same property at both, since `active/total` is ~0.49 either way. The module already
+contains the sparse formulation (`eager_forward`) and it is **pinned equivalent by test**, so the
+correctness harness for switching forms exists.
+
+**And the measurement the dense form was chosen on cannot have been taken as described.** The
+docstring reports 51.8 ms/step eager vs 42.5 ms/step dense for `DEV_V0_CONFIG` at batch 8 x context
+512, on this card. At that config a training step is `101.4 MFLOP x 4096` = 415 GFLOP by
+construction, so the quoted pair converts to 9.77 and 8.02 TFLOP/s - **151% and 124% of the card's
+physical peak** - and the benchmark's own timing of the same shape is **0.468 s/step**, which makes
+the quoted 0.0425 s/step **11.0x faster than the same geometry was measured at**. This is a stronger
+statement than `PERFORMANCE_NOTES.md` makes when it flags the docstring rates as mutually
+inconsistent: the margin the decision rests on is unsupported in the direction that *under*-provisions
+a budget. It also explains why the crossover should be re-measured rather than extrapolated in
+either direction: `eager_forward`'s masking overhead scales with tokens x layers while the arithmetic
+it saves scales with tokens x parameters, so from the dev shape to `match` (11.1x the parameters,
+2x the layers) the overhead's share falls roughly 5x - the dev shape's +18% for dense is not evidence
+about the code-LM shape.
+
+**The second lever is much larger and it is on the benchmark path.** `train_code_lm.generate` and
+`code_bench.sample_token` both sample one token per **full forward over the whole prefix** - no KV
+cache, no `past_key_values`. A 512-token completion from a ~185-token prompt therefore forwards
+**208,516** token-forwards where a prefill plus cached steps needs **697** (`299x`), and its attention
+term is 706x larger. That is the difference between a benchmark that fits in an evening and one that
+does not, at 22 s/problem measured for a *toy* student and 1.5-4 h estimated per `match` arm. It is
+inference-only and cannot change what an arm learns - so it is safe for checkpoint comparability -
+but it is still a change to `src/act/model/`, which every arm imports.
+
+**What no speedup fixes, and the reason the note says so explicitly.** The leg trains 46,080,000
+tokens on a 166.4M-parameter student: **0.28 tokens per parameter**. The comparator whose published
+7.84% HumanEval this leg is measured against saw 100B tokens on a 164.1M model, ~609 tokens per
+parameter - **2,170x** the tokens. A 1.93x step speedup moves 0.28 to 0.54 on a road three orders of
+magnitude long. Speed matters because it buys tokens at all and because it decides whether the
+benchmark can run per arm; it is not where the model is being lost.
+
+**Written down, and checked.** New `docs/training-throughput.md` (indexed in the README, carrying a
+"measurement note, not a record" declaration, because its rates are dated observations rather than
+stored rows) with the two levers, the rejected ones (a smaller `--max-new-tokens` would change the
+protocol that `code_lm_table` already refuses to break; a second GPU needs a distributed harness; fp16
+autocast is a T4 lever, measured 2.3x *slower* here), and the token-budget arithmetic.
+`tests/test_training_throughput.py` (7 tests) recomputes every figure from
+`estimated_parameter_count` and the two estimators and refuses an edit that drops one, including the
+151%-of-peak and 11.0x reproductions. Section 8 of `docs/width-control-design.md` gained the recipe
+arm's shape at a matched budget with `tests/test_width_control_design.py` (5 tests) pinning it - and
+writing those tests corrected the design note: an exploratory grid had allowed `active_experts=1`,
+which `V0MoEConfig.__post_init__` rejects, so the count of shapes holding both budgets within 2% is
+**46** on the legal grid, not 32, and the tightest joint fit (`h896 d6 H14 E7 A2 W1568`, `0.999x`
+total against `1.005x` active) is better than the row the note first proposed.
+
+**The tree stays frozen.** Nothing in `src/act/model/` or `scripts/train_code_lm.py` was edited: the
+campaign's second arm starts after the first finishes, both import those files at start, and no arm
+report attests which code trained it. The docstring correction is therefore part of the
+re-measurement rather than a separate edit - it is replaced by the numbers that supersede it, at the
+shape they were taken on.
+
+Measured state: targets stage complete (30,000 windows, 15,271 s, 1,006 teacher tokens/s); arm 1
+(`ours-match-distill`) at step 750/11,250, loss 3.5701, 2,731 tokens/s. 1839 tests pass.
