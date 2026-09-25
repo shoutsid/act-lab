@@ -16,6 +16,7 @@ wrong in a way that still produces a plausible number:
 from __future__ import annotations
 
 import gzip
+import inspect
 import math
 import sys
 from pathlib import Path
@@ -212,6 +213,52 @@ def test_model_logits_accepts_both_shapes_a_scorer_meets():
 
     assert code_bench.model_logits(ReturnsOutput(), torch.zeros(1, 2)) is tensor
     assert code_bench.model_logits(ReturnsTensor(), torch.zeros(1, 2)) is tensor
+
+
+def test_the_decoding_defaults_are_the_published_harness_protocol():
+    """512 tokens, temperature 0.2, top_p 0.95 - what the baseline's 7.84% was drawn under.
+
+    The number is pinned here rather than only in a docstring because the comparison it
+    protects is against an external published figure: a stricter protocol of our own
+    (256 tokens, no nucleus cut) reads as the model underperforming its own paper. And
+    the generators have to default to the same value the CLI does, or one row is drawn
+    under a protocol the report does not state.
+    """
+    assert (code_bench.DEFAULT_MAX_NEW_TOKENS, code_bench.DEFAULT_TEMPERATURE) == (512, 0.2)
+    assert code_bench.DEFAULT_TOP_P == 0.95
+    for factory in (code_bench.make_hf_generator, code_bench.make_ours_generator):
+        default = inspect.signature(factory).parameters["top_p"].default
+        assert default == code_bench.DEFAULT_TOP_P, f"{factory.__name__} would sample its own way"
+
+
+def test_greedy_decoding_is_the_argmax():
+    logits = torch.tensor([0.1, 2.0, 0.5])
+    generator = torch.Generator().manual_seed(0)
+    assert code_bench.sample_token(logits, 0.0, 0.95, generator) == 1
+    assert code_bench.sample_token(logits, -1.0, 0.95, generator) == 1, "0 disables sampling, not a cut"
+
+
+def test_a_token_outside_the_nucleus_is_never_drawn():
+    """The cut is a filter on the distribution, not a preference."""
+    logits = torch.tensor([1.0, 1.0, -20.0])
+    generator = torch.Generator().manual_seed(0)
+    drawn = {code_bench.sample_token(logits, 1.0, 0.95, generator) for _ in range(200)}
+    assert drawn == {0, 1}, "the 20-nat tail is outside a 0.95 nucleus and must not appear"
+
+
+def test_a_tight_cut_on_a_peaked_distribution_collapses_to_one_token():
+    logits = torch.tensor([8.0, 0.0, 0.0])
+    generator = torch.Generator().manual_seed(0)
+    assert {code_bench.sample_token(logits, 1.0, 0.5, generator) for _ in range(50)} == {0}
+
+
+def test_the_sampler_always_returns_a_usable_token_index():
+    """The generators feed the result straight back in as an id."""
+    generator = torch.Generator().manual_seed(0)
+    logits = torch.randn(4096)
+    for temperature in (0.0, 0.2, 1.0):
+        drawn = code_bench.sample_token(logits, temperature, 0.95, generator)
+        assert isinstance(drawn, int) and 0 <= drawn < 4096
 
 
 # --- the execution path -----------------------------------------------------

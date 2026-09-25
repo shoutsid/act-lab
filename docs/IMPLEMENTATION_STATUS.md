@@ -3892,6 +3892,37 @@ not contaminated in that way - it never sees the text - which means a student th
 *beat* the teacher would be the first sign of a mistake, not of success. That framing
 belongs in the README section when the table is written.
 
+### The HumanEval protocol was stricter than the published one, and that is a bug
+
+Both HumanEval generator paths (`hf:` and `ours:`) had never actually run against a
+real checkpoint, so they were exercised on CPU before the campaign reaches them: the
+toy student passed 0/4 problems in six seconds and the local baseline copy ran the
+`hf:` path clean, which is what those runs were for. They also turned up something
+worse than a crash. **This file asked for 256 generated tokens and sampled the full
+multinomial at temperature 0.2, while `bigcode/tiny_starcoder_py`'s published 7.84%
+pass@1 was measured by `bigcode-evaluation-harness` at `max_length_generation=512`,
+`temperature=0.2`, `top_p=0.95`.** Both differences push the number down: a 164M model
+often needs more than 256 tokens, and sampling a 32k tail at temperature 0.2 spends part
+of the budget on tokens the harness would never draw. The baseline row exists to be
+compared against 7.84%, so our protocol was measuring the protocol.
+
+Fixed by matching it: one `sample_token` helper used by both generators (so the student
+and the two `transformers` models are drawn from the same distribution of choices and
+the protocol is one protocol rather than one per model family), the three settings as
+named defaults, and - like `bytes_limit` - **the decoding is recorded in each report and
+the table refuses rows decoded differently**, including a row that does not say how it
+sampled. What cannot be matched is the estimator: the published figure is the harness's
+many-sample unbiased `pass@1` and this scores one sample per problem, ±1.7 points at
+that rate, so it is a scale reference rather than a target. Cost is real and accepted:
+the benchmark stage's HumanEval half roughly doubles, the teacher being the slow row.
+
+Two process notes worth carrying forward. This was found by running the paths rather
+than reasoning about them, which is now three real bugs in a row on the benchmark stage -
+all three would have surfaced after the campaign's nine hours of training. And running a
+full 164-problem pass *while the campaign held the card* was a mistake: it competed with
+the teacher-labelling stage, which is the critical path, and did not finish. Anything
+that touches the GPU waits its turn.
+
 ### When the campaign finishes
 
 Measured start, for the next session's estimate: the teacher-labels stage began around
@@ -3917,6 +3948,9 @@ The order that turns that into a record:
    Claims last, because they are checked *against* the prose - a claim written before
    the sentence it guards is a check on a guess.
 4. HumanEval pass@1 for the baseline is the one number with an outside reference
-   (7.84% published). If this harness lands far from it on the same 164 problems, the
-   harness is the suspect, not the model - and it is worth saying so in the section
-   rather than quoting the published figure beside our own as if they were comparable.
+   (7.84% published at 512 tokens, temperature 0.2, top_p 0.95, many samples; ours is
+   the same settings with one sample, so about ±1.7 points of noise sits on it). The
+   decoding now matches the published protocol, which it did not when this checklist
+   was first written - see the entry above - so a large gap from 7.84% is now a reason
+   to suspect the harness or the subprocess timeout rather than the token budget. The
+   check is cheap either way: `--suite humaneval --limit 20` on the baseline.

@@ -39,6 +39,7 @@ def bench_report(
     device: str = "cuda",
     device_name: str | None = None,
     pass_at_1: float | None = None,
+    max_new_tokens: int = 512,
     architecture: tuple[str, ...] = ("LlamaForCausalLM",),
     windows: int = 64,
     tokenizer: str | None = STUDENT_TOKENIZER,
@@ -87,6 +88,14 @@ def bench_report(
         report["bytes"]["active_parameters"] = active
     if pass_at_1 is not None:
         report["humaneval"] = {"problems": 10, "samples_per_problem": 1, "passed": 1, "pass_at_1": pass_at_1}
+        # The decoding a pass@1 was drawn under, as ``code_bench.py`` records it.
+        report["decoding"] = {
+            "max_new_tokens": max_new_tokens,
+            "temperature": 0.2,
+            "top_p": 0.95,
+            "samples_per_problem": 1,
+            "problems": 10,
+        }
     return report
 
 
@@ -387,6 +396,56 @@ def test_the_rows_print_in_comparison_order_with_roles_not_filenames(
     assert "4,000,000 bytes" in out
     # The decision the table exists to support is on the page, not left to the reader.
     assert "distillation gain bits per byte: +0.1500" in out
+
+
+def test_humaneval_rows_decoded_at_different_lengths_are_refused(tmp_path: Path) -> None:
+    """Two pass@1 numbers drawn under different budgets are two benchmarks.
+
+    The baseline row exists to be compared against a published 7.84% measured at 512
+    generated tokens; a row drawn at 256 is a stricter test of the same model, and the
+    published figure would read as a miss rather than as a mismatch of protocol.
+    """
+    directory = complete(
+        tmp_path,
+        **{
+            "baseline": bench_report(1.2, pass_at_1=0.0784, max_new_tokens=512),
+            "ours-match-distill": bench_report(0.75, pass_at_1=0.02, max_new_tokens=256),
+        },
+    )
+    resolved = code_lm_table.resolve_roles(code_lm_table.load_reports(directory), "match")
+    with pytest.raises(SystemExit, match="decoded differently"):
+        code_lm_table.build_table(resolved, "match")
+
+
+def test_a_pass_at_1_with_no_recorded_decoding_is_refused(tmp_path: Path) -> None:
+    """A report that does not say how it sampled cannot be compared with one that does."""
+    stale = bench_report(0.75, pass_at_1=0.02)
+    stale.pop("decoding")
+    directory = complete(
+        tmp_path,
+        **{"baseline": bench_report(1.2, pass_at_1=0.0784), "ours-match-distill": stale},
+    )
+    resolved = code_lm_table.resolve_roles(code_lm_table.load_reports(directory), "match")
+    with pytest.raises(SystemExit, match="decoded differently"):
+        code_lm_table.build_table(resolved, "match")
+
+
+def test_a_table_with_no_humaneval_rows_says_nothing_about_decoding(tmp_path: Path) -> None:
+    """The bytes suite alone has no decoding to compare, and the column is not invented."""
+    directory = complete(tmp_path, **{"baseline": bench_report(1.2, parameters=164_100_000)})
+    reports = code_lm_table.load_reports(directory)
+    table = code_lm_table.build_table(code_lm_table.resolve_roles(reports, "match"), "match")
+    assert table["decoding"] is None
+
+
+def test_the_decoding_is_printed_and_recorded(tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every row's pass@1 has to be attributable to one protocol, so the protocol is stated."""
+    out = tmp_path / "table.json"
+    directory = complete(tmp_path / "bench", **{"baseline": bench_report(1.2, pass_at_1=0.0784)})
+    run_cli(monkeypatch, directory, "--json", str(out))
+    printed = capsys.readouterr().out
+    assert "HumanEval decoded at 512 new tokens, temperature 0.2, top_p 0.95" in printed
+    assert json.loads(out.read_text())["decoding"]["max_new_tokens"] == 512
 
 
 def test_mixed_devices_are_called_out(tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch) -> None:

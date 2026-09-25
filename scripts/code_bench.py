@@ -86,6 +86,28 @@ STOP_SEQUENCES = ("\nclass ", "\ndef ", "\n#", "\nif __name__", "\nprint(", "\n@
 Without them a model that keeps emitting plausible Python after the answer gets
 charged for its verbosity, which measures generation length, not correctness."""
 
+DEFAULT_MAX_NEW_TOKENS = 512
+DEFAULT_TEMPERATURE = 0.2
+DEFAULT_TOP_P = 0.95
+"""The decoding protocol, and it is not a free choice: these are the values the
+``bigcode-evaluation-harness`` uses - ``top_p=0.95``, ``temperature=0.2``,
+``max_length_generation=512`` - and ``bigcode/tiny_starcoder_py``'s published 7.84%
+HumanEval pass@1 was measured under them.
+
+The first version of this file asked for 256 tokens and sampled from the full
+multinomial at temperature 0.2 without a nucleus cut. Both differences push the number
+*down* against the published one: a 164M model writing a function often needs more than
+256 tokens, and sampling a 32k-token tail at temperature 0.2 without ``top_p`` spends
+part of its budget on tokens the harness would never have drawn. Comparing our baseline
+row against 7.84% while running a stricter protocol measures the protocol.
+
+What is still different is the estimator, and it cannot be fixed by a flag: the
+published figure comes from the harness's many-sample unbiased ``pass@1`` estimate,
+while this scores one sample per problem. That is not a bias but it is noise - about
++/- 1.7 percentage points at a rate of 7.84% over 164 problems - so the published number
+is a reference for the order of magnitude, not a target to land on.
+"""
+
 
 def _log(message: str) -> None:
     print(f"[{time.strftime('%H:%M:%S')}] {message}", flush=True)
@@ -313,6 +335,33 @@ def truncate_at_stop(completion: str) -> str:
     return completion[:cut]
 
 
+def sample_token(logits: torch.Tensor, temperature: float, top_p: float, generator) -> int:
+    """One token from one row of logits, at the project's decoding protocol.
+
+    It lives here rather than inside the student's generator so the student and the two
+    ``transformers`` models are drawn from the same distribution of choices: a comparison
+    where one arm samples differently from another is measuring the sampler. Greedy at
+    ``temperature <= 0``; otherwise nucleus sampling, where the kept set is the smallest
+    prefix of the sorted distribution whose mass reaches ``top_p`` and the rest is
+    dropped and the survivor renormalised.
+    """
+    if temperature <= 0:
+        return int(logits.argmax(dim=-1))
+    probabilities = torch.softmax(logits.float() / temperature, dim=-1)
+    if top_p < 1.0:
+        ordered, places = torch.sort(probabilities, descending=True)
+        before = torch.cumsum(ordered, dim=-1) - ordered
+        # Keep a token when the mass *before* it is still under the cut, which is the
+        # harness's rule and keeps the first token unconditionally.
+        kept = torch.where(before < top_p, ordered, torch.zeros_like(ordered))
+        if float(kept.sum()) <= 0:
+            kept = ordered[:1]
+            places = places[:1]
+        probabilities = torch.zeros_like(probabilities).scatter_(0, places, kept)
+        probabilities = probabilities / probabilities.sum()
+    return int(torch.multinomial(probabilities.cpu(), 1, generator=generator))
+
+
 def run_program(program: str, timeout: float) -> bool:
     """Execute one assembled HumanEval program. Pass means exit code zero.
 
@@ -384,7 +433,9 @@ def score_humaneval(generate, problems: list[dict], timeout: float, samples: int
     }
 
 
-def make_hf_generator(repo: str, device: torch.device, max_new_tokens: int, temperature: float):
+def make_hf_generator(
+    repo: str, device: torch.device, max_new_tokens: int, temperature: float, top_p: float = DEFAULT_TOP_P
+):
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained(repo)
@@ -399,6 +450,7 @@ def make_hf_generator(repo: str, device: torch.device, max_new_tokens: int, temp
                 max_new_tokens=max_new_tokens,
                 do_sample=temperature > 0,
                 temperature=max(temperature, 1e-5),
+                top_p=top_p,
                 pad_token_id=tokenizer.eos_token_id,
             )
         return tokenizer.decode(out[0][ids.shape[1] :], skip_special_tokens=True)
@@ -406,7 +458,14 @@ def make_hf_generator(repo: str, device: torch.device, max_new_tokens: int, temp
     return generate, tokenizer, model
 
 
-def make_ours_generator(checkpoint: Path, scale: str, device: torch.device, max_new_tokens: int, temperature: float):
+def make_ours_generator(
+    checkpoint: Path,
+    scale: str,
+    device: torch.device,
+    max_new_tokens: int,
+    temperature: float,
+    top_p: float = DEFAULT_TOP_P,
+):
     sys.path.insert(0, str(ROOT / "scripts"))
     import train_code_lm as trainer
 
@@ -424,11 +483,10 @@ def make_ours_generator(checkpoint: Path, scale: str, device: torch.device, max_
         generator = torch.Generator(device="cpu").manual_seed(seed)
         produced: list[int] = []
         for _ in range(max_new_tokens):
-            logits = model(tokens[:, -WINDOW:])[:, -1, :].float()
-            if temperature <= 0:
-                next_id = int(logits.argmax(dim=-1))
-            else:
-                next_id = int(torch.multinomial(torch.softmax(logits[0] / temperature, dim=-1).cpu(), 1, generator=generator))
+            logits = model(tokens[:, -WINDOW:])[:, -1, :]
+            # The same sampler the transformers rows go through, so the protocol is one
+            # protocol rather than one per model family.
+            next_id = sample_token(logits[0], temperature, top_p, generator)
             produced.append(next_id)
             tokens = torch.cat([tokens, torch.tensor([[next_id]], device=device)], dim=1)
         return tokenizer.decode(produced)
@@ -442,8 +500,11 @@ def main() -> int:
     parser.add_argument("--scale", default="match", help="student scale, for --model ours:")
     parser.add_argument("--suite", default="bytes,humaneval", help="comma-separated subset of {bytes,humaneval}")
     parser.add_argument("--samples", type=int, default=1, help="HumanEval samples per problem")
-    parser.add_argument("--max-new-tokens", type=int, default=256)
-    parser.add_argument("--temperature", type=float, default=0.2)
+    parser.add_argument("--max-new-tokens", type=int, default=DEFAULT_MAX_NEW_TOKENS,
+                        help="the published harness's max_length_generation, 512")
+    parser.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE)
+    parser.add_argument("--top-p", type=float, default=DEFAULT_TOP_P,
+                        help="nucleus cut; 1.0 disables it and is not the published protocol")
     parser.add_argument("--timeout", type=float, default=10.0, help="seconds per HumanEval program")
     parser.add_argument("--limit", type=int, default=0, help="first N HumanEval problems (0 = all)")
     parser.add_argument(
@@ -484,14 +545,28 @@ def main() -> int:
         if args.limit:
             problems = problems[: args.limit]
         if kind == "hf":
-            generate, _, model = make_hf_generator(target, device, args.max_new_tokens, args.temperature)
+            generate, _, model = make_hf_generator(
+                target, device, args.max_new_tokens, args.temperature, args.top_p
+            )
             parameters = sum(p.numel() for p in model.parameters())
         else:
             generate, _, model = make_ours_generator(
-                Path(target), args.scale, device, args.max_new_tokens, args.temperature
+                Path(target), args.scale, device, args.max_new_tokens, args.temperature, args.top_p
             )
             parameters = None
-        _log(f"human eval: {len(problems)} problems, {args.samples} sample(s), {args.max_new_tokens} new tokens")
+        # Recorded at the top level, because two pass@1 numbers produced under different
+        # decoding are two measurements - the same reason ``bytes_limit`` is compared.
+        report["decoding"] = {
+            "max_new_tokens": args.max_new_tokens,
+            "temperature": args.temperature,
+            "top_p": args.top_p,
+            "samples_per_problem": args.samples,
+            "problems": len(problems),
+        }
+        _log(
+            f"human eval: {len(problems)} problems, {args.samples} sample(s), "
+            f"{args.max_new_tokens} new tokens, temperature {args.temperature}, top_p {args.top_p}"
+        )
         report["humaneval"] = score_humaneval(generate, problems, args.timeout, args.samples, args.seed)
         if parameters is not None:
             report["humaneval"]["parameters"] = int(parameters)

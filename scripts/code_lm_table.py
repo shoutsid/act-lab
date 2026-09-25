@@ -397,11 +397,30 @@ def build_table(resolved: dict[str, tuple[str, dict]], scale: str) -> dict:
         derived["distillation_gain_percent_of_control"] = (
             100.0 * gain / bpb("ours-ce") if gain is not None and bpb("ours-ce") else None
         )
+    # HumanEval pass@1 depends on how the completions were drawn, and the published
+    # figure the baseline row exists to be compared against was drawn under specific
+    # settings (512 tokens, temperature 0.2, top_p 0.95). Two rows decoded differently
+    # are two different benchmarks, which is the same contract as ``bytes_limit``.
+    decoded = [
+        (tag, report.get("decoding"))
+        for _, (tag, report) in sorted(resolved.items())
+        if report.get("humaneval")
+    ]
+    distinct = {json.dumps(settings, sort_keys=True) for _, settings in decoded}
+    if len(distinct) > 1:
+        detail = ", ".join(f"{tag}={settings}" for tag, settings in decoded)
+        raise SystemExit(
+            f"HumanEval rows were decoded differently, so their pass@1 values are not one "
+            f"measurement ({detail}); re-score the odd rows with matching --max-new-tokens, "
+            "--temperature and --top-p."
+        )
+    decoding = json.loads(next(iter(distinct))) if distinct else None
+
     # Not optional and not best-effort: the whole point of scoring both arms through one
     # script on one text is that their difference can be tested, so a report that cannot
     # be paired stops the table instead of being summarised into two decimals and a shrug.
     paired = paired_contrast(resolved)
-    return {"rows": rows, "derived": derived, "paired": paired}
+    return {"rows": rows, "derived": derived, "paired": paired, "decoding": decoding}
 
 
 def main() -> int:
@@ -426,6 +445,13 @@ def main() -> int:
     for name, value in table["derived"].items():
         print(f"{name.replace('_', ' ')}: {value:+.4f}" if isinstance(value, float) else f"{name}: {value}")
     print()
+    if table["decoding"]:
+        decoding = table["decoding"]
+        print(
+            f"HumanEval decoded at {decoding['max_new_tokens']} new tokens, temperature "
+            f"{decoding['temperature']}, top_p {decoding['top_p']}, "
+            f"{decoding['samples_per_problem']} sample(s) per problem."
+        )
     print(format_paired(table["paired"]))
     print(
         "note: the sign-flip p above treats the windows as independent, and windows cut from "

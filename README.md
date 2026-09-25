@@ -441,6 +441,16 @@ bytes of the held-out *text*, which every model tokenizes differently and none o
 them gets to choose. HumanEval pass@1 is reported beside it, executed rather than
 approximated.
 
+HumanEval is run at the decoding settings the published figure was measured under -
+**512 generated tokens, temperature 0.2, top_p 0.95**, the
+`bigcode-evaluation-harness` defaults - because a protocol of our own that is stricter
+(256 tokens, sampling the full 32k tail) would read as the baseline underperforming its
+own model card. One difference cannot be flagged away: the published 7.84% is the
+harness's many-sample unbiased `pass@1` estimate and this scores one sample per problem,
+which is noise rather than bias - about ±1.7 points at that rate over 164 problems - so
+the published number is a reference for the scale, not a target. The table refuses rows
+decoded differently, the same way it refuses rows scored on different held-out text.
+
 ```bash
 PYTHONPATH=src python scripts/train_code_lm.py --fetch-teacher   # once; 2.7 GB
 bash scripts/run_code_lm_campaign.sh                            # score, both arms, benchmarks
