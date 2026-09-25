@@ -919,6 +919,24 @@ is ~22.7 GiB and it grows ~6.4 GiB per seed, so a session's fixed startup cost
 rises for as long as the queue runs - read that line before assuming a slow
 start is a hang.
 
+### A fetch keeps what it fetches, and applies the rule where the record lands
+
+`kaggle kernels output` unpacks into a temporary directory that the caller deletes, so a
+fetch that only *prints* its files leaves nothing behind and the prints go with the
+terminal. Measured twice in three days, and the second one cost a run: the code-bench
+fetch reported two numbers and deleted the two reports (2026-09-25), and the TPU probe's
+fetch printed a **complete** run's record and deleted that too - so the copy on disk stayed
+the previous run's for three days while the rule written for that record went unapplied,
+and the diagnosis had to be redone from a kernel log for a kernel nobody had fetched.
+
+Both drivers take `--save <dir>` now. Both fetch the *log* beside the files, because
+`kernels output` returns files and never a log. Both print the artifact's own verdict when
+it lands - the TPU probe runs `tpu_probe.evaluate` on the record it just kept - because a
+verdict that needs a second hand-run command is one that can be left unread. Then check
+`git status`: if what landed is evidence a document quotes, it belongs in the tree under
+the name of the run that produced it (`artifacts/tpu-probe/output/tpu-probe-v4.json`),
+not under the "latest record" name the next fetch will overwrite.
+
 ### Is the campaign alive? (one command, read from the durable side)
 
 Both 2026-09 session losses were expensive partly because nothing said the
