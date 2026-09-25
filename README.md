@@ -421,6 +421,60 @@ is about. And the checkpoint is a 250 MB run output and is not committed, so a
 reader can recompute every number in the record and read the generations, but
 cannot re-run inference without running the training command first.
 
+## Condensing a large code model into the project's own student
+
+The English leg above shows the model trains on real text. This one is aimed at
+the actual hypothesis: whether a large model's behaviour can be **condensed** into
+the project's sparse, learned-topology student, and measured against a popular
+model of that student's size class.
+
+| role | model |
+|---|---|
+| teacher | `deepseek-ai/deepseek-coder-1.3b-base` - 1.3B dense, 2T code tokens, public, native to `transformers` |
+| student | `act.model.V0MoECausalLM` at `match`: **166,423,296 total / 81,488,640 active** (h768 d12, 8 experts with 2 active, expert width 768) |
+| reference | `bigcode/tiny_starcoder_py`, **164M dense** - the same size class, trained on 100B tokens on 32 A100s |
+
+The metric is **bits per byte on held-out Python**, and it is not a stylistic
+choice: perplexity is a function of the tokenizer, so a 32k teacher, a 32k student
+and a 49k baseline cannot be put in one table with it. Bits per byte divides by the
+bytes of the held-out *text*, which every model tokenizes differently and none of
+them gets to choose. HumanEval pass@1 is reported beside it, executed rather than
+approximated.
+
+```bash
+PYTHONPATH=src python scripts/train_code_lm.py --fetch-teacher   # once; 2.7 GB
+bash scripts/run_code_lm_campaign.sh                            # score, both arms, benchmarks
+PYTHONPATH=src python scripts/code_bench.py --model hf:bigcode/tiny_starcoder_py
+```
+
+The campaign scores the teacher over a fixed grid of **non-overlapping** 512-token
+windows, then trains two arms on those same windows in the same order from the same
+seed - one distilled against the teacher's distribution, one plain cross-entropy. The
+only difference between them is the objective, so the difference between them is
+attributable to distillation rather than to data. Non-overlapping windows are load
+bearing: they make the teacher's context at a position *identical* to the student's,
+where a sliding window would give the teacher more context and flatter the student.
+
+The teacher's distribution is cached as a top-32 plus a residual bucket, and the KL is
+computed over the whole vocabulary rather than over the 32 stored tokens. Truncating
+and renormalising would leave the student's own tail unconstrained, and nothing in a
+loss curve would show it: `tests/test_train_code_lm.py` checks the bucket in both
+directions - a student that ignores the teacher's tail is charged for it, and one that
+matches it scores exactly zero.
+
+Measured on the development GTX 1070 (8 GiB): the teacher loads in 2.8 s and scores
+**1,050 tokens/s**; the student trains at **~2,950 tokens/s**. That sets the campaign
+budget at 15.36M teacher-labelled tokens (4.05 h) and 11,250 steps per arm (46.08M
+student tokens, three passes, 4.34 h each).
+
+What this does **not** claim, and the reason is arithmetic rather than modesty: the
+baseline saw **100B tokens on 32 A100s in 18 hours**. One 1070 and three orders of
+magnitude fewer tokens cannot close that gap, and a run that appeared to land near the
+teacher's published 0.18 MultiPL HumanEval pass@1 would be evidence of a bug, not of
+distillation working. The claim under test is narrower and testable - whether the
+sparse architecture is a viable *container* for a large model's behaviour - and the
+headline table is written from `artifacts/code-lm/bench/` when the campaign completes.
+
 ## Deterministic token shards
 
 The shared data contract can generate checksum-addressed synthetic shards while

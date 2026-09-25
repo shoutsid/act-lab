@@ -1,0 +1,438 @@
+"""Score any code model on the two suites this leg reports, in comparable units.
+
+Every model - the project's student, the 1.3B teacher it was distilled from, and
+the 164M published baseline it is measured against - is scored by this one file,
+on one held-out text, by one protocol. That is the point of it: numbers produced
+by three different scripts are three different numbers, and a comparison nobody
+can re-run is not evidence.
+
+Two suites, chosen because between them they cover "does it model code" and "can
+it write code":
+
+``bytes``
+    Bits per byte on held-out Python. Each model tokenizes the *same text* with
+    its own tokenizer and is scored on the same 512-token windows, so the
+    denominators differ and the numerator is renormalised per byte. This is the
+    only way a 32k-vocabulary teacher, a 32k student, and a 49k-vocabulary
+    baseline can sit in one table: perplexity is a function of the tokenizer and
+    bits per byte is not. Lower is better; a uniform distribution over 32,256
+    tokens is the trivial reference point and ``scripts/train_code_lm.py`` records
+    unigram and bigram references beside it.
+
+``humaneval``
+    HumanEval pass@1, executed. 164 problems; the model completes each prompt,
+    the completion is truncated at the first plausible top-level boundary, and
+    ``prompt + completion + test + check(entry_point)`` is run in a subprocess
+    with a wall-clock limit. A problem counts as passed only if that subprocess
+    exits zero. Not a proxy metric: this is the published benchmark, and the
+    baseline's published figure (7.84% pass@1) is on the same 164 problems.
+
+Usage:
+  PYTHONPATH=src python scripts/code_bench.py --model hf:bigcode/tiny_starcoder_py
+  PYTHONPATH=src python scripts/code_bench.py \\
+      --model ours:artifacts/code-lm/checkpoints/match-distill.pt --scale match
+  PYTHONPATH=src python scripts/code_bench.py --model hf:... --suite bytes   # one suite
+"""
+
+from __future__ import annotations
+
+import argparse
+import gzip
+import json
+import math
+import os
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+import numpy as np
+import torch
+
+ROOT = Path(__file__).resolve().parent.parent
+ART = ROOT / "artifacts" / "code-lm"
+HUMANEVAL = ART / "humaneval" / "HumanEval.jsonl.gz"
+VAL_TEXT = ART / "val-text.txt"
+RESULTS = ART / "bench"
+
+WINDOW = 512
+"""Tokens per scoring window, the same for every model regardless of its own limit.
+Holding it fixed is what makes the teacher's and the baseline's numbers a
+comparison rather than two measurements."""
+
+STOP_SEQUENCES = ("\nclass ", "\ndef ", "\n#", "\nif __name__", "\nprint(", "\n@", "\n\n\n")
+"""Truncation points for a completion, as the published code-eval harnesses use.
+Without them a model that keeps emitting plausible Python after the answer gets
+charged for its verbosity, which measures generation length, not correctness."""
+
+
+def _log(message: str) -> None:
+    print(f"[{time.strftime('%H:%M:%S')}] {message}", flush=True)
+
+
+def held_out_text(byte_limit: int = 0) -> str:
+    """The held-out Python text, optionally cut to a fixed prefix of ``byte_limit`` bytes.
+
+    A prefix, not a sample: scoring the whole 28.7 MB set costs the 1.3B teacher
+    over two hours per pass, and a bits-per-byte estimate over 1.29M tokens is
+    already stable well past the fourth decimal. What matters is that every model
+    is cut at exactly the same byte count, so the optimisation is in the cost and
+    not in the comparison. The limit is recorded in each report for that reason -
+    two numbers produced at different limits are not the same measurement.
+    """
+    if not VAL_TEXT.is_file():
+        raise SystemExit(f"{VAL_TEXT} is missing; run scripts/train_code_lm.py --stage tokens first")
+    text = VAL_TEXT.read_text()
+    if byte_limit and len(text.encode()) > byte_limit:
+        # Decode with errors ignored so the cut cannot land inside a character.
+        return text.encode()[:byte_limit].decode("utf-8", errors="ignore")
+    return text
+
+
+# --- suite: bits per byte ---------------------------------------------------
+
+
+def bits_per_byte(nats: float, text_bytes: int) -> float:
+    return nats / math.log(2) / text_bytes
+
+
+def model_logits(model, tokens: torch.Tensor) -> torch.Tensor:
+    """Logits from either a ``transformers`` causal LM or this project's model.
+
+    The two disagree about the return type - ``CausalLMOutputWithPast`` against a
+    plain tensor - and this file scores both kinds, so the difference is absorbed
+    here rather than at each call site.
+    """
+    out = model(tokens)
+    return out.logits if hasattr(out, "logits") else out
+
+
+@torch.no_grad()
+def nll_of_ids(model, ids: np.ndarray, device: torch.device, batch: int = 4) -> float:
+    """Total negative log-likelihood in nats over causal 512-token windows.
+
+    Windows do not overlap and the first token of each window has no context and
+    is not scored, so the sum covers every token but one per window. Every model
+    carries that same one-token-per-window omission, which is why the comparison
+    survives it.
+    """
+    total = 0.0
+    scored = 0
+    starts = range(0, len(ids) - 1, WINDOW)
+    pending: list[np.ndarray] = []
+
+    def flush(block: list[np.ndarray]) -> tuple[float, int]:
+        seq = np.stack(block).astype(np.int64)
+        tokens = torch.from_numpy(seq).to(device)
+        logits = model_logits(model, tokens[:, :-1])
+        loss = torch.nn.functional.cross_entropy(
+            logits.reshape(-1, logits.shape[-1]).float(), tokens[:, 1:].reshape(-1), reduction="sum"
+        )
+        return float(loss), int(tokens[:, 1:].numel())
+
+    for start in starts:
+        window = ids[start : start + WINDOW + 1]
+        if len(window) < 8:
+            continue
+        pending.append(window)
+        if len(pending) >= batch:
+            part, count = flush(pending)
+            total += part
+            scored += count
+            pending = []
+    if pending:
+        part, count = flush(pending)
+        total += part
+        scored += count
+    if not scored:
+        raise SystemExit("held-out text is too short to score")
+    return total
+
+
+@torch.no_grad()
+def score_hf(source: str, text: str, device: torch.device) -> dict:
+    """Score a ``transformers`` causal LM from a repository id or a local directory.
+
+    Both are accepted because the teacher's weights are fetched once into
+    ``artifacts/code-lm/teacher`` and passing the repository id instead would pull
+    2.7 GB a second time from the hub. The architecture is recorded beside the
+    numbers: a bits-per-byte figure that does not say which implementation
+    produced it is not reproducible.
+    """
+    from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+
+    _log(f"loading {source} ...")
+    config = AutoConfig.from_pretrained(source)
+    tokenizer = AutoTokenizer.from_pretrained(source)
+    model = AutoModelForCausalLM.from_pretrained(source, dtype=torch.float16)
+    model.eval().to(device)
+    parameters = sum(p.numel() for p in model.parameters())
+    architecture = list(getattr(config, "architectures", []) or [config.model_type])
+    ids = np.asarray(tokenizer(text, add_special_tokens=False)["input_ids"], dtype=np.int32)
+    _log(
+        f"{source}: {architecture} {parameters/1e6:.1f}M parameters, "
+        f"{len(ids):,} tokens for {len(text.encode()):,} bytes"
+    )
+    nats = nll_of_ids(model, ids, device)
+    del model
+    torch.cuda.empty_cache()
+    return {
+        "model": source,
+        "kind": "hf",
+        "architecture": architecture,
+        "parameters": int(parameters),
+        "tokens": int(len(ids)),
+        "nats": nats,
+        "held_out_bytes": len(text.encode()),
+        "bits_per_byte": bits_per_byte(nats, len(text.encode())),
+        "loss_per_token": nats / max(1, len(ids) - len(ids) // WINDOW),
+    }
+
+
+@torch.no_grad()
+def score_ours(checkpoint: Path, scale: str, text: str, device: torch.device) -> dict:
+    """Score a student checkpoint using the *same* text protocol as the suites above.
+
+    Deliberately re-tokenizes the held-out text here rather than reading the
+    training script's ``val-tokens.npy``: that stream has a boundary token between
+    files, which no other model's tokenization carries, and it would move the
+    student's denominator relative to everyone else's.
+    """
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import train_code_lm as trainer
+
+    from act.model.v0_moe import estimated_parameter_count
+
+    config = trainer.student_config(scale)
+    model = trainer.V0MoECausalLM(config).to(device)
+    payload = torch.load(checkpoint, map_location=device, weights_only=False)
+    model.load_state_dict(payload["model"])
+    model.eval()
+    total, active = estimated_parameter_count(config)
+    tokenizer = trainer.shared_tokenizer()
+    ids = np.asarray(tokenizer.encode(text).ids, dtype=np.int32)
+    _log(
+        f"{checkpoint.name}: step {payload.get('step')}, {total/1e6:.1f}M total / "
+        f"{active/1e6:.1f}M active parameters, {len(ids):,} tokens"
+    )
+    nats = nll_of_ids(model, ids, device)
+    del model
+    torch.cuda.empty_cache()
+    return {
+        "model": f"ours:{scale}",
+        "kind": "ours",
+        "checkpoint": str(checkpoint.relative_to(ROOT)),
+        "step": payload.get("step"),
+        "parameters": int(total),
+        "active_parameters": int(active),
+        "tokens": int(len(ids)),
+        "nats": nats,
+        "held_out_bytes": len(text.encode()),
+        "bits_per_byte": bits_per_byte(nats, len(text.encode())),
+        "loss_per_token": nats / max(1, len(ids) - len(ids) // WINDOW),
+    }
+
+
+# --- suite: HumanEval, executed --------------------------------------------
+
+
+def load_humaneval() -> list[dict]:
+    with gzip.open(HUMANEVAL, "rt", encoding="utf-8") as handle:
+        return [json.loads(line) for line in handle if line.strip()]
+
+
+def truncate_at_stop(completion: str) -> str:
+    cut = len(completion)
+    for stop in STOP_SEQUENCES:
+        found = completion.find(stop)
+        if found != -1:
+            cut = min(cut, found)
+    return completion[:cut]
+
+
+def run_program(program: str, timeout: float) -> bool:
+    """Execute one assembled HumanEval program. Pass means exit code zero.
+
+    Run in a scratch directory with the environment stripped down and a hard
+    wall-clock limit. Generated code is untrusted by construction - it is whatever
+    the model produced - so the limit is the safety mechanism that matters, and a
+    subprocess timeout is the only reliable way to enforce one against a loop the
+    model wrote.
+    """
+    with tempfile.TemporaryDirectory() as workdir:
+        environment = {
+            "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+            "HOME": workdir,
+            "PYTHONHASHSEED": "0",
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+        try:
+            finished = subprocess.run(
+                [sys.executable, "-c", program],
+                cwd=workdir,
+                env=environment,
+                capture_output=True,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            return False
+        return finished.returncode == 0
+
+
+def score_humaneval(generate, problems: list[dict], timeout: float, samples: int, seed: int) -> dict:
+    """pass@1 over HumanEval, with a per-problem record of what was generated.
+
+    Samples per problem default to one, which makes pass@1 the fraction of
+    problems whose single sample passes. That is the published definition, and it
+    is worth stating plainly: at one sample the estimate is high-variance, so the
+    per-problem list is written to the record beside the aggregate rather than
+    being summarised away.
+    """
+    passed = 0
+    records = []
+    for index, problem in enumerate(problems):
+        entry = problem["entry_point"]
+        completions = []
+        for sample in range(samples):
+            completion = generate(problem["prompt"], seed + index * 1000 + sample)
+            completions.append(completion)
+        oks = []
+        for completion in completions:
+            program = (
+                problem["prompt"]
+                + truncate_at_stop(completion)
+                + "\n"
+                + problem["test"]
+                + f"\ncheck({entry})"
+            )
+            oks.append(run_program(program, timeout))
+        if any(oks):
+            passed += 1
+        records.append({"task_id": problem["task_id"], "passed": bool(any(oks)), "samples": oks})
+        if (index + 1) % 20 == 0 or index + 1 == len(problems):
+            _log(f"  humaneval {index + 1}/{len(problems)}  pass@{samples} {passed/(index+1):.3f}")
+    return {
+        "problems": len(problems),
+        "samples_per_problem": samples,
+        "passed": passed,
+        "pass_at_1": passed / max(1, len(problems)),
+        "timeout_seconds": timeout,
+        "records": records,
+    }
+
+
+def make_hf_generator(repo: str, device: torch.device, max_new_tokens: int, temperature: float):
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained(repo)
+    model = AutoModelForCausalLM.from_pretrained(repo, dtype=torch.float16).eval().to(device)
+
+    def generate(prompt: str, seed: int) -> str:
+        ids = tokenizer(prompt, return_tensors="pt", add_special_tokens=False)["input_ids"].to(device)
+        torch.manual_seed(seed)
+        with torch.no_grad():
+            out = model.generate(
+                ids,
+                max_new_tokens=max_new_tokens,
+                do_sample=temperature > 0,
+                temperature=max(temperature, 1e-5),
+                pad_token_id=tokenizer.eos_token_id,
+            )
+        return tokenizer.decode(out[0][ids.shape[1] :], skip_special_tokens=True)
+
+    return generate, tokenizer, model
+
+
+def make_ours_generator(checkpoint: Path, scale: str, device: torch.device, max_new_tokens: int, temperature: float):
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import train_code_lm as trainer
+
+    config = trainer.student_config(scale)
+    model = trainer.V0MoECausalLM(config).to(device)
+    model.load_state_dict(torch.load(checkpoint, map_location=device, weights_only=False)["model"])
+    model.eval()
+    tokenizer = trainer.shared_tokenizer()
+
+    def generate(prompt: str, seed: int) -> str:
+        # Decoding one prompt at a time: the student has no KV cache, so each step
+        # recomputes the window, and batching would only trade that for padding.
+        ids = tokenizer.encode(prompt).ids
+        tokens = torch.tensor([ids[-WINDOW:]], dtype=torch.long, device=device)
+        generator = torch.Generator(device="cpu").manual_seed(seed)
+        produced: list[int] = []
+        for _ in range(max_new_tokens):
+            logits = model(tokens[:, -WINDOW:])[:, -1, :].float()
+            if temperature <= 0:
+                next_id = int(logits.argmax(dim=-1))
+            else:
+                next_id = int(torch.multinomial(torch.softmax(logits[0] / temperature, dim=-1).cpu(), 1, generator=generator))
+            produced.append(next_id)
+            tokens = torch.cat([tokens, torch.tensor([[next_id]], device=device)], dim=1)
+        return tokenizer.decode(produced)
+
+    return generate, tokenizer, model
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--model", required=True, help="hf:<repo> or ours:<checkpoint path>")
+    parser.add_argument("--scale", default="match", help="student scale, for --model ours:")
+    parser.add_argument("--suite", default="bytes,humaneval", help="comma-separated subset of {bytes,humaneval}")
+    parser.add_argument("--samples", type=int, default=1, help="HumanEval samples per problem")
+    parser.add_argument("--max-new-tokens", type=int, default=256)
+    parser.add_argument("--temperature", type=float, default=0.2)
+    parser.add_argument("--timeout", type=float, default=10.0, help="seconds per HumanEval program")
+    parser.add_argument("--limit", type=int, default=0, help="first N HumanEval problems (0 = all)")
+    parser.add_argument(
+        "--bytes-limit", type=int, default=4_000_000,
+        help="held-out bytes to score (0 = all); identical across models by construction",
+    )
+    parser.add_argument("--seed", type=int, default=1234)
+    parser.add_argument("--tag", default="")
+    args = parser.parse_args()
+
+    requested = {name.strip() for name in args.suite.split(",") if name.strip()}
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    kind, _, target = args.model.partition(":")
+    if kind not in ("hf", "ours") or not target:
+        raise SystemExit("--model must be hf:<repo> or ours:<checkpoint path>")
+
+    RESULTS.mkdir(parents=True, exist_ok=True)
+    report: dict = {"model": args.model, "suite": sorted(requested), "device": str(device)}
+
+    if "bytes" in requested:
+        text = held_out_text(args.bytes_limit)
+        report["bytes_limit"] = args.bytes_limit
+        _log(f"held-out text: {len(text.encode()):,} bytes")
+        report["bytes"] = score_hf(target, text, device) if kind == "hf" else score_ours(Path(target), args.scale, text, device)
+        report["bytes"]["bytes_limit"] = args.bytes_limit
+        _log(f"bits/byte {report['bytes']['bits_per_byte']:.4f}")
+
+    if "humaneval" in requested:
+        problems = load_humaneval()
+        if args.limit:
+            problems = problems[: args.limit]
+        if kind == "hf":
+            generate, _, model = make_hf_generator(target, device, args.max_new_tokens, args.temperature)
+            parameters = sum(p.numel() for p in model.parameters())
+        else:
+            generate, _, model = make_ours_generator(
+                Path(target), args.scale, device, args.max_new_tokens, args.temperature
+            )
+            parameters = None
+        _log(f"human eval: {len(problems)} problems, {args.samples} sample(s), {args.max_new_tokens} new tokens")
+        report["humaneval"] = score_humaneval(generate, problems, args.timeout, args.samples, args.seed)
+        if parameters is not None:
+            report["humaneval"]["parameters"] = int(parameters)
+        _log(f"pass@1 {report['humaneval']['pass_at_1']:.4f} on {len(problems)} problems")
+
+    label = args.tag or args.model.replace("/", "_").replace(":", "-")
+    out = RESULTS / f"{label}.json"
+    out.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    _log(f"written {out}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

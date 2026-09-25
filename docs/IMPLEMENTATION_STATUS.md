@@ -3630,3 +3630,114 @@ tokens/s -> `dtype_decision: fp16`** (below the 2,500 floor, the registered
   `artifacts/local-proof/datasets/v0-5-1-verdict.json`.
 - `startup.sh` has a separate preview-process exit-code issue to clean up; it is not part of
   the scientific implementation and should not be solved by killing the unrelated 8080 service.
+
+### 2026-09-25 - the code-LM leg: condensing a 1.3B code model into the project's sparse student
+
+The TinyStories leg proved the *path* on English. It did not touch the question the
+project is actually about, which is whether a large model's behaviour can be
+condensed into a smaller, sparse, learned-topology network that does the heavy
+lifting with a fraction of the parameters. Three files now attempt that, and the
+campaign that runs them is `scripts/run_code_lm_campaign.sh`.
+
+**The design, and the pins that make the comparison mean something.**
+
+- Teacher: `deepseek-ai/deepseek-coder-1.3b-base` - 1.3B dense, 2T code tokens,
+  public, native to `transformers`. Student: `act.model.V0MoECausalLM` at `match`,
+  **166,423,296 total / 81,488,640 active** parameters (h768 d12 e8 top-2 w768).
+  Reference: `bigcode/tiny_starcoder_py`, 164M dense, the same size class, trained
+  on **100B tokens on 32 A100s**.
+- Metric: **bits per byte on held-out Python**, not perplexity. Perplexity is a
+  function of the tokenizer, so a 32k teacher, a 32k student and a 49k baseline
+  cannot be compared with it; bits per byte divides by the bytes of the *text* and
+  every model tokenizes that same text with its own BPE.
+- The teacher's distribution is **cached**, not live: it scores a fixed grid of
+  non-overlapping 512-token windows once, and the student trains against the saved
+  top-32 + a residual bucket. Two reasons, one of them not about cost. The cost is
+  that an 8 GiB card cannot hold a 1.3B teacher and a 166M student at once. The
+  other is that non-overlapping windows make the teacher's context at a position
+  *identical* to the student's, because both see the same window causally; a
+  sliding window would give the teacher strictly more context and flatter the
+  student by an unknown amount.
+- What is stored per position is `log p_i - log p_top1`, plus `log p_top1` and the
+  residual mass. Float16 resolves a difference near zero to ~1e-3 and a
+  log-probability near -10 to ~1e-2. Keeping the residual means the KL is computed
+  over the whole vocabulary instead of being truncated to 32 tokens and silently
+  renormalised, which would make the student's own tail free (pinned by
+  `tests/test_train_code_lm.py` in both directions: a student that ignores the
+  teacher's tail is charged for it, and a student that *matches* it scores
+  exactly zero).
+- Both arms train on **the same windows in the same order from the same seed**;
+  only the objective differs. This was wrong at first - the cross-entropy arm was
+  reading the full 162M-token stream while the distilled arm could only see the
+  scored 15.36M - so distillation would have been credited with a 10x difference in
+  data. The training window range is now pinned by the requested token budget rather
+  than derived from what the teacher scored.
+
+**Measured on this box (GTX 1070, 8 GiB), not estimated.**
+
+| quantity | measured |
+|---|---|
+| corpus | `codeparrot/codeparrot-clean-valid`, 61,373 files, 597 MB of Python |
+| stream | 162,411,637 train tokens; 3,069 files held out (9,228,190 tokens / 28,707,445 bytes) |
+| teacher load | 2.8 s, 1,346.5M parameters, 2.51 GiB |
+| teacher scoring | **1,050 tokens/s** (flat across batch 2-8: logits are 511x32,256 per sequence) |
+| student training | **~2,950 tokens/s** at 166M total / 81.5M active, batch 8 x 512 |
+| budget | 15,360,000 teacher-labelled tokens (30,000 windows, 4.05 h), 11,250 steps per arm (46.08M student tokens = 3 passes, 4.34 h each) |
+
+**The honest ceiling, stated in the source rather than in a footnote.**
+`tiny_starcoder_py` saw 100B tokens on 32 A100s in 18 hours. This is one 1070 and
+three orders of magnitude fewer tokens. Nothing here closes that gap, and a run
+that landed near the teacher's published 0.18 MultiPL HumanEval pass@1 would be
+evidence of a bug rather than of distillation working. What the leg can show is
+whether the sparse architecture is a viable *container* for a large model's
+behaviour, on the same held-out Python as every model it is compared with.
+
+**Defects found while building it, all of which would have produced plausible numbers.**
+
+1. **The token stream was silently invalidated by a teacher swap.** The teacher was
+   changed mid-build (see below), and `tokens.npy` was then a stream of perfectly
+   well-formed ids in *another* BPE. Nothing raises on that: it trains, and every
+   number out of it is meaningless. The manifest now carries a `tokenizer_id`
+   (repo + SHA-256 of the tokenizer bytes), `stream_cache_usable` refuses a stream
+   whose id does not match, and the guard is pinned by test.
+2. **The document separator was hardcoded.** `<|endoftext|>` exists in
+   StarCoder-family vocabularies and does not exist in DeepSeek's, where the stage
+   died with "the teacher tokenizer has no <|endoftext|> token to separate files
+   with". Now a name list with a fallback to the config's `bos_token_id`/`eos_token_id`.
+3. **The student was sized to the wrong vocabulary.** The teacher's tokenizer emits
+   32,022 ids while the model has **32,256** output rows. Built on the smaller
+   number, a teacher top-k landing on a reserved row indexes past the student's
+   logits. The student is now built on the model's width, from `config.json`.
+4. **`model(tokens).float()` is not how a `transformers` model returns logits.** The
+   first scoring pass died with `AttributeError: 'CausalLMOutputWithPast' object has
+   no attribute 'float'` - the good version of that mistake. Absorbed by
+   `forward_logits` / `model_logits` so both model kinds work at every call site.
+5. **A resumed target cache was resumable into the wrong shape.** Changing the token
+   budget changes the array shapes; resuming would either raise or, worse, read a
+   window of one grid as a window of another. A shape mismatch now rebuilds.
+6. **The HuggingFace cache directories are not writable on this machine, and the
+   failure names neither the model nor the fix.** `HF_HUB_CACHE` points at a
+   read-only mount, so `trust_remote_code` loading died with
+   `PermissionError: .../models/huggingface/modules`, and `huggingface_hub` itself
+   raises on a token file it cannot read. `ensure_hf_cache()` redirects the three
+   caches under `artifacts/` when the ambient ones are unusable, and
+   `_nearest_writable` guards `Path.exists()`, which *raises* rather than answering
+   `False` for a path under an unreadable ancestor.
+7. **Single-connection HF downloads run at 150 KB/s here, and eight parallel range
+   requests at 5.6 MB/s.** A 37x difference for twenty lines; `fetch_parallel`
+   exists for it, and it resumes.
+
+**A teacher was chosen twice, and the first choice is worth recording.**
+`bigcode/santacoder` was the better story - a Python specialist, and the model
+`tiny_starcoder_py` descends from. Its repository ships GPT-2-with-multi-query-
+attention modelling code written against transformers 4.24, which no longer runs on
+transformers 5.x: it imports `transformers.onnx` (removed in v5), then
+`transformers.utils.model_parallel_utils` and several `add_*_docstrings` helpers
+(also removed). Pinning `transformers<5` to use it resolved to **4.17.0** (Feb 2022)
+and downgraded `huggingface-hub` - a worse problem than the one being solved. The
+switch to `deepseek-ai/deepseek-coder-1.3b-base` fixed the version problem and
+improved two other things: it is native (`LlamaForCausalLM`, loads in 2.8 s with no
+remote code) and its 32k vocabulary - against `Qwen/Qwen2.5-Coder-1.5B`'s 152k -
+leaves room for depth in a student that must pay for its embedding matrix.
+
+The 4.6 GB SantaCoder download was spent before that decision and is not kept.
