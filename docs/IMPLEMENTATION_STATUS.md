@@ -4416,3 +4416,20 @@ shape they were taken on.
 
 Measured state: targets stage complete (30,000 windows, 15,271 s, 1,006 teacher tokens/s); arm 1
 (`ours-match-distill`) at step 750/11,250, loss 3.5701, 2,731 tokens/s. 1839 tests pass.
+
+**And the first lever now has a command rather than a plan.** Lever 1 was decided-on by a
+measurement that does not survive checking, so `scripts/moe_dispatch_benchmark.py` takes the
+measurement: it times the dense form the training loop uses, the existing `eager_forward`, and a
+third - **grouped dispatch** (route once, sort the `(token, slot)` rows by expert, one contiguous
+matmul pair per expert, one `index_add_` scatter) - at either geometry, in one dtype, on one device,
+and it refuses to time a set of forms that disagrees. The gate has already run: grouped agrees with
+dense to **5.1e-16** in float64 at the `match` geometry with a bit-identical routing load, which is
+the same tolerance the dense/eager pair is pinned at in `tests/test_v0_session.py`. So the candidate
+is the same function as the form the arms are training with, and the open question is only which is
+faster at each shape - on a CPU smoke run at the dev geometry grouped was 2.14x dense and 1.77x
+eager, which is a smoke signal about the shape of the answer rather than a number to plan from. Each
+form is priced with its own estimator, so the table cannot credit a form with FLOPs it did not do,
+and `of peak` is blank rather than zero off an accelerator, because a CPU run dividing by a GTX
+1070's peak is the same category error as quoting a dev rate for a code-LM shape. `tests/test_moe_dispatch.py`
+(5 tests) pins the identity against both existing forms, the empty-expert branch (by pigeonhole
+rather than by forcing the router, since `topk` breaks ties arbitrarily), and the refusal. 1845 tests.

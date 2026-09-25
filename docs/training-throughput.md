@@ -88,14 +88,19 @@ gather and a `zeros_like` scatter, `2 x experts` times per layer - whose cost sc
 *tokens x layers*, while the arithmetic it saves scales with *tokens x parameters*. From
 the dev shape to `match`, parameters rise 11.1x and layers rise 2x, so the overhead's
 share of the step falls by roughly 5x. The measured 18% margin for dense at the small
-shape is therefore not evidence about the large one, in either direction.
+shape is therefore not evidence about the large one, in either direction.The right next step is the cheap one, and it is now a command:
+`scripts/moe_dispatch_benchmark.py` times the two existing forms plus a third -
+**grouped dispatch** (route once, sort the `(token, slot)` rows by expert, one contiguous
+matmul pair per expert, one `index_add_` scatter) - at either geometry, in the same dtype
+and device, after checking that all three are the same function.
 
-The right next step is the cheap one: time both forms at the `match` shape for a few
-hundred steps, on the freed card, before changing any training code. Expected under the
-arithmetic above is up to 1.93x with grouped dispatch (sort tokens by expert, one batched
-gemm over the expert groups, one scatter), which is strictly better than either existing
-form and still pinned equivalent by the same test. The measurement decides; this note
-does not.
+That check has already passed: on 2026-09-25 the grouped form agreed with the dense form to
+**5.1e-16** in float64 at the `match` geometry, with a bit-identical routing load, which is
+the same tolerance `tests/test_v0_session.py` pins the dense/eager pair at. So the candidate
+is not a further approximation of the contract - it is the same function, and what remains
+undecided is only which form is faster at each shape. The script refuses to time a set of
+forms that disagrees, and prices each form with *its own* estimator so a rate cannot be
+credited with arithmetic it did not do. The measurement decides; this note does not.
 
 ## Lever 2: generation re-forwards the whole prefix, once per token - ~300x to be had
 
@@ -164,5 +169,5 @@ good model.
 
 | lever | where | headroom | cost of landing it | changes what an arm learns? |
 |---|---|---|---|---|
-| grouped/sparse expert dispatch | `_MoEFeedForward` | up to **1.93x** on every training step | one function + reuse of the existing equivalence test; measure both shapes first | no - the two forms are already pinned equivalent |
+| grouped/sparse expert dispatch | `_MoEFeedForward` | up to **1.93x** on every training step | one function (`scripts/moe_dispatch_benchmark.py` already contains and equivalence-checks it); measure both shapes on the freed card | no - measured equal to the dense form at 5.1e-16 |
 | KV cache in generation | `src/act/model` + the two samplers | **~299x** on tokens forwarded per completion | a cache argument through the attention path, a cached-equals-uncached check, landing between legs | no - inference only |

@@ -239,6 +239,21 @@ def test_the_token_budget_is_orders_of_magnitude_below_the_comparator(note: str)
         assert rendered in note, f"the note no longer states {rendered!r}"
 
 
+def test_the_note_points_at_the_tool_that_decides_its_first_lever(note: str) -> None:
+    """A note that names a next step has to name something that exists.
+
+    Lever 1 is decided by measurement, so the note names the script that takes it - and the
+    equivalence result the script's gate already produced is quoted beside it, because "the
+    candidate is the same function" is the part that is already settled.
+    """
+
+    script = ROOT / "scripts" / "moe_dispatch_benchmark.py"
+    assert script.is_file(), "the note's next step is not a script that exists"
+    assert "scripts/moe_dispatch_benchmark.py" in note
+    assert "5.1e-16" in note
+
+
+
 def test_the_note_is_not_a_ledger_claim(note: str) -> None:
     """A note that quotes live measurements must not become a document claims rest on.
 
