@@ -4104,6 +4104,27 @@ that the draws are where they stopped, are checked in one place and refuse in th
 direction. The test measures the property instead of the shape: the saved state must reproduce
 the *next* draws, not merely equal another state tensor.
 
+### The arms are checked against each other now, before the benchmark stage rather than after
+
+The audit above ends with a gap that the flags cannot close: `tests/test_code_lm_campaign.py`
+pins the two arms' *invocations*, and the reports are what the arms did. So the premise of the
+whole leg - same data, same order, same budget, same seed, objective the only difference - is
+now a check over the artifacts, `scripts/check_code_lm_arms.py`. It compares the two reports
+field by field and refuses on any difference outside a small declared set (`mode`,
+`distill_weight`, `samples`, `validation`), naming the path it found: `training.seed: 11 vs 12`,
+or `training.train_windows: 30000 vs 317210` - the leg's first defect, caught the same way.
+Resume bookkeeping is printed rather than refused, because a resume is faithful now and hiding
+it would be worse than showing it: the line says `started at step 21 (restored by name (110
+parameters))`.
+
+It needs no GPU, no teacher and no benchmark stage, which is the point of running it first: a
+broken premise costs minutes instead of a night of the students' HumanEval. It writes its
+comparison to JSON with `--json artifacts/code-lm/arms.json` - deliberately outside `bench/`,
+which the table globs - so "the two arms differ in their objective and nothing else" is a
+statement with an artifact behind it. The two `scripts/code_lm_table.py` numbers it prints are
+this leg's *own* measure of the whole held-out stream, not the table's prefix, and the script
+says so in its output rather than leaving a reader to notice.
+
 ### When the campaign finishes
 
 Measured start, for the next session's estimate: the teacher-labels stage began around
@@ -4169,7 +4190,16 @@ The order that turns that into a record:
    the Kaggle files are two of those same two rows measured elsewhere (0.4686 and
    0.5372 below). Comparing them to the local rows is a check on the protocol, and the
    table's device column now names the card so a mix is visible rather than silent.
-2. **The paired contrast first, the table second.** Both are available about forty minutes
+2. **The two arms first of all**, the moment the second one exits - it is the leg's premise and
+   it is checkable before any benchmark runs. `scripts/check_code_lm_arms.py` reads the two
+   reports and refuses when they disagree about anything that is not the objective, so an arm
+   that resumed from another run's checkpoint, or trained over a different window range, is
+   named with the field it differs on (`training.seed: 11 vs 12`) rather than being discovered
+   in the table hours later:
+   ```bash
+   PYTHONPATH=src .venv/bin/python scripts/check_code_lm_arms.py --json artifacts/code-lm/arms.json
+   ```
+3. **The paired contrast next, the table after that.** Both are available about forty minutes
    into the benchmark stage, and the paired line is the leg's headline - read it first. The
    interval is the result and the p-value is a lower bound, since windows cut from one file
    are not independent:
@@ -4183,14 +4213,14 @@ The order that turns that into a record:
    print(table.format_paired(table.paired_contrast(arms)))
    PY
    ```
-3. `PYTHONPATH=src .venv/bin/python scripts/code_lm_table.py --json artifacts/code-lm/bench/table.json`
+4. `PYTHONPATH=src .venv/bin/python scripts/code_lm_table.py --json artifacts/code-lm/bench/table.json`
    - the headline table, and the paired contrast. It refuses to render without all four
    roles, so a partial campaign reports itself here rather than as a shorter table.
-4. Write the numbers into the README section and add the claims to
+5. Write the numbers into the README section and add the claims to
    `scripts/verify_record.py`, then run it and `scripts/check_record_freshness.py`.
    Claims last, because they are checked *against* the prose - a claim written before
    the sentence it guards is a check on a guess.
-5. HumanEval pass@1 for the baseline is the one number with an outside reference
+6. HumanEval pass@1 for the baseline is the one number with an outside reference
    (7.84% published at 512 tokens, temperature 0.2, top_p 0.95, many samples; ours is
    the same settings with one sample, so about ±1.7 points of noise sits on it). The
    decoding now matches the published protocol, which it did not when this checklist
