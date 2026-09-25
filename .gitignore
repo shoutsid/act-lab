@@ -33,6 +33,12 @@ artifacts/real-proof/*
 !artifacts/real-lm/
 artifacts/real-lm/*
 !artifacts/real-lm/report.json
+# The held-out stream the real-LM proof is scored on (2026-09-25). A perplexity
+# with nothing beside it proves nothing - 5.5 could be good or terrible - so the
+# record carries reference baselines, and those are recomputed from this file.
+# 14 KB, versus a 1.9 GB corpus and a 250 MB checkpoint that stay local: it is
+# the one piece that makes the proof checkable without either.
+!artifacts/real-lm/val-tokens.npy
 # Architecture-search record (2026-09-17). Every file here is load-bearing:
 # the per-seed ledgers are the primary data (regenerating them costs GPU
 # hours), `zoo_definition.json` is needed by scripts/arch_zoo_analyze.py to

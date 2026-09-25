@@ -385,6 +385,42 @@ different set from the same seed (1.14× the curated budget against the matched
 0.9996×). Only then is the random arm trained on the architectures whose budget was
 matched.
 
+## A small language model on real text
+
+The topology machinery is what the project is *about*; this is the leg that shows
+the model and the training path it is attached to work on English. A
+**20,863,872-parameter** MoE (`act.model.V0MoECausalLM`, 6 layers of 8 experts with
+2 active, hidden 384, vocab 8192, context 512, **10,247,040 active parameters**)
+trains on real TinyStories text:
+
+```bash
+PYTHONPATH=src python scripts/train_real_lm.py --max-steps 12000
+PYTHONPATH=src python scripts/real_lm_infer.py --demo
+```
+
+**98,304,000 tokens** later the held-out loss is **1.6228 nats (perplexity 5.07)**
+against a uniform floor of **9.0109 nats (8192)** — the model explains **82% of the
+entropy** of next-token prediction on text it never trained on. A perplexity with
+nothing beside it proves nothing, so the same held-out stream carries three
+reference models: uniform **9.0109**, unigram **5.9681**, bigram **7.2348**. The
+model beats the bigram by **5.61 nats** even though the bigram was *fit on those
+held-out tokens* and the model never saw them.
+
+The qualitative half is in `artifacts/real-lm/report.json` beside the numbers: four
+generations from fixed prompts, which `real_lm_infer.py --demo` prints from the
+checkpoint. Both halves are checked rather than trusted —
+`tests/test_real_lm_proof.py` recomputes the arithmetic, the learning curve and
+every reference above from the committed record and the committed held-out stream,
+and `scripts/verify_record.py` carries the same numbers as claims, so a README that
+drifts from the artifact fails.
+
+What this does **not** claim: it is a proof of the path, not of the hypothesis —
+20M parameters on a children's corpus says the model trains and generates, not that
+learned topology beats a fixed architecture, which is the question the phase above
+is about. And the checkpoint is a 250 MB run output and is not committed, so a
+reader can recompute every number in the record and read the generations, but
+cannot re-run inference without running the training command first.
+
 ## Deterministic token shards
 
 The shared data contract can generate checksum-addressed synthetic shards while

@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import statistics
 import sys
 from dataclasses import dataclass, field, replace
@@ -2154,6 +2155,7 @@ CHECKS: tuple[str, ...] = (
     "check_horizon_10x",
     "check_gate5_transfer",
     "check_dev_clause_anchors",
+    "check_real_lm",
 )
 
 
@@ -2187,6 +2189,127 @@ def run_audit(root: Path, *, quick: bool = False, parallel: bool = True) -> Audi
         for future in futures:
             audit.claims.extend(future.result())
     return audit
+
+
+#: The real-LM proof's headline numbers, as `README.md` states them.
+#:
+#: Transcribed from the README section rather than read out of it: the point of the
+#: claim is that the document and the artifact are two places a number can live,
+#: and a check that parsed one out of the other could only ever agree.
+REAL_LM_DOCUMENTED = {
+    "total parameters": 20_863_872,
+    "active parameters": 10_247_040,
+    "training tokens": 98_304_000,
+    "held-out loss (nats)": 1.6228,
+    "held-out perplexity": 5.07,
+    "uniform floor (nats)": 9.0109,
+    "unigram reference (nats)": 5.9681,
+    "bigram reference (nats)": 7.2348,
+    "margin over the bigram (nats)": 5.61,
+    "fraction of the floor's entropy explained": 0.82,
+}
+
+
+def check_real_lm(root: Path, audit: Audit) -> None:
+    """The README's small-LM proof, recomputed from the record it is read from.
+
+    The real-text leg had no audit at all: `train_real_lm.py` wrote
+    `artifacts/real-lm/report.json` on 2026-09-14 and nothing recomputed a number
+    in it, so "a small model trained on real English works" rested on a committed
+    file nobody checked against a document. Two of these claims are recomputations
+    rather than comparisons - the perplexity is the loss exponentiated, and the
+    entropy fraction is the margin over the floor as a fraction of the floor - and
+    the rest are the README and the artifact agreeing, which is the half that
+    drifts.
+    """
+    report = json.loads((root / "real-lm" / "report.json").read_text())
+    validation = report["validation"]
+    baselines = report["baselines"]
+    floor = validation["uniform_floor_loss"]
+    final = validation["final_val_loss"]
+
+    audit.check(
+        "README real-LM: total parameters",
+        REAL_LM_DOCUMENTED["total parameters"],
+        report["model"]["total_parameters"],
+        "README (small LM on real text)",
+    )
+    audit.check(
+        "README real-LM: active parameters",
+        REAL_LM_DOCUMENTED["active parameters"],
+        report["model"]["active_parameters"],
+        "README (small LM on real text)",
+    )
+    audit.check(
+        "README real-LM: training tokens",
+        REAL_LM_DOCUMENTED["training tokens"],
+        report["training"]["tokens_seen"],
+        "README (small LM on real text)",
+    )
+    audit.check(
+        "README real-LM: held-out loss",
+        REAL_LM_DOCUMENTED["held-out loss (nats)"],
+        final,
+        "README (small LM on real text)",
+    )
+    audit.check(
+        "README real-LM: held-out perplexity",
+        REAL_LM_DOCUMENTED["held-out perplexity"],
+        validation["final_perplexity"],
+        "README (small LM on real text)",
+    )
+    audit.check(
+        "README real-LM: perplexity is exp(loss)",
+        validation["final_perplexity"],
+        math.exp(final),
+        "README (small LM on real text)",
+    )
+    audit.check(
+        "README real-LM: uniform floor",
+        REAL_LM_DOCUMENTED["uniform floor (nats)"],
+        floor,
+        "README (small LM on real text)",
+    )
+    audit.check(
+        "README real-LM: the floor is ln(vocab_size)",
+        floor,
+        math.log(report["model"]["vocab_size"]),
+        "README (small LM on real text)",
+    )
+    for reference in ("unigram", "bigram"):
+        audit.check(
+            f"README real-LM: {reference} reference",
+            REAL_LM_DOCUMENTED[f"{reference} reference (nats)"],
+            baselines[reference]["loss"],
+            "README (small LM on real text)",
+        )
+    audit.check(
+        "README real-LM: the model beats every reference",
+        True,
+        all(final < baselines[name]["loss"] for name in ("uniform", "unigram", "bigram")),
+        "README (small LM on real text)",
+    )
+    audit.check(
+        "README real-LM: margin over the bigram",
+        REAL_LM_DOCUMENTED["margin over the bigram (nats)"],
+        baselines["bigram"]["loss"] - final,
+        "README (small LM on real text)",
+    )
+    audit.check(
+        "README real-LM: share of the floor's entropy explained",
+        REAL_LM_DOCUMENTED["fraction of the floor's entropy explained"],
+        (floor - final) / floor,
+        "README (small LM on real text)",
+    )
+    audit.check(
+        "README real-LM: the four generations are not degenerate",
+        True,
+        all(
+            len(text.split()) >= 30 and len(set(text.split())) >= 20
+            for text in report["samples"].values()
+        ),
+        "README (small LM on real text)",
+    )
 
 
 def main() -> None:

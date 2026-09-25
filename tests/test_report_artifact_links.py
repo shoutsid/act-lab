@@ -166,21 +166,27 @@ def _called_name(func: ast.expr) -> str:
     return ""
 
 
-def _artifact_literals_in(source: str) -> set[str]:
-    """``artifacts/...`` paths the module uses, minus the ones it names to skip on.
+def _artifact_literals_in(source: str) -> tuple[set[str], set[str]]:
+    """``(paths the module uses, paths it names only while skipping on their absence)``.
 
     Parsed rather than matched, because a test legitimately *names* a missing
     artifact in two places that are not claims about it: a comment (which never
-    reaches the AST), and a ``pytest.skip``/``reason=`` message, which is a
-    string constant like any other. Excluding those is the difference between a
-    check aimed at reads and one that fires on the first test that explains why
-    it is skipping - which is the version this started as, and it failed on its
-    own author's skip reason immediately.
+    reaches the AST) and a ``pytest.skip``/``reason=`` message, which is a string
+    constant like any other. Separating those from the paths a module *uses* is
+    the difference between a check aimed at reads and one that fires on the first
+    test that explains why it is skipping - which is the version this started as,
+    and it failed on its own author's skip reason immediately.
+
+    The second set is not discarded, it is the exemption: a test may read an
+    artifact that only the author's machine has *provided it guards for the
+    absence*, which is exactly the pattern the local-checkpoint and capacity-sweep
+    tests use. Naming a path in a skip message and reading it in the same module
+    is therefore a claim this check accepts, and reading it without one is not.
     """
     try:
         tree = ast.parse(source)
     except SyntaxError:  # unparsable is not this check's business
-        return set()
+        return set(), set()
     named_to_skip: set[int] = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -190,14 +196,16 @@ def _artifact_literals_in(source: str) -> set[str]:
             named_to_skip |= {
                 id(inner) for inner in ast.walk(node)
             }
-    found: set[str] = set()
+    used: set[str] = set()
+    guarded: set[str] = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
             continue
-        if id(node) in named_to_skip or "artifacts/" not in node.value:
+        if "artifacts/" not in node.value:
             continue
-        found |= set(ARTIFACT_LITERAL.findall(node.value))
-    return found
+        found = set(ARTIFACT_LITERAL.findall(node.value))
+        (guarded if id(node) in named_to_skip else used).update(found)
+    return used, guarded
 
 
 def test_every_artifact_a_test_reads_is_not_gitignored() -> None:
@@ -221,7 +229,8 @@ def test_every_artifact_a_test_reads_is_not_gitignored() -> None:
     checked: set[str] = set()
     offenders: list[tuple[str, str]] = []
     for test_file in sorted((ROOT / "tests").glob("*.py")):
-        for name in sorted(_artifact_literals_in(test_file.read_text())):
+        used, guarded = _artifact_literals_in(test_file.read_text())
+        for name in sorted(used - guarded):
             if name in checked or not (ROOT / name).is_file():
                 continue
             checked.add(name)
@@ -237,6 +246,7 @@ def test_every_artifact_a_test_reads_is_not_gitignored() -> None:
     assert not offenders, (
         "artifact(s) a test reads are gitignored, so the test can only pass on "
         f"the machine that generated them: {offenders}. Commit the artifact "
-        "(with a `.gitignore` exception and a note saying why) or stop reading "
-        "it in a test."
+        "(with a `.gitignore` exception and a note saying why), or guard for its "
+        "absence with a `pytest.skip` that names it so the skip is the honest "
+        "report in a fresh clone."
     )

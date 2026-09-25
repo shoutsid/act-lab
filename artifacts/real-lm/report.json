@@ -1,4 +1,22 @@
 {
+  "baselines": {
+    "bigram": {
+      "loss": 7.234792306672773,
+      "perplexity": 1386.8528281870715
+    },
+    "fit_on": "the held-out stream itself - a reference point, not a competitor",
+    "held_out_tokens": 7190,
+    "scored_pairs": 7189,
+    "smoothing": "Laplace alpha=1",
+    "uniform": {
+      "loss": 9.010913347279288,
+      "perplexity": 8191.9999999999945
+    },
+    "unigram": {
+      "loss": 5.968069069786259,
+      "perplexity": 390.7504300146227
+    }
+  },
   "corpus": "TinyStories",
   "model": {
     "active_experts": 2,
@@ -14,10 +32,10 @@
     "vocab_size": 8192
   },
   "samples": {
-    "Once upon a time, there was a little": "\u0120Once \u0120upon \u0120a \u0120time , \u0120there \u0120was \u0120a \u0120little \u0120girl \u0120named \u0120Lily . \u0120Lily \u0120loved \u0120to \u0120play \u0120in \u0120the \u0120forest , \u0120but \u0120one \u0120day \u0120she \u0120found \u0120a \u0120lost \u0120goat \u0120in \u0120the \u0120woods . \u0120She \u0120went \u0120to \u0120the \u0120farmer \u0120and \u0120asked \u0120for \u0120help . \u010a The \u0120farmer \u0120knew \u0120where \u0120the \u0120goat \u0120was \u0120and \u0120put \u0120some \u0120food . \u0120He \u0120said , \u0120\" We \u0120need \u0120to \u0120go \u0120to \u0120the \u0120cow \u0120seat \u0120to",
-    "One day, Mom said,": "\u0120One \u0120day , \u0120Mom \u0120said , \u0120\" Let 's \u0120go \u0120and \u0120see \u0120the \u0120fire !\" \u010a The \u0120two \u0120of \u0120them \u0120walked \u0120near \u0120the \u0120fire . \u0120They \u0120saw \u0120that \u0120it \u0120was \u0120big \u0120and \u0120red . \u0120They \u0120saw \u0120lions , \u0120monkeys , \u0120and \u0120a \u0120zebra . \u0120They \u0120heard \u0120a \u0120loud \u0120noise . \u0120They \u0120were \u0120scared . \u010a \" Run , \u0120go !\" \u0120Sara \u0120said . \u010a \" Be",
-    "The dog ran to the": "\u0120The \u0120dog \u0120ran \u0120to \u0120the \u0120house , \u0120but \u0120he \u0120did \u0120not \u0120find \u0120Tom . \u0120He \u0120was \u0120so \u0120big \u0120and \u0120strong . \u0120Sue \u0120said , \u0120\" Tom , \u0120come \u0120on \u0120my \u0120bike ! \u0120It \u0120makes \u0120it \u0120big !\" \u0120Tom \u0120did \u0120not \u0120want \u0120to \u0120get \u0120hurt , \u0120so \u0120he \u0120started \u0120to \u0120push \u0120the \u0120bike . \u0120The \u0120bike \u0120hit \u0120Tom , \u0120and \u0120he \u0120fell \u0120down . \u010a Sue",
-    "Tom and Lily were playing in the": "\u0120Tom \u0120and \u0120Lily \u0120were \u0120playing \u0120in \u0120the \u0120park . \u0120They \u0120saw \u0120a \u0120big \u0120statue \u0120of \u0120a \u0120dinosaur \u0120on \u0120the \u0120ground . \u0120The \u0120statue \u0120was \u0120brown \u0120and \u0120shiny \u0120and \u0120had \u0120a \u0120big \u0120hole \u0120in \u0120it . \u0120Tom \u0120and \u0120Lily \u0120wanted \u0120to \u0120see \u0120the \u0120statue \u0120too . \u010a \" Let 's \u0120follow \u0120the \u0120statue !\" \u0120Tom \u0120said . \u0120\" Maybe \u0120it \u0120is \u0120a \u0120treasure !\" \u010a \" No ,"
+    "Once upon a time, there was a little": " Once upon a time, there was a little girl named Lily. She loved to play in the park at night. One day, she was walking in the park and she saw a big snake. She was scared, but she was brave and decided to pet the snake.\n\"Hello, terrible snake,\" she said. \"You have to be",
+    "One day, Mom said,": " One day, Mom said, \"Let's go and see the fire!\"\nThe two of them walked to the fire carefully. Mom said, \"Let's go get some oxygen. We need to put a laddie in the fire.\" \nThe fire stopped and they found a small cave. Mom said, \"This",
+    "The dog ran to the": " The dog ran to the dog and tried to touch the dog. The dog was scared and ran away.\nTim's mom saw what happened and said, \"I told you not to touch the dog. But it was just a man who lived on the porch. The dog was not friendly.\" Tim's mom took the dog",
+    "Tom and Lily were playing in the": " Tom and Lily were playing in the park when Tom saw a big statue of his friend, Max. Tom wanted to play with it, but he was afraid he might hurt Max.\nTom said to Max, \"Let's play something fun. We can act like vroom and slide.\" Max nodded, and they started to take turns on"
   },
   "tokenizer": "BPE vocab 8192 trained on corpus",
   "training": {
@@ -25,12 +43,12 @@
     "device": "cuda",
     "optimizer": "AdamW warmup+cosine",
     "seed": 7,
-    "steps": 6000,
-    "tokens_seen": 49152000
+    "steps": 12000,
+    "tokens_seen": 98304000
   },
   "validation": {
-    "final_perplexity": 5.547909944478028,
-    "final_val_loss": 1.713421270251274,
+    "final_perplexity": 5.067084715328948,
+    "final_val_loss": 1.6227656453847885,
     "history": [
       {
         "perplexity": 24.64592199350754,
@@ -109,6 +127,84 @@
         "step": 6000,
         "train_loss": 1.676516056060791,
         "val_loss": 1.713421270251274
+      },
+      {
+        "perplexity": 5.553139733647669,
+        "step": 6100,
+        "train_loss": 1.6559667587280273,
+        "val_loss": 1.7143634855747223
+      },
+      {
+        "perplexity": 5.994459815475536,
+        "step": 6500,
+        "train_loss": 1.658471703529358,
+        "val_loss": 1.790835678577423
+      },
+      {
+        "perplexity": 5.741265809875953,
+        "step": 7000,
+        "train_loss": 1.6879874467849731,
+        "val_loss": 1.7476797103881836
+      },
+      {
+        "perplexity": 5.649859277673801,
+        "step": 7500,
+        "train_loss": 1.8340890407562256,
+        "val_loss": 1.7316306382417679
+      },
+      {
+        "perplexity": 5.589505240687869,
+        "step": 8000,
+        "train_loss": 1.5946273803710938,
+        "val_loss": 1.7208907753229141
+      },
+      {
+        "perplexity": 5.518077680186734,
+        "step": 8500,
+        "train_loss": 1.4962306022644043,
+        "val_loss": 1.7080295532941818
+      },
+      {
+        "perplexity": 5.463541545016703,
+        "step": 9000,
+        "train_loss": 1.6839216947555542,
+        "val_loss": 1.698097214102745
+      },
+      {
+        "perplexity": 5.355942446748547,
+        "step": 9500,
+        "train_loss": 1.6023249626159668,
+        "val_loss": 1.6782066822052002
+      },
+      {
+        "perplexity": 5.269139896423126,
+        "step": 10000,
+        "train_loss": 1.6235383749008179,
+        "val_loss": 1.6618671417236328
+      },
+      {
+        "perplexity": 5.21520250899896,
+        "step": 10500,
+        "train_loss": 1.6854519844055176,
+        "val_loss": 1.6515779197216034
+      },
+      {
+        "perplexity": 5.141891980507977,
+        "step": 11000,
+        "train_loss": 1.5494462251663208,
+        "val_loss": 1.6374211013317108
+      },
+      {
+        "perplexity": 5.117367380754089,
+        "step": 11500,
+        "train_loss": 1.5784146785736084,
+        "val_loss": 1.6326401233673096
+      },
+      {
+        "perplexity": 5.067084715328948,
+        "step": 12000,
+        "train_loss": 1.690295934677124,
+        "val_loss": 1.6227656453847885
       }
     ],
     "uniform_floor_loss": 9.010913347279288,

@@ -21,6 +21,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import collections
 import json
 import math
 import time
@@ -242,6 +243,56 @@ def evaluate(model: V0MoECausalLM, val: np.ndarray, device: torch.device, batche
 
 
 @torch.no_grad()
+def baseline_losses(val: np.ndarray, vocab_size: int) -> dict:
+    """Held-out next-token loss for two reference models, on the LM's own domains.
+
+    Both references are fit on the held-out stream *itself*, which makes them a
+    yardstick rather than a competitor: the LM has never seen these tokens and
+    they have seen nothing else. The uniform floor is the model's own denominator
+    (``ln(vocab_size)``); the unigram and bigram are smoothed with Laplace
+    ``alpha=1`` so an unseen token cannot score ``-inf``.
+
+    They are here because a perplexity with nothing beside it is not a proof of
+    anything - 5.5 could be good or terrible. A reader can recompute every number
+    below from the committed held-out stream, which is the whole point of
+    committing it.
+
+    One deliberate mismatch: the LM is scored on random 512-token windows of this
+    stream, and these references on every adjacent pair of it. Both are next-token
+    loss on the same held-out text, and the difference is in the LM's favour
+    (windows give it context), so the comparison is conservative.
+    """
+    tokens = np.asarray(val, dtype=np.int64).tolist()
+    pairs = list(zip(tokens[:-1], tokens[1:]))
+    n = len(pairs)
+    if n == 0:
+        raise SystemExit("held-out stream is too short to score a baseline on")
+
+    unigram = collections.Counter(target for _, target in pairs)
+    bigram = collections.Counter(pairs)
+    context = collections.Counter(source for source, _ in pairs)
+
+    unigram_loss = -sum(
+        math.log((unigram[target] + 1.0) / (n + vocab_size)) for _, target in pairs
+    ) / n
+    bigram_loss = -sum(
+        math.log((bigram[pair] + 1.0) / (context[pair[0]] + vocab_size)) for pair in pairs
+    ) / n
+
+    def block(loss: float) -> dict:
+        return {"loss": loss, "perplexity": math.exp(loss)}
+
+    return {
+        "held_out_tokens": len(tokens),
+        "scored_pairs": n,
+        "smoothing": "Laplace alpha=1",
+        "fit_on": "the held-out stream itself - a reference point, not a competitor",
+        "uniform": block(math.log(vocab_size)),
+        "unigram": block(unigram_loss),
+        "bigram": block(bigram_loss),
+    }
+
+
 def generate(model: V0MoECausalLM, tokenizer, prompt: str, device: torch.device, new_tokens: int = 60, temperature: float = 0.8) -> str:
     from tokenizers import Tokenizer
 
@@ -262,7 +313,126 @@ def generate(model: V0MoECausalLM, tokenizer, prompt: str, device: torch.device,
     return text.replace("<pad>", "")
 
 
-def stage_train(tokens_path: Path, valid_path: Path, max_steps: int, log_every: int) -> dict:
+# --- checkpointing ---------------------------------------------------------
+#
+# The optimizer's moments are bound to parameter *names*, not to positions.
+# `Optimizer.state_dict()` is position-keyed: `load_state_dict` maps its entries
+# onto `self.param_groups[i]["params"]` **by index**. `nn.Module.state_dict()`
+# does the opposite and matches by name, so a model whose parameter *order*
+# changed while its names and shapes stayed the same loads its weights cleanly
+# and attaches its Adam moments to the wrong tensors.
+#
+# That is not hypothetical. The real-LM run of 2026-09-14 was resumed on
+# 2026-09-25 into exactly that one-position shift, and the first step raised
+# `RuntimeError: output with shape [384] doesn't match the broadcast shape
+# [1152, 384]` from inside `torch._foreach_lerp_` - a message naming no
+# parameter and no cause. Two things follow: the moments are now stored by name,
+# and a positional payload is refused instead of guessed at.
+
+
+def _named_moments(model: V0MoECausalLM, optimizer: torch.optim.Optimizer) -> dict[str, dict]:
+    """The optimizer's per-parameter state, keyed by parameter name."""
+    by_id = {id(param): name for name, param in model.named_parameters()}
+    moments: dict[str, dict] = {}
+    for group in optimizer.param_groups:
+        for param in group["params"]:
+            state = optimizer.state.get(param)
+            if not state:
+                continue
+            moments[by_id[id(param)]] = {
+                key: (value.detach().clone() if torch.is_tensor(value) else value)
+                for key, value in state.items()
+            }
+    return moments
+
+
+def checkpoint_payload(
+    model: V0MoECausalLM, optimizer: torch.optim.Optimizer, step: int, history: list[dict]
+) -> dict:
+    """What a checkpoint holds: weights by name, moments by name, step, history."""
+    return {
+        "model": model.state_dict(),
+        "optimizer": {
+            "groups": [
+                {key: value for key, value in group.items() if key != "params"}
+                for group in optimizer.param_groups
+            ],
+            "moments": _named_moments(model, optimizer),
+        },
+        "step": step,
+        "history": history,
+    }
+
+
+def restore_optimizer(
+    model: V0MoECausalLM,
+    optimizer: torch.optim.Optimizer,
+    payload: dict,
+    path: Path,
+    *,
+    reset: bool,
+) -> str:
+    """Attach a checkpoint's moments to the parameters they were trained against.
+
+    A positional payload cannot be attached safely, so it is refused with the
+    reason and both remedies named rather than allowed to misalign. ``reset`` is
+    the named remedy for a checkpoint written before the moments were keyed by
+    name: resume the weights, start Adam fresh, and say so in the log.
+
+    Returns a short description of what was done, which the report records - a
+    resumed run whose optimizer state came from somewhere other than the
+    checkpoint is a different object from one trained straight through.
+    """
+    saved = payload.get("optimizer")
+    if reset:
+        _log("optimizer moments re-initialised (--reset-optimizer); weights resumed")
+        return "re-initialised (--reset-optimizer)"
+    if not saved:
+        _log("checkpoint carries no optimizer state; moments start fresh")
+        return "fresh (checkpoint carried none)"
+    if "moments" not in saved:
+        raise SystemExit(
+            f"{path} stores its optimizer state by position, which cannot be attached "
+            "to this model: the parameters are not in the order that run had them in, "
+            "and a state_dict that loads by name does not imply an order that does. "
+            "Re-run with --reset-optimizer to resume the weights with fresh Adam "
+            "moments, or delete the checkpoint to train from scratch."
+        )
+
+    by_name = dict(model.named_parameters())
+    missing: list[str] = []
+    wrong_shape: list[str] = []
+    for name, moment in saved["moments"].items():
+        param = by_name.get(name)
+        if param is None:
+            missing.append(name)
+            continue
+        for key in ("exp_avg", "exp_avg_sq"):
+            value = moment.get(key)
+            if torch.is_tensor(value) and tuple(value.shape) != tuple(param.shape):
+                wrong_shape.append(f"{name}.{key} {tuple(value.shape)} != {tuple(param.shape)}")
+        optimizer.state[param] = dict(moment)
+    if missing or wrong_shape:
+        raise SystemExit(
+            f"{path}'s optimizer state does not match this model - missing "
+            f"{missing[:4]} of {len(missing)}, shape mismatches {wrong_shape[:4]} "
+            f"of {len(wrong_shape)}. Refusing to continue rather than train with "
+            "moments that belong to other parameters."
+        )
+    for group, metadata in zip(optimizer.param_groups, saved["groups"]):
+        group.update(metadata)
+    _log(f"optimizer moments restored by name for {len(saved['moments'])} parameters")
+    return f"restored by name for {len(saved['moments'])} parameters"
+
+
+def stage_train(
+    tokens_path: Path,
+    valid_path: Path,
+    max_steps: int,
+    log_every: int,
+    *,
+    reset_optimizer: bool = False,
+) -> dict:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     _log(f"training on {device}")
     torch.manual_seed(SEED)
@@ -286,13 +456,16 @@ def stage_train(tokens_path: Path, valid_path: Path, max_steps: int, log_every: 
     latest = checkpoint_dir / "latest.pt"
     start_step = 0
     history: list[dict] = []
+    optimizer_state = "fresh (no checkpoint)"
     if latest.is_file():
         payload = torch.load(latest, map_location=device, weights_only=False)
         model.load_state_dict(payload["model"])
-        optimizer.load_state_dict(payload["optimizer"])
+        optimizer_state = restore_optimizer(
+            model, optimizer, payload, latest, reset=reset_optimizer
+        )
         start_step = payload["step"]
         history = payload.get("history", [])
-        _log(f"resumed from step {start_step}")
+        _log(f"resumed from step {start_step}: optimizer state {optimizer_state}")
 
     tokens_per_step = BATCH_SIZE * CONTEXT_SIZE
     started = time.time()
@@ -321,7 +494,7 @@ def stage_train(tokens_path: Path, valid_path: Path, max_steps: int, log_every: 
             _log(f"  eval: val loss {val_loss:.4f} perplexity {perplexity:.2f}")
         if step % CHECKPOINT_EVERY == 0 or step == max_steps:
             torch.save(
-                {"model": model.state_dict(), "optimizer": optimizer.state_dict(), "step": step, "history": history},
+                checkpoint_payload(model, optimizer, step, history),
                 latest.with_suffix(".tmp"),
             )
             latest.with_suffix(".tmp").replace(latest)
@@ -351,6 +524,12 @@ def stage_train(tokens_path: Path, valid_path: Path, max_steps: int, log_every: 
             "batch_tokens": tokens_per_step,
             "tokens_seen": max_steps * tokens_per_step,
             "optimizer": "AdamW warmup+cosine",
+            # `lr_at` is a function of the *total* budget, so a continuation whose
+            # budget grew restarts the cosine decay instead of finishing the old
+            # one: the 6000 -> 12000 run resumed at lr 8.0e-05 and stepped back up
+            # to 4.0e-04, which is why the recorded held-out curve is not monotone.
+            # That is a property of the schedule and is left in the curve rather
+            # than smoothed out - a reader sees the bump, and this explains it.
             "seed": SEED,
             "device": str(device),
         },
@@ -361,6 +540,7 @@ def stage_train(tokens_path: Path, valid_path: Path, max_steps: int, log_every: 
             "uniform_floor_perplexity": VOCAB_SIZE,
             "history": history,
         },
+        "baselines": baseline_losses(val, VOCAB_SIZE),
         "samples": samples,
     }
     report_path = ART / "report.json"
@@ -370,9 +550,22 @@ def stage_train(tokens_path: Path, valid_path: Path, max_steps: int, log_every: 
 
 
 def tokenizer_from_disk():
-    from tokenizers import Tokenizer
+    """The corpus BPE tokenizer, with the byte-level decoder attached.
 
-    return Tokenizer.from_file(str(ART / "tokenizer.json"))
+    It was trained without one, so a decode returns the byte-level markers the
+    BPE was built on - ``ĠOnce Ġupon Ġa Ġtime`` - and the samples this script
+    writes into the report were stored in exactly that form until 2026-09-25.
+    The record's qualitative half is those four generations, and an artifact whose
+    proof is unreadable is not a proof; `scripts/real_lm_infer.py` had attached
+    the decoder at load time all along, so the two disagreed about what a sample
+    even is. Attaching it here is the same one line, in the place that writes the
+    record rather than the place that reads it.
+    """
+    from tokenizers import Tokenizer, decoders
+
+    tokenizer = Tokenizer.from_file(str(ART / "tokenizer.json"))
+    tokenizer.decoder = decoders.ByteLevel()
+    return tokenizer
 
 
 def main() -> int:
@@ -381,6 +574,14 @@ def main() -> int:
     parser.add_argument("--log-every", type=int, default=100)
     parser.add_argument("--tokens", type=int, default=40_000_000, help="token-stream size to encode")
     parser.add_argument("--stage", choices=("all", "corpus", "tokenizer", "tokens"), default="all")
+    parser.add_argument(
+        "--reset-optimizer",
+        action="store_true",
+        help=(
+            "resume the weights but start Adam's moments fresh; required for a "
+            "checkpoint whose optimizer state was stored by position"
+        ),
+    )
     args = parser.parse_args()
 
     train_path, valid_path = stage_corpus()
@@ -392,7 +593,13 @@ def main() -> int:
     tokens_path = stage_tokens(train_path, args.tokens)
     if args.stage == "tokens":
         return 0
-    report = stage_train(tokens_path, valid_path, args.max_steps, args.log_every)
+    report = stage_train(
+        tokens_path,
+        valid_path,
+        args.max_steps,
+        args.log_every,
+        reset_optimizer=args.reset_optimizer,
+    )
     _log(
         f"final: val loss {report['validation']['final_val_loss']:.3f} "
         f"(uniform floor {report['validation']['uniform_floor_loss']:.3f}), "
