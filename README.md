@@ -468,7 +468,12 @@ The campaign scores the teacher over a fixed grid of **non-overlapping** 512-tok
 windows, then trains two arms on those same windows in the same order from the same
 seed - one distilled against the teacher's distribution, one plain cross-entropy. The
 only difference between them is the objective, so the difference between them is
-attributable to distillation rather than to data. Non-overlapping windows are load
+attributable to distillation rather than to data. That claim is checked against the arms'
+own reports and not against the command line: `scripts/check_code_lm_arms.py` compares the
+two and refuses on any difference that is not the objective - because the claim was already
+false once on disk, when a checkpoint from a 20-step smoke run sat where the control arm's
+checkpoint goes and adopting it would have started that arm from another run's weights at
+step 21 while still reporting the full budget. Non-overlapping windows are load
 bearing: they make the teacher's context at a position *identical* to the student's,
 where a sliding window would give the teacher more context and flatter the student.
 
