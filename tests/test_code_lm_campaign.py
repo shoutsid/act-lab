@@ -118,6 +118,20 @@ def test_every_benchmark_row_is_scored_on_the_same_held_out_text(script: str) ->
     assert len(set(tags)) == 4, f"tags must be distinct or rows overwrite each other: {tags}"
 
 
+def test_the_fast_benchmark_rows_are_scored_before_the_slow_ones(script: str) -> None:
+    """The order of four invocations, pinned because it is worth fifteen hours of waiting.
+
+    A row lands in ``artifacts/code-lm/bench/`` when its byte scan finishes and the table
+    needs all four, so with the two student arms first - their HumanEval halves are hours
+    each - the four-row table could not be built until the end of the stage. The teacher and
+    the baseline are minutes. Running them first also means the baseline's pass@1, the only
+    number here with an outside reference (7.84% published), is checked against our harness
+    before the two long rows rather than after them.
+    """
+    tags = [unquoted(flags(row)["--tag"]) for row in invocations(script, "code_bench.py --model")]
+    assert tags == ["teacher", "baseline", "ours-$SCALE-distill", "ours-$SCALE-ce"]
+
+
 def test_the_benchmarked_models_are_the_ones_compared(script: str) -> None:
     """The teacher, the published baseline, and both arms - or the table is partial."""
     rows = {unquoted(flags(row)["--tag"]) for row in invocations(script, "code_bench.py --model")}

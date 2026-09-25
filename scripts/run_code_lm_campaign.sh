@@ -19,7 +19,8 @@
 #            result is attributable to distillation and not to data volume.
 #   bench    every model is scored by scripts/code_bench.py, on the same held-out
 #            text, in bits per byte and executed HumanEval pass@1. Three models
-#            scored by three scripts would be three different numbers.
+#            scored by three scripts would be three different numbers. The two
+#            fast rows run before the two slow ones; see the note at stage 3.
 #
 # Usage:
 #   nohup bash scripts/run_code_lm_campaign.sh > /tmp/code-campaign.log 2>&1 &
@@ -75,11 +76,19 @@ $PY scripts/train_code_lm.py --stage train --mode ce --scale "$SCALE" \
     --log-every 250 --score-tokens "$SCORE_TOKENS"
 
 log "stage 3/3: benchmarks"
+# The cheap rows go first, and that is worth about fifteen hours of waiting. Each row is
+# written to artifacts/code-lm/bench/ as soon as its byte scan finishes, and the table needs
+# all four - so with the two student arms first, whose HumanEval halves are hours each, the
+# four-row table could not be built until this stage was nearly over. The teacher and the
+# baseline are minutes (their generate path keeps a KV cache). First also means the
+# baseline's pass@1 - the only number here with an outside reference, 7.84% published - is
+# checked against our harness before the two long rows run rather than after them, and that a
+# failure inside a student's HumanEval cannot cost the rows that do not depend on it.
+$PY scripts/code_bench.py --model "hf:$TEACHER" --bytes-limit "$BENCH_BYTES" --tag "teacher"
+$PY scripts/code_bench.py --model "hf:$BASELINE" --bytes-limit "$BENCH_BYTES" --tag "baseline"
 $PY scripts/code_bench.py --model "ours:$CHECKPOINTS/$SCALE-distill.pt" --scale "$SCALE" \
     --bytes-limit "$BENCH_BYTES" --tag "ours-$SCALE-distill"
 $PY scripts/code_bench.py --model "ours:$CHECKPOINTS/$SCALE-ce.pt" --scale "$SCALE" \
     --bytes-limit "$BENCH_BYTES" --tag "ours-$SCALE-ce"
-$PY scripts/code_bench.py --model "hf:$TEACHER" --bytes-limit "$BENCH_BYTES" --tag "teacher"
-$PY scripts/code_bench.py --model "hf:$BASELINE" --bytes-limit "$BENCH_BYTES" --tag "baseline"
 
 log "campaign complete; results in artifacts/code-lm/bench/"
