@@ -368,6 +368,17 @@ record is a failure rather than a discovery:
 PYTHONPATH=src python scripts/check_record_freshness.py --strict-rank
 ```
 
+The two checks above run in the working tree, which is the one place where the run
+output under `artifacts/` is visible — so a record or a test can pass here and fail
+for a reader, and nothing inside the tree can tell a file that is *present* from a
+file that is *committed*. `scripts/check_fresh_clone.py` asks the reader's question
+instead: it clones `HEAD` and runs the checks in the clone, so a test that reads run
+output the ignore rule keeps local fails here rather than being discovered there:
+
+```bash
+PYTHONPATH=src python scripts/check_fresh_clone.py
+```
+
 The scan prints the launch command for the arm it matched, with every flag that
 decides the draw — the band included, because the driver's own default band draws a
 different set from the same seed (1.14× the curated budget against the matched

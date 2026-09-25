@@ -1,5 +1,19 @@
 # ACT Implementation Status
 
+## The fresh-clone gap is a check now, rather than something somebody has to remember to do (2026-09-25)
+
+| | |
+|---|---|
+| **What was still missing** | The entry below fixes the 33 failures by hand, once. Nothing stopped the next test from reading local scratch, and nothing in the tree *can*: from inside the working tree a file that is present and a file that is committed are the same file, so all four documented checks can be green here and red for a reader. |
+| **The instrument** | `scripts/check_fresh_clone.py`: it clones **HEAD** into a temp directory and runs `AGENTS.md`'s four checks there with the current interpreter (`PYTHONPATH=src`), one `ok`/`FAIL` line each carrying the check's own last line, exit **1** on any failure and **2** when the clone itself cannot be made. |
+| **Why a clone and not a filter on the working tree** | A clone is what a reader gets; the tracked/untracked line is git's to draw rather than the script's inference; and no check has to know it is being run this way. The alternative - hiding untracked files under `artifacts/` for a subprocess - is the script reimplementing `git check-ignore`, which is the bug the scanner hit twice. |
+| **The property it is honest about** | It checks **HEAD**, so it prints the sha it cloned and warns when the working tree is dirty (`NOTE: the working tree has uncommitted changes. They are NOT part of this check`). That is the intended semantics - HEAD is what everyone else receives - but it would be wrong to read a pass as a statement about uncommitted work, so the warning is not optional. |
+| **Pinned on a throwaway repository, in both directions** | `tests/test_check_fresh_clone.py`, **7 tests**. The load-bearing one reproduces the defect: a committed test reading an ignored, untracked `artifacts/local.txt` **passes** in that repository's own tree and **fails** in the clone the check makes - the contrast is the finding, since a failing clone run alone is indistinguishable from a genuinely broken test. Also pinned: it sees HEAD rather than a fixed-but-uncommitted file; a source that is not a checkout is refused; an unknown check name is refused rather than silently narrowing the run; the clone is removed unless `--keep`; and the check list agrees with the document that names the commands as a set. |
+| **The new test caught the same class in itself, immediately** | The first version pinned that list against `AGENTS.md` - which is **gitignored on purpose**: the ignore rule groups it with `.omo/`, `.freebuff/` and `.project_id` as this tree's agent-tool state rather than project content, so a fresh clone does not have it. The test would therefore have failed in exactly the checkout it exists to check. It now skips by name when the file is absent, and the check is documented for readers in `README.md`, which *is* tracked. Recorded because it is the third time in this session that a check written to catch machine-local state was itself machine-local - the class is easy to write and the guard is what finds it. |
+| **Mutation-checked** | Pointing `run_check` at the source instead of the clone fails exactly **2** - the defect test and the HEAD test, i.e. precisely the two that pin what is being run. |
+| **Measured on this tree** | `4/4 checks pass in a fresh clone of 352a1eb`: 314/314 claims, 9/9 records, 10 notebooks byte-identical, and **1633 passed / 34 skipped** - the fresh clone's numbers, which is the point. |
+| **Result** | **1674 tests** pass locally (1667 + this script's 7); the fresh-clone check is documented in `README.md` beside the record checks, and in the local `AGENTS.md`; probe **v4 QUEUED**; TPU **19.79 h**, GPU **1.42 h** (both refreshing **2026-09-26**). |
+
 ## A fresh clone ran the suite for the first time, and 33 tests were reading evidence only this machine has (2026-09-25)
 
 | | |
