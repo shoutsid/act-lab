@@ -3741,3 +3741,47 @@ remote code) and its 32k vocabulary - against `Qwen/Qwen2.5-Coder-1.5B`'s 152k -
 leaves room for depth in a student that must pay for its embedding matrix.
 
 The 4.6 GB SantaCoder download was spent before that decision and is not kept.
+
+**The Kaggle half, and what the first push cost.**
+
+The local card runs the campaign serially because one 8 GiB device cannot do two of
+these at once, and the teacher's bits-per-byte pass sits at the *end* of that chain
+while depending on nothing in it. So that pass runs on Kaggle instead, beside the
+local run rather than after it (`scripts/push_code_bench.py`). Three facts decided
+the shape of the job, two of them already recorded in `T4_RUNBOOK.md` because they
+had each cost a run:
+
+- **Quota, not a queue, is the binding constraint on the GPU.** Measured 2026-09-25:
+  **28.70 of 30 GPU-h already spent**, 1.30 h remaining, refresh at 00:00 UTC. The
+  TPU line in the same call is 0.33 of 20 h used. The push did not queue - it went
+  `RUNNING` within seconds - so the earlier note about a long TPU queue is the true
+  half of it, and the expensive half is the weekly GPU allowance. The driver now
+  refuses to push when `kaggle_queue.quota_shortfall` says the declared window does
+  not fit, before publishing anything.
+- **`/kaggle/working` is 19.5 GiB against a 7.9 TB root overlay**, and this job pulls
+  2.7 GB of teacher plus the corpus and its caches. All of it goes under `/tmp`; only
+  the JSON results go to `/kaggle/working`.
+- **A pushed script kernel receives only its entry text**, so the entry is generated
+  and its placeholders are checked by test - a leftover is a `SyntaxError` in a run
+  that has already queued and will still bill its minutes.
+
+**The first push failed, and the failure was ours.** The entry passed a bare
+repository id where `code_bench.py` requires `hf:<repo>`: the run installed
+transformers (26 s), downloaded the 2.7 GB teacher at **36 MB/s** (74 s), built the
+held-out split, and exited in three seconds with
+`--model must be hf:<repo> or ours:<checkpoint path>`. Two things follow, and the
+second is the one that matters. The `--model` kinds now live in one constant
+(`code_bench.MODEL_PREFIXES`) that the driver's tests check the kernel's strings
+against, because the test that *did* exist asserted the ids merely looked like
+repository names - which is how a duplicate of the driver's list in the test file
+managed to agree with the driver and disagree with the parser. And `--fetch` now
+prints the kernel log as well as the output files: the first version printed only the
+JSON, so an erroring kernel arrived as a summary with two empty rows while the line
+naming the cause was downloaded and thrown away with the temporary directory.
+
+Also added: `scripts/code_lm_table.py`, because three scripts write the numbers this
+leg is judged on and a table assembled by hand from three places is one that can
+quietly lose a row. It refuses a missing role and refuses rows measured at different
+`bytes_limit` values - the second because bits per byte is only comparable on the same
+held-out text, and the limit is a per-machine decision (4 MB of prefix locally,
+escalating the teacher's pass from hours to minutes).

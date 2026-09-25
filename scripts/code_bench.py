@@ -56,6 +56,17 @@ HUMANEVAL = ART / "humaneval" / "HumanEval.jsonl.gz"
 VAL_TEXT = ART / "val-text.txt"
 RESULTS = ART / "bench"
 
+MODEL_PREFIXES = ("hf", "ours")
+"""The ``--model`` kinds. One definition, because two callers build these strings.
+
+``scripts/push_code_bench.py`` renders them into a Kaggle kernel entry from a remote
+machine, so a mismatch reaches the failure several minutes and one 2.7 GB download
+later: the first push of that kernel died with "--model must be hf:<repo> or
+ours:<checkpoint path>" after fetching the teacher, because the driver passed a bare
+repository id. The tests compare the driver's strings against this tuple rather than
+against the message.
+"""
+
 WINDOW = 512
 """Tokens per scoring window, the same for every model regardless of its own limit.
 Holding it fixed is what makes the teacher's and the baseline's numbers a
@@ -395,8 +406,8 @@ def main() -> int:
     requested = {name.strip() for name in args.suite.split(",") if name.strip()}
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     kind, _, target = args.model.partition(":")
-    if kind not in ("hf", "ours") or not target:
-        raise SystemExit("--model must be hf:<repo> or ours:<checkpoint path>")
+    if kind not in MODEL_PREFIXES or not target:
+        raise SystemExit(f"--model must be one of {', '.join(f'{p}:<value>' for p in MODEL_PREFIXES)}")
 
     RESULTS.mkdir(parents=True, exist_ok=True)
     report: dict = {"model": args.model, "suite": sorted(requested), "device": str(device)}
