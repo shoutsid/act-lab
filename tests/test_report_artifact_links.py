@@ -10,13 +10,24 @@ committed summary, and a committed summary must be referenced somewhere.
 These are link checks, not statistics checks - the per-study pinning tests
 (``test_initialization_summary``, ``test_portability_summary``,
 ``test_specificity_summary``, ...) own the numbers.
+
+The same defect class has a fresh-clone form: an artifact a test reads can be
+present on the machine that generated it and absent from every other checkout,
+because the blanket `artifacts/*` rule ignores it. `null-clause-power.json` and
+`artifacts/gate3-384.jsonl` were both in exactly that position - the first found
+and excepted, the second found by the same scan and left open until the record
+that cites it was made verifiable. The last check here makes that class fail
+loudly instead of silently, because it is invisible from inside a dirty tree.
 """
 
 from __future__ import annotations
 
 import json
 import re
+import subprocess
 from pathlib import Path
+
+import pytest
 
 from act.evolution.figures_data import summaries_dir
 
@@ -133,4 +144,60 @@ def test_every_committed_summary_is_referenced() -> None:
         "committed study summaries that neither the report nor the status doc "
         f"references: {orphans}. Cite them, or delete them if they are spent "
         "scratch rather than records."
+    )
+
+
+# --- artifacts a test reads must survive a fresh clone ------------------------
+
+#: ``artifacts/...`` path literals as a test file spells them - both the
+#: ``Path("artifacts/x.json")`` and ``ROOT / "artifacts/x.json"`` styles, since
+#: the literal is the same either way. A regex fragment inside a test's own
+#: source (``"artifacts/[A-Za-z...]+"``) matches too, and is discarded below by
+#: the resolve-to-a-file filter rather than by a special case.
+ARTIFACT_LITERAL = re.compile(r"artifacts/[A-Za-z0-9_./-]+")
+
+
+def _artifact_literals_in(source: str) -> set[str]:
+    return set(ARTIFACT_LITERAL.findall(source))
+
+
+def test_every_artifact_a_test_reads_is_not_gitignored() -> None:
+    """A test must not depend on a file that only its author's machine has.
+
+    A committed test that reads a gitignored artifact passes where it was
+    written and fails everywhere else - and the failure looks like a bug in the
+    test rather than the missing commit, so it is worth detecting before a fresh
+    clone does. Only paths that resolve to a file here are checked: a test may
+    name a directory, a glob or an at-run-time path, and none of those is a
+    claim about a committed file. The check is skipped, not passed, when git
+    cannot answer - an installed copy of the package is not a checkout.
+    """
+    try:
+        subprocess.run(
+            ["git", "--version"], capture_output=True, check=True, cwd=ROOT
+        )
+    except (OSError, subprocess.CalledProcessError):
+        pytest.skip("git is not available to answer whether a path is ignored")
+
+    checked: set[str] = set()
+    offenders: list[tuple[str, str]] = []
+    for test_file in sorted((ROOT / "tests").glob("*.py")):
+        for name in sorted(_artifact_literals_in(test_file.read_text())):
+            if name in checked or not (ROOT / name).is_file():
+                continue
+            checked.add(name)
+            result = subprocess.run(
+                ["git", "check-ignore", "-q", name], capture_output=True, cwd=ROOT
+            )
+            if result.returncode == 128:
+                pytest.skip("not a git checkout - the ignored-ness is unknowable")
+            if result.returncode == 0:
+                offenders.append((name, test_file.name))
+
+    assert checked, "no test names a real artifact path - the check would be vacuous"
+    assert not offenders, (
+        "artifact(s) a test reads are gitignored, so the test can only pass on "
+        f"the machine that generated them: {offenders}. Commit the artifact "
+        "(with a `.gitignore` exception and a note saying why) or stop reading "
+        "it in a test."
     )

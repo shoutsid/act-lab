@@ -371,3 +371,54 @@ def test_legacy_signal_policy_reproduces_the_published_seed() -> None:
     # why the field is supplied rather than left to the dataclass.
     defaulted_adaptive = next(arm for arm in defaulted.arms if arm.mode == "adaptive")
     assert abs(defaulted_adaptive.final_loss - published["adaptive"]) > 1e-2
+
+
+def test_the_committed_raw_sweep_records_no_probe_controller() -> None:
+    """Report section 9.12 ground 2, recomputed from the artifact it cites.
+
+    The reconstruction supplies ``adaptive_policy="signal"`` because the record
+    predates the field; the second of the report's three grounds is that the
+    raw sweep itself shows the probe controller never ran in it, since a probe
+    event would carry probe fields. That claim is only checkable where the
+    artifact is, so the raw file is committed and this test is what makes the
+    citation a recomputation rather than prose.
+
+    The event-key set is pinned exactly rather than scanned for a ``probe``
+    prefix: a field added under a name that does not say "probe" would slip past
+    a prefix test, and the whole point is that this schema is the *pre-probe*
+    one. Non-vacuity is asserted first - a sweep with no mutation events would
+    satisfy "no probe fields" trivially, which is how this check could pass for
+    the wrong reason.
+    """
+    import json
+
+    legacy_event_keys = {
+        "architecture_hash_after",
+        "architecture_hash_before",
+        "layer_id",
+        "mutation_count",
+        "operation",
+        "step",
+    }
+
+    lines = (ROOT / "artifacts/gate3-384.jsonl").read_text().splitlines()
+    records = [json.loads(line) for line in lines]
+    assert len(records) == 3, f"the sweep is three shards, not {len(records)}"
+
+    events = [
+        event
+        for record in records
+        for experiment in record["experiments"]
+        for arm in experiment["arms"]
+        for event in arm.get("mutation_history") or []
+    ]
+    # The adaptive and random arms mutate on every seed, so a rich event list is
+    # expected; an empty one means this test would pass without checking.
+    assert len(events) > 1000, len(events)
+    keys = {key for event in events for key in event}
+    assert keys == legacy_event_keys, (
+        "the raw sweep's mutation events carry a key outside the pre-probe "
+        f"schema: {sorted(keys - legacy_event_keys)}. Either the probe "
+        "controller did run here - which falsifies report section 9.12's "
+        "reconstruction - or the legacy schema grew a field."
+    )

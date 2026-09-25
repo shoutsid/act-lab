@@ -86,4 +86,12 @@ artifacts/null-pair-rehearsal/*
 # `build_report()`. It was left ignored by the blanket `artifacts/*` rule rather than by
 # any decision, so the test could only pass on the machine that had generated it.
 !artifacts/null-clause-power.json
+# The raw depth-1 gate sweep behind the factor map (2026-09-12): report section 9.12
+# cites it as the record showing the probe controller never ran in the legacy study,
+# and `tests/test_factor_map_recheck.py` reads its first line to reproduce the
+# published seed. It was left ignored by the blanket `artifacts/*` rule rather than by
+# any decision, which is the same defect `null-clause-power.json` had - a test that
+# could only pass on the machine that generated the file. 10 MB, and load-bearing:
+# committing it is the option that keeps the report's citation true in a fresh clone.
+!artifacts/gate3-384.jsonl
 .DS_Store

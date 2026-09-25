@@ -9217,7 +9217,11 @@ experiment. But the value is *recoverable*, on three independent grounds:
    reconstruction of its behaviour.
 2. The raw record `artifacts/gate3-384.jsonl` corroborates it directly: its
    per-arm `mutation_history` entries carry no probe fields at all, so the
-   probe controller never ran in it.
+   probe controller never ran in it. The record is committed for exactly this
+   reason, and the claim is recomputed from it rather than quoted - the sweep's
+   event keys must be the pre-probe set, over more than a thousand events
+   (`test_the_committed_raw_sweep_records_no_probe_controller`), so neither a
+   probe field nor an empty event list can pass unnoticed.
 3. It reproduces the published coupled record. One published seed
    (1000) lands within **4.8e-7** under `signal`, against **1.1e-1** under the
    defaulted `probe_loss` - float drift versus a different experiment. This is
