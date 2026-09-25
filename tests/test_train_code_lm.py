@@ -296,6 +296,50 @@ def test_the_students_number_and_the_references_are_on_one_scale():
     assert uniform == pytest.approx(references["uniform"]["bits_per_byte"])
 
 
+def test_the_training_mode_does_not_change_what_generation_produces():
+    """Generation runs in whatever mode training left the model in, which is ``train``.
+
+    Two things are being relied on and neither was checked before: that non-reentrant
+    activation checkpointing under ``no_grad`` is transparent, and that the model reads
+    nothing mode-dependent (it has no dropout and no batch norm). If either stopped holding,
+    the samples in the arm reports would depend on the mode, and comparing them between arms
+    would quietly stop meaning anything.
+    """
+    model = code_lm.V0MoECausalLM(
+        code_lm.V0MoEConfig(
+            vocab_size=64,
+            context_size=16,
+            hidden_size=32,
+            depth=2,
+            attention_heads=4,
+            experts_per_layer=(2, 2),
+            active_experts=2,
+            expert_width=32,
+        )
+    )
+    model.activation_checkpointing = True
+    tokens = torch.randint(0, 64, (1, 8))
+    model.train()
+    with torch.no_grad():
+        as_left_behind = model(tokens)
+        model.eval()
+        as_evaluated = model(tokens)
+    assert torch.equal(as_left_behind, as_evaluated)
+
+
+def test_sample_generation_is_inference():
+    """Checked in the source, like the benchmark's generators, because the alternative is
+    training a model to observe an absence.
+
+    It runs 80 sequential forwards at the end of each arm's four hours, in whatever mode
+    training left the model in, and a graph held per step is memory spent on a backward pass
+    that never happens.
+    """
+    source = Path(code_lm.__file__).read_text()
+    before = source.split("def generate", 1)[0].rstrip().splitlines()[-1]
+    assert before.strip() == "@torch.no_grad()"
+
+
 # --- the teacher's identity, when it is on disk -----------------------------
 
 

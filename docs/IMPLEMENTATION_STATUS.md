@@ -4065,6 +4065,26 @@ for absolute scale. `evaluate_bits` now takes the token count, both callers pass
 `len(val_tokens)`, and two tests hold it: the arithmetic itself, and the invariant that a
 predictor which is exactly uniform must score exactly the uniform floor.
 
+### Sample generation is inference, and the report says which bits per byte it holds
+
+Two smaller things from the same audit. `train_code_lm.generate` - three prompts, eighty
+tokens each, at the end of four hours of training - was not marked `no_grad`, unlike every
+other generation path in the project: a graph attached per step for a backward pass that
+never comes. Adding it cannot change a number, and that is now pinned rather than assumed -
+measured on a toy config with activation checkpointing on and the model in `train` mode, the
+logits under `no_grad` are **bit-identical** to the ones carrying a graph (0.0 difference) and
+identical again in `eval`. That is the property the arm reports' samples rely on, since
+generation runs in whatever mode training left behind.
+
+And the report now says **which** bits-per-byte number it holds. This leg has two: an arm's
+report computes it over the *whole* held-out stream as the student tokenizes it, boundary
+tokens between files included, while the table's is a fixed prefix of the same file
+re-tokenized by each model. Both are "bits per byte on held-out Python" and they are not
+comparable - the first is progress, the second is the measurement - so the report carries
+`bits_per_byte_measured_on` saying so. Without it the natural mistake is to read an arm's
+number against the baseline's published one, which is exactly the comparison the table exists
+to make properly.
+
 ### When the campaign finishes
 
 Measured start, for the next session's estimate: the teacher-labels stage began around

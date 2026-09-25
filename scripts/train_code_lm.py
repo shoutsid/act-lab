@@ -887,7 +887,16 @@ def reference_bits_per_byte(val_tokens: np.ndarray, held_out_bytes: int) -> dict
     }
 
 
+@torch.no_grad()
 def generate(model, tokenizer, prompt: str, device: torch.device, new_tokens: int = 80) -> str:
+    """Sample ``new_tokens`` continuations, at the end of an arm's four hours of training.
+
+    ``no_grad`` because this is inference, like every other generation path in the project and
+    for the same reason: 80 sequential forwards with a graph attached is memory held for a
+    backward pass that never comes. It runs in whatever mode training left the model in, which
+    is ``train`` and leaves activation checkpointing on - harmless with no gradient, and the
+    samples are identical either way because this model has no dropout to depend on the mode.
+    """
     ids = tokenizer.encode(prompt).ids
     tokens = torch.tensor([ids], dtype=torch.long, device=device)
     generator = torch.Generator(device="cpu").manual_seed(SEED + len(prompt))
@@ -1063,6 +1072,15 @@ def stage_train(
             "final_val_loss": final_loss,
             "final_perplexity": final_perplexity,
             "bits_per_byte": evaluate_bits(final_loss, held_out_bytes, len(val_tokens)),
+            # This is progress, not the comparison. The two bits-per-byte numbers in this leg
+            # are measured on different text: here the whole held-out stream as the student
+            # tokenizes it, file-boundary tokens included, and in the table a fixed prefix of
+            # the same file re-tokenized by each model (scripts/code_bench.py). Said in the
+            # artifact because they will otherwise be read as one number in two places.
+            "bits_per_byte_measured_on": (
+                "the whole held-out stream as the student tokenizes it; the benchmark's number "
+                "is a fixed prefix of the same file, re-tokenized per model - not comparable"
+            ),
             "uniform_floor_loss": uniform_floor,
             "held_out_bytes": held_out_bytes,
             "history": history,
