@@ -4102,7 +4102,11 @@ happens is worth closing before the crash rather than after.
 checkpoint that does not carry it - so both requirements a resume has, that it is this run and
 that the draws are where they stopped, are checked in one place and refuse in the same
 direction. The test measures the property instead of the shape: the saved state must reproduce
-the *next* draws, not merely equal another state tensor.
+the *next* draws, not merely equal another state tensor. And the path is now round-tripped
+end to end - save, then a relaunch reading it back through `checkpoint_matches`,
+`set_state`, `load_state_dict` and `restore_optimizer` - because four of those pieces were
+pinned separately and none of them pinned that they still fit together, which is the shape of
+every resume defect: two halves that drifted, and a run that looks finished either way.
 
 ### The arms are checked against each other now, before the benchmark stage rather than after
 

@@ -277,6 +277,59 @@ def test_the_payload_records_the_run_it_is_a_checkpoint_of():
     assert payload["run"]["max_steps"] == 11_250
 
 
+def test_a_checkpoint_round_trips_through_the_resume_path(tmp_path):
+    """The two halves of a resume, run against each other instead of asserted separately.
+
+    ``checkpoint_payload`` writes; a relaunched ``stage_train`` reads with
+    ``checkpoint_matches``, ``generator.set_state``, ``load_state_dict`` and
+    ``restore_optimizer``. Each of those is pinned above, and none of them pins that they
+    still fit together - which is the shape of every resume defect: two halves that drifted
+    apart, and a run that finishes looking finished either way. Two arms at 4.34 h each is not
+    the place to find out.
+    """
+    config = code_lm.V0MoEConfig(
+        vocab_size=64,
+        context_size=32,
+        hidden_size=16,
+        depth=2,
+        attention_heads=2,
+        experts_per_layer=(2, 2),
+        active_experts=2,
+        expert_width=16,
+    )
+    run = code_lm.run_signature("match", "ce", windows=30_000, max_steps=11_250, batch_size=8)
+    path = tmp_path / "match-ce.pt"
+
+    model = code_lm.V0MoECausalLM(config)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+    generator = torch.Generator().manual_seed(11)
+    draws = torch.randint(0, 30_000, (8,), generator=generator)
+    model.loss(torch.randint(0, config.vocab_size, (1, 16))).backward()
+    optimizer.step()
+    torch.save(code_lm.checkpoint_payload(model, optimizer, 1, [], run, generator.get_state()), path)
+
+    # A relaunch: fresh model, fresh optimiser, generator seeded from the top as ``stage_train``
+    # does - and then the four things a resume reads, in the order it reads them.
+    resumed = code_lm.V0MoECausalLM(config)
+    resumed_optimizer = torch.optim.AdamW(resumed.parameters(), lr=1e-3)
+    resumed_generator = torch.Generator().manual_seed(11)
+    torch.randint(0, 30_000, (8,), generator=resumed_generator)
+    payload = torch.load(path, map_location="cpu", weights_only=False)
+    code_lm.checkpoint_matches(payload, run, path)
+    resumed_generator.set_state(payload["draws"])
+    resumed.load_state_dict(payload["model"])
+    state = code_lm.restore_optimizer(resumed, resumed_optimizer, payload, path, reset=False)
+
+    by_name = dict(resumed.named_parameters())
+    for name, parameter in model.named_parameters():
+        assert torch.equal(parameter, by_name[name]), f"{name} did not come back"
+    assert "restored by name" in state, "the moments go back too, not just the weights"
+    assert torch.equal(
+        torch.randint(0, 30_000, (8,), generator=generator),
+        torch.randint(0, 30_000, (8,), generator=resumed_generator),
+    ), "the resumed arm must continue the window sequence, not replay it"
+
+
 def test_the_report_separates_the_budget_from_what_the_arm_saw():
     """Equal on a fresh run, different after an adoption - and only one of them is work done."""
     fresh = code_lm.tokens_trained(max_steps=11_250, start_step=0, batch_size=8)
