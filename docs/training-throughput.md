@@ -102,12 +102,10 @@ undecided is only which form is faster at each shape. The script refuses to time
 forms that disagrees, and prices each form with *its own* estimator so a rate cannot be
 credited with arithmetic it did not do. The measurement decides; this note does not.
 
-## Lever 2: generation re-forwards the whole prefix, once per token - ~300x to be had
+## Lever 2 looked like ~300x and is closed: a cache cannot reproduce this generator
 
-This is where the difference between "training throughput" and "time to a result" lives,
-and it is much larger than Lever 1. `train_code_lm.generate` and
-`code_bench.sample_token` both sample one token from a **full forward over the whole
-prefix**, with no KV cache and no `past_key_values`:
+`train_code_lm.generate` and `code_bench.sample_token` both sample one token per **full
+forward over the window**, with no KV cache:
 
 ```python
 logits = model(tokens[:, -CONTEXT_SIZE:])[:, -1, :]
@@ -118,23 +116,45 @@ Generating a 512-token completion from a ~185-token prompt therefore forwards
 | | token-forwards | attention term (token-layers, squared) |
 |---|---|---|
 | no cache (today) | 208,516 | 91.0M |
-| one prefill + cached steps | 697 | 128,945 |
+| a growing-prefix cache | 697 | 128,945 |
 | **ratio** | **299x** | **706x** |
 
-At the campaign's measured 22 s/problem for a *toy* student (and 1.5-4 h estimated per
-`match` arm for a 164-problem HumanEval pass), this is the difference between a benchmark
-that fits in an evening and one that does not. It is also the single largest available
-reduction in the gap between "training finished" and "we have a benchmark number".
+That ratio is why the lever was tried, and it is why the *closure* is worth writing down:
+**a cache cannot reproduce this generator's logits.** One was built in this project before
+this note existed - pre-rotary keys and values, rolling with the window, refusing `gdn`
+layers whose recurrent state cannot be rolled back - and it is exact everywhere it is easy
+to check: prefill-then-decode with no roll agrees with the uncached forward to **5.96e-08**,
+and after a roll the cached layer-0 keys, values and query still agree to 5.6e-08, 1.0e-07
+and 3.0e-08. Over the generation that matters - 139 steps of a 64-token window - it reaches
+**1.03 logits of difference with 134 of 139 argmax flips**.
 
-It is **inference-only and cannot change what an arm learns**: a cache changes which
-intermediate keys and values are recomputed, not which weights are updated or what the
-logits are. That makes it safe for the *comparability* of checkpoints, but it is still a
-change to `src/act/model/`, which every arm imports, so it must land between legs and
-carry the numeric check that makes the claim testable - cached logits equal uncached
-logits, token by token, at the project's usual tolerance.
+The mechanism is not a bug in the cache, which is why no amount of care fixes it. This
+generator re-numbers positions from the window start at every step, so rolling the window
+does not merely re-rotate the cached tokens: it re-runs each of them against a different
+key set. Measured at the first roll on a 2-layer model, the layer-0 output of a token that
+moves from position 1 to position 0 changes by **0.024**, and that makes every layer-1 key
+stored during the prefill stale. A cache is available only to a generator whose positions do
+not move, and the cacheable alternative - monotonic positions, which is what both `hf:` rows
+and the published harness do - extrapolates past every position the student was trained on
+at `context_size=512`, so adopting it would be a protocol change on one row's side of the
+table. This lever is therefore not *hard*, it is **absent under the protocol the rows are
+measured in**, and
+`tests/test_code_bench.py::test_the_students_window_is_recomputed_because_a_cache_cannot_reproduce_it`
+pins that measurement so a later session does not rebuild it.
+
+What remains on that path is Lever 1, and it is worth more than a training figure suggests:
+the experts are **68.0%** of the parameters, so grouping them removes **48.3% of every
+forward pass** - including each of the 208,516 token-forwards that a 512-token completion
+costs a student, because HumanEval is pure forward work. So the same 1.93x applies to the
+benchmark, not only to training, and it does not require the generation protocol to change.
 
 ## What is not a lever, and why
 
+- **A KV cache on the student's decode step.** It is the largest apparent lever in the
+  arithmetic (299x of tokens forwarded) and it is *closed*: see the section above. The
+  measurement exists in this repository, in the journal and in
+  `tests/test_code_bench.py`, because a later session reading only the arithmetic would
+  rebuild it.
 - **A smaller `--max-new-tokens`.** The published comparator (HumanEval pass@1 7.84% for
   `tiny_starcoder_py`) was decoded at 512 tokens, temperature 0.2, top-p 0.95;
   `code_lm_table` already refuses to tabulate rows decoded differently. Shortening it buys
@@ -165,9 +185,9 @@ the tokens move, and the honest framing of this leg stays what the README alread
 it tests whether *condensing a large teacher* transfers, not whether 46M tokens produce a
 good model.
 
-## Summary of the two levers
+## Summary
 
 | lever | where | headroom | cost of landing it | changes what an arm learns? |
 |---|---|---|---|---|
-| grouped/sparse expert dispatch | `_MoEFeedForward` | up to **1.93x** on every training step | one function (`scripts/moe_dispatch_benchmark.py` already contains and equivalence-checks it); measure both shapes on the freed card | no - measured equal to the dense form at 5.1e-16 |
-| KV cache in generation | `src/act/model` + the two samplers | **~299x** on tokens forwarded per completion | a cache argument through the attention path, a cached-equals-uncached check, landing between legs | no - inference only |
+| grouped/sparse expert dispatch | `_MoEFeedForward` | up to **1.93x** on every training step **and on every forward a completion costs** | one function (`scripts/moe_dispatch_benchmark.py` already contains and equivalence-checks it); measure both shapes on the freed card | no - measured equal to the dense form at 5.1e-16 |
+| KV cache in generation | the two samplers | **none**: a real 299x of work that no cache can reproduce (134 of 139 argmax flips) | built, measured and removed in this repository; now pinned by test | **yes** - it would be a different generator |

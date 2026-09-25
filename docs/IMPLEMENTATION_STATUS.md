@@ -4433,3 +4433,50 @@ and `of peak` is blank rather than zero off an accelerator, because a CPU run di
 1070's peak is the same category error as quoting a dev rate for a code-LM shape. `tests/test_moe_dispatch.py`
 (5 tests) pins the identity against both existing forms, the empty-expert branch (by pigeonhole
 rather than by forcing the router, since `topk` breaks ties arbitrarily), and the refusal. 1845 tests.
+
+## Published a speedup this repository had already measured and closed (2026-09-25)
+
+**What happened.** The entry above and the new `docs/training-throughput.md` introduced a second
+lever - "generation re-forwards the whole prefix once per token, ~299x to be had from a KV cache" -
+and committed it. Reading the journal's own earlier entry, *"A KV cache cannot reproduce the
+student's HumanEval generation, so that lever is closed"*, and the test that was written to pin it,
+shows the cache was built in this repository, measured, and removed before this session. The
+arithmetic in the new note was right and the claim about its availability was wrong.
+
+**The measurement that was already here.** The cache held pre-rotary keys and values, rolled with
+the window, and refused `gdn` layers. It is exact everywhere it is easy to check - prefill-then-decode
+with no roll agrees with the uncached forward to **5.96e-08**, and after a roll the cached layer-0
+keys, values and query still agree to 5.6e-08 / 1.0e-07 / 3.0e-08. Over the generation that matters,
+139 steps of a 64-token window, it reaches **1.03 logits of difference with 134 of 139 argmax flips**.
+The mechanism is that this generator re-numbers positions from the window start every step, so rolling
+re-runs each cached token against a different key set: on a 2-layer model the layer-0 output of a token
+moving from position 1 to position 0 changes by **0.024**, which makes every layer-1 key stored during
+the prefill stale. Only a generator whose positions do not move is cacheable, and monotonic positions
+at `context_size=512` extrapolate past every position the student was trained on - a protocol change
+on one row's side of the table, mid-campaign.
+
+**The cost, and why it is small.** Nothing ran on it: the incorrect claim reached a document and a
+test, both of which are now corrected in the same session. The alternative I was one command away from
+- building the cache again on `src/act/model` while the campaign's second arm is still to start, and
+wiring it into the students' generator - would have spent an arm's provenance on a change whose own
+measurement says it generates *different tokens*, i.e. it would have replaced a benchmark row with a
+different one.
+
+**What is corrected, and what replaced it.** `docs/training-throughput.md` now records Lever 2 as
+closed: it carries the tempting ratio *and* the closure, names the mechanism, and points at
+`tests/test_code_bench.py::test_the_students_window_is_recomputed_because_a_cache_cannot_reproduce_it`
+as the owner of the measurement, so a future session meets the closure beside the arithmetic rather
+than after rebuilding it. The summary table states that a cache would be a **different generator**
+rather than a faster one, and the cache heads the note's list of rejected levers. The test that had
+asserted the 299x claim now pins the ratio *and* the closure and the pointer, so neither can drift.
+What replaced it is the part of Lever 1 that reaches the benchmark: the experts are **68.0%** of the
+parameters, so grouping them removes **48.3% of every forward pass** - and since HumanEval is pure
+forward work, the same 1.93x applies to each of the 208,516 token-forwards a student's 512-token
+completion costs. That is the remaining speedup on the path to a benchmark number, and it needs no
+protocol change.
+
+**Recorded as a defect class, not an incident.** The note's own opening line is the reason this was
+catchable at all: the repository's numbers about its speed already disagreed by 75x, and the
+disagreement was recorded rather than smoothed over. The mistake here was the same shape in the
+opposite direction - a made-to-look-good ratio quoted without checking the file that had already
+measured it - so the fix is to keep the closure *adjacent to* the ratio in the same document.

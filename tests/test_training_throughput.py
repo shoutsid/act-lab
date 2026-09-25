@@ -185,12 +185,17 @@ def test_the_quoted_dense_and_eager_figures_exceed_the_cards_peak(note: str) -> 
         assert rendered in note, f"the note no longer states {rendered!r}"
 
 
-def test_generation_without_a_cache_costs_about_three_hundred_times_more(note: str) -> None:
-    """The second lever, and the one that decides whether a benchmark can be run at all.
+def test_the_cache_lever_is_recorded_as_closed_rather_than_available(note: str) -> None:
+    """The largest apparent lever is the one that cannot be taken, and that has to be said.
 
-    One token per full-prefix forward, with the prefix capped at the context, is what both
-    samplers do today. The test counts the token-forwards directly from that definition -
-    it is not quoting a benchmark - and pins the two counts and the ratio.
+    The work ratio is real arithmetic - a 512-token completion from a ~185-token prompt
+    forwards 208,516 tokens where a growing-prefix cache needs 697 - and a later session
+    reading only that arithmetic would rebuild the cache. This repository already built and
+    measured it: exact to 5.96e-08 before any roll, and 134 of 139 argmax flips over real
+    generation, because this generator re-numbers positions from the window start, so
+    rolling re-runs every cached token against a different key set. The note has to carry
+    both the ratio and the closure, and to name the test that owns the closure, so a future
+    edit cannot quietly turn it back into a plan.
     """
 
     context, prompt, new_tokens = 512, 185, 512
@@ -202,12 +207,42 @@ def test_generation_without_a_cache_costs_about_three_hundred_times_more(note: s
     assert without / cached == pytest.approx(299, abs=1)
 
     attention = sum(min(prompt + step, context) ** 2 for step in range(new_tokens)) / 1e6
-    cached_attention = prompt * prompt + new_tokens * prompt
     assert attention == pytest.approx(91.0, abs=0.1)
-    assert cached_attention == 128_945
-    assert attention * 1e6 / cached_attention == pytest.approx(706, abs=1)
+    assert prompt * prompt + new_tokens * prompt == 128_945
 
-    for rendered in ("208,516", "697", "**299x**", "91.0M", "128,945", "**706x**"):
+    for rendered in (
+        "208,516",
+        "697",
+        "**299x**",
+        "134 of 139 argmax",
+        "5.96e-08",
+        "**0.024**",
+        "absent under the protocol the rows are",
+        "test_the_students_window_is_recomputed_because_a_cache_cannot_reproduce_it",
+        "it would be a different generator",
+    ):
+        assert rendered in note, f"the note no longer states {rendered!r}"
+
+
+def test_grouping_is_the_benchmark_lever_too_because_experts_dominate_a_forward(note: str) -> None:
+    """With the cache closed, the dispatch change is the only speedup left on the SWE path.
+
+    HumanEval is pure forward work, so a saving on a training step is also a saving on each
+    of a completion's token-forwards - and how large it is depends on how much of a forward
+    pass the expert block is, which is the number this test derives rather than quotes.
+    """
+
+    expert_parameters = 12 * 8 * 2 * 768 * 768
+    total, _ = estimated_parameter_count(MATCH)
+    assert expert_parameters == 113_246_208
+    assert expert_parameters / total == pytest.approx(0.680, abs=0.001)
+
+    dense = estimate_dense_runtime_flops_per_token(MATCH, training=False)
+    contracted = estimate_flops_per_token(MATCH, training=False)
+    assert dense / contracted == pytest.approx(1.934, abs=0.001)
+    assert (dense - contracted) / dense == pytest.approx(0.483, abs=0.001)
+
+    for rendered in ("68.0%", "48.3% of every", "1.93x applies to the"):
         assert rendered in note, f"the note no longer states {rendered!r}"
 
 
