@@ -372,7 +372,8 @@ def build_table(resolved: dict[str, tuple[str, dict]], scale: str) -> dict:
                 "active_parameters": block.get("active_parameters"),
                 "architecture": block.get("architecture"),
                 "pass_at_1": (report.get("humaneval") or {}).get("pass_at_1"),
-                "device": report.get("device"),
+                # The name when the report has one: two accelerators are both "cuda".
+                "device": report.get("device_name") or report.get("device"),
             }
         )
     by_role = {row["role"]: row for row in rows}

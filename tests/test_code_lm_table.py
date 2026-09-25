@@ -37,6 +37,7 @@ def bench_report(
     active: int | None = None,
     bytes_limit: int = 4_000_000,
     device: str = "cuda",
+    device_name: str | None = None,
     pass_at_1: float | None = None,
     architecture: tuple[str, ...] = ("LlamaForCausalLM",),
     windows: int = 64,
@@ -78,6 +79,8 @@ def bench_report(
             "window_nlls": list(window_nlls),
         },
     }
+    if device_name is not None:
+        report["device_name"] = device_name
     if tokenizer is not None:
         report["bytes"]["tokenizer"] = tokenizer
     if active is not None:
@@ -392,6 +395,56 @@ def test_mixed_devices_are_called_out(tmp_path: Path, capsys, monkeypatch: pytes
     bench = complete(tmp_path, **{"baseline": bench_report(1.2, device="NVIDIA Tesla T4")})
     run_cli(monkeypatch, bench)
     assert "devices" in capsys.readouterr().out
+
+
+def two_machines(tmp_path: Path, **extra) -> Path:
+    """The four rows as they really arrive: two scored on a T4, the students locally.
+
+    Only the device *name* distinguishes them - ``str(torch.device("cuda"))`` is "cuda"
+    on every accelerator, which is what made a Kaggle row and a local row look like one
+    machine while HumanEval pass@1 quietly came from two.
+    """
+    t4 = {"device": "cuda", "device_name": "NVIDIA Tesla T4"}
+    local = {"device": "cuda", "device_name": "NVIDIA GeForce GTX 1070"}
+    rows = {
+        "teacher": bench_report(0.4686, parameters=1_346_000_000, **t4),
+        "baseline": bench_report(0.5372, parameters=164_100_000, pass_at_1=0.0784, **t4),
+        "ours-match-distill": bench_report(0.7500, parameters=166_423_296, active=81_488_640, **local),
+        "ours-match-ce": bench_report(0.9000, parameters=166_423_296, active=81_488_640, **local),
+    }
+    rows.update(extra)
+    return write_bench(tmp_path, **rows)
+
+
+def test_two_different_accelerators_are_not_one_device(tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch) -> None:
+    run_cli(monkeypatch, two_machines(tmp_path))
+    out = capsys.readouterr().out
+    assert "rows were measured on 2 devices (NVIDIA GeForce GTX 1070, NVIDIA Tesla T4)" in out
+
+
+def test_the_same_two_machines_look_like_one_without_the_device_name(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The failure the device name exists to prevent, kept visible as a test.
+
+    Strip the names and the same two machines are indistinguishable, so no note fires -
+    not because the table is single-device but because the reports never said.
+    """
+    directory = two_machines(tmp_path)
+    for path in directory.glob("*.json"):
+        report = json.loads(path.read_text())
+        report["device"] = "cuda"
+        report.pop("device_name", None)
+        path.write_text(json.dumps(report))
+    run_cli(monkeypatch, directory)
+    assert "devices" not in capsys.readouterr().out
+
+
+def test_a_report_without_a_device_name_falls_back_to_its_type(tmp_path: Path) -> None:
+    """A pre-change report is not blank in that column."""
+    reports = code_lm_table.load_reports(complete(tmp_path))
+    rows = code_lm_table.build_table(code_lm_table.resolve_roles(reports, "match"), "match")["rows"]
+    assert {row["device"] for row in rows} == {"cuda"}
 
 
 def test_single_device_tables_do_not_carry_the_note(

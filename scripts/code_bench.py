@@ -461,7 +461,15 @@ def main() -> int:
         raise SystemExit(f"--model must be one of {', '.join(f'{p}:<value>' for p in MODEL_PREFIXES)}")
 
     RESULTS.mkdir(parents=True, exist_ok=True)
-    report: dict = {"model": args.model, "suite": sorted(requested), "device": str(device)}
+    report: dict = {
+        "model": args.model,
+        "suite": sorted(requested),
+        "device": str(device),
+        # The device *name*, not only its type. ``str(torch.device("cuda"))`` is "cuda"
+        # on every accelerator, so a table mixing a T4 with a GTX 1070 looks like one
+        # device and the note explaining the difference never fires.
+        "device_name": torch.cuda.get_device_name(device) if device.type == "cuda" else "cpu",
+    }
 
     if "bytes" in requested:
         text = held_out_text(args.bytes_limit)

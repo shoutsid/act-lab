@@ -3863,6 +3863,35 @@ Not yet done, and deliberately: no claims were added to `scripts/verify_record.p
 this leg, because the campaign's two arms are still training and there is no table to
 claim from yet.
 
+### The first numbers of this leg, from the Kaggle half
+
+The fixed kernel (version 3, **9 minutes of GPU quota, 1.07 h remaining**) completed both
+rows on a T4, on the same 4,000,000-byte held-out prefix and the same protocol the local
+card will use:
+
+| role | model | bits/byte | teacher pass took |
+|---|---|---|---|
+| teacher | `deepseek-ai/deepseek-coder-1.3b-base` (1.3B) | **0.4686** | 278 s |
+| baseline | `bigcode/tiny_starcoder_py` (164M) | **0.5372** | 92 s |
+
+Saved to `artifacts/code-lm/bench/kaggle/` rather than printed and deleted. They are also
+the first real-data exercise of the whole byte path: the same `window_nlls`, the same
+ragged tail, the same report shape.
+
+Three things to read in them. **The reference scale**: a uniform distribution over the
+teacher's 32,256 tokens is about 3.8 bits/byte on ~3.9 bytes per token, so both rows are
+more than seven times better than knowing nothing - and the number the student has to be
+compared against is **0.5372**, not the teacher's. **The gap between the two rows is
+0.069 bits/byte.** A 164M model that saw 100B tokens gets within 13% of a 1.3B model on
+this text, which is the honest ceiling for a 166M student that sees 15.36M labelled
+tokens: distillation transfers a *distribution* over the corpus, not the teacher's
+training. **And the teacher's number is contaminated.** `codeparrot-clean-valid` is
+public, in The Stack, and almost certainly in deepseek-coder's training data, so 0.4686
+is an upper bound on what that model really does on unseen code. The student's number is
+not contaminated in that way - it never sees the text - which means a student that
+*beat* the teacher would be the first sign of a mistake, not of success. That framing
+belongs in the README section when the table is written.
+
 ### When the campaign finishes
 
 Measured start, for the next session's estimate: the teacher-labels stage began around
@@ -3873,12 +3902,13 @@ where it says so - the log is empty until the labelling stage hands over.
 
 The order that turns that into a record:
 
-1. `PYTHONPATH=src .venv/bin/python scripts/push_code_bench.py --fetch --save artifacts/code-lm/bench/kaggle`
-   - the Kaggle rows. They are a *cross-machine check of the same protocol*, not a table
-   input: the local campaign scores all four models on one card so HumanEval's sampled
-   decoding is not split across devices, and the Kaggle files are two of those same two
-   rows measured elsewhere. If they predate the per-window scan the fetch will show it,
-   and re-scoring them is 4 MB of prefix, not a campaign.
+1. ~~Fetch the Kaggle rows~~ - **done**, `artifacts/code-lm/bench/kaggle/` holds
+   `teacher.json`, `baseline.json` and the kernel's summary. They are a *cross-machine
+   check of the same protocol*, not a table input: the local campaign scores all four
+   models on one card so HumanEval's sampled decoding is not split across devices, and
+   the Kaggle files are two of those same two rows measured elsewhere (0.4686 and
+   0.5372 below). Comparing them to the local rows is a check on the protocol, and the
+   table's device column now names the card so a mix is visible rather than silent.
 2. `PYTHONPATH=src .venv/bin/python scripts/code_lm_table.py --json artifacts/code-lm/bench/table.json`
    - the headline table, and the paired contrast. It refuses to render without all four
    roles, so a partial campaign reports itself here rather than as a shorter table.
