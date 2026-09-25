@@ -3847,3 +3847,31 @@ rather than left as a line of code nobody could see.
 Not yet done, and deliberately: no claims were added to `scripts/verify_record.py` for
 this leg, because the campaign's two arms are still training and there is no table to
 claim from yet.
+
+### When the campaign finishes
+
+Measured start, for the next session's estimate: the teacher-labels stage began around
+15:00 and was logging **1,042-1,046 teacher tokens/s**, so the 15.36M labelled tokens
+land near **19:10**; the two arms are 4.34 h each (measured ~2,950 student tokens/s), the
+benchmark stage last. Total ends roughly **06:00-07:00**, and `/tmp/code-campaign.log` is
+where it says so - the log is empty until the labelling stage hands over.
+
+The order that turns that into a record:
+
+1. `PYTHONPATH=src .venv/bin/python scripts/push_code_bench.py --fetch --save artifacts/code-lm/bench/kaggle`
+   - the Kaggle rows. They are a *cross-machine check of the same protocol*, not a table
+   input: the local campaign scores all four models on one card so HumanEval's sampled
+   decoding is not split across devices, and the Kaggle files are two of those same two
+   rows measured elsewhere. If they predate the per-window scan the fetch will show it,
+   and re-scoring them is 4 MB of prefix, not a campaign.
+2. `PYTHONPATH=src .venv/bin/python scripts/code_lm_table.py --json artifacts/code-lm/bench/table.json`
+   - the headline table, and the paired contrast. It refuses to render without all four
+   roles, so a partial campaign reports itself here rather than as a shorter table.
+3. Write the numbers into the README section and add the claims to
+   `scripts/verify_record.py`, then run it and `scripts/check_record_freshness.py`.
+   Claims last, because they are checked *against* the prose - a claim written before
+   the sentence it guards is a check on a guess.
+4. HumanEval pass@1 for the baseline is the one number with an outside reference
+   (7.84% published). If this harness lands far from it on the same 164 problems, the
+   harness is the suspect, not the model - and it is worth saying so in the section
+   rather than quoting the published figure beside our own as if they were comparable.
