@@ -140,8 +140,16 @@ def window_nlls(model, ids: np.ndarray, device: torch.device, batch: int = 4) ->
     window_values: list[float] = []
     starts = range(0, len(ids) - 1, WINDOW)
     pending: list[np.ndarray] = []
+    # Every window is WINDOW + 1 tokens except the last, which is whatever is left of
+    # the text. A batch is a stacked array, so mixing the two lengths is a ValueError
+    # rather than a measurement - which is how the Kaggle byte pass died at 4,000,000
+    # bytes: 1,106,839 tokens for that tokenizer, a 407-token tail, and
+    # "all input arrays must have the same shape". The tail is scored on its own.
+    full = WINDOW + 1
 
     def flush(block: list[np.ndarray]) -> None:
+        if not block:
+            return
         seq = np.stack(block).astype(np.int64)
         tokens = torch.from_numpy(seq).to(device)
         logits = model_logits(model, tokens[:, :-1])
@@ -154,6 +162,11 @@ def window_nlls(model, ids: np.ndarray, device: torch.device, batch: int = 4) ->
     for start in starts:
         window = ids[start : start + WINDOW + 1]
         if len(window) < 8:
+            continue
+        if len(window) != full:
+            flush(pending)
+            pending = []
+            flush([window])
             continue
         pending.append(window)
         if len(pending) >= batch:

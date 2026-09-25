@@ -3816,7 +3816,22 @@ identity, and `code_lm_table.paired_contrast` tests the differences:
   per-window losses at all (pre-refactor, so a total), a report with no tokenizer
   identity, and fewer than 30 windows.
 
-Two things only showed up while writing the tests. A **zero difference is free to
+**The first fetch of the Kaggle kernel paid for itself, and the bug was in the scan.**
+The byte pass had failed on both models, and the log names it: `nll_of_ids` collected
+windows into a batch and called `np.stack` on them, but every window is 513 tokens
+except the **last**, which is whatever is left of the text. The baseline's tokenizer
+makes 1,106,839 tokens of the 4 MB prefix, so the tail is 407 tokens, the batch is
+ragged, and numpy refuses it: `all input arrays must have the same shape`. It had
+already cost a 2.7 GB download and nine of the ten minutes of that run, and it would
+have failed the local campaign's bench stage the same way thirteen hours later - the
+shape is a property of the text and the tokenizer, not of the device. The fix scores
+the tail as a batch of its own against the empty-batch guard, and the regression test
+uses those exact numbers. Worth recording about the fetch itself: `--fetch` printed
+the kernel log and the two empty output files, which is the difference between "the
+run produced nothing" and "the run failed at `scripts/code_bench.py` line 137" - the
+version of this driver that printed only the JSON would have reported the former.
+
+Two more things only showed up while writing the tests. A **zero difference is free to
 change sign** under the permutation, so the two-ties-two-positives case counts 8 of 16
 assignments and not 4 - the first draft of the test asserted 0.25 and was wrong about
 its own arithmetic, which is a good argument for the exact branch existing at all. And a

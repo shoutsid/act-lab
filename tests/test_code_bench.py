@@ -109,6 +109,32 @@ def test_a_window_scan_reports_one_value_per_non_overlapping_window():
     assert len(per_window) == 3
 
 
+def test_a_tail_shorter_than_a_window_is_scored_rather_than_crashing_the_scan():
+    """The regression the Kaggle byte pass died of, on the real shape of the data.
+
+    The held-out text never divides evenly into windows: the baseline's tokenizer made
+    1,106,839 tokens of the 4 MB prefix, so the last window is 407 tokens and the batch
+    holding it is ragged - ``np.stack`` refuses that with "all input arrays must have
+    the same shape", after the run has downloaded 2.7 GB of teacher. The tail is a
+    window like any other, just a short one, and it is scored.
+    """
+    vocab = 7
+    tail = 407
+    ids = np.arange(code_bench.WINDOW * 3 + tail, dtype=np.int32) % vocab
+
+    total, per_window = code_bench.window_nlls(_Uniform(vocab), ids, torch.device("cpu"), batch=4)
+
+    assert len(per_window) == 4
+    assert per_window[-1] == pytest.approx((tail - 1) * math.log(vocab), rel=1e-6)
+    # Every token except the first is scored exactly once, tail included.
+    assert total == pytest.approx((len(ids) - 1) * math.log(vocab), rel=1e-6)
+    # The batch is a performance choice, not part of the measurement.
+    for batch in (1, 2, 8):
+        again, windows = code_bench.window_nlls(_Uniform(vocab), ids, torch.device("cpu"), batch=batch)
+        assert again == pytest.approx(total, rel=1e-6)
+        assert windows == per_window
+
+
 def test_a_trailing_fragment_too_short_to_carry_context_is_dropped():
     """A handful of leftover tokens is not a window: there is too little context
     for the loss on it to mean anything, and counting it would weight it as equal
