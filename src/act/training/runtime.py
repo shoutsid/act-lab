@@ -90,6 +90,13 @@ def train_steps(
     if config.mixed_precision not in {"off", "fp16", "bf16"}:
         raise ValueError("mixed_precision must be off, fp16, or bf16")
     device = resolve_device(config.device)
+    if device.type == "cpu" and config.mixed_precision == "fp16":
+        raise ValueError("fp16 mixed precision requires CUDA")
+    if config.sequence_length > model.config.context_size:
+        raise ValueError(
+            f"sequence_length ({config.sequence_length}) exceeds model context_size "
+            f"({model.config.context_size})"
+        )
     model.to(device)
     if hasattr(model, "activation_checkpointing"):
         model.activation_checkpointing = config.activation_checkpointing

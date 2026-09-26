@@ -34,6 +34,28 @@ def test_training_config_allows_zero_scheduler_bounds() -> None:
     assert config.warmup_steps == config.total_steps == 0
 
 
+def test_training_rejects_sequence_longer_than_model_context_before_device_move(monkeypatch) -> None:
+    model = DenseCausalLM(
+        DenseBaselineConfig(vocab_size=16, context_size=8, hidden_size=8, num_layers=1)
+    )
+    optimizer = make_optimizer(model, TrainingConfig(device="cpu"))
+    config = TrainingConfig(sequence_length=9, device="cpu")
+    moved = False
+    original_to = model.to
+
+    def track_move(*args, **kwargs):
+        nonlocal moved
+        moved = True
+        return original_to(*args, **kwargs)
+
+    monkeypatch.setattr(model, "to", track_move)
+
+    with pytest.raises(ValueError, match="exceeds model context_size"):
+        train_steps(model, optimizer, TrainingState(), config, 1)
+
+    assert not moved
+
+
 def test_gradient_accumulation_counts_optimizer_steps() -> None:
     model = DenseCausalLM(
         DenseBaselineConfig(vocab_size=16, context_size=8, hidden_size=8, num_layers=1)
