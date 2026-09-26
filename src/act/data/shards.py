@@ -50,9 +50,11 @@ def write_token_shard(path: str | Path, tokens: Iterable[int], vocab_size: int) 
         raise ValueError("vocab_size must be at least 2")
     if vocab_size > np.iinfo(np.uint32).max + 1:
         raise ValueError("vocab_size exceeds the token shard format's uint32 capacity")
-    values = np.asarray(tuple(tokens), dtype=np.int64)
+    values = np.asarray(tuple(tokens))
     if values.ndim != 1 or values.size == 0:
         raise ValueError("token shard must contain at least one one-dimensional token")
+    if values.dtype.kind not in "iu":
+        raise ValueError("token shard values must be integers")
     if values.min() < 0 or values.max() >= vocab_size:
         raise ValueError("token is outside the configured vocabulary")
     dtype = np.uint16 if vocab_size <= np.iinfo(np.uint16).max + 1 else np.uint32

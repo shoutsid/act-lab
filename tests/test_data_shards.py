@@ -60,6 +60,14 @@ def test_uint16_shard_supports_the_full_vocabulary_range(tmp_path: Path) -> None
     )
 
 
+@pytest.mark.parametrize("tokens", [[1.5], [1.0], [1, 2.5]])
+def test_shard_writer_rejects_non_integer_token_values(
+    tmp_path: Path, tokens: list[float]
+) -> None:
+    with pytest.raises(ValueError, match="values must be integers"):
+        write_token_shard(tmp_path / "non-integers.bin", tokens, vocab_size=8)
+
+
 def test_shard_writer_rejects_vocabularies_beyond_uint32_capacity(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="uint32 capacity"):
         write_token_shard(
