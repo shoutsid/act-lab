@@ -103,6 +103,8 @@ def create_genome(
 ) -> ArchitectureGenome:
     if depth < 1:
         raise ValueError("depth must be positive")
+    if hidden_size <= 0 or vocab_size <= 0:
+        raise ValueError("hidden_size and vocab_size must be positive")
     if ffn not in {"dense", "moe"}:
         raise ValueError("ffn must be dense or moe")
     layers: list[LayerGene] = []
@@ -164,9 +166,11 @@ def validate_genome(genome: ArchitectureGenome) -> GenomeValidation:
         layer_ids.add(layer.id)
         if layer.module not in {"attention", "gdn", "hybrid"}:
             errors.append(f"unsupported module type for {layer.id}")
-        if layer.heads <= 0 or layer.kv_heads <= 0 or layer.heads % layer.kv_heads:
+        if layer.heads <= 0 or layer.kv_heads <= 0:
             errors.append(f"invalid attention geometry for {layer.id}")
-        if genome.hidden_size % layer.heads:
+        elif layer.heads % layer.kv_heads:
+            errors.append(f"invalid attention geometry for {layer.id}")
+        if genome.hidden_size > 0 and layer.heads > 0 and genome.hidden_size % layer.heads:
             errors.append(f"heads must divide hidden size for {layer.id}")
         if layer.ffn_width <= 0 or layer.residual_paths <= 0:
             errors.append(f"invalid width or residual paths for {layer.id}")
@@ -195,6 +199,27 @@ def validate_genome(genome: ArchitectureGenome) -> GenomeValidation:
             errors.append(f"layer {layer.id} references an unknown input")
         if layer.id in layer.inputs:
             errors.append(f"layer {layer.id} cannot reference itself")
+
+    # Input edges form a dependency graph. Reject cycles before downstream code tries to build or
+    # schedule the architecture; self-edges above are just the length-one cycle case.
+    dependencies = {
+        layer.id: [source for source in layer.inputs if source in layer_id_set]
+        for layer in genome.layers
+    }
+    visit_state: dict[str, int] = {}  # 1 = on DFS stack, 2 = fully visited
+
+    def has_cycle(layer_id: str) -> bool:
+        visit_state[layer_id] = 1
+        for source in dependencies[layer_id]:
+            state = visit_state.get(source, 0)
+            if state == 1 or (state == 0 and has_cycle(source)):
+                return True
+        visit_state[layer_id] = 2
+        return False
+
+    if any(visit_state.get(layer_id, 0) == 0 and has_cycle(layer_id) for layer_id in dependencies):
+        errors.append("layer inputs contain a cycle")
+
     if genome.max_params <= 0 or genome.max_active_params <= 0:
         errors.append("parameter ceilings must be positive")
     return GenomeValidation(valid=not errors, errors=errors)

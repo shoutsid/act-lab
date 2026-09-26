@@ -1,6 +1,9 @@
 from copy import deepcopy
 
+import pytest
+
 from act.topology import clone_expert, create_genome, genome_hash, grow_expert, prune_expert, validate_genome
+from act.topology.genome import ArchitectureGenome
 
 
 def test_genome_round_trip_identity_and_hash() -> None:
@@ -26,6 +29,57 @@ def test_invalid_stale_index_is_rejected() -> None:
     result = validate_genome(genome)
     assert not result.valid
     assert any("stale index" in error for error in result.errors)
+
+
+@pytest.mark.parametrize(
+    ("hidden_size", "heads"),
+    [(0, 4), (64, 0)],
+)
+def test_invalid_zero_width_or_head_count_is_reported_without_arithmetic_error(
+    hidden_size: int, heads: int
+) -> None:
+    genome = create_genome(3)
+    genome.hidden_size = hidden_size
+    genome.layers[0].heads = heads
+
+    validation = validate_genome(genome)
+
+    assert not validation.valid
+    assert validation.errors
+    with pytest.raises(ValueError, match="invalid genome"):
+        ArchitectureGenome.from_dict(genome.to_dict())
+
+
+def test_create_genome_rejects_zero_model_dimensions() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        create_genome(4, hidden_size=0)
+    with pytest.raises(ValueError, match="positive"):
+        create_genome(4, vocab_size=0)
+
+
+def test_validation_rejects_cycles_in_layer_input_graph() -> None:
+    genome = create_genome(8, depth=2)
+    genome.layers[0].inputs = ["L1"]
+    genome.layers[1].inputs = ["L0"]
+
+    validation = validate_genome(genome)
+
+    assert not validation.valid
+    assert "layer inputs contain a cycle" in validation.errors
+
+
+def test_rewire_rejects_a_cycle_and_restores_the_original_edges() -> None:
+    from act.topology import rewire_layer
+
+    genome = create_genome(9, depth=3)
+    assert rewire_layer(genome, "L1", "L0")
+    assert rewire_layer(genome, "L2", "L1")
+    before = genome_hash(genome)
+
+    assert not rewire_layer(genome, "L0", "L2")
+
+    assert genome_hash(genome) == before
+    assert validate_genome(genome).valid
 
 
 def test_clone_creates_a_new_expert_identity() -> None:
