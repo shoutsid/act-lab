@@ -878,26 +878,40 @@ def bind_thread_device(torch_xla: Any, device) -> tuple[str, str]:
 def seeds_timeout() -> float:
     """How long a rank waits for every rank to compile (``TPU_PROBE_SEEDS_TIMEOUT``).
 
-    The child process's variable, kept as the phase's clock: eight compilations are slow,
-    and a rank that waits forever is the failure that ends a kernel without a record.
+    The phase's clock, and the trade inside its default. Eight compiles of the declared
+    shape take minutes, so an hour leaves a slow host room - and a rank that failed before
+    the barrier spends that hour of the TPU's **billed** running time before the phase
+    records the failure. That is the cheaper half of the alternative: a probe queued for
+    hours whose kernel ends with no record at all, which is how three attempts at this one
+    measurement ended.
     """
     return float(os.environ.get("TPU_PROBE_SEEDS_TIMEOUT", 3600.0))
+
+
+class RankWaitTimeout(RuntimeError):
+    """A rank stopped at the barrier because some other rank never reached it.
+
+    Its own type so the parent can tell collateral from cause when it reports a failed
+    aggregate: seven ranks that stopped waiting are not seven failures, and the record has
+    to be able to say which one was the cause.
+    """
 
 
 def _wait_for_ranks(ready: threading.Barrier, *, rank: int) -> None:
     """Wait until every rank has compiled, and name the wait when it breaks.
 
-    A rank that fails before it reaches this point takes the others with it: they wait out
-    the budget, the barrier breaks, and each of them raises *this* - naming the rank and the
-    budget rather than a bare ``BrokenBarrierError``. A probe is queued for hours and runs
-    once, and the four failed attempts at this measurement each had to be diagnosed from a
-    line that did not name itself.
+    A rank that fails before it reaches this point takes the others with it: they wait, the
+    barrier breaks (by budget, or by the parent's ``abort`` the moment it sees a rank fail),
+    and each of them raises *this* - naming the rank and the budget rather than a bare
+    ``BrokenBarrierError``. A probe is queued for hours and runs once, and the four failed
+    attempts at this measurement each had to be diagnosed from a line that did not name
+    itself.
     """
     budget = seeds_timeout()
     try:
         ready.wait(timeout=budget)
     except threading.BrokenBarrierError as broken:
-        raise RuntimeError(
+        raise RankWaitTimeout(
             f"rank {rank} waited {budget:.0f}s for every rank to compile and the barrier "
             "broke - a rank that failed before compiling is the usual cause; raise "
             "TPU_PROBE_SEEDS_TIMEOUT if the compiles are merely slow"
@@ -940,9 +954,12 @@ def measure_independent_seeds(
     out to sync more than the rank that called it then stretches the *window* for everyone
     instead of inflating one rank's rate, which a sum would count twice.
 
-    A rank that did not finish raises: a partial parallel measurement is not the measurement
-    the decision reads, and it is contained as a phase error rather than averaged into a
-    plausible number. So does a set of reports that does not name one distinct device per
+    A rank that did not finish refuses the whole aggregate: a partial parallel measurement is
+    not the measurement the decision reads, and it is contained as a phase error rather than
+    averaged into a plausible number. The refusal is also **prompt**: the ranks are awaited
+    with ``FIRST_EXCEPTION`` and the barrier is aborted the moment one of them fails, so a
+    dead rank costs the phase seconds and names its own error, instead of the ranks behind it
+    spending the whole barrier budget (an hour of billed TPU time) and reporting a break. So does a set of reports that does not name one distinct device per
     rank, one that does not agree on the step's token count or the number of steady steps,
     and one whose window holds no steady step - each of those makes the arithmetic below a
     different measurement than the one the rule reads.
@@ -1008,7 +1025,41 @@ def measure_independent_seeds(
             )
             for rank in range(workers)
         ]
-        # A rank that raised is reported by its own exception, never averaged away.
+        # A rank that raised is reported by its own exception, never averaged away - and
+        # reported *when it raises*. Waiting on the ranks in order would let one that failed
+        # early leave the others sitting at the barrier until the budget ran out: the phase
+        # would burn that hour of billed TPU time and then report a broken barrier instead of
+        # the error that caused it. ``abort`` releases every waiting rank at once, and the
+        # summary below keeps cause and collateral apart by exception type.
+        done, _ = concurrent.futures.wait(
+            futures, return_when=concurrent.futures.FIRST_EXCEPTION
+        )
+        if any(future.exception() is not None for future in done):
+            ready.abort()
+        failures = [
+            (rank, future.exception())
+            for rank, future in enumerate(futures)
+            if future.exception() is not None
+        ]
+        if failures:
+            raised = [
+                f"rank {rank} raised {type(error).__name__}: {error}"
+                for rank, error in failures
+                if not isinstance(error, RankWaitTimeout)
+            ]
+            waiting = [
+                rank for rank, error in failures if isinstance(error, RankWaitTimeout)
+            ]
+            raise RuntimeError(
+                "the aggregate did not complete: "
+                + ("; ".join(raised) or "no rank reported a cause")
+                + (
+                    f"; rank(s) {waiting} stopped at the barrier waiting for it"
+                    if waiting
+                    else ""
+                )
+            )
+        # Every rank completed: the reports below are then the whole measurement.
         for future in futures:
             future.result()
     wall = time.perf_counter() - started

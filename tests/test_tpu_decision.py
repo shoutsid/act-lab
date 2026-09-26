@@ -575,8 +575,50 @@ def test_a_rank_that_waits_out_the_barrier_names_the_wait(monkeypatch) -> None:
     the usual cause, and it is usually visible in the other ranks' reports.
     """
     monkeypatch.setenv("TPU_PROBE_SEEDS_TIMEOUT", "0.05")
-    with pytest.raises(RuntimeError, match="rank 1 waited"):
+    # The type, not just the message: it is what the parent separates a *cause* from ranks
+    # that merely stopped waiting for it (see the test below).
+    with pytest.raises(tpu_probe.RankWaitTimeout, match="rank 1 waited"):
         tpu_probe._wait_for_ranks(threading.Barrier(2), rank=1)
+
+
+def test_one_dead_rank_costs_seconds_not_the_whole_barrier_budget(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A rank that dies must not leave the others waiting out an hour of billed TPU time.
+
+    The barrier's budget is the phase's clock (an hour by default), and the ranks are exactly
+    the case where waiting in order hides the cause: rank 1 fails, ranks 0 and 2 sit at the
+    barrier until the budget runs out, and the phase then reports a broken barrier instead of
+    rank 1's error. So the parent awaits with ``FIRST_EXCEPTION`` and aborts the barrier as
+    soon as one rank raises, and the failure it raises names the cause and the collateral
+    separately. The budget is shortened here so a regression fails this test rather than
+    stalling the suite.
+    """
+    monkeypatch.setenv("TPU_PROBE_SEEDS_TIMEOUT", "60")
+
+    def run_rank(
+        *, rank, device, config, steps, dtype, directory, ready, torch, xm, torch_xla=None
+    ):
+        if rank == 1:
+            raise RuntimeError("RESOURCE_EXHAUSTED: no memory for this rank's model")
+        tpu_probe._wait_for_ranks(ready, rank=rank)
+
+    started = time.perf_counter()
+    with pytest.raises(RuntimeError) as raised:
+        tpu_probe.measure_independent_seeds(
+            torch=torch, xm=object(), devices=None, workers=3, steps=3, dtype="fp32",
+            directory=tmp_path,
+            config_for=lambda rank: _tiny_config(),
+            device_for=lambda rank: torch.device("cpu", rank),
+            run_rank=run_rank,
+        )
+    elapsed = time.perf_counter() - started
+
+    assert elapsed < 10, "the budget was waited out instead of the rank's own error"
+    message = str(raised.value)
+    assert "the aggregate did not complete" in message
+    assert "rank 1 raised RuntimeError: RESOURCE_EXHAUSTED" in message
+    assert "rank(s) [0, 2] stopped at the barrier" in message
 
 
 @pytest.mark.parametrize("workers", [0, -1])
