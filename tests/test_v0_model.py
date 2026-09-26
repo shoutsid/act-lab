@@ -46,6 +46,23 @@ def test_v0_moe_config_rejects_nonpositive_or_nonfinite_dimensions(override: dic
         V0MoEConfig(**override)
 
 
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"attention_heads": 0},
+        {"hidden_size": 0},
+        {"context_size": 1},
+        {"vocab_size": 0},
+        {"depth": 0},
+        {"ffn_width": 0},
+        {"module_types": ("attention", "unknown")},
+    ],
+)
+def test_v0_model_config_rejects_invalid_dimensions_and_modules(override: dict) -> None:
+    with pytest.raises(ValueError):
+        V0ModelConfig(**override)
+
+
 def test_v0_rejects_invalid_module_schedule() -> None:
     try:
         V0CausalLM(

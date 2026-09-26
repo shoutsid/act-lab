@@ -20,6 +20,28 @@ class V0ModelConfig:
     ffn_width: int = 4_096
     module_types: tuple[ModuleType, ...] = ("attention",)
 
+    def __post_init__(self) -> None:
+        if min(
+            self.vocab_size,
+            self.context_size,
+            self.hidden_size,
+            self.depth,
+            self.attention_heads,
+            self.ffn_width,
+        ) < 1:
+            raise ValueError(
+                "vocab_size, context_size, hidden_size, depth, attention_heads, "
+                "and ffn_width must be positive"
+            )
+        if self.context_size < 2:
+            raise ValueError("context_size must be at least 2")
+        if self.hidden_size % self.attention_heads:
+            raise ValueError("hidden_size must be divisible by attention_heads")
+        if len(self.module_types) not in {1, self.depth}:
+            raise ValueError("module_types must contain one value or one per layer")
+        if any(module not in {"attention", "gdn", "hybrid"} for module in self.module_types):
+            raise ValueError("unsupported module type in module_types")
+
 
 class _AttentionBranch(nn.Module):
     def __init__(self, config: V0ModelConfig) -> None:
@@ -92,10 +114,6 @@ class V0CausalLM(nn.Module):
 
     def __init__(self, config: V0ModelConfig) -> None:
         super().__init__()
-        if config.hidden_size % config.attention_heads:
-            raise ValueError("hidden_size must be divisible by attention_heads")
-        if len(config.module_types) not in {1, config.depth}:
-            raise ValueError("module_types must contain one value or one per layer")
         self.config = config
         module_types = config.module_types * config.depth if len(config.module_types) == 1 else config.module_types
         self.token_embedding = nn.Embedding(config.vocab_size, config.hidden_size)
