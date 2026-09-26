@@ -579,6 +579,47 @@ def test_different_seeds_give_different_initializations():
     assert first.validation_loss != second.validation_loss
 
 
+def test_evaluate_loss_restores_training_mode_and_preserves_mixed_flags(monkeypatch):
+    import torch
+
+    from act.model.v0_moe import V0MoECausalLM
+    from act.model.factory import v0_moe_config_from_genome
+    from act.search.architecture_eval import evaluate_loss
+
+    model = V0MoECausalLM(v0_moe_config_from_genome(tiny_genome()))
+    model.train()
+    model.blocks[0].eval()
+    before = [module.training for module in model.modules()]
+    batch = torch.randint(0, VOCAB, (1, CONTEXT))
+
+    evaluate_loss(model, [batch])
+    assert [module.training for module in model.modules()] == before
+
+    with pytest.raises(ValueError, match="no validation tokens"):
+        evaluate_loss(model, [])
+    assert [module.training for module in model.modules()] == before
+
+
+def test_evaluate_loss_restores_mode_after_model_error(monkeypatch):
+    import torch
+
+    from act.model.v0_moe import V0MoECausalLM
+    from act.model.factory import v0_moe_config_from_genome
+    from act.search.architecture_eval import evaluate_loss
+
+    model = V0MoECausalLM(v0_moe_config_from_genome(tiny_genome()))
+    model.eval()
+    before = [module.training for module in model.modules()]
+
+    def fail(tokens):
+        raise RuntimeError("model failure")
+
+    monkeypatch.setattr(model, "loss", fail)
+    with pytest.raises(RuntimeError, match="model failure"):
+        evaluate_loss(model, [torch.randint(0, VOCAB, (1, CONTEXT))])
+    assert [module.training for module in model.modules()] == before
+
+
 def test_validation_loss_is_reported_separately_from_training_loss():
     result = train_architecture(tiny_genome(), run=tiny_run(), device="cpu")
     assert result.validation_loss > 0

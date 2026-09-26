@@ -39,6 +39,7 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 import torch
 
+from act.evaluation._mode import evaluation_mode
 from act.evaluation.probes import evaluate_capability_probes
 from act.model.factory import v0_moe_config_from_genome
 from act.model.v0_moe import V0MoECausalLM, V0MoEConfig, estimated_parameter_count
@@ -375,16 +376,15 @@ def _validation_batches(data: torch.Tensor, run: RunConfig) -> list[torch.Tensor
 @torch.no_grad()
 def evaluate_loss(model: V0MoECausalLM, batches: list[torch.Tensor]) -> float:
     """Token-weighted mean loss over held-out batches."""
-    model.eval()
     total_loss = 0.0
     total_tokens = 0
-    for tokens in batches:
-        tokens = tokens.to(next(model.parameters()).device)
-        loss = model.loss(tokens)
-        count = tokens.shape[0] * (tokens.shape[1] - 1)
-        total_loss += float(loss) * count
-        total_tokens += count
-    model.train()
+    with evaluation_mode(model):
+        for tokens in batches:
+            tokens = tokens.to(next(model.parameters()).device)
+            loss = model.loss(tokens)
+            count = tokens.shape[0] * (tokens.shape[1] - 1)
+            total_loss += float(loss) * count
+            total_tokens += count
     if total_tokens == 0:
         raise ValueError("no validation tokens were evaluated")
     return total_loss / total_tokens
