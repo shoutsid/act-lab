@@ -46,9 +46,13 @@ def evaluate_capability_probes(
                     raise ValueError(f"probe {name} batches need sequence length >= 2")
                 logits = model(tokens[:, :-1])
                 labels = tokens[:, 1:]
-                loss = model.loss(tokens)
+                if logits.shape[:2] != labels.shape:
+                    raise ValueError(f"probe {name} logits do not align with next-token labels")
                 if not torch.isfinite(logits).all():
                     raise ValueError(f"probe {name} produced non-finite logits")
+                loss = torch.nn.functional.cross_entropy(
+                    logits.reshape(-1, logits.shape[-1]), labels.reshape(-1)
+                )
                 if not torch.isfinite(loss).all():
                     raise ValueError(f"probe {name} produced non-finite loss")
                 total_loss += float(loss) * labels.numel()
