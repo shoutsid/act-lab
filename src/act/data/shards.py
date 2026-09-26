@@ -48,12 +48,14 @@ class ShardManifest:
 def write_token_shard(path: str | Path, tokens: Iterable[int], vocab_size: int) -> TokenShard:
     if vocab_size < 2:
         raise ValueError("vocab_size must be at least 2")
+    if vocab_size > np.iinfo(np.uint32).max + 1:
+        raise ValueError("vocab_size exceeds the token shard format's uint32 capacity")
     values = np.asarray(tuple(tokens), dtype=np.int64)
     if values.ndim != 1 or values.size == 0:
         raise ValueError("token shard must contain at least one one-dimensional token")
     if values.min() < 0 or values.max() >= vocab_size:
         raise ValueError("token is outside the configured vocabulary")
-    dtype = np.uint16 if vocab_size <= np.iinfo(np.uint16).max else np.uint32
+    dtype = np.uint16 if vocab_size <= np.iinfo(np.uint16).max + 1 else np.uint32
     encoded = values.astype(dtype, copy=False)
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -84,12 +86,16 @@ def read_tokens(
         raise ValueError("count is outside the shard")
     if shard.tokens < 0:
         raise ValueError("token shard length must not be negative")
+    if shard.tokens == 0:
+        raise ValueError("token shard must contain at least one token")
     try:
         dtype = np.dtype(shard.dtype)
     except (TypeError, ValueError) as error:
         raise ValueError(f"unsupported token shard dtype: {shard.dtype}") from error
     if dtype.name not in {"uint16", "uint32"}:
         raise ValueError(f"unsupported token shard dtype: {shard.dtype}")
+    if shard.tokens > np.iinfo(dtype).max + 1:
+        raise ValueError("token shard length exceeds dtype capacity")
     expected_bytes = shard.tokens * dtype.itemsize
     actual_bytes = path.stat().st_size
     if actual_bytes != expected_bytes:
