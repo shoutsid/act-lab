@@ -125,12 +125,15 @@ def test_an_unknown_check_name_is_refused(tmp_path: Path) -> None:
     assert "unknown check" in str(info.value)
 
 
-def test_the_clone_is_removed_unless_it_is_kept(tmp_path: Path, capsys) -> None:
+def test_the_clone_is_removed_unless_it_is_kept(tmp_path: Path, capsys, monkeypatch) -> None:
     repo = _make_repo(tmp_path)
-    before = set(Path(tempfile.gettempdir()).glob("fresh-clone-*"))
+    clone_root = tmp_path / "fresh-clones"
+    clone_root.mkdir()
+    monkeypatch.setattr(check.tempfile, "tempdir", str(clone_root))
+    before = set(clone_root.iterdir())
 
     assert _run(repo) == 0
-    assert set(Path(tempfile.gettempdir()).glob("fresh-clone-*")) == before
+    assert set(clone_root.iterdir()) == before
 
     assert _run(repo, "--keep") == 0
     kept = Path(capsys.readouterr().out.split("clone kept at ", 1)[1].strip())

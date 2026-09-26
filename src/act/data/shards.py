@@ -82,7 +82,21 @@ def read_tokens(
     length = available if count is None else count
     if length < 0 or length > available:
         raise ValueError("count is outside the shard")
-    dtype = np.dtype(shard.dtype)
+    if shard.tokens < 0:
+        raise ValueError("token shard length must not be negative")
+    try:
+        dtype = np.dtype(shard.dtype)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"unsupported token shard dtype: {shard.dtype}") from error
+    if dtype.name not in {"uint16", "uint32"}:
+        raise ValueError(f"unsupported token shard dtype: {shard.dtype}")
+    expected_bytes = shard.tokens * dtype.itemsize
+    actual_bytes = path.stat().st_size
+    if actual_bytes != expected_bytes:
+        raise ValueError(
+            f"token shard byte length mismatch for {path}: "
+            f"expected {expected_bytes}, found {actual_bytes}"
+        )
     return np.fromfile(path, dtype=dtype, count=length, offset=start * dtype.itemsize)
 
 

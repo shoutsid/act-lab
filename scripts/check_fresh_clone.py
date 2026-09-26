@@ -159,7 +159,8 @@ def main(argv: list[str] | None = None) -> int:
             "this check - commit them and re-run to have them included."
         )
 
-    destination = Path(tempfile.mkdtemp(prefix="fresh-clone-")) / "clone"
+    temp_root = Path(tempfile.mkdtemp(prefix="fresh-clone-"))
+    destination = temp_root / "clone"
     failures: list[str] = []
     try:
         try:
@@ -193,13 +194,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\n{len(checks)}/{len(checks)} checks pass in a fresh clone of {commit[:12]}")
         return 0
     finally:
-        # Only ever touched once, and only if the clone was actually made - a
-        # failed clone has nothing to keep and nothing to delete.
-        if destination.exists():
-            if args.keep:
-                print(f"clone kept at {destination}")
-            else:
-                shutil.rmtree(destination.parent, ignore_errors=True)
+        # Clean the parent even when `git clone` fails before it creates destination.
+        # With --keep, only preserve a successfully-created clone.
+        if args.keep and destination.exists():
+            print(f"clone kept at {destination}")
+        else:
+            shutil.rmtree(temp_root, ignore_errors=True)
 
 
 if __name__ == "__main__":
