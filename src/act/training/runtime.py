@@ -254,6 +254,7 @@ def load_checkpoint(
 ) -> TrainingState:
     payload: dict[str, Any] = torch.load(path, map_location="cpu", weights_only=False)
     validate_checkpoint_payload(payload)
+    validate_model_state(payload["model"], model)
     model.load_state_dict(payload["model"])
     optimizer.load_state_dict(payload["optimizer"])
     move_optimizer_state(optimizer, next(model.parameters()).device)
@@ -273,6 +274,26 @@ def load_checkpoint(
         experiment_config=dict(training.get("experiment_config", {})),
         code_revision=str(training.get("code_revision", "unknown")),
     )
+
+
+def validate_model_state(state: dict[str, object], model: BaselineModel) -> None:
+    """Reject incompatible model keys and tensor shapes before loading mutates parameters."""
+    expected = model.state_dict()
+    if set(state) != set(expected):
+        missing = sorted(set(expected) - set(state))
+        unexpected = sorted(set(state) - set(expected))
+        raise ValueError(
+            f"checkpoint model keys do not match (missing={missing}, unexpected={unexpected})"
+        )
+    for key, target in expected.items():
+        value = state[key]
+        if not isinstance(value, torch.Tensor):
+            raise ValueError(f"checkpoint model entry {key} must be a tensor")
+        if value.shape != target.shape:
+            raise ValueError(
+                f"checkpoint model entry {key} has shape {tuple(value.shape)}, "
+                f"expected {tuple(target.shape)}"
+            )
 
 
 def validate_checkpoint_payload(payload: object) -> None:
