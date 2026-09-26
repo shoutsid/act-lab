@@ -1,7 +1,7 @@
 """Safe, in-place topology operators for the Python genome."""
 
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Callable, Mapping, Sequence
 
 from .genome import ArchitectureGenome, ExpertGene, validate_genome
@@ -26,29 +26,25 @@ def apply_transaction(
 
     before = genome_hash(genome)
     original = deepcopy(genome)
+
+    def restore() -> None:
+        for field in fields(genome):
+            setattr(genome, field.name, deepcopy(getattr(original, field.name)))
+
     try:
         changed = bool(change(genome))
+        validation = validate_genome(genome) if changed else None
     except Exception as error:
-        genome.version = original.version
-        genome.seed = original.seed
-        genome.hidden_size = original.hidden_size
-        genome.vocab_size = original.vocab_size
-        genome.layers = original.layers
-        genome.max_params = original.max_params
-        genome.max_active_params = original.max_active_params
-        genome.context_size = original.context_size
+        restore()
         return MutationResult(False, operation, before, before, (str(error),))
-    validation = validate_genome(genome)
-    if not changed or not validation.valid:
-        genome.version = original.version
-        genome.seed = original.seed
-        genome.hidden_size = original.hidden_size
-        genome.vocab_size = original.vocab_size
-        genome.layers = original.layers
-        genome.max_params = original.max_params
-        genome.max_active_params = original.max_active_params
-        genome.context_size = original.context_size
-        errors = tuple(validation.errors) if not validation.valid else ("operation made no change",)
+
+    if not changed or validation is None or not validation.valid:
+        restore()
+        errors = (
+            tuple(validation.errors)
+            if validation is not None and not validation.valid
+            else ("operation made no change",)
+        )
         return MutationResult(False, operation, before, before, errors)
     return MutationResult(True, operation, before, genome_hash(genome))
 

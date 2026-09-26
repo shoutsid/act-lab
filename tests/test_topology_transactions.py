@@ -45,6 +45,30 @@ def test_callback_exception_restores_every_genome_field() -> None:
     assert len(genome.layers[0].experts) == 4
 
 
+def test_validation_exception_restores_every_genome_field(monkeypatch) -> None:
+    import act.topology.mutations as mutations
+
+    genome = create_genome(11, ffn="moe")
+    before = genome_hash(genome)
+
+    def invalid_validation(_genome):
+        raise RuntimeError("injected validator failure")
+
+    monkeypatch.setattr(mutations, "validate_genome", invalid_validation)
+
+    result = mutations.apply_transaction(
+        genome,
+        "validation-raises",
+        lambda value: (setattr(value, "max_active_params", -1) or True),
+    )
+
+    assert not result.applied
+    assert result.errors == ("injected validator failure",)
+    assert result.before_hash == result.after_hash == before
+    assert genome_hash(genome) == before
+    assert genome.max_active_params == 10**9
+
+
 def test_successful_transaction_records_hash_transition() -> None:
     genome = create_genome(4, ffn="moe")
     result = apply_transaction(
