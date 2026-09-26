@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from contextlib import nullcontext
+from numbers import Integral
 from pathlib import Path
 from typing import Any
 
@@ -255,6 +256,7 @@ def load_checkpoint(
     payload: dict[str, Any] = torch.load(path, map_location="cpu", weights_only=False)
     validate_checkpoint_payload(payload)
     validate_model_state(payload["model"], model)
+    validate_checkpoint_rng(payload)
     model.load_state_dict(payload["model"])
     optimizer.load_state_dict(payload["optimizer"])
     move_optimizer_state(optimizer, next(model.parameters()).device)
@@ -296,6 +298,28 @@ def validate_model_state(state: dict[str, object], model: BaselineModel) -> None
             )
 
 
+def validate_checkpoint_rng(payload: dict[str, Any]) -> None:
+    """Check RNG state tensors with temporary generators before global state changes."""
+    for key in ("torch_rng_state",):
+        if key in payload:
+            value = payload[key]
+            if not isinstance(value, torch.Tensor) or value.dtype != torch.uint8:
+                raise ValueError(f"checkpoint {key} must be a uint8 tensor")
+            try:
+                torch.Generator(device="cpu").set_state(value)
+            except (RuntimeError, TypeError) as error:
+                raise ValueError(f"checkpoint {key} is invalid") from error
+    training = payload["training"]
+    value = training.get("generator_state")
+    if value is not None:
+        if not isinstance(value, torch.Tensor) or value.dtype != torch.uint8:
+            raise ValueError("checkpoint generator_state must be a uint8 tensor")
+        try:
+            torch.Generator(device="cpu").set_state(value)
+        except (RuntimeError, TypeError) as error:
+            raise ValueError("checkpoint generator_state is invalid") from error
+
+
 def validate_checkpoint_payload(payload: object) -> None:
     """Reject malformed or unsupported checkpoint structures before loading state."""
     if not isinstance(payload, dict):
@@ -316,3 +340,26 @@ def validate_checkpoint_payload(payload: object) -> None:
     for key in ("step", "tokens"):
         if key not in training:
             raise ValueError(f"checkpoint training is missing {key}")
+        value = training[key]
+        if not isinstance(value, Integral) or isinstance(value, bool) or value < 0:
+            raise ValueError(f"checkpoint training {key} must be a non-negative integer")
+    if "dataset_position" in training:
+        value = training["dataset_position"]
+        if not isinstance(value, Integral) or isinstance(value, bool) or value < 0:
+            raise ValueError(
+                "checkpoint training dataset_position must be a non-negative integer"
+            )
+    if "generator_state" in training and training["generator_state"] is not None:
+        if not isinstance(training["generator_state"], torch.Tensor):
+            raise ValueError("checkpoint training generator_state must be a tensor or None")
+    if "genome" in training and training["genome"] is not None:
+        if not isinstance(training["genome"], dict):
+            raise ValueError("checkpoint training genome must be a mapping or None")
+    for key in ("mutation_history",):
+        if key in training and not isinstance(training[key], list):
+            raise ValueError(f"checkpoint training {key} must be a list")
+    for key in ("importance_state", "scheduler_state", "experiment_config"):
+        if key in training and not isinstance(training[key], dict):
+            raise ValueError(f"checkpoint training {key} must be a mapping")
+    if "code_revision" in training and not isinstance(training["code_revision"], str):
+        raise ValueError("checkpoint training code_revision must be a string")
