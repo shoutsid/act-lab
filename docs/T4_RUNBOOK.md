@@ -891,7 +891,11 @@ knowing when reading a failure:
   retries a dropped stream five times and then gives up for good; that session's
   capture stopped at **4.1 min** and the session ran another 3.4 h. The capture
   now restarts while the kernel is live, skipping the CLI's replay of lines
-already on disk.
+already on disk - and "lines already on disk" means the **kernel's** log lines
+  only, which is what the resume count counts. The CLI's notices about the
+  connection are written prefixed with `--- kaggle cli: ` and **not** counted;
+  until 2026-09-26 they were merged into the stream and counted, which made the
+  resume skip real log lines (see `IMPLEMENTATION_STATUS.md`, 2026-09-26).
 - **The longest channel wins, not the first.** The truncated capture was genuine
   and was first in order, so it was returned and three longer channels were
   never read. An account that wins by order is worse than none, because it reads

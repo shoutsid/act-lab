@@ -1624,10 +1624,16 @@ def test_a_logless_note_now_reads_as_exclusions_and_says_how_to_bound_the_loss()
 
 
 class _Attempt:
-    """One ``kaggle kernels logs -f`` connection, as the tailer sees it."""
+    """One ``kaggle kernels logs -f`` connection, as the tailer sees it.
 
-    def __init__(self, lines: list[str]) -> None:
+    ``stdout`` is the kernel's log and ``stderr`` the CLI's own notices about the
+    connection: separate streams, because the tailer treats them differently (the notices
+    are marked and *not* counted - see ``_open_log_stream``).
+    """
+
+    def __init__(self, lines: list[str], notices: list[str] | None = None) -> None:
         self.stdout = list(lines)
+        self.stderr = list(notices or [])
         self.terminated = False
 
     def terminate(self) -> None:
@@ -1703,6 +1709,71 @@ def test_a_replay_that_does_not_match_is_reported_not_hidden(
     text = path.read_text()
     assert "did not match what was captured" in text
     assert "c\n" in text
+
+
+def test_a_cli_notice_does_not_make_the_resume_skip_a_log_line(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The defect a real session found on 2026-09-26, in the shape it had there.
+
+    The CLI's notices about the connection were merged into the captured stream and counted
+    as log lines, and the count is what a restart resumes from: on `act-t4-session` seven
+    notices took the count to 40 while the kernel's log held 33 lines, so the next replay
+    skipped the log's lines 34-40 - the pair that finished in exactly that window. The
+    misalignment marker was the symptom; this is the cause. Notices are now written marked
+    and uncounted, so a restarted stream's new lines are appended rather than skipped.
+    """
+    attempts = [
+        (
+            ["header\n"],
+            [
+                "Log stream connection lost, reconnecting...\n",
+                "Log stream connection failed 5 times with no new data; giving up.\n",
+            ],
+        ),
+        (["header\n", "seed 15024: pair complete\n"], []),
+    ]
+
+    def fake_open(kernel: str) -> _Attempt:
+        if not attempts:
+            raise OSError("no more attempts")
+        lines, notices = attempts.pop(0)
+        return _Attempt(lines, notices)
+
+    monkeypatch.setattr(kaggle_queue, "_open_log_stream", fake_open)
+    monkeypatch.setattr(kaggle_queue, "LIVE_LOG_RESTART_SECONDS", 0.0)
+
+    path = tmp_path / "live.log"
+    kaggle_queue._tail_until_stopped("o/k", path, threading.Event(), [])
+
+    text = path.read_text()
+    assert "seed 15024: pair complete" in text, "the restarted stream's line was skipped"
+    assert "did not match what was captured" not in text, "the resume was made to misalign"
+    assert f"{kaggle_queue.CLI_NOTICE_PREFIX}Log stream connection lost" in text
+    captured = [line for line in text.splitlines() if not line.startswith("---")]
+    assert captured == ["header", "seed 15024: pair complete"]
+
+
+def test_the_live_stream_keeps_the_cli_notices_out_of_the_log(monkeypatch) -> None:
+    """The separation the resume arithmetic rests on, pinned where it is decided.
+
+    A single merged stream is what made a notice a log line - and no fake can show that,
+    because the merge happened in the ``Popen`` call, so the call itself is pinned.
+    """
+    seen: dict[str, object] = {}
+
+    class _Popen:
+        def __init__(self, argv, **kwargs):  # noqa: ANN001, ANN003
+            seen.update(kwargs)
+            self.stdout: list[str] = []
+            self.stderr: list[str] = []
+
+    monkeypatch.setattr(kaggle_queue.subprocess, "Popen", _Popen)
+    kaggle_queue._open_log_stream("o/k")
+
+    assert seen["stdout"] == kaggle_queue.subprocess.PIPE
+    assert seen["stderr"] == kaggle_queue.subprocess.PIPE
+    assert seen["stderr"] != kaggle_queue.subprocess.STDOUT
 
 
 def test_the_capture_tails_while_the_session_runs_and_stops_afterwards(

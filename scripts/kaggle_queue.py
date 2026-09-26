@@ -69,6 +69,12 @@ STREAM_LOG_NAME = kaggle_t4.STREAM_LOG_NAME
 #: needed reading had no account at all. Restarting is the fix, and this is the gap.
 LIVE_LOG_RESTART_SECONDS = 15.0
 
+#: What the CLI's own notices are written with. They are about the *connection*, not the
+#: run ("Log stream connection lost, reconnecting...", and the line it gives up on), and
+#: they are marked so that a reader - and the resume arithmetic - can tell them from the
+#: kernel's own log lines.
+CLI_NOTICE_PREFIX = "--- kaggle cli: "
+
 # A seed the runner counts as done: published before this session, or trained
 # and published during it. "interrupted" (deadline stop mid-pair) is not done.
 COMPLETE_ACTIONS = ("completed", "skipped_complete")
@@ -884,15 +890,37 @@ def _open_log_stream(kernel: str):
 
     A function rather than an inline ``Popen`` because the restart loop is the part
     worth testing and it should not need a real Kaggle process to test: a fake here
-    returns an object whose ``stdout`` is a list of lines.
+    returns an object whose ``stdout`` and ``stderr`` are lists of lines.
+
+    The two streams are kept **separate**, because they are different things: stdout is the
+    kernel's log (which the platform re-sends in full on every attempt), stderr is the
+    CLI's own notices about the connection. Merging them made the notices indistinguishable
+    from log lines, and that was not cosmetic - the supervisor resumes at a *line count* of
+    the kernel's log, so every notice in it made the next attempt skip one real line.
+    Measured 2026-09-26 on `act-t4-session`: 7 notices had taken the count to 40 while the
+    log held 33 lines, and the next replay skipped the kernel's lines 34-40, i.e. the pair
+    that finished in exactly that window went unread by the capture that exists to read it.
     """
     return subprocess.Popen(
         ["kaggle", "kernels", "logs", "-f", kernel],
         stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+        stderr=subprocess.PIPE,
         text=True,
         bufsize=1,
     )
+
+
+def _drain_notices(stream, handle, lock) -> None:
+    """Write one attempt's own notices into the capture, marked, and uncounted.
+
+    Uncounted on purpose: ``written`` is how many *log* lines are captured, and that is what
+    a restart resumes from (see ``_open_log_stream``). The lock is shared with the log
+    lines so two threads cannot interleave halves of a line into the file.
+    """
+    for line in stream or ():
+        with lock:
+            handle.write(f"{CLI_NOTICE_PREFIX}{line.rstrip()}\n")
+            handle.flush()
 
 
 def _tail_attempt(
@@ -907,10 +935,13 @@ def _tail_attempt(
     ``kaggle kernels logs -f`` streams a kernel's log **from its first line**, so an
     attempt that reconnects re-sends everything already on disk (measured 2026-09-21: a
     completed kernel's stream begins at its header, twice, for 195 lines both times).
-    ``written`` is how many lines are already captured, so the new lines begin after that
-    many - and the line it lands on is checked against ``last`` to report a replay that
+    ``written`` is how many *log* lines are already captured, so the new lines begin after
+    that many - and the line it lands on is checked against ``last`` to report a replay that
     did not match, rather than acted on: a log only ever grows, so the count is still the
     best estimate, and a duplicated line costs a reader far less than a missing one.
+
+    The count is log lines only: the CLI's own notices go through ``_drain_notices``, marked
+    and uncounted, so they cannot make this resume skip a line.
 
     Returns the updated line count, the new last line, and whether the replay matched.
     ``current`` is a one-slot list the caller keeps the live process in, so the exit path
@@ -919,6 +950,14 @@ def _tail_attempt(
     process = _open_log_stream(kernel)
     current[:] = [process]
     aligned = True
+    lock = threading.Lock()
+    notices = threading.Thread(
+        target=_drain_notices,
+        args=(process.stderr, handle, lock),
+        name="live-log-notices",
+        daemon=True,
+    )
+    notices.start()
     try:
         skip = written
         index = 0
@@ -928,8 +967,9 @@ def _tail_attempt(
                     aligned = False
                 index += 1
                 continue
-            handle.write(line)
-            handle.flush()
+            with lock:
+                handle.write(line)
+                handle.flush()
             written += 1
             last = line
             index += 1
@@ -940,6 +980,7 @@ def _tail_attempt(
             process.wait(timeout=LIVE_LOG_STOP_SECONDS)
         except subprocess.TimeoutExpired:
             process.kill()
+        notices.join(timeout=LIVE_LOG_STOP_SECONDS)
     return written, last, aligned
 
 
