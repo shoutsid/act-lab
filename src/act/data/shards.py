@@ -118,6 +118,10 @@ def build_synthetic_shards(
 ) -> ShardManifest:
     if shard_tokens < 1 or shard_count < 1:
         raise ValueError("shard_tokens and shard_count must be positive")
+    if vocab_size < 2:
+        raise ValueError("vocab_size must be at least 2")
+    if vocab_size > np.iinfo(np.uint32).max + 1:
+        raise ValueError("vocab_size exceeds the token shard format's uint32 capacity")
     generator = np.random.default_rng(seed)
     target = Path(directory)
     shards = []

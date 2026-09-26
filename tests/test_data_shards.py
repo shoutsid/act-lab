@@ -6,6 +6,22 @@ import pytest
 from act.data import ShardManifest, build_synthetic_shards, read_tokens, write_token_shard
 
 
+@pytest.mark.parametrize(
+    "vocab_size, message",
+    [
+        (1, "at least 2"),
+        (np.iinfo(np.uint32).max + 2, "uint32 capacity"),
+    ],
+)
+def test_synthetic_shards_reject_unrepresentable_vocabularies(
+    tmp_path: Path, vocab_size: int, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        build_synthetic_shards(
+            tmp_path / "invalid", vocab_size=vocab_size, shard_tokens=1
+        )
+
+
 def test_synthetic_shards_are_reproducible(tmp_path: Path) -> None:
     first = build_synthetic_shards(tmp_path / "one", seed=11, shard_tokens=32)
     second = build_synthetic_shards(tmp_path / "two", seed=11, shard_tokens=32)
