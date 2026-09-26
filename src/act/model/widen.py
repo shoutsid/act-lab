@@ -169,12 +169,25 @@ def widen_model(model: V0MoECausalLM, new_config: V0MoEConfig) -> V0MoECausalLM:
     if new_config.attention_heads <= old_config.attention_heads:
         raise ValueError("a width step here must add heads: head_dim is held fixed")
 
+    expected_config = widen_config(
+        old_config,
+        hidden_size=new_config.hidden_size,
+        attention_heads=new_config.attention_heads,
+    )
+    if new_config != expected_config:
+        raise ValueError("widen_model changes hidden width and head count only")
+
     head_dim = new_config.hidden_size // new_config.attention_heads
-    # Construction initialises every weight from a seeded distribution, and every one of them is
+    reference_parameter = next(model.parameters())
+    # Construction initializes every weight from a seeded distribution, and every one of them is
     # then written below - so the init is irrelevant to the result and must not consume the
-    # caller's RNG stream, which a search that widens inside a seeded run would notice.
+    # caller's RNG stream, which a search that widens inside a seeded run would notice. Match the
+    # source model's dtype and device before copying: otherwise widening a float64/CUDA model
+    # silently returns a float32/CPU model, changing both the function and whether it can run.
     with torch.random.fork_rng():
-        wider = V0MoECausalLM(new_config)
+        wider = V0MoECausalLM(new_config).to(
+            device=reference_parameter.device, dtype=reference_parameter.dtype
+        )
 
     with torch.no_grad():
         # Tied input and output embedding: the new hidden coordinates are zero, which is what

@@ -240,10 +240,26 @@ def test_shrinking_and_recurrent_layers_are_refused() -> None:
     model = V0MoECausalLM(config)
     with pytest.raises(ValueError, match="hidden width and head count only"):
         widen_model(model, tiny(hidden_size=32, attention_heads=8, context_size=64))
+    with pytest.raises(ValueError, match="hidden width and head count only"):
+        widen_model(model, tiny(hidden_size=32, attention_heads=8, rotary_base=20_000.0))
     with pytest.raises(ValueError, match="grows a residual stream"):
         widen_model(model, tiny())
     with pytest.raises(ValueError, match="must add heads"):
         widen_model(model, tiny(hidden_size=32, attention_heads=4, module_types=("attention",) * 2))
+
+
+def test_widening_preserves_the_source_models_dtype_and_device() -> None:
+    """The graft changes width, not the execution representation of a trained model."""
+
+    config = tiny()
+    model = V0MoECausalLM(config).to(dtype=torch.float64).eval()
+    wider = widen_model(model, widen_config(config, hidden_size=32))
+
+    assert next(wider.parameters()).dtype == torch.float64
+    assert next(wider.parameters()).device == next(model.parameters()).device
+    tokens = torch.randint(0, config.vocab_size, (1, 5))
+    with torch.no_grad():
+        assert torch.allclose(model(tokens), wider(tokens), atol=1e-12)
 
 
 def test_widening_does_not_disturb_the_callers_random_stream() -> None:
