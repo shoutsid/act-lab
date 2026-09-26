@@ -25,6 +25,23 @@ class PerplexityResult:
     tokens: int
 
 
+def _validate_evaluation_batch(
+    model: LanguageModel,
+    tokens: torch.Tensor,
+    *,
+    description: str,
+) -> None:
+    if not isinstance(tokens, torch.Tensor):
+        raise ValueError(f"{description} must be a tensor")
+    if tokens.ndim != 2 or tokens.shape[0] < 1 or tokens.shape[1] < 2:
+        raise ValueError(f"{description} must have shape [batch>=1, sequence length>=2]")
+    if tokens.dtype not in {torch.int32, torch.int64}:
+        raise ValueError(f"{description} must contain integer token ids")
+    vocab_size = model.config.vocab_size
+    if torch.any((tokens < 0) | (tokens >= vocab_size)).item():
+        raise ValueError(f"{description} contains token ids outside [0, {vocab_size})")
+
+
 def evaluate_perplexity(
     model: LanguageModel,
     batches: tuple[torch.Tensor, ...] | list[torch.Tensor],
@@ -35,8 +52,9 @@ def evaluate_perplexity(
     total_tokens = 0
     with evaluation_mode(model), torch.no_grad():
         for tokens in batches:
-            if tokens.ndim != 2 or tokens.shape[1] < 2:
-                raise ValueError("evaluation batches must have shape [batch, sequence>=2]")
+            _validate_evaluation_batch(
+                model, tokens, description="evaluation batches"
+            )
             loss = model.loss(tokens)
             if not torch.isfinite(loss).all():
                 raise ValueError("evaluation produced a non-finite loss")

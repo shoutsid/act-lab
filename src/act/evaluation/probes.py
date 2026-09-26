@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import torch
 
 from ._mode import evaluation_mode
-from .perplexity import LanguageModel
+from .perplexity import LanguageModel, _validate_evaluation_batch
 
 
 @dataclass(frozen=True)
@@ -42,8 +42,9 @@ def evaluate_capability_probes(
             total_correct = 0
             total_tokens = 0
             for tokens in batches:
-                if tokens.ndim != 2 or tokens.shape[1] < 2:
-                    raise ValueError(f"probe {name} batches need sequence length >= 2")
+                _validate_evaluation_batch(
+                    model, tokens, description=f"probe {name} batches"
+                )
                 logits = model(tokens[:, :-1])
                 labels = tokens[:, 1:]
                 if logits.shape[:2] != labels.shape:

@@ -56,6 +56,23 @@ def test_perplexity_rejects_nonfinite_model_loss(monkeypatch) -> None:
         evaluate_perplexity(model, [torch.randint(0, 128, (1, 4))])
 
 
+@pytest.mark.parametrize(
+    "batch, message",
+    [
+        (torch.ones(0, 4, dtype=torch.long), "batch>=1"),
+        (torch.ones(1, 4, dtype=torch.float32), "integer token ids"),
+        (torch.tensor([[0, 16]], dtype=torch.long), "outside"),
+        (torch.tensor([[-1, 2]], dtype=torch.long), "outside"),
+    ],
+)
+def test_perplexity_rejects_invalid_token_batches(batch, message) -> None:
+    model = DenseCausalLM(
+        DenseBaselineConfig(vocab_size=16, context_size=8, hidden_size=8, num_layers=1)
+    )
+    with pytest.raises(ValueError, match=message):
+        evaluate_perplexity(model, [batch])
+
+
 def test_perplexity_rejects_empty_or_short_batches() -> None:
     model = DenseCausalLM(DenseBaselineConfig(hidden_size=8, num_heads=2))
     with pytest.raises(ValueError, match="at least one"):

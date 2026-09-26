@@ -83,6 +83,20 @@ def test_capability_probes_reject_nonfinite_loss_and_logits(monkeypatch) -> None
         evaluate_capability_probes(model, {"copy": [tokens]})
 
 
+@pytest.mark.parametrize(
+    "batch, message",
+    [
+        (torch.ones(1, 4, dtype=torch.float32), "integer token ids"),
+        (torch.tensor([[0, 128]], dtype=torch.long), "outside"),
+        (torch.tensor([[-1, 2]], dtype=torch.long), "outside"),
+    ],
+)
+def test_capability_probes_reject_invalid_token_batches(batch, message) -> None:
+    model = DenseCausalLM(DenseBaselineConfig(hidden_size=8, num_heads=2))
+    with pytest.raises(ValueError, match=message):
+        evaluate_capability_probes(model, {"copy": [batch]})
+
+
 def test_capability_probes_reject_invalid_inputs() -> None:
     model = DenseCausalLM(DenseBaselineConfig(hidden_size=8, num_heads=2))
     with pytest.raises(ValueError, match="at least one"):
