@@ -117,8 +117,9 @@ def prune_expert(genome: ArchitectureGenome, layer_id: str, expert_id: str) -> b
     if layer is None or layer.ffn != "moe" or len(layer.experts) <= 2:
         return False
     original = deepcopy(genome)
+    original_expert_count = len(layer.experts)
     layer.experts = [expert for expert in layer.experts if expert.id != expert_id]
-    if len(layer.experts) == len(original.layers[layer.index].experts):
+    if len(layer.experts) == original_expert_count:
         return False
     layer.active_experts = min(layer.active_experts, len(layer.experts))
     if not validate_genome(genome).valid:

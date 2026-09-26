@@ -50,6 +50,17 @@ def test_invalid_zero_width_or_head_count_is_reported_without_arithmetic_error(
         ArchitectureGenome.from_dict(genome.to_dict())
 
 
+def test_prune_with_stale_index_does_not_leave_a_partial_mutation() -> None:
+    genome = create_genome(10, depth=2, ffn="moe")
+    assert prune_expert(genome, "L0", "L0E0")  # layer 0 now has three experts
+    target = genome.layers[1]
+    target.index = 0  # targets layer 0's expert count in the old implementation
+    original_ids = [expert.id for expert in target.experts]
+
+    assert not prune_expert(genome, target.id, original_ids[0])
+    assert [expert.id for expert in genome.layers[1].experts] == original_ids
+
+
 def test_create_genome_rejects_zero_model_dimensions() -> None:
     with pytest.raises(ValueError, match="positive"):
         create_genome(4, hidden_size=0)
