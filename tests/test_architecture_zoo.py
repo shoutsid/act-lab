@@ -528,6 +528,36 @@ def test_lr_schedule_warms_up_then_decays():
 # --- harness correctness -------------------------------------------------
 
 
+@pytest.mark.parametrize(
+    "override, message",
+    [
+        ({"steps": 0}, "steps, batch_size"),
+        ({"batch_size": 0}, "steps, batch_size"),
+        ({"context_size": 0}, "steps, batch_size"),
+        ({"val_batches": 0}, "steps, batch_size"),
+        ({"warmup_steps": -1}, "warmup_steps"),
+        ({"learning_rate": 0}, "learning_rate"),
+        ({"learning_rate": float("inf")}, "learning_rate"),
+        ({"min_lr_ratio": -0.1}, "min_lr_ratio"),
+        ({"min_lr_ratio": 1.1}, "min_lr_ratio"),
+        ({"weight_decay": -0.1}, "weight_decay"),
+        ({"grad_clip": float("nan")}, "grad_clip"),
+        ({"val_holdout_tokens": -1}, "val_holdout_tokens"),
+        ({"gdn_chunk_size": -1}, "gdn_chunk_size"),
+        ({"steps": 1.5}, "must be integers"),
+    ],
+)
+def test_run_config_rejects_invalid_training_settings(override, message):
+    with pytest.raises(ValueError, match=message):
+        tiny_run(**override)
+
+
+def test_run_config_allows_disabled_gradient_clipping_and_chunking():
+    run = tiny_run(grad_clip=0.0, gdn_chunk_size=0)
+    assert run.grad_clip == 0.0
+    assert run.gdn_chunk_size == 0
+
+
 def test_run_config_counts_tokens():
     run = tiny_run(steps=5, batch_size=2, context_size=16)
     assert run.train_tokens == 160

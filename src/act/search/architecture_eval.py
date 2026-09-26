@@ -29,6 +29,7 @@ disagreement is itself a result:
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, replace
+from numbers import Integral
 import json
 import math
 import time
@@ -81,6 +82,40 @@ class RunConfig:
     #: layers exceed an 8 GB card while the chunked path fits. Recorded with the
     #: result because segmenting changes memory, not arithmetic.
     gdn_chunk_size: int = 0
+
+    def __post_init__(self) -> None:
+        integer_fields = (
+            "steps",
+            "batch_size",
+            "context_size",
+            "warmup_steps",
+            "val_batches",
+            "seed",
+            "val_holdout_tokens",
+            "gdn_chunk_size",
+        )
+        if any(
+            not isinstance(getattr(self, name), Integral)
+            or isinstance(getattr(self, name), bool)
+            for name in integer_fields
+        ):
+            raise ValueError("run schedule dimensions and seed must be integers")
+        if min(self.steps, self.batch_size, self.context_size, self.val_batches) < 1:
+            raise ValueError("steps, batch_size, context_size, and val_batches must be positive")
+        if self.warmup_steps < 0:
+            raise ValueError("warmup_steps must be non-negative")
+        if self.val_holdout_tokens < 0:
+            raise ValueError("val_holdout_tokens must be non-negative")
+        if self.gdn_chunk_size < 0:
+            raise ValueError("gdn_chunk_size must be non-negative")
+        if not math.isfinite(self.learning_rate) or self.learning_rate <= 0:
+            raise ValueError("learning_rate must be finite and positive")
+        if not math.isfinite(self.min_lr_ratio) or not 0 <= self.min_lr_ratio <= 1:
+            raise ValueError("min_lr_ratio must be finite and between 0 and 1")
+        if not math.isfinite(self.weight_decay) or self.weight_decay < 0:
+            raise ValueError("weight_decay must be finite and non-negative")
+        if not math.isfinite(self.grad_clip) or self.grad_clip < 0:
+            raise ValueError("grad_clip must be finite and non-negative")
 
     @property
     def train_tokens(self) -> int:
