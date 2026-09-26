@@ -16,6 +16,7 @@ queue, which is what the 2026-09-22 run did inside a dtype the decision never re
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import sys
 import threading
@@ -779,6 +780,57 @@ def test_a_rank_records_the_device_it_ran_on_and_the_window_it_stepped_in(
     assert row["steady_step_seconds_mean"] > 0
     assert row["tokens_per_step"] == config.batch_size * config.context_size
     assert len(steps) == 3  # one step marker per step, the hook included
+
+
+def test_the_aggregate_runs_for_real_with_eight_rank_threads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The concurrency the arithmetic tests stand in for: a pool, a barrier, one window.
+
+    ``run_rank`` fakes pin the arithmetic and every refusal, and by construction they cannot
+    pin what runs them - eight threads, one barrier all eight must reach, reports written
+    from inside them. torch_xla is not installed here either, so the module that binds each
+    thread is a stand-in; what matters is that the *wiring* is the real one, and each rank's
+    report carries the device its thread ended up on, so a binding that was skipped or given
+    the wrong ordinal shows up here rather than only on a TPU. The barrier's budget is
+    brought down from its hour so a broken path fails the suite instead of stalling it.
+    """
+    monkeypatch.setenv("TPU_PROBE_SEEDS_TIMEOUT", "60")
+
+    class _TorchXla:
+        def device(self, index=None):  # noqa: ANN001, ANN201
+            return torch.device("cpu", 0 if index is None else index)
+
+    class _Xm:
+        def xla_device(self):  # noqa: ANN201
+            return torch.device("cpu", 0)
+
+        def mark_step(self):  # noqa: ANN201
+            pass
+
+    tiny = _tiny_config()
+    block = tpu_probe.measure_independent_seeds(
+        torch=torch,
+        xm=_Xm(),
+        torch_xla=_TorchXla(),
+        devices=8,
+        workers=8,
+        steps=3,
+        dtype="fp32",
+        directory=tmp_path,
+        config_for=lambda rank: dataclasses.replace(tiny, seed=15_000 + rank),
+        device_for=lambda rank: torch.device("cpu", rank),
+    )
+
+    assert block["completed"] == 8
+    assert block["steady_steps_per_rank"] == 2
+    assert block["aggregate_tokens_per_second"] > 0
+    assert {row["device"] for row in block["per_rank"]} == {f"cpu:{r}" for r in range(8)}
+    for row in block["per_rank"]:
+        # The binding on the real path, per rank: the thread was on the process default
+        # first, and the parent's check is what makes "its own device" a fact of the record.
+        assert row["thread_device_before"] == "cpu:0"
+        assert row["thread_device_after"] == row["device"]
 
 
 class _FakeXm:
