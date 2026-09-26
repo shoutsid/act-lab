@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from act.model.dense import DenseBaselineConfig, DenseCausalLM
@@ -8,6 +9,29 @@ from act.training import (
     make_scheduler,
     train_steps,
 )
+
+@pytest.mark.parametrize(
+    "override, message",
+    [
+        ({"batch_size": 0}, "batch_size"),
+        ({"sequence_length": 1}, "sequence_length"),
+        ({"gradient_accumulation_steps": 0}, "gradient_accumulation_steps"),
+        ({"warmup_steps": -1}, "scheduler steps"),
+        ({"total_steps": -1}, "scheduler steps"),
+        ({"learning_rate": 0.0}, "learning_rate"),
+        ({"learning_rate": float("nan")}, "learning_rate"),
+        ({"batch_size": 1.5}, "must be integers"),
+        ({"mixed_precision": "float8"}, "mixed_precision"),
+    ],
+)
+def test_training_config_rejects_invalid_settings(override, message) -> None:
+    with pytest.raises(ValueError, match=message):
+        TrainingConfig(**override)
+
+
+def test_training_config_allows_zero_scheduler_bounds() -> None:
+    config = TrainingConfig(warmup_steps=0, total_steps=0)
+    assert config.warmup_steps == config.total_steps == 0
 
 
 def test_gradient_accumulation_counts_optimizer_steps() -> None:

@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from contextlib import nullcontext
 from numbers import Integral
+import math
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,34 @@ class TrainingConfig:
     total_steps: int = 0
     mixed_precision: str = "off"
     activation_checkpointing: bool = False
+
+    def __post_init__(self) -> None:
+        integer_fields = (
+            "batch_size",
+            "sequence_length",
+            "seed",
+            "gradient_accumulation_steps",
+            "warmup_steps",
+            "total_steps",
+        )
+        if any(
+            not isinstance(getattr(self, name), Integral)
+            or isinstance(getattr(self, name), bool)
+            for name in integer_fields
+        ):
+            raise ValueError("training dimensions, seed, and scheduler steps must be integers")
+        if self.batch_size < 1:
+            raise ValueError("batch_size must be positive")
+        if self.sequence_length < 2:
+            raise ValueError("sequence_length must be at least 2")
+        if self.gradient_accumulation_steps < 1:
+            raise ValueError("gradient_accumulation_steps must be positive")
+        if self.warmup_steps < 0 or self.total_steps < 0:
+            raise ValueError("scheduler steps must be non-negative")
+        if not math.isfinite(self.learning_rate) or self.learning_rate <= 0:
+            raise ValueError("learning_rate must be finite and positive")
+        if self.mixed_precision not in {"off", "fp16", "bf16"}:
+            raise ValueError("mixed_precision must be off, fp16, or bf16")
 
 
 @dataclass
