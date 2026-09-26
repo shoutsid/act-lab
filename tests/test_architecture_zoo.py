@@ -605,7 +605,7 @@ def test_result_records_the_full_run_configuration():
 def test_holdout_validation_is_disjoint_from_training(tmp_path):
     from act.search.architecture_eval import _prepare_streams
 
-    stream = np.arange(5000, dtype=np.int32)
+    stream = np.arange(5000, dtype=np.int32) % VOCAB
     path = tmp_path / "tokens.npy"
     np.save(path, stream)
 
@@ -622,8 +622,8 @@ def test_holdout_validation_is_disjoint_from_training(tmp_path):
 
     assert source.startswith("holdout:")
     assert train.numel() + val.numel() <= stream.size
-    assert val[0].item() == stream[stream.size - 1000].item()
-    assert train[-1].item() < val[0].item()
+    assert train.tolist() == stream[:-1000].tolist()
+    assert val.tolist() == stream[-1000:].tolist()
 
 
 # --- capability probes on finalists (brief section 19) --------------------
@@ -689,6 +689,24 @@ def test_ledgers_written_before_capability_existed_still_load(tmp_path):
     assert load_results(path)[0].capability == {}
 
 
+@pytest.mark.parametrize(
+    "tokens, message",
+    [
+        (np.array([0.0, 1.5, 2.0], dtype=np.float32), "integer token ids"),
+        (np.array([0, -1, 2], dtype=np.int32), "outside"),
+        (np.array([0, VOCAB, 2], dtype=np.int64), "outside"),
+    ],
+)
+def test_token_loader_rejects_invalid_ids_before_training(tmp_path, tokens, message):
+    from act.search.architecture_eval import _load_tokens
+
+    path = tmp_path / "invalid-tokens.npy"
+    np.save(path, tokens)
+
+    with pytest.raises(ValueError, match=message):
+        _load_tokens(str(path), VOCAB, length=1, seed=3)
+
+
 def test_a_stream_that_serves_the_schedule_once_is_admitted(tmp_path):
     """The admission bar is the schedule, not twice it, and no window repeats.
 
@@ -710,7 +728,7 @@ def test_a_stream_that_serves_the_schedule_once_is_admitted(tmp_path):
         train_data_path=str(tmp_path / "tokens.npy"),
     )
     needed = required_stream_tokens(run, val_tokens_available=None)
-    np.save(run.train_data_path, np.arange(needed, dtype=np.int32))
+    np.save(run.train_data_path, np.arange(needed, dtype=np.int32) % VOCAB)
 
     train, val, source = _prepare_streams(VOCAB, run)
 
@@ -735,7 +753,8 @@ def test_a_stream_too_short_for_the_schedule_is_still_refused(tmp_path):
     )
     np.save(
         run.train_data_path,
-        np.arange(required_stream_tokens(run, val_tokens_available=None) - 1, dtype=np.int32),
+        np.arange(required_stream_tokens(run, val_tokens_available=None) - 1, dtype=np.int32)
+        % VOCAB,
     )
     with pytest.raises(ValueError, match="need"):
         _prepare_streams(VOCAB, run)
@@ -768,8 +787,8 @@ def test_undersized_validation_file_falls_back_to_holdout(tmp_path):
 
     train_path = tmp_path / "train.npy"
     val_path = tmp_path / "val.npy"
-    np.save(train_path, np.arange(5000, dtype=np.int32))
-    np.save(val_path, np.arange(20, dtype=np.int32))
+    np.save(train_path, np.arange(5000, dtype=np.int32) % VOCAB)
+    np.save(val_path, np.arange(20, dtype=np.int32) % VOCAB)
 
     run = RunConfig(
         steps=5,

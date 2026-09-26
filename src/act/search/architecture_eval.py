@@ -200,7 +200,12 @@ def _load_tokens(path: str | None, vocab_size: int, length: int, seed: int) -> t
     that is meant to support a conclusion.
     """
     if path is not None:
-        tokens = torch.from_numpy(np.load(path)).to(torch.long).reshape(-1)
+        values = np.load(path)
+        if values.dtype.kind not in "iu":
+            raise ValueError(f"{path} must contain integer token ids (got {values.dtype})")
+        if values.size and (values.min() < 0 or values.max() >= vocab_size):
+            raise ValueError(f"{path} contains token ids outside [0, {vocab_size})")
+        tokens = torch.from_numpy(values).to(torch.long).reshape(-1)
         if tokens.numel() < length:
             raise ValueError(f"{path} holds {tokens.numel()} tokens, need {length}")
         return tokens
