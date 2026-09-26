@@ -33,6 +33,8 @@ import torch
 from torch import Tensor, nn
 from torch.utils.checkpoint import checkpoint
 
+from ._inputs import validate_token_batch
+
 
 MoEModuleType = Literal["attention", "gdn", "hybrid"]
 """Per-layer sequence-mixer choice: attention, a gated delta mixer, or both."""
@@ -584,10 +586,9 @@ class V0MoECausalLM(nn.Module):
                 nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def forward(self, tokens: Tensor) -> Tensor:
-        if tokens.ndim != 2:
-            raise ValueError("tokens must have shape [batch, sequence]")
-        if tokens.shape[1] > self.config.context_size:
-            raise ValueError("sequence exceeds context_size")
+        validate_token_batch(
+            tokens, max_sequence_length=self.config.context_size
+        )
         seq = tokens.shape[1]
         positions = torch.arange(seq, device=tokens.device)
         hidden = self.token_embedding(tokens)
@@ -600,6 +601,9 @@ class V0MoECausalLM(nn.Module):
         return hidden @ self.token_embedding.weight.transpose(0, 1)
 
     def loss(self, tokens: Tensor) -> Tensor:
+        validate_token_batch(
+            tokens, min_sequence_length=2, max_sequence_length=self.config.context_size + 1
+        )
         logits = self(tokens[:, :-1])
         return nn.functional.cross_entropy(
             logits.reshape(-1, self.config.vocab_size),

@@ -6,6 +6,8 @@ from typing import Literal
 import torch
 from torch import Tensor, nn
 
+from ._inputs import validate_token_batch
+
 
 ModuleType = Literal["attention", "gdn", "hybrid"]
 
@@ -124,10 +126,9 @@ class V0CausalLM(nn.Module):
         self.final_norm = nn.LayerNorm(config.hidden_size)
 
     def forward(self, tokens: Tensor) -> Tensor:
-        if tokens.ndim != 2:
-            raise ValueError("tokens must have shape [batch, sequence]")
-        if tokens.shape[1] > self.config.context_size:
-            raise ValueError("sequence exceeds context_size")
+        validate_token_batch(
+            tokens, max_sequence_length=self.config.context_size
+        )
         positions = torch.arange(tokens.shape[1], device=tokens.device)
         hidden = self.token_embedding(tokens) + self.position_embedding(positions)
         mask = torch.triu(
@@ -140,6 +141,9 @@ class V0CausalLM(nn.Module):
         return hidden @ self.token_embedding.weight.transpose(0, 1)
 
     def loss(self, tokens: Tensor) -> Tensor:
+        validate_token_batch(
+            tokens, min_sequence_length=2, max_sequence_length=self.config.context_size + 1
+        )
         logits = self(tokens[:, :-1])
         return nn.functional.cross_entropy(
             logits.reshape(-1, self.config.vocab_size),
