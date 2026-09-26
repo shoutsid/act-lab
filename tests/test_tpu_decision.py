@@ -1115,6 +1115,9 @@ def test_the_push_waits_for_a_gap_with_the_guards_own_answer() -> None:
     assert "fetch_tpu_probe_when_done.sh" in text
     # Bounded, because a queue can hold the driver's lock for hours.
     assert "WAIT_POLLS" in text and "gave up" in text
+    # And a failed push says *which* failure it was: the log is the only account of why the
+    # probe did not go out, so it must not report a platform failure as a resumed campaign.
+    assert "the push exited" in text and "5 is the guard" in text
 
 
 def test_the_declared_model_is_released_before_any_rebuild_is_measured() -> None:

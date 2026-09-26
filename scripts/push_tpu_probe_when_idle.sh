@@ -61,8 +61,15 @@ for attempt in $(seq 1 "$WAIT_POLLS"); do
       setsid nohup bash scripts/fetch_tpu_probe_when_done.sh >"$LOG" 2>&1 &
       echo "$(stamp) watcher pid $!"
       exit 0
+    else
+      # The exit code, named: 5 is the probe's own guard seeing a session come back (the
+      # gap closed while the push was starting), and anything else is the platform. This
+      # log is the only account of why the probe did not go out, so it must not read as
+      # "the campaign resumed" when the failure was something else.
+      status=$?
+      echo "$(stamp) the push exited $status - 5 is the guard seeing a session come back, "\
+"anything else is the platform; will retry"
     fi
-    echo "$(stamp) the push refused - a session came back while waiting; will retry"
   else
     echo "$(stamp) poll $attempt/$WAIT_POLLS: $live"
   fi
