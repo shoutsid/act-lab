@@ -5,6 +5,7 @@ from .moe import StaticMoECausalLM, StaticMoEConfig
 from .v0 import V0CausalLM, V0ModelConfig
 from .v0_moe import V0MoECausalLM, V0MoEConfig
 from act.topology.genome import ArchitectureGenome, validate_genome
+from numbers import Integral
 
 
 _NEW_EXPERT_INITIALIZATIONS = {"random", "clone", "clone_body"}
@@ -32,11 +33,17 @@ def model_from_genome(
     validation = validate_genome(genome)
     if not validation.valid:
         raise ValueError("cannot build model from invalid genome: " + "; ".join(validation.errors))
+    if not isinstance(context_size, Integral) or isinstance(context_size, bool) or context_size < 2:
+        raise ValueError("context_size must be an integer of at least 2")
+    if num_heads is not None and (
+        not isinstance(num_heads, Integral) or isinstance(num_heads, bool) or num_heads < 1
+    ):
+        raise ValueError("num_heads must be a positive integer")
     enabled = [layer for layer in genome.layers if layer.enabled]
     kinds = {layer.ffn for layer in enabled}
     if len(kinds) != 1:
         raise ValueError("mixed dense/MoE genomes are not supported by the baseline factory")
-    heads = num_heads or (4 if genome.hidden_size % 4 == 0 else 1)
+    heads = num_heads if num_heads is not None else (4 if genome.hidden_size % 4 == 0 else 1)
     if genome.hidden_size % heads != 0:
         raise ValueError("num_heads must divide hidden_size")
     if "dense" in kinds:
