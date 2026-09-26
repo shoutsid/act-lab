@@ -16,7 +16,9 @@ dense form: measured at the code-LM shape in float64, they agree to **5.1e-16** 
 bit-identical routing load, which is the tolerance ``tests/test_v0_session.py`` already pins the
 dense/``eager_forward`` pair at. ``tests/test_moe_dispatch.py`` holds that, including at the
 whole-model level: the logits of a model with every block switched to this dispatcher match the
-unswitched model's, and a seeded generation produces the same token ids.
+unswitched model's, and a seeded generation produces the same token ids. Skipped experts also
+receive explicit zero gradients without being evaluated, preserving the dense path's optimizer
+semantics for weight decay and existing moments.
 
 **Which one to run is not settled, and this module does not settle it.** The only measurement
 arguing the dense form's way is a dev-shape figure that implies more than the card's physical
@@ -35,8 +37,29 @@ import types
 
 import torch
 from torch import Tensor, nn
+from torch.autograd import Function
 
 from act.model.v0_moe import _MoEFeedForward
+
+
+class _AttachZeroGrad(Function):
+    """Keep skipped parameters' optimizer semantics without evaluating their experts."""
+
+    @staticmethod
+    def forward(ctx, output: Tensor, *parameters: Tensor) -> Tensor:
+        ctx.parameter_specs = tuple(
+            (parameter.shape, parameter.device, parameter.dtype, parameter.requires_grad)
+            for parameter in parameters
+        )
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output: Tensor):
+        zero_grads = tuple(
+            torch.zeros(shape, device=device, dtype=dtype) if requires_grad else None
+            for shape, device, dtype, requires_grad in ctx.parameter_specs
+        )
+        return (grad_output, *zero_grads)
 
 
 def grouped_forward(moe: _MoEFeedForward, hidden: Tensor) -> Tensor:
@@ -60,15 +83,25 @@ def grouped_forward(moe: _MoEFeedForward, hidden: Tensor) -> Tensor:
     counts = torch.bincount(rows_of_expert, minlength=len(moe.experts))
 
     output = torch.zeros_like(flat)
+    unused_experts = []
     start = 0
     for expert_index, expert in enumerate(moe.experts):
         count = int(counts[expert_index])
         if count == 0:
+            unused_experts.append(expert)
             continue
         rows = order[start : start + count]
         start += count
         expert_output = expert(flat[rows // k])
         output.index_add_(0, rows // k, expert_output * row_gate[rows].unsqueeze(-1))
+
+    # Dense dispatch evaluates every expert, so even an unused expert's parameters receive zero
+    # gradients. Optimizers such as AdamW distinguish zero gradients from ``None`` (weight decay
+    # and existing moments still update the former). Attach exact zero gradients after all output
+    # scatters, without reading or evaluating the skipped expert weights.
+    if torch.is_grad_enabled():
+        for expert in unused_experts:
+            output = _AttachZeroGrad.apply(output, *tuple(expert.parameters()))
     return output.reshape_as(hidden)
 
 

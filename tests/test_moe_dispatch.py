@@ -75,6 +75,43 @@ def test_grouped_dispatch_is_the_same_function_as_both_existing_forms() -> None:
     assert float(feed_forward.last_load.sum()) == pytest.approx(1.0)
 
 
+def test_grouped_dispatch_preserves_zero_gradients_for_unused_experts() -> None:
+    """Skipping compute must not change AdamW/momentum semantics for inactive experts.
+
+    The dense form evaluates every expert, so an unrouted expert gets an explicit zero gradient.
+    Optimizers distinguish that from ``grad is None``: AdamW still applies weight decay and
+    momentum to a zero-gradient parameter, but skips a parameter whose gradient is absent.
+    """
+
+    config = tiny_config(experts_per_layer=(8, 8), active_experts=2)
+    torch.manual_seed(13)
+    dense = _MoEFeedForward(config, tuple(f"E{index}" for index in range(8))).to(torch.float64)
+    grouped = _MoEFeedForward(config, tuple(f"E{index}" for index in range(8))).to(torch.float64)
+    grouped.load_state_dict(dense.state_dict())
+    hidden = torch.randn(1, 2, config.hidden_size, dtype=torch.float64)
+
+    dense(hidden).square().sum().backward()
+    grouped_forward(grouped, hidden).square().sum().backward()
+
+    assert int((dense.last_load == 0).sum()) >= 4
+    for dense_parameter, grouped_parameter in zip(
+        dense.parameters(), grouped.parameters(), strict=True
+    ):
+        assert dense_parameter.grad is not None
+        assert grouped_parameter.grad is not None
+        assert torch.allclose(dense_parameter.grad, grouped_parameter.grad, atol=1e-12)
+
+    # Zero gradients keep AdamW's weight-decay and moment update behavior identical too.
+    dense_optimizer = torch.optim.AdamW(dense.parameters(), lr=1e-3, weight_decay=0.1)
+    grouped_optimizer = torch.optim.AdamW(grouped.parameters(), lr=1e-3, weight_decay=0.1)
+    dense_optimizer.step()
+    grouped_optimizer.step()
+    for dense_parameter, grouped_parameter in zip(
+        dense.parameters(), grouped.parameters(), strict=True
+    ):
+        assert torch.allclose(dense_parameter, grouped_parameter, atol=1e-12)
+
+
 def test_grouped_dispatch_skips_an_expert_that_receives_no_rows() -> None:
     """With fewer rows than experts, some expert gets nothing - and must not be run.
 
