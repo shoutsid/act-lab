@@ -25,7 +25,7 @@ def run_frontier(
     points: list[FrontierPoint] = []
     for seed in seeds:
         result = run_experiment(
-            ExperimentConfig(**{**asdict(config), "seed": seed})
+            ExperimentConfig(**{**asdict(config), "seed": seed, "arms": "fixed,adaptive"})
         )
         arms = {arm.mode: arm for arm in result.arms}
         for family, mode in (("static-moe-control", "fixed"), ("adaptive-moe", "adaptive")):
