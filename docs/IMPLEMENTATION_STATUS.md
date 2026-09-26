@@ -1,6 +1,27 @@
 # ACT Implementation Status
 
-## The TPU probe's deciding phase has failed three ways, so it now rides the path this hardware has already measured (2026-09-26)
+## The live capture restarted a stream the CLI had given up on, on the first session that ran with nobody watching (2026-09-26)
+
+The driver's own log says this block began with 1.07 GPU-h of the week left, so it waited out
+the 00:00Z refresh instead of billing a partial session, then pushed `act-t4-session`
+(version 7) and followed it. Twenty-two minutes into the capture, that capture lost its stream and the
+CLI gave up on it **permanently** - the failure the restart loop was written for on
+2026-09-21 and, in that entry's words, had *"still never run on Kaggle: the next session is
+its first execution"*. It has now run: the stream was re-armed 15 s later, a second attempt
+followed, and no line was lost.
+
+| | |
+|---|---|
+| **What the driver did first** | `run_gate4_campaign.sh` started 2026-09-25T19:06:46Z; the health gate read the *previous* session as `ERROR` with **1.07 GPU-h** of the week left, and its own line says what it did about that: *"the week refreshes at 2026-09-26T00:00:00 (5.0 h away); waiting rather than billing a partial session"*. When the week turned, it republished the code dataset (at `c90cf749892e`), pushed `act-t4-session` **version 7**, and polled `QUEUED` -> `RUNNING`. That is the quota gate (`quota_shortfall`) doing in production what its tests pin. |
+| **The give-up** | The session's own lines reached the capture normally (its header: `dataset=sid123123234/act-v0-5-2 hours=7 seeds=15024-15035`, `torch 2.10.0+cu128`, two `Tesla T4`, the free-disk report; then `seed 15024: starting pair (remaining 6.93 h fits pair 1.61 h + 45 min reserve (rule 1))` and `arms in parallel (random -> cuda:0, adaptive -> cuda:1)`). The next four lines are the CLI's: `Log stream connection lost, reconnecting...` three times (its source prints that from the second failure on), then `Log stream connection failed 5 times with no new data; giving up.` - written to the capture at **00:32:17Z**. |
+| **The restart, and how it is datable from outside** | The CLI's `kernels_logs_cli` (read in the installed 2.2.4, `kaggle_api_extended.py`: `_LOG_STREAM_MAX_FAILURES = 5`, 1 s between retries) **returns** on that message, so the attempt ends with it. The supervisor then waits `LIVE_LOG_RESTART_SECONDS` (**15**) and opens another. The attempt running at 01:29:15Z is therefore a restart, and its predecessor ended 01:29:00Z - exactly 15 s earlier - so the loop was re-armed at ~00:32:32Z, not left dark. The interval between 00:32:17Z and 01:29:15Z is a **live-but-silent** attempt, which is what this session had to say: a pair takes 1.61 h. |
+| **Why neither a give-up nor a restart can lose or duplicate a line** | Every attempt streams the log **from its first line** (measured 2026-09-21: 195 identical lines twice), and the supervisor appends only lines past the count already on disk - so what a dark window costs is latency, not lines, and lines produced while nothing was connected are read by the next attempt. When a replay does not match the captured line the supervisor writes `--- the replayed log did not match what was captured; lines may repeat from here ---`; this capture has no such marker, so its 37 lines line up. |
+| **What the capture is not** | A line count on this queue is not a progress measure: the last session line is a pair *starting* at 00:32Z and pairs take 1.61 h, so an hour of silence is the pair running. The driver's own view of progress is the kernel's status plus the dataset the session publishes at exit. |
+| **Why the health report cannot show seeds yet** | `kaggle datasets files sid123123234/act-v0-5-2` answers `403 Forbidden` while the two older datasets (`act-v0-5-1`, `act-lab-code`) answer normally, and the block's dataset is absent from `kaggle datasets list --mine`: the API's answer for a slug that has no versions yet, which is the state until this session's exit publish. `campaign_health` names the error and keeps the denominator (`of 12 declared`) rather than printing zero, and its verdict comes from the kernel status (`RUNNING`) - which is why the report is readable even when the dataset is not. |
+| **The check that completes it** | The line-for-line comparison the 15000-15003 session got: when this kernel ends, `kaggle kernels logs` returns the full log for a *finished* run, and the capture can be diffed against it and committed under `artifacts/v0-session-logs/` with a `NOTES.md` if they agree - which is also what would catch a swallowed line rather than a swallowed connection. Until then this capture is evidence about the **instrument**. |
+| **Pinned** | `tests/test_kaggle_queue.py` already pins the behaviour that ran here: the restart after a dropped stream (three attempts, no duplicated lines), the misaligned-replay marker, and the tailer running on its own thread so the driver's poll loop is not blocked by it. |
+| **Result** | No code change: the restart loop did what it was written for, first time on a real session. Campaign live (driver pid 4076921, 6.6 h, streaming the session), training seed 15024; GPU week **1.36 h used of 30.00** (read 01:36Z). **1876 tests** pass; **328/328** claims agree with the artifacts; **9/9** records reproduce; 10 notebooks byte-identical. |
+
 
 Kernel **v5** of `act-tpu-probe` finished, its record was fetched and the pre-registered rule
 was applied to it where it landed: **INCONCLUSIVE** (exit 3). The child process the previous
