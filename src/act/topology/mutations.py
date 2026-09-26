@@ -28,8 +28,15 @@ def apply_transaction(
     original = deepcopy(genome)
     try:
         changed = bool(change(genome))
-    except (TypeError, ValueError, IndexError) as error:
+    except Exception as error:
+        genome.version = original.version
+        genome.seed = original.seed
+        genome.hidden_size = original.hidden_size
+        genome.vocab_size = original.vocab_size
         genome.layers = original.layers
+        genome.max_params = original.max_params
+        genome.max_active_params = original.max_active_params
+        genome.context_size = original.context_size
         return MutationResult(False, operation, before, before, (str(error),))
     validation = validate_genome(genome)
     if not changed or not validation.valid:

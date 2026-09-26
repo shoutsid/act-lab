@@ -24,6 +24,27 @@ def test_failed_transaction_restores_every_genome_field() -> None:
     assert len(genome.layers[0].experts) == 4
 
 
+def test_callback_exception_restores_every_genome_field() -> None:
+    genome = create_genome(7, ffn="moe")
+    before = genome_hash(genome)
+
+    def change_then_fail(value):
+        value.seed = 99
+        value.max_params = 1
+        value.layers[0].experts.clear()
+        raise RuntimeError("injected callback failure")
+
+    result = apply_transaction(genome, "raises", change_then_fail)
+
+    assert not result.applied
+    assert result.errors == ("injected callback failure",)
+    assert result.before_hash == result.after_hash == before
+    assert genome_hash(genome) == before
+    assert genome.seed == 7
+    assert genome.max_params == 10**9
+    assert len(genome.layers[0].experts) == 4
+
+
 def test_successful_transaction_records_hash_transition() -> None:
     genome = create_genome(4, ffn="moe")
     result = apply_transaction(
