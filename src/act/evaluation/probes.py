@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import torch
 
+from ._mode import evaluation_mode
 from .perplexity import LanguageModel
 
 
@@ -29,9 +30,8 @@ def evaluate_capability_probes(
 ) -> tuple[CapabilityProbeResult, ...]:
     if not probes:
         raise ValueError("at least one capability probe is required")
-    model.eval()
     results: list[CapabilityProbeResult] = []
-    with torch.no_grad():
+    with evaluation_mode(model), torch.no_grad():
         for name in sorted(probes):
             batches = probes[name]
             if not name:
