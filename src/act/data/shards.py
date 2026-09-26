@@ -94,8 +94,6 @@ def read_tokens(
         raise ValueError(f"unsupported token shard dtype: {shard.dtype}") from error
     if dtype.name not in {"uint16", "uint32"}:
         raise ValueError(f"unsupported token shard dtype: {shard.dtype}")
-    if shard.tokens > np.iinfo(dtype).max + 1:
-        raise ValueError("token shard length exceeds dtype capacity")
     expected_bytes = shard.tokens * dtype.itemsize
     actual_bytes = path.stat().st_size
     if actual_bytes != expected_bytes:

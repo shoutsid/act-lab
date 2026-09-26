@@ -69,17 +69,14 @@ def test_shard_writer_rejects_vocabularies_beyond_uint32_capacity(tmp_path: Path
         )
 
 
-def test_reader_rejects_token_count_beyond_declared_dtype_capacity(tmp_path: Path) -> None:
-    shard = write_token_shard(tmp_path / "small.bin", [0, 1], vocab_size=8)
-    impossible = type(shard)(
-        shard.path,
-        np.iinfo(np.uint16).max + 2,
-        shard.checksum,
-        "uint16",
-    )
+def test_reader_accepts_more_tokens_than_uint16_value_capacity(tmp_path: Path) -> None:
+    tokens = (np.arange(np.iinfo(np.uint16).max + 2) % 256).astype(np.uint16)
+    shard = write_token_shard(tmp_path / "large.bin", tokens, vocab_size=256)
 
-    with pytest.raises(ValueError, match="dtype capacity"):
-        read_tokens(impossible, verify_checksum=False)
+    loaded = read_tokens(shard)
+
+    assert loaded.size == np.iinfo(np.uint16).max + 2
+    np.testing.assert_array_equal(loaded, tokens)
 
 
 def test_reads_reject_unsupported_token_dtype(tmp_path: Path) -> None:
