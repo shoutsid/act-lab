@@ -115,6 +115,13 @@ def test_sample_windows_rejects_invalid_count_and_width() -> None:
         sample_windows(stream, generator, count=1, width=6)
 
 
+def test_sample_windows_rejects_non_uint16_streams() -> None:
+    generator = torch.Generator().manual_seed(3)
+
+    with pytest.raises(ValueError, match="must be uint16"):
+        sample_windows(np.arange(5, dtype=np.float32), generator, count=1, width=3)
+
+
 def test_window_sampler_rejects_vocab_overflow(tmp_path: Path) -> None:
     stream_path = _write_stream(tmp_path / "stream.npy", vocab=64)
     with pytest.raises(ValueError, match="vocab_size"):

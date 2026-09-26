@@ -48,6 +48,8 @@ def sample_windows(
     """
     if stream.ndim != 1:
         raise ValueError("token stream must be flat")
+    if stream.dtype != np.uint16:
+        raise ValueError(f"token stream must be uint16 (got {stream.dtype})")
     if count < 1:
         raise ValueError("window count must be positive")
     if width < 1 or width > stream.shape[0]:
