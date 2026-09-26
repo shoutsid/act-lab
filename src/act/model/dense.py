@@ -16,6 +16,24 @@ class DenseBaselineConfig:
     num_heads: int = 4
     ffn_size: int = 256
 
+    def __post_init__(self) -> None:
+        if min(
+            self.vocab_size,
+            self.context_size,
+            self.hidden_size,
+            self.num_layers,
+            self.num_heads,
+            self.ffn_size,
+        ) < 1:
+            raise ValueError(
+                "vocab_size, context_size, hidden_size, num_layers, num_heads, "
+                "and ffn_size must be positive"
+            )
+        if self.context_size < 2:
+            raise ValueError("context_size must be at least 2")
+        if self.hidden_size % self.num_heads:
+            raise ValueError("hidden_size must be divisible by num_heads")
+
 
 class DenseBlock(nn.Module):
     def __init__(self, config: DenseBaselineConfig) -> None:
@@ -46,8 +64,6 @@ class DenseCausalLM(nn.Module):
 
     def __init__(self, config: DenseBaselineConfig) -> None:
         super().__init__()
-        if config.hidden_size % config.num_heads != 0:
-            raise ValueError("hidden_size must be divisible by num_heads")
         self.config = config
         self.token_embedding = nn.Embedding(config.vocab_size, config.hidden_size)
         self.position_embedding = nn.Embedding(config.context_size, config.hidden_size)

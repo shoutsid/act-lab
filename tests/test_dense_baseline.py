@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 import torch
 
 from act.model import DenseBaselineConfig, DenseCausalLM, StaticMoECausalLM, StaticMoEConfig
@@ -11,6 +12,24 @@ from act.training import (
     save_checkpoint,
     train_steps,
 )
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"vocab_size": 0},
+        {"context_size": 0},
+        {"context_size": 1},
+        {"hidden_size": 0},
+        {"num_layers": 0},
+        {"num_heads": 0},
+        {"ffn_size": 0},
+        {"hidden_size": 10, "num_heads": 3},
+    ],
+)
+def test_dense_config_rejects_invalid_dimensions(override: dict) -> None:
+    with pytest.raises(ValueError):
+        DenseBaselineConfig(**override)
 
 
 def _build() -> tuple[DenseCausalLM, torch.optim.Optimizer, TrainingState]:
