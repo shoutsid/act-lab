@@ -7,6 +7,22 @@ from .v0_moe import V0MoECausalLM, V0MoEConfig
 from act.topology.genome import ArchitectureGenome, validate_genome
 
 
+_NEW_EXPERT_INITIALIZATIONS = {"random", "clone", "clone_body"}
+
+
+def _validate_rebuild_options(
+    preserve_router: bool, new_expert_initialization: str
+) -> None:
+    if new_expert_initialization not in _NEW_EXPERT_INITIALIZATIONS:
+        raise ValueError(
+            "new_expert_initialization must be random, clone, or clone_body"
+        )
+    if new_expert_initialization in {"clone", "clone_body"} and not preserve_router:
+        raise ValueError(
+            f"new_expert_initialization={new_expert_initialization!r} requires preserve_router=True"
+        )
+
+
 def model_from_genome(
     genome: ArchitectureGenome,
     *,
@@ -96,6 +112,7 @@ def rebuild_model_from_genome(
       the *routing affinity* that copying the row confers - the mechanism section
       5.26 declared unresolved (report section 5.27).
     """
+    _validate_rebuild_options(preserve_router, new_expert_initialization)
     rebuilt = model_from_genome(genome, context_size=context_size, num_heads=num_heads)
     source_state = previous.state_dict()
     target_state = rebuilt.state_dict()
@@ -272,6 +289,7 @@ def rebuild_v0_moe_from_genome(
       with a freshly drawn row - the control that separates a trained body from the
       routing affinity the copied row confers). Report sections 5.26/5.27.
     """
+    _validate_rebuild_options(preserve_router, new_expert_initialization)
     rebuilt = v0_moe_model_from_genome(genome)
     source_state = previous.state_dict()
     target_state = rebuilt.state_dict()
