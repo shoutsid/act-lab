@@ -13,6 +13,42 @@ from act.importance import (
 from act.model import StaticMoECausalLM, StaticMoEConfig
 
 
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"vocab_size": 0},
+        {"context_size": 1},
+        {"hidden_size": 0},
+        {"num_layers": 0},
+        {"num_heads": 0},
+        {"ffn_size": 0},
+        {"num_experts": 0},
+        {"hidden_size": 10, "num_heads": 3},
+        {"active_experts": 0},
+        {"active_experts": 5},
+        {"expert_ids": (("E0",),)},
+        {"num_layers": 1, "expert_ids": ((),)},
+        {"num_layers": 1, "expert_ids": (("E0", "E0"),)},
+    ],
+)
+def test_static_moe_config_rejects_invalid_dimensions_and_topology(override: dict) -> None:
+    with pytest.raises(ValueError):
+        StaticMoEConfig(**override)
+
+
+def test_static_moe_config_allows_heterogeneous_per_layer_expert_counts() -> None:
+    config = StaticMoEConfig(
+        num_layers=2,
+        num_experts=4,
+        active_experts=1,
+        expert_ids=(("L0E0",), ("L1E0", "L1E1", "L1E2")),
+    )
+
+    model = StaticMoECausalLM(config)
+
+    assert tuple(block.num_experts for block in model.blocks) == (1, 3)
+
+
 def test_cosine_similarity_is_bounded_and_shape_safe() -> None:
     assert cosine_similarity(torch.tensor([1.0, 0.0]), torch.tensor([1.0, 0.0])) == 1.0
     assert cosine_similarity(torch.tensor([1.0, 0.0]), torch.tensor([-1.0, 0.0])) == -1.0

@@ -19,6 +19,40 @@ class StaticMoEConfig:
     active_experts: int = 2
     expert_ids: tuple[tuple[str, ...], ...] = ()
 
+    def __post_init__(self) -> None:
+        if min(
+            self.vocab_size,
+            self.context_size,
+            self.hidden_size,
+            self.num_layers,
+            self.num_heads,
+            self.ffn_size,
+            self.num_experts,
+        ) < 1:
+            raise ValueError(
+                "vocab_size, context_size, hidden_size, num_layers, num_heads, "
+                "ffn_size, and num_experts must be positive"
+            )
+        if self.context_size < 2:
+            raise ValueError("context_size must be at least 2")
+        if self.hidden_size % self.num_heads:
+            raise ValueError("hidden_size must be divisible by num_heads")
+        if self.active_experts < 1:
+            raise ValueError("active_experts must be at least 1")
+        if len(self.expert_ids) not in (0, self.num_layers):
+            raise ValueError("expert_ids must be empty or contain one tuple per layer")
+        expert_counts = (
+            tuple(len(ids) for ids in self.expert_ids)
+            if self.expert_ids
+            else (self.num_experts,) * self.num_layers
+        )
+        if any(count == 0 for count in expert_counts):
+            raise ValueError("every layer needs at least one expert")
+        if self.active_experts > min(expert_counts):
+            raise ValueError("active_experts cannot exceed the expert count in any layer")
+        if self.expert_ids and any(len(set(ids)) != len(ids) for ids in self.expert_ids):
+            raise ValueError("expert ids must be unique within each layer")
+
 
 class StaticMoEBlock(nn.Module):
     def __init__(self, config: StaticMoEConfig, expert_ids: tuple[str, ...]) -> None:
