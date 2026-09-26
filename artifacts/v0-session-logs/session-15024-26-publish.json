@@ -1,0 +1,8 @@
+{
+  "dataset": "sid123123234/act-v0-5-2",
+  "error": null,
+  "folder": "/tmp/act-lab-session-c0f1ac8816/artifacts/datasets/act-checkpoints/v0-5-1",
+  "seeds_published": 3,
+  "status": "published",
+  "version_notes": "v0-5-1 session publish: 4296 tokens/s, measured dtype"
+}

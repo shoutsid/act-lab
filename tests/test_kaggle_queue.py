@@ -60,6 +60,32 @@ def test_parse_status_reads_the_cli_prose(line: str, expected: str) -> None:
     assert kaggle_queue.parse_status(line) == expected
 
 
+def test_kaggle_api_auth_retry_replaces_an_expired_environment_token(monkeypatch) -> None:
+    calls: list[tuple[list[str], dict[str, str | None]]] = []
+
+    def fake_run(argv, *, capture_output, text):
+        calls.append((list(argv), os.environ.get("KAGGLE_API_TOKEN")))
+        if argv == ["kaggle", "datasets", "list"] and len(calls) == 1:
+            return subprocess.CompletedProcess(
+                argv, 1, "", kaggle_queue.AUTH_REQUIRED
+            )
+        if argv == ["kaggle", "auth", "print-access-token"]:
+            return subprocess.CompletedProcess(argv, 0, "fresh-token\n", "")
+        return subprocess.CompletedProcess(argv, 0, "datasets", "")
+
+    monkeypatch.setenv("KAGGLE_API_TOKEN", "expired-token")
+    monkeypatch.setattr(kaggle_queue.subprocess, "run", fake_run)
+
+    result = kaggle_queue._run(["kaggle", "datasets", "list"])
+
+    assert result.returncode == 0
+    assert calls == [
+        (["kaggle", "datasets", "list"], "expired-token"),
+        (["kaggle", "auth", "print-access-token"], "expired-token"),
+        (["kaggle", "datasets", "list"], "fresh-token"),
+    ]
+
+
 def test_only_stopped_states_are_terminal() -> None:
     assert kaggle_queue.is_terminal("COMPLETE")
     assert kaggle_queue.is_terminal("ERROR")

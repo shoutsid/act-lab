@@ -1,6 +1,6 @@
 # Campaign session logs - the evidence behind the exit-publish numbers
 
-## What `session-15000-15003-log.json` is
+## What `session-15000-03-log.json` is
 
 The platform's own log stream for `sid123123234/act-t4-session`, the Gate-4 primary
 session that trained seeds **15000-15003** and **reached its exit publish**. Fetched
@@ -67,7 +67,7 @@ immediately:
 | 48 | the child's publish path | 22,116.3 s | `remote publish: ... version pushed (4 seed version(s))` |
 
 The child's restore messages are printed within seconds of its launch (`t = 226.3 s`) and
-were delivered at `t = 22,116.3 s`: the stream was healthy and the wrapper's lines were
+were delivered at `t = 22,116.3 s`: the stream was healthy and the wrapper's own lines were
 live, so the delay is the **child's piped stdout**, which block-buffers - the child's whole
 run is a few KB of text, under one 8 KiB stdio block, so nothing flushed until the process
 exited. That is the exact
@@ -109,3 +109,32 @@ reader diagnosing a lost publish would otherwise reasonably stop on it.
 **Why the other sessions died.** This one ended normally. It is the *baseline* a healthy
 session has, which is what makes the others' emptiness legible as buffering rather than as
 a silent stall - but it is not a cause for them, and none is claimed here.
+
+
+## What `session-15024-26-log.json` is
+
+The platform's completed execution log for `sid123123234/act-t4-session`, Kaggle kernel
+version **7**, fetched 2026-09-26 after the kernel reached `COMPLETE`. The raw file is the
+Kaggle JSON array of `{stream_name, time, data}` events (`time` seconds from kernel start),
+10,980 bytes, **69 events** (63 stdout and 6 stderr), sha256
+`c56692a1b315d897c0cbcaf1c46003194ce10997fe2cda207de4e32b25a35a71`.
+It records the result the earlier journal entry left pending.
+
+| | |
+|---|---|
+| **Kernel state** | `COMPLETE`; the kernel log's final line reports `=== session session finished after 5.52 h ===`. This is a clean completion, not a crash. |
+| **Benchmark and schedule** | Two Tesla T4s, torch 2.10.0+cu128. The 50-step benchmark selected **fp16** and measured **4,296.1 tokens/s** for the schedule (fp32 diagnostic 1,238.8); the planned pair time is **1.689 h**. |
+| **Pairs** | Seeds **15024, 15025, 15026** completed on two cards in parallel; each record says `status=complete`, `total_steps=6000`, three mutations, `probe_candidate_policy=spread`, and the §5.47 rebuild pair (`preserve_router_on_rebuild=true`, `new_expert_initialization=clone`). Seed 15027 did not start: the remaining **1.58 h** did not fit a **1.689 h** pair plus the **45-minute publish reserve**. |
+| **Published work** | `session-15024-26-publish.json` says `status=published`, `seeds_published=3`, `error=null`; Kaggle's dataset listing exposes each seed's complete manifest, report and both arm checkpoints. The dataset is `sid123123234/act-v0-5-2`. |
+| **Capture reconciliation** | The saved `session-15024-26-child-stream.log` contains all three pair-completion lines, the queue stop and successful publish; it is an exact contiguous substring of the platform log's concatenated stdout. The recovered live capture is **not** byte- or line-for-line identical: it mixed restarts and wrapper output, reports **4.99 h** versus the platform's 5.52 h, and carries a different benchmark/schedule. It is retained only as forensic tailer evidence, not as the canonical run log. |
+| **Queue state after this run** | The primary queue is **3/12**, not complete. Kaggle reports **19.48 GPU-h remaining of 30.00**, refreshing 2026-10-03. The attached code dataset is current. |
+| **Other registered queues** | On 2026-09-26, the authenticated owner's `kaggle kernels list --mine` contained no `act-t4-control` or `act-t4-null`, and `datasets list --mine` contained no `act-v0-5-2-control` or `act-v0-5-2-null`. Direct queries for those exact configured IDs returned permission errors/403. Together, the account-wide listings establish that neither queue has been launched in this configured account; this is not just an unreadable dataset and not evidence of a zero-seed completed queue. The registration still requires both queues, and the campaign cannot produce its registered verdict until they are run. |
+
+The official log and compact records live in `artifacts/v0-session-logs/`:
+`session-15024-26-log.json`, `session-15024-26-child-stream.log`,
+`session-15024-26-session.json`, `session-15024-26-publish.json`,
+`session-15024-26-benchmark.json`, and `session-15024-summary.json` through
+`session-15026-summary.json`. The complete Kaggle output also includes the attached code
+tree; that duplicate source bundle was discarded rather than committed. Checkpoints remain
+in the Kaggle dataset and were not downloaded (roughly 20 GB across both arm weights for
+these three seeds).

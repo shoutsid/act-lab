@@ -2,7 +2,7 @@
 
 Status: the narrative report for the whole program to date - the factor map (section 3, Gate 3),
 the pre-registered study series (section 5, 101 subsections), the substrate audit (section 9) and
-the synthesis (section 10). **Updated: 2026-09-22** - sections 5.48-5.59 close the covariate
+the synthesis (section 10). **Updated: 2026-09-26** - sections 5.48-5.59 close the covariate
 programme (parameter count, layer width, expert count and total compute) and then measure the
 depth axis itself, out to six rungs above its onset, 5.60 and 5.61 bisect the one window
 that closure left open (the width axis's gate between 2.87x and 11.15x) to 1.97x and then 1.41x, 5.62
@@ -10,12 +10,13 @@ tests the crossing's mechanism under the family's other candidate policy, 5.63 b
 path gate 5 will need and pins that a fresh initialization is distinguishable from a resumed one,
 5.64 declares the whole gate chain (with the questions each gate still leaves open), 5.65 re-reserves
 the declared block after its first four seeds were found to have run the pre-amendment rebuild, 5.66
-takes the dev-fidelity anchors for the two withholding clauses that had none - registered while
-that block is in flight - and section 10
-is re-read
-against them. Gate 4 is declared and running: 4 of
-its 12 declared seeds are published **at this writing**, on the corrected 7-hour session window
-(section 5.2 and `docs/T4_RUNBOOK.md`).
+measures the dev-fidelity withholding-clause anchors on fresh seeds, and section 10 is re-read
+against that evidence. At campaign resumption, three of 12 primary seeds (15024-15026) were
+published; the control and null queues had not launched. Primary kernel v9 later moved from
+`QUEUED` to `RUNNING` under the existing driver; the Gate-4 campaign remains incomplete and has
+no verdict. Separately, TPU probe v6 completed with a registered **PORT** decision. That is a
+hardware-port decision, not a Gate-4 result or campaign amendment. See
+`docs/IMPLEMENTATION_STATUS.md` and `docs/T4_RUNBOOK.md` for the snapshots.
 
 This report is the narrative companion to `IMPLEMENTATION_STATUS.md` (the
 implementation tracker, newest entry first) and the append-only study records under
@@ -333,12 +334,26 @@ which is the plan's deferred compute-efficiency milestone - after which Gate 4
 longer a vague milestone: it is pre-registered as a protocol with declared
 config, predicted cost, and decision rules (section 5.1), amended by the
 do-nothing clause of section 5.14 and by the launch amendment of section 5.47,
-and **it is now in flight** - the three-queue campaign has been running on Kaggle
-since 2026-09-20 and had published 4 of its 12 declared seeds at this writing
-(`docs/T4_RUNBOOK.md` is the operational record). The controller
+and **execution is partial** - the first primary session on the re-reserved block ran on
+Kaggle 2026-09-26 and published 3 of 12 seeds (15024-15026). The user authorized resumption
+without amendment. After live checks showed 19.48/30 GPU-hours available and no existing
+session, the campaign driver pushed primary kernel version 9; it later transitioned from
+`QUEUED` to `RUNNING` under the existing driver lock. At the last verified health check it was
+still training from seed 15027 with 14.77 GPU-hours remaining. Control and null remain
+unlaunched, so no three-queue verdict exists. The authoritative completed-session record is in
+`artifacts/v0-session-logs/NOTES.md`; `docs/T4_RUNBOOK.md` records the unchanged procedure.
+The controller
 default remains cap-4/2-batch; cap-4/1-batch is the validated cheaper option.
 
-**What the 5.48-5.56 arms say about reading that measurement when it lands.**
+**TPU probe v6 (2026-09-26).** The completed five-phase v5litepod-8 record is
+`artifacts/tpu-probe/output/tpu-probe-v6.json`. Its eight-rank steady-window aggregate was
+15,034.2 tokens/s (2.96× the T4 pair); recompile overhead was 2.07%. Re-running the
+pre-registered rule gives **PORT**. This is the TPU port decision only: it is not a training
+result or a Gate-4 pass and does not amend or redirect any registered campaign queue. Details
+and the auditable artifact test are in `docs/IMPLEMENTATION_STATUS.md` and
+`tests/test_tpu_probe_evidence.py`.
+
+**What the 5.48-5.56 arms say about reading that measurement when it is available.**
 The covariate programme closed the question of what separates depth from
 capacity and then dosed the depth axis itself (section 10.3), so a Gate 4 pass is
 a statement about *selection on the declared block* - not about a controller whose
@@ -351,7 +366,7 @@ mutation the search can actually reach (5.53). Section 10.4 is the bound in full
 |---|---|---|---|---|---|---|
 | Horizon replication | study 3 config at steps=144 | cap4/2-batch, 3 events, steps=144 | fresh 8000-8383 | binomial sign test, alpha=0.05 | PASS -> pass generalizes; FAIL -> pass was horizon-specific | **DONE: PASS** (231/384, p 4.04e-05, t p 1.07e-08, cost 14.0%) |
 | Richness | candidate set size at fixed probe tokens | cap4/1-batch (A) vs cap2/2-batch (B), 3 events, steps=144 | fresh 7000-7383 | binomial sign test, alpha=0.05; factor claim: paired A-vs-B, one-tailed "rich better" | PASS & A>B -> richness is the active axis; B passes & B>=A -> probe quality is; neither -> both jointly necessary | **DONE: PASS for richness** (A 228/384, p 1.4e-04, t p 5.0e-05, cost 7.3%; B 193/384, p 0.48, cost 8.1%; paired A better 225/384, z = 3.37, p 8e-04) |
-| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config, **`probe_candidate_policy=spread`** (see 5.1/5.5) | **15024-15035** (adopted 5.5 change 4 to 15000-15011, then re-reserved by 5.65: that block's first four seeds ran the pre-5.47 rebuild and their harm numbers had been read) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] + **pool-matched control clause** | cost + band + harm guard clear **and the loss-blind control arm must not clear its own gate** -> Gate 4 authorized; control passes, control missing, band miss or harm guard -> Gate 4 withheld at exit 2 | **REGISTERED as revised (sections 5.5, 5.47, 5.65); IN FLIGHT** - the campaign has been running on Kaggle since 2026-09-20 with all three queues (primary, pool-matched control, null clause); block 15000-15011 was re-reserved with 4 of its 12 seeds published **at this writing**, and the live block is 15024-15035 in dataset `act-v0-5-2`. `docs/T4_RUNBOOK.md` is the operational record |
+| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config, **`probe_candidate_policy=spread`** (see 5.1/5.5) | **15024-15035** (adopted 5.5 change 4 to 15000-15011, then re-reserved by 5.65: that block's first four seeds ran the pre-5.47 rebuild and their harm numbers had been read) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] + **pool-matched control clause** | cost + band + harm guard clear **and the loss-blind control arm must not clear its own gate** -> Gate 4 authorized; control passes, control missing, band miss or harm guard -> Gate 4 withheld at exit 2 | **REGISTERED as revised (sections 5.5, 5.47, 5.65); EXECUTION PARTIAL, RESUMPTION AUTHORIZED** - the first primary session on the re-reserved block ran on Kaggle 2026-09-26 and published 3 of 12 seeds (15024-15026) to `act-v0-5-2`. At the last recorded health check, primary kernel v9 was running under the campaign driver, while control/null remained unlaunched; no three-queue verdict exists. Resumption is authorized without amendment. This is not a registration amendment, cost failure, or Gate-4 verdict. The authoritative session record is in `artifacts/v0-session-logs/NOTES.md`; the unchanged procedure is in `docs/T4_RUNBOOK.md` |
 | Depth-4 Gate 3 confirmation | substrate expressiveness + selection value, with the arm-RNG fix | cap4/2-batch, `spread`, `independent_arm_rng`, 3 events, steps=48, depth 4 | fresh 60000-60383 (384 pairs) | argmin vs uniform churn, alpha/3 = 0.01667 (>= 214/384); paired argmin vs pool-matched control | PASS -> Gate 3 established on a non-degenerate substrate, 5.5 adopted; POOL-DRIVEN -> withdraw the selection claim; NOT REPRODUCED -> Gate 3 open, 5.1 must not launch | **DONE: PASS** (argmin vs uniform 255/384, p `6.1e-11`; paired increment 236/384, p `4.1e-06`; pool-matched control 209/384, p `0.046`; validity control does not pass). Section 9.9 |
 
 ### 5.1 Protocol: real-scale compute-efficiency measurement (pre-registered; gates Gate 4)
@@ -360,7 +375,12 @@ mutation the search can actually reach (5.53). Section 10.4 is the bound in full
 search FLOPs to be included in the adaptive total; this protocol pre-registers
 the minimal decisive version of that experiment. Gate 4 (adaptive > static
 MoE) is not entered until it passes. It is a measurement-plus-evidence
-protocol, not a quality gate.
+protocol, not a quality gate. **Current execution disposition (2026-09-26): partial, resumption authorized** -
+3/12 primary seeds were complete before the current session. At the latest recorded health
+check, kernel version 9 was running under the existing campaign driver; no control/null queue
+has launched and no verdict exists. The preregistration is unchanged. See §10.2,
+`docs/T4_RUNBOOK.md` and
+`docs/IMPLEMENTATION_STATUS.md`.
 
 **Hypothesis.** Probe-selection cost is fixed per mutation event while training
 cost scales with tokens, so the cost ratio collapses as scale and horizon grow.
@@ -9381,29 +9401,30 @@ decomposition above inherits that caveat, since all of them were read off prefix
   the null control under it (5.10): adaptive beats doing nothing
   out-of-sample, 218/384 with spread and 225/384 with prefix (5.12b).
   The depth-1 instances of Gate 3 are re-quoted as churn suppression.
-- **Gate 4 is registered, amended, and running.** The 5.1/5.5
-  compute-efficiency protocol (block 15000-15011) now carries the 5.14
-  do-nothing clause: a null queue at declared fidelity runs alongside the
-  primary and pool-matched control queues, and Gate 4 is withheld unless
-  the adaptive arm beats doing nothing on the declared block. The
-  campaign is live on Kaggle and had published 4 of the block's 12 seeds at
-  this writing (sections 5.2 and 5.47 record the session window and the rebuild
-  treatment; `docs/T4_RUNBOOK.md` is the operational record). The
-  *read* of a pass, when it comes, is bounded by section 10.4: the block
-  trains the one gene the search can move,  and 5.53-5.57 measure that gene
-  and the substrate's need for mutation rather than controller skill. The
-  three-queue launch path is smoke-tested; the run needs a T4. **In flight
-  since 2026-09-20** (Kaggle T4, three queues, ~18.4 GPU-h each at the
-  measured rate).
+-  **Gate 4 remains registered, incomplete, and has no verdict; resumption is authorized.**
+  The live block is 15024-15035; three primary seeds (15024-15026) were published before the
+  current session. Primary kernel version 9 was `RUNNING` under the campaign driver's lock at
+  the latest recorded check, with 14.77/30 GPU-hours remaining at 19:12Z. Control and null have not
+  launched. The registration is unchanged, and Gate 4 is neither passed nor
+  failed. The primary's three completed runs cannot answer the quality question: they train
+  on synthetic tokens and finish at the uniform-vocabulary loss floor. Completing the
+  registered block addresses its declared cost question, not real-text quality.
 
-  **Its write-up now has less to lean on than when it was registered.**
-  With 5.40 measured, the quality premise rests on the toy factor map plus
-  the compute-efficiency protocol alone, with **no transfer claim**: at dev
-  fidelity, at a depth the toy prior favours, and with the deployed
-  treatment in place, doing nothing still wins every fresh seed. The
-  declared run's null clause is therefore not a formality but the operative
-  bar, and its most likely outcome is the one 5.40 saw at small scale - the
-  null arm winning, which withholds Gate 4 at exit 2.
+
+  **The real-text evidence already answers the adaptive-versus-null assumption at the tested
+  development fidelity.** In §5.40, a fresh 12-seed block using the deployed rebuild treatment
+  favored null over adaptive on 12/12 seeds (mean `null - adaptive` `-0.1355` nats; one-sided
+  sign-test p `1/4096`). §5.66 reproduced the ordering on another fresh 12-seed block under the
+  `spread` policy (12/12; mean `-0.1262` nats; p `1/4096`). These are separate replications,
+  not a pooled estimate: at this real-text development fidelity, adaptive expert-capacity
+  changes have not demonstrated value over doing nothing. This does not establish the result
+  at declared scale or for other controllers/substrates. The evidence and the synthetic
+  declared-scale loss floor are interpretation limits, not a change to the registered
+  campaign's question.
+
+  The Gate-4 clauses, seeds, datasets and three-queue sequence remain exactly as registered.
+  The explicit resumption authorization is not a protocol amendment or a verdict;
+  `docs/T4_RUNBOOK.md` records the unchanged procedure and the live-state/quota prerequisite.
 - **The real-text topology program is closed** (5.13). Its residue is
   the churn-harm mechanism and the replication-grade tooling (null arm,
   bit-identity checks, pre-registration discipline) the toy program now
@@ -9411,29 +9432,22 @@ decomposition above inherits that caveat, since all of them were read off prefix
 
 ### 10.3 What would change this picture
 
-By pre-registration, the named open questions are: (i) the Gate 4 run -
-a pass authorizes the next gate; a null-clause rejection replicates the
-real-text ordering at declared fidelity and closes the 5.1 program's
-selection premise at its own scale; (ii) the depth-3/4 boundary - the
-onset is bracketed to (3, 4], and a finer covariate (parameter count,
-layer width, expert count) would separate depth per se from capacity.
+The depth-3/4 covariate question is closed: sections 5.48-5.59 measure the named
+covariates and depth ladder, and 5.60-5.61 bound the width-axis price. The remaining
+registered Gate-4 question is the declared-scale cost measurement. Its execution is partial,
+with 3/12 primary seeds in the last recorded state and no control/null queues launched at that
+point, so it has no verdict and authorizes no downstream gate. Resumption is explicitly
+authorized; this is not a change to the registration or a claim that its cost criterion failed.
 
-**Where these stand at this writing: (ii) is closed and (i) is in flight.**
-The covariate programme (5.48-5.53) measured every candidate (ii) named, and
-sections 5.54-5.59 then dosed the depth axis itself; the answer is that only
-depth moves the gate *cheaply* and that the axis keeps paying past it - with the
-qualification section 5.60 adds below, that width reaches the same gate at
-4.0x-7.5x the parameter price. (i) is the three-
-queue campaign on Kaggle, 4 of its 12 declared seeds published at this writing. What follows is
-that closing in the order it happened, kept as the audit trail of how (ii) was
-settled rather than as a list of things still open.
+The separate real-text selection assumption has a current, narrower answer: at development
+fidelity, two fresh 12-seed blocks (§5.40 and §5.66) each favored the do-nothing arm over
+adaptive on 12/12 seeds. That replicates the negative result at that fidelity; it does not
+settle declared-scale real-text behavior. The declared-scale primary uses synthetic tokens,
+so its near-floor loss comparisons are not a substitute for the missing real-text test.
+The detailed covariate and depth history that follows is retained as the audit trail; queue
+status statements are snapshots, not live remote checks.
 
-Section 5.40 sharpens (ii) without settling it: at depth 6, where the toy
-cell says selection should create value, real text still puts the null
-0.136 nats ahead, so what (ii) is missing is not a deeper substrate but a
-covariate that separates *substrate* from *depth* - and the one measured
-candidate is residual width, which this search space cannot reach
-(section 10.4). Section 5.48 then tested the one form the toy machinery can:
+Section 5.40 established the real-text development-fidelity null ordering on a fresh block; §5.66 independently reproduced it (§10.2). The historical covariate question (ii) was addressed by §5.48, which tested the one form the toy machinery can:
 holding width fixed at the **equal-parameter partner** of the above-onset cell
 (31,192 vs 30,672 parameters), the onset does not move - depth 3 x width 28
 fails the do-nothing bar (252/576, mean `+0.0176`) where depth 4 x width 28
@@ -9541,13 +9555,7 @@ assignment to `hidden_size` in `src/act/topology/` is the restore on a rejected
 change. That is now pinned by `tests/test_topology_transactions.py`, so the claim fails
 loudly if an operation is ever added instead of quietly going stale.
 
-This does not demote Gate 4, whose question is about *selection* rather than about
-which gene: does adaptive selection beat doing nothing on the declared block. Section
-10.1's depth axis says selection value exists above an onset, and 10.2's null clause is
-the right control for it. What it bounds is what a pass **licenses** - adaptive control
-of expert capacity at block 15000-15011, which is not the same claim as adaptive
-architecture search, and cannot move the recommendation of the track that measured
-width, because the two search spaces share no gene.
+The registered Gate-4 question remains about *selection* rather than which gene: does adaptive selection beat doing nothing on the declared block. Section 10.1's toy depth axis says selection value exists above an onset, and 10.2's null clause is the right control for it. The current execution has no verdict and authorizes nothing. If the registered campaign produces a pass, it would license only adaptive control of expert capacity at block 15024-15035, not general adaptive architecture search; it cannot move the recommendation of the track that measured width, because the two search spaces share no gene.
 
 **(Measured 2026-09-21, section 5.53 - and it sharpens the bound rather than only
 restating it.)** The table's only reachable axis was given the same treatment as width, at the

@@ -671,8 +671,9 @@ def load_publish_log(output_dir: str | Path) -> dict[str, object] | None:
 # Kaggle CLI 2.2.4 with OAuth credentials: an expired access token makes a write
 # call fail with this text rather than refreshing, while ``kaggle auth
 # print-access-token`` does refresh (measured 2026-09-19: ``datasets create`` failed
-# five minutes after expiry, worked after one print-access-token). A driver that
-# waits hours for a kernel would otherwise die on the output download it waited for.
+# five minutes after expiry, worked after one print-access-token). API requests need
+# KAGGLE_API_TOKEN exported; refresh it in this process too, or a long-running driver
+# keeps retrying with its expired environment value.
 AUTH_REQUIRED = "Authentication required to call the Kaggle API"
 
 
@@ -683,9 +684,12 @@ def _run(argv: list[str]) -> subprocess.CompletedProcess[str]:
         and result.returncode != 0
         and AUTH_REQUIRED in (result.stdout + result.stderr)
     ):
-        subprocess.run(
+        refreshed = subprocess.run(
             ["kaggle", "auth", "print-access-token"], capture_output=True, text=True
         )
+        token = refreshed.stdout.strip()
+        if refreshed.returncode == 0 and token:
+            os.environ["KAGGLE_API_TOKEN"] = token
         result = subprocess.run(argv, capture_output=True, text=True)
     return result
 

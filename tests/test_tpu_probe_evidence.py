@@ -1,7 +1,8 @@
 """The TPU probe's records: what each measured, what it could not, and what the rule says.
 
-The kernel `act-tpu-probe` has finished twice and both records are committed here, because
-each one *is* a finding and the second is only readable against the first:
+The kernel `act-tpu-probe` has finished three times and all three records are committed
+here, because each one *is* a finding and the later result is only readable against the
+failures it resolved:
 
 * **v4** (2026-09-22, fetched 2026-09-25) completed four of its five phases and lost the
   aggregate to `xmp.spawn`'s precondition - `Runtime is already initialized. Do not use the
@@ -10,23 +11,27 @@ each one *is* a finding and the second is only readable against the first:
   child process; the child ran, and the failure moved one layer down into libtpu's topology -
   `TPU initialization failed: Invalid --2a886c8_slice_builder_worker_addresses specified.
   Expected 8 worker addresses, got 1.`
+* **v6** (2026-09-26) took the aggregate in one process, one bound thread per device, and
+  completed all five phases on a v5litepod-8. The measured aggregate was 15,034.2 tokens/s;
+  the pre-registered rule returns **PORT** (2.96x the T4 pair; 2.07% recompile overhead).
 
-Neither record can decide the port, and that is the property `evaluate` exists to enforce:
-the rule reads `independent_seeds.aggregate_tokens_per_second`, so a record that does not
-carry it is `INCONCLUSIVE` rather than a pass. What the two records *do* carry is the
-per-core reading they agree on, and it is why the aggregate is now taken in one process, one
-thread per device (`scripts/tpu_probe.py`).
+The v4/v5 records could not decide the port, and that is the property `evaluate` enforces:
+the rule reads `independent_seeds.aggregate_tokens_per_second`, so records that do not carry
+it are `INCONCLUSIVE`, rather than passes. v6 now supplies the missing aggregate, and its
+verdict is pinned below against the committed run artifact.
 
-Four further properties are load-bearing rather than incidental:
+Five further properties are load-bearing rather than incidental:
 
-* **the four phases that ran are the numbers the journal quotes**, per record, recomputed
-  here rather than asserted;
+* **the four measurements are the numbers the journal quotes**, recomputed here rather than
+  asserted; the v4/v5 single-device diagnostic rates do not substitute for v6's aggregate;
+* **v6's aggregate comes from all eight recorded ranks**, with each rank bound to its own
+  chip; the aggregate remains the rule's direct measurement, not a sum of per-core rates;
 * **the records disagree about the dtype**: v4 measured fp32 2% faster than bf16, v5 measured
   bf16 6% faster than fp32 - so the reading that "the bf16 amendment buys nothing on this
   hardware" is not reproducible at this spread, and the honest statement is that the two
   dtypes sit within run-to-run noise of each other;
-* **both per-core rates sit below the bar** either way: eight cores at v5's bf16 rate would
-  be 1.78x the T4 pair against a declared 2.0x, and 1.73x at v4's;
+* **both v4/v5 per-core rates sit below the bar**: eight cores at v5's bf16 rate would be
+  1.78x the T4 pair against a declared 2.0x, and 1.73x at v4's;
 * **a rebuild's steady mean is not a steady step** - its fastest step matches the throughput
   pass's while its mean is 10x that - which is recorded because the rule's recompile-overhead
   arithmetic subtracts that mean from the first step. Quantified below rather than left as a
@@ -53,16 +58,18 @@ OUTPUT = ROOT / "artifacts" / "tpu-probe" / "output"
 #: in this directory as ``tpu-probe.json`` and would otherwise overwrite the evidence the
 #: journal quotes. Each is added here when the journal cites its numbers.
 RECORDS = ("tpu-probe-v4.json", "tpu-probe-v5.json")
+ALL_RECORDS = (*RECORDS, "tpu-probe-v6.json")
+PORT_RECORD = "tpu-probe-v6.json"
 
-#: The four measurements that ran in each record, as the journal quotes them: throughput and
-#: rebuild, bf16 and fp32, in tokens/s.
+#: The four single-device measurements that ran in each record, as the journal quotes them:
+#: throughput and rebuild, bf16 and fp32, in tokens/s.
 DOCUMENTED = {
     "tpu-probe-v4.json": {"bf16": (1098.2, 379.4), "fp32": (1121.2, 370.2)},
     "tpu-probe-v5.json": {"bf16": (1133.0, 394.7), "fp32": (1068.7, 358.2)},
+    "tpu-probe-v6.json": {"bf16": (1110.1, 390.0), "fp32": (1121.9, 372.0)},
 }
 
-#: What each record says went wrong with ``independent_seeds``, and how far the attempt got:
-#: v4 died on the spawn's own precondition, v5's child reached libtpu's topology check.
+#: What each inconclusive record says went wrong with ``independent_seeds``.
 FAILURES = {
     "tpu-probe-v4.json": (
         "Runtime is already initialized. Do not use the XLA device before calling xmp.spawn."
@@ -85,7 +92,7 @@ def record(name: str) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-@pytest.mark.parametrize("name", RECORDS)
+@pytest.mark.parametrize("name", ALL_RECORDS)
 def test_the_four_phases_that_ran_are_the_numbers_the_journal_quotes(name: str) -> None:
     rows = record(name)
     for dtype, (throughput, rebuild) in DOCUMENTED[name].items():
@@ -94,21 +101,23 @@ def test_the_four_phases_that_ran_are_the_numbers_the_journal_quotes(name: str) 
     assert rows["bf16"]["parameters"] == rows["fp32"]["parameters"] == 285_336_576
     assert rows["device"]["xla_devices"] == 8
     assert rows["declared_pair_tokens_per_second_on_t4"] == tpu_probe.T4_PAIR_TOKENS_PER_SECOND
-    assert sorted(rows["completed"]) == [
+    expected_phases = [
         "bf16.rebuild",
         "bf16.throughput",
         "fp32.rebuild",
         "fp32.throughput",
     ]
+    if name == PORT_RECORD:
+        expected_phases.append("independent_seeds")
+    assert sorted(rows["completed"]) == sorted(expected_phases)
 
 
 @pytest.mark.parametrize("name", RECORDS)
 def test_the_missing_measurement_names_its_own_cause(name: str) -> None:
-    """The failure is in the record, not only in a kernel log, and it says which one it was.
+    """The failure is in the record, not only in the log, and says which one it was.
 
-    Two of these runs were diagnosed from the log rather than from the artifact they were
-    written for; the second record's line is also what shows the *first* fix working, since
-    the failure it carries is one layer further in than v4's.
+    The v5 record's line also shows the first fix working, since its failure is one layer
+    further in than v4's.
     """
     rows = record(name)
     assert len(rows["errors"]) == 1
@@ -119,12 +128,8 @@ def test_the_missing_measurement_names_its_own_cause(name: str) -> None:
 
 
 @pytest.mark.parametrize("name", RECORDS)
-def test_the_rule_refuses_these_records_rather_than_passing_them(name: str) -> None:
-    """`INCONCLUSIVE`, with the two fields it is missing named - the rule, recomputed.
-
-    Read through `evaluate` rather than restated here: a second implementation of "is this
-    record complete" is a second answer to the question the probe is for.
-    """
+def test_the_rule_refuses_incomplete_records_rather_than_passing_them(name: str) -> None:
+    """`INCONCLUSIVE`, with the fields it needs named - the rule, recomputed."""
     decision = tpu_probe.evaluate(record(name))
     assert decision["verdict"] == "INCONCLUSIVE"
     assert decision["capacity"] is None
@@ -137,16 +142,10 @@ def test_the_rule_refuses_these_records_rather_than_passing_them(name: str) -> N
     "name,multiple",
     [("tpu-probe-v4.json", 1.73), ("tpu-probe-v5.json", 1.78)],
 )
-def test_the_per_core_reading_the_journal_states_follows_from_each_record(
+def test_the_inconclusive_records_per_core_readings_stay_below_the_bar(
     name: str, multiple: float
 ) -> None:
-    """Eight cores at this rate do not clear the bar, and the journal says so before the
-    aggregate is measured rather than after it.
-
-    The aggregate is eight chips' worth of rate and each chip has its own HBM, so eight times
-    the single-core rate is the closest thing to a forecast available - and it is a
-    *forecast*, which is why it is stated as one and the measurement is still being taken.
-    """
+    """Eight cores at these historical single-core rates do not clear the rule's bar."""
     rows = record(name)
     bf16 = rows["bf16"]["throughput"]["tokens_per_second"]
     assert round(8 * bf16 / tpu_probe.T4_PAIR_TOKENS_PER_SECOND, 2) == multiple
@@ -156,14 +155,8 @@ def test_the_per_core_reading_the_journal_states_follows_from_each_record(
     assert round(PER_CORE_FOR_THE_BAR, 1) == 1270.8
 
 
-def test_the_two_records_disagree_about_the_dtype_and_that_is_the_reading() -> None:
-    """v4: fp32 2% faster. v5: bf16 6% faster. The delta is run-to-run spread, not a dtype.
-
-    The entry that read v4's ordering as "the bf16 amendment the rule assumes buys nothing on
-    this hardware" is superseded by the later record as it stands: the same measurement on the
-    same shape moved the other way, so what the two runs support is that the dtypes are within
-    a few percent of each other - not which of them is faster.
-    """
+def test_the_two_inconclusive_records_disagree_about_the_dtype() -> None:
+    """v4: fp32 2% faster. v5: bf16 6% faster. This is run-to-run spread, not a dtype."""
 
     def spread(rows: dict) -> float:
         bf16 = rows["bf16"]["throughput"]["tokens_per_second"]
@@ -173,8 +166,7 @@ def test_the_two_records_disagree_about_the_dtype_and_that_is_the_reading() -> N
     assert spread(v4) > 0 and spread(v5) < 0
     assert abs(spread(v4)) < 0.05 and abs(spread(v5)) < 0.10
     # v4 does not even agree with itself: its rebuild block puts bf16 ahead (379.4 against
-    # 370.2) while its throughput block puts fp32 ahead - so neither ordering is a dtype
-    # effect to build on, and the rebuild block is the shakier of the two (see below).
+    # 370.2) while its throughput block puts fp32 ahead.
     assert (
         v4["fp32"]["throughput"]["tokens_per_second"]
         > v4["bf16"]["throughput"]["tokens_per_second"]
@@ -190,20 +182,38 @@ def test_the_two_records_disagree_about_the_dtype_and_that_is_the_reading() -> N
         )
 
 
+def test_v6_completes_the_eight_rank_aggregate_and_clears_the_registered_rule() -> None:
+    rows = record(PORT_RECORD)
+    aggregate = rows["independent_seeds"]
+
+    assert rows["errors"] == []
+    assert "independent_seeds" in rows["completed"]
+    assert aggregate["workers"] == aggregate["completed"] == 8
+    assert aggregate["aggregate_tokens_per_second"] == 15034.2
+    assert len(aggregate["per_rank"]) == 8
+    assert [rank["device"] for rank in aggregate["per_rank"]] == [
+        f"xla:{i}" for i in range(8)
+    ]
+    assert [rank["thread_device_after"] for rank in aggregate["per_rank"]] == [
+        f"xla:{i}" for i in range(8)
+    ]
+    assert aggregate["taken_in"] == "single-process-thread-per-device"
+    assert aggregate["ratio_to_t4_pair"] == 2.96
+
+    decision = tpu_probe.evaluate(rows)
+    assert decision["verdict"] == "PORT"
+    assert decision["throughput_ok"] is True
+    assert decision["recompile_overhead_ok"] is True
+    assert decision["measured"]["multiple_of_t4_pair"] == 2.96
+    assert decision["measured"]["recompile_overhead_fraction"] == pytest.approx(0.0207)
+    assert decision["capacity"]["gpu_weeks_left"] == 1
+
+
 def _overhead_forecast(rows: dict) -> tuple[float, float, float]:
-    """The rule's overhead condition, read off one record three ways.
+    """The rule's historical recompile forecast, using v4/v5's single-core rate.
 
-    Returns (as the rule computes it, the conservative reading, the compile cost that would
-    bind), all as fractions of the queue's per-core training time except the last, which is
-    seconds. The *aggregate* is a forecast here - ``v4`` and ``v5`` have none - so one core's
-    rate is the record's own single-core bf16 throughput, and a queue is
-    ``DECLARED_SEEDS_PER_QUEUE`` seeds of ``DECLARED_ARMS_PER_SEED`` arms, each arm paying
-    ``REBUILDS_PER_ARM`` recompiles, spread over the record's own device count.
-
-    The two readings differ in what a rebuild's steady step is: the rule subtracts
-    ``steady_step_seconds_mean`` from the first step, and the conservative one subtracts the
-    fastest step instead, because a four-step rebuild loop's mean is not a steady step (see
-    the test above). Neither is edited into the rule: this is what the condition *reads*.
+    Their aggregate was unavailable, so that is the rate used to forecast the full queue.
+    This helper is only called for those records, not the v6 measurement.
     """
     rebuild = rows["bf16"]["rebuild"]
     first = rebuild["first_step_seconds_including_compile"]
@@ -237,15 +247,9 @@ def test_the_rebuilds_steady_mean_is_not_a_steady_step(name: str) -> None:
 
     In both records a rebuild's *fastest* step is the same ~1.0 s as the throughput pass's,
     while its mean is 10x that: ``_measure`` separates the first (compiling) step, and in a
-    four-step loop later samples still carry cost. The rule's recompile-overhead arithmetic
-    subtracts ``steady_step_seconds_mean`` from the first step, so it under-states the compile
-    - which is the *un*conservative direction for that condition. It is recorded here rather
-    than smoothed over: the overhead condition is the one to re-derive before it is relied on.
-
-    Re-derived, it turns out to move the number without moving the verdict: the caveat is a
-    ~1.5x change on a condition that reads ~1.9% at its worst against a 10% limit, and binding
-    it would take a rebuild compile of ~2.5 minutes. Pinned so that a later record with a
-    genuinely slow compile is measured against the *derived* bar rather than this one's rate.
+    four-step loop later samples still carry cost. The rule subtracts the mean from the first
+    step, so it under-states the compile cost. The caveat moves that condition by ~1.5x and
+    both readings stay below a 10% limit.
     """
     rows = record(name)
     for dtype in ("bf16", "fp32"):
@@ -256,12 +260,9 @@ def test_the_rebuilds_steady_mean_is_not_a_steady_step(name: str) -> None:
             rows[dtype]["throughput"]["steady_step_seconds_min"], abs=0.05
         )
 
-    as_the_rule_reads_it, conservative, binding = _overhead_forecast(rows)
-    assert as_the_rule_reads_it < tpu_probe.RECOMPILE_OVERHEAD_LIMIT / 4
+    as_rule_reads_it, conservative, binding = _overhead_forecast(rows)
+    assert as_rule_reads_it < tpu_probe.RECOMPILE_OVERHEAD_LIMIT / 4
     assert conservative < tpu_probe.RECOMPILE_OVERHEAD_LIMIT / 4
-    # Real (the conservative reading is ~1.5x the rule's) and not decisive here.
-    assert conservative > 1.4 * as_the_rule_reads_it
-    # ~14x this rebuild's own mean step and ~146x its fastest: a compile that slow would be
-    # its own finding, which is what makes the condition a sanity check rather than a driver.
+    assert conservative > 1.4 * as_rule_reads_it
     assert binding > 100
     assert binding / rows["bf16"]["rebuild"]["steady_step_seconds_mean"] > 10

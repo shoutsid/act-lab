@@ -64,6 +64,10 @@ artifacts/tpu-probe/output/*
 # topology; the two together are what the aggregate measurement's redesign reads from.
 !artifacts/tpu-probe/output/tpu-probe-v4.json
 !artifacts/tpu-probe/output/tpu-probe-v5.json
+# v6 (2026-09-26) completed the registered five-phase probe and returned PORT; its
+# eight-chip aggregate is the first record the decision rule can actually evaluate.
+!artifacts/tpu-probe/output/tpu-probe-v6.json
+!artifacts/tpu-probe/output/act-tpu-probe-v6.log
 # The held-out stream the real-LM proof is scored on (2026-09-25). A perplexity
 # with nothing beside it proves nothing - 5.5 could be good or terrible - so the
 # record carries reference baselines, and those are recomputed from this file.
@@ -109,6 +113,17 @@ artifacts/mixer-benchmark/*
 artifacts/v0-session-logs/*
 !artifacts/v0-session-logs/NOTES.md
 !artifacts/v0-session-logs/session-*-log.json
+# The completed Gate-4 primary session (kernel v7, 2026-09-26): keep its compact
+# machine-readable queue, benchmark, publish and per-seed audit records, plus the
+# child's tee used to reconcile the live capture. The multi-gigabyte checkpoints
+# remain on Kaggle; these records total only tens of KB.
+!artifacts/v0-session-logs/session-15024-26-session.json
+!artifacts/v0-session-logs/session-15024-26-publish.json
+!artifacts/v0-session-logs/session-15024-26-benchmark.json
+!artifacts/v0-session-logs/session-15024-26-child-stream.log
+!artifacts/v0-session-logs/session-15024-summary.json
+!artifacts/v0-session-logs/session-15025-summary.json
+!artifacts/v0-session-logs/session-15026-summary.json
 # The two-seed concurrency rehearsal (2026-09-22): the blocker on the null queue's
 # two-seeds-per-pair amendment, which the journal prices at 8.49 GPU-h and which is also the
 # bar-level route to a one-week block. The record is the evidence - it carries both

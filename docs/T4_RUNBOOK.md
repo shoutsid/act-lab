@@ -5,6 +5,8 @@ Operator runbook for executing the pre-registered compute-efficiency protocol
 §5.2. Everything below is already implemented and tested; this document adds
 only the exact commands, expected outputs, and decision points.
 
+> **RESUMPTION AUTHORIZED (2026-09-26).** The registered Gate-4 campaign is resuming without changing its preregistration. At launch, live Kaggle checks confirmed primary 3/12 (15024-15026), prior kernel `COMPLETE`, and 19.48/30 GPU-hours remaining until October 3; the sequential launcher pushed primary kernel v9, initially `QUEUED`. At the latest recorded health check, v9 is `RUNNING` under the existing campaign driver's lock, with 14.77 GPU-hours remaining and work resuming at seed 15027. Do not start a second driver or push manually. Control and null remain next in the registered sequence; no verdict exists. This is incomplete execution, not a protocol amendment, pass, or fail. Two separate fresh 12-seed real-TinyStories development-fidelity studies (§§5.40, 5.66) favored null over adaptive on 12/12 seeds; the declared-scale queue trains on synthetic tokens near the uniform-loss floor. These results are context only and do not change the registered seeds, knobs, data, or criteria. Separately, the TPU probe v6 returned **PORT** under its own registered rule; this is not a Gate-4 result or authorization to move a queue to TPU. See `docs/IMPLEMENTATION_STATUS.md` and `docs/RESEARCH_REPORT.md` §10.2.**
+
 **Pre-registration discipline: no knob is tuned at any point in this runbook.**
 The dtype rule, schedule constants, seed block, probe budget, criteria, and
 tolerance band are fixed in code and in §5.1/§5.2, as amended by the **adopted
@@ -710,23 +712,25 @@ Rules the runbook operator must not work around (all enforced in code):
 
 ## 4. The verdict (machine-checked, pre-registered)
 
-**Read this before the verdict lands, so it cannot be re-narrated afterwards
-(2026-09-20).** Every withhold clause in the table below is the *same* rule: a 10-of-12
-sign test on the adaptive arm, differing only in the comparison arm (random, pool
-control, null). Three consequences, all computed in `scripts/null_clause_power.py`
-while block 15000-15011 was still training:
+**Interpretation fixed before the verdict, retained for audit (2026-09-20).** Every
+withhold clause in the table below is the *same* rule: a 10-of-12 sign test on the adaptive
+arm, differing only in the comparison arm (random, pool control, null). Three consequences,
+all computed in `scripts/null_clause_power.py` while the then-current block was training:
 
 - **A cleared clause is not evidence of value.** Clearing needs only **3 of 12** seeds,
   and under no effect it happens **98.07%** of the time (the clause fires on 79/4096
   blocks). If the verdict is a `PASS`, the claim it supports is "the clause did not
   fire", and the value inference rests on the registered cost/band/control rules.
-- **A withheld Gate 4 is strong evidence.** At the dev-fidelity effect §5.40 measured
-  (the null arm ahead by 0.136 nats at sd 0.113, z = 1.20) the null clause fires with
-  probability **0.848**; at z = 1.5 it is 0.958. So `PASS_COST_ONLY_NULL_REJECTS` is not
-  a coin flip that landed against the adaptive arm.
+- **A null-clause rejection would be evidence of no adaptive edge at declared fidelity.** At
+  the dev-fidelity effect §5.40 measured (null ahead by 0.136 nats at sd 0.113, z = 1.20),
+  the null clause fires with probability **0.848**; at z = 1.5 it is 0.958. The converse
+  does not apply: a cleared clause is not proof of value.
 - **The clauses are not redundant.** On §5.40's fresh seeds the null clause fires
   (12/12) while the harm guard does not (6/12), so a verdict can withhold on one clause
   and clear another; the union bound on all three firing on noise is 5.79%.
+
+The verdict command is run only after all three registered queues are complete. The current
+resumption authorization changes no queue, seed, knob, dataset, or decision rule.
 
 When all 12 seeds publish `complete` versions:
 
@@ -938,8 +942,25 @@ Both drivers take `--save <dir>` now. Both fetch the *log* beside the files, bec
 it lands - the TPU probe runs `tpu_probe.evaluate` on the record it just kept - because a
 verdict that needs a second hand-run command is one that can be left unread. Then check
 `git status`: if what landed is evidence a document quotes, it belongs in the tree under
-the name of the run that produced it (`artifacts/tpu-probe/output/tpu-probe-v5.json`),
-not under the "latest record" name the next fetch will overwrite.
+the name of the run that produced it (`artifacts/tpu-probe/output/tpu-probe-v6.json`),
+not under the "latest record" name the next fetch will overwrite. The completed v6 run is
+preserved as `tpu-probe-v6.json` with its platform log `act-tpu-probe-v6.log`.
+
+**Live check, 2026-09-26 19:12Z:** Kaggle still reports the existing session kernel v9 `RUNNING`;
+`campaign_health.py` sees the driver lock and 14.77/30 GPU-hours remaining. The v6 TPU probe is
+`COMPLETE`. Let the existing driver supervise the session; do not duplicate it.
+
+### Completed TPU probe v6 decision
+
+The v6 probe completed all five registered measurements on an eight-chip v5litepod. Its
+15,034.2 tokens/s steady-window aggregate clears the registered 2× T4-pair threshold, while
+rebuild compilation is 2.07% of projected per-core training time (under the 10% limit).
+`scripts/tpu_probe.py --evaluate artifacts/tpu-probe/output/tpu-probe-v6.json` returns **PORT**.
+This is the hardware port rule's outcome only; it does not amend the Gate-4 registration, prove
+training quality, or direct any campaign queue to TPU. The record notes that model initialization
+for independent-seed ranks shares the process RNG, so those model initializations are not
+reproducible from each rank's input-generator seed. See the evidence table and regression test in
+`docs/IMPLEMENTATION_STATUS.md` and `tests/test_tpu_probe_evidence.py`.
 
 ### Pushing the probe waits for a gap in the campaign, and the wait is a script
 
@@ -956,7 +977,8 @@ setsid nohup bash scripts/push_tpu_probe_when_idle.sh > /tmp/tpu-probe-push-watc
 It polls the guard's own `live_campaign_kernel()` rather than a second copy of that
 question, publishes nothing itself, and on a gap runs the push and arms this section's
 fetch watcher. Bounded at 144 polls of 300 s, so a queue that holds the driver's lock for
-hours ends the wait rather than hanging in it.
+hours ends the wait rather than hanging in it. The watcher then fetched v6 at 17:28Z on
+2026-09-26; the record's measured decision is **PORT**, documented above.
 
 It is armed **after the probe's own change is committed**, because the dataset ships HEAD
 rather than the working tree - `ensure_code_dataset` prints exactly that when the tree is

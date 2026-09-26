@@ -1,0 +1,63 @@
+{
+  "benchmark": "v0-throughput-5.2",
+  "declared_active_parameter_count": 7556160,
+  "declared_parameter_count": 14928960,
+  "device": "cuda",
+  "device_name": "Tesla T4",
+  "dtype_decision": "fp16",
+  "example_deadline_check": "remaining 2.00 h does not fit pair 1.69 h + 45 min reserve (rule 1)",
+  "fp32_floor_tokens_per_second": 2500.0,
+  "gpu_inventory": {
+    "count": 2,
+    "names": [
+      "Tesla T4",
+      "Tesla T4"
+    ]
+  },
+  "measured_tokens_per_second": 1238.8023977652078,
+  "predicted_probe_cost_percent": {
+    "cap4_1batch": 0.0941636252059042,
+    "cap4_2batch": 0.1883272504118084
+  },
+  "profile": "declared-285M",
+  "schedule": {
+    "arm_slots": 2,
+    "arms": 2,
+    "checkpoint_interval": 500,
+    "declared_session_hours": 7.0,
+    "full_pairs_per_session": 5,
+    "max_checkpoints": 2,
+    "pair_time_hours": 1.6890344945333333,
+    "pairs_per_session_rule1": 3,
+    "platform_session_cap_hours": 8.0,
+    "sessions_for_primary": 3,
+    "sessions_for_primary_rule1": 4,
+    "sessions_total": 6,
+    "three_queue_sessions": 12,
+    "three_queue_sessions_null": 4,
+    "three_queue_sessions_primary": 4,
+    "three_queue_training_hours": 60.805241803200005,
+    "working_dir_headroom_gb": 5.120000000000001,
+    "working_dir_steady_state_gb": 14.879999999999999
+  },
+  "schedule_dtype": "fp16",
+  "schedule_tokens_per_second": 4296.109801361813,
+  "seed_block": "15000-15011 and 15024-15035 (reserved, untouched by this benchmark)",
+  "steps": 50,
+  "timing": {
+    "elapsed_seconds": 165.320958669,
+    "steps": 50.0,
+    "tokens_seen": 204800.0,
+    "warmup_steps": 5.0
+  },
+  "tokens_per_second_by_dtype": {
+    "fp16": 4296.109801361813,
+    "fp32": 1238.8023977652078
+  },
+  "tolerance_band_primary": [
+    0.0470818126029521,
+    0.1883272504118084
+  ],
+  "torch_version": "2.10.0+cu128",
+  "warmup_steps": 5
+}

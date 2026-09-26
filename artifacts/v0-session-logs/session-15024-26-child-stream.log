@@ -1,0 +1,23 @@
+$ /usr/bin/python3 -m act.training.cli --mode pair-session --device cuda --hours 6.92985 --seeds 15024-15035 --probe-candidate-policy spread --preserve-router-on-rebuild --new-expert clone --dataset-root /tmp/act-lab-session-c0f1ac8816/artifacts/datasets --session-dir /tmp/act-lab-session-c0f1ac8816/artifacts/v0-sessions --kaggle-dataset sid123123234/act-v0-5-2
+Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.2)
+Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.2)
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2
+no remote version of sid123123234/act-v0-5-2 available yet; training from scratch (atomic pairs make this safe)
+session clock: 6.93 h of the declared 6.92985 h remain after 0.0 min of startup
+pair time 1.69 h (2 arm(s) in 1 wave(s) of 24576000 tokens at 4296 tokens/s + 0.1 h event overhead)
+no published seed records a rebuild treatment yet; this session sets it: preserve_router_on_rebuild=True, new_expert_initialization='clone'
+seed 15024: starting pair (remaining 6.93 h fits pair 1.69 h + 45 min reserve (rule 1))
+arms in parallel (random -> cuda:0, adaptive -> cuda:1)
+seed 15024: pair complete ({'random': 10.397972345352173, 'adaptive': 10.398051500320435})
+seed 15025: starting pair (remaining 5.15 h fits pair 1.69 h + 45 min reserve (rule 1))
+arms in parallel (random -> cuda:0, adaptive -> cuda:1)
+seed 15025: pair complete ({'random': 10.397987842559814, 'adaptive': 10.397774934768677})
+seed 15026: starting pair (remaining 3.35 h fits pair 1.69 h + 45 min reserve (rule 1))
+arms in parallel (random -> cuda:0, adaptive -> cuda:1)
+seed 15026: pair complete ({'random': 10.397124767303467, 'adaptive': 10.398003339767456})
+seed 15027: remaining 1.58 h does not fit pair 1.69 h + 45 min reserve (rule 1)
+session done: 3 pair(s) completed, 1.58 h remaining
+Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.2)
+remote publish: sid123123234/act-v0-5-2 version pushed (3 seed version(s))
+{"remote_publish": {"dataset": "sid123123234/act-v0-5-2", "error": null, "folder": "/tmp/act-lab-session-c0f1ac8816/artifacts/datasets/act-checkpoints/v0-5-1", "seeds_published": 3, "status": "published", "version_notes": "v0-5-1 session publish: 4296 tokens/s, measured dtype"}}
+{"declared_seed_queue": [15024, 15025, 15026, 15027, 15028, 15029, 15030, 15031, 15032, 15033, 15034, 15035], "dtype": "fp16", "dtype_rule_tokens_per_second": 1238.8023977652078, "latest_published_seed": 15026, "measured_tokens_per_second": 4296.109801361813, "pair_time_hours": 1.6890344945333333, "pairs_completed": 3, "protocol": "v0-compute-efficiency-5.2", "remaining_hours_at_entry": 6.929487465413889, "schedule_tokens_per_second": 4296.109801361813, "seeds_requested": [15024, 15025, 15026, 15027, 15028, 15029, 15030, 15031, 15032, 15033, 15034, 15035]}

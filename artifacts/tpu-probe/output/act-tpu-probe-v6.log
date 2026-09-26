@@ -1,0 +1,281 @@
+[{"stream_name":"stderr","time":36.26584988,"data":"/usr/local/lib/python3.12/site-packages/torch_xla/experimental/gru.py:113: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":36.265899,"data":"  * **h_n**: tensor of shape :math:`(D * \\text{num\\_layers}, H_{out})` or\n"}
+,{"stream_name":"stderr","time":49.958501053,"data":"/usr/local/lib/python3.12/site-packages/torch_xla/__init__.py:258: UserWarning: `tensorflow` can conflict with `torch-xla`. Prefer `tensorflow-cpu` when using PyTorch/XLA. To silence this warning, `pip uninstall -y tensorflow \u0026\u0026 pip install tensorflow-cpu`. If you are in a notebook environment such as Colab or Kaggle, restart your notebook runtime afterwards.\n"}
+,{"stream_name":"stderr","time":49.958541953,"data":"  warnings.warn(\n"}
+,{"stream_name":"stdout","time":56.819909831,"data":"torch_xla: already-present\n"}
+,{"stream_name":"stdout","time":61.915021466,"data":"probe: /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/tpu_probe.py\n"}
+,{"stream_name":"stderr","time":73.107551151,"data":"WARNING: Logging before InitGoogle() is written to STDERR\n"}
+,{"stream_name":"stderr","time":73.107577822,"data":"E0000 00:00:1790443200.498516       7 common_lib.cc:648] Could not set metric server port: INVALID_ARGUMENT: Could not find SliceBuilder port 8471 in any of the 0 ports provided in `tpu_process_addresses`=\"local\"\n"}
+,{"stream_name":"stderr","time":73.107582922,"data":"=== Source Location Trace: ===\n"}
+,{"stream_name":"stderr","time":73.107586531,"data":"learning/45eac/tfrc/runtime/common_lib.cc:238\n"}
+,{"stream_name":"stderr","time":82.01522699,"data":"/kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/tpu_probe.py:559: DeprecationWarning: Use torch_xla.device instead\n"}
+,{"stream_name":"stderr","time":82.01526929,"data":"  device = xm.xla_device()\n"}
+,{"stream_name":"stderr","time":85.803667167,"data":"/kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/tpu_probe.py:604: DeprecationWarning: Use torch_xla.device instead\n"}
+,{"stream_name":"stderr","time":85.803722296,"data":"  device = xm.xla_device()\n"}
+,{"stream_name":"stderr","time":86.67223273,"data":"/kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/tpu_probe.py:630: DeprecationWarning: Use torch_xla.device instead\n"}
+,{"stream_name":"stderr","time":86.67229183,"data":"  device = xm.xla_device()\n"}
+,{"stream_name":"stderr","time":128.918060389,"data":"/kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/tpu_probe.py:644: DeprecationWarning: Use torch_xla.sync instead\n"}
+,{"stream_name":"stderr","time":128.918111399,"data":"  xm.mark_step()\n"}
+,{"stream_name":"stderr","time":195.697084627,"data":"/kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/tpu_probe.py:717: DeprecationWarning: Use torch_xla.device instead\n"}
+,{"stream_name":"stderr","time":195.697313297,"data":"  model = model.to(xm.xla_device())\n"}
+,{"stream_name":"stdout","time":478.748572026,"data":"{\n"}
+,{"stream_name":"stdout","time":478.748623136,"data":" \"bf16\": {\n"}
+,{"stream_name":"stdout","time":478.748628946,"data":"  \"parameters\": 285336576,\n"}
+,{"stream_name":"stdout","time":478.748633676,"data":"  \"rebuild\": {\n"}
+,{"stream_name":"stdout","time":478.748637966,"data":"   \"expert_count_after\": 9,\n"}
+,{"stream_name":"stdout","time":478.748642446,"data":"   \"expert_id\": \"L11E8\",\n"}
+,{"stream_name":"stdout","time":478.748646776,"data":"   \"experts_added\": 1,\n"}
+,{"stream_name":"stdout","time":478.748651116,"data":"   \"first_step_seconds_including_compile\": 28.57,\n"}
+,{"stream_name":"stdout","time":478.748655726,"data":"   \"rebuilt_layer\": \"L11\",\n"}
+,{"stream_name":"stdout","time":478.748660146,"data":"   \"steady_step_seconds_mean\": 10.502012,\n"}
+,{"stream_name":"stdout","time":478.748676386,"data":"   \"steady_step_seconds_min\": 0.988487,\n"}
+,{"stream_name":"stdout","time":478.748679526,"data":"   \"steps\": 4,\n"}
+,{"stream_name":"stdout","time":478.748682476,"data":"   \"tokens_per_second\": 390.0,\n"}
+,{"stream_name":"stdout","time":478.748685356,"data":"   \"tokens_per_step\": 4096\n"}
+,{"stream_name":"stdout","time":478.748688266,"data":"  },\n"}
+,{"stream_name":"stdout","time":478.748691076,"data":"  \"throughput\": {\n"}
+,{"stream_name":"stdout","time":478.748694006,"data":"   \"first_step_seconds_including_compile\": 65.9202,\n"}
+,{"stream_name":"stdout","time":478.748696996,"data":"   \"steady_step_seconds_mean\": 3.689641,\n"}
+,{"stream_name":"stdout","time":478.748700016,"data":"   \"steady_step_seconds_min\": 0.986163,\n"}
+,{"stream_name":"stdout","time":478.748702876,"data":"   \"steps\": 12,\n"}
+,{"stream_name":"stdout","time":478.748705736,"data":"   \"tokens_per_second\": 1110.1,\n"}
+,{"stream_name":"stdout","time":478.748709046,"data":"   \"tokens_per_step\": 4096\n"}
+,{"stream_name":"stdout","time":478.748711926,"data":"  }\n"}
+,{"stream_name":"stdout","time":478.748714986,"data":" },\n"}
+,{"stream_name":"stdout","time":478.748718096,"data":" \"completed\": [\n"}
+,{"stream_name":"stdout","time":478.748720966,"data":"  \"bf16.throughput\",\n"}
+,{"stream_name":"stdout","time":478.748723856,"data":"  \"bf16.rebuild\",\n"}
+,{"stream_name":"stdout","time":478.748726976,"data":"  \"independent_seeds\",\n"}
+,{"stream_name":"stdout","time":478.748729846,"data":"  \"fp32.throughput\",\n"}
+,{"stream_name":"stdout","time":478.748732696,"data":"  \"fp32.rebuild\"\n"}
+,{"stream_name":"stdout","time":478.748735636,"data":" ],\n"}
+,{"stream_name":"stdout","time":478.748738466,"data":" \"declared_pair_tokens_per_second_on_t4\": 5083.4,\n"}
+,{"stream_name":"stdout","time":478.748741456,"data":" \"device\": {\n"}
+,{"stream_name":"stdout","time":478.748744306,"data":"  \"device_kind\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":478.748747226,"data":"  \"environment\": {\n"}
+,{"stream_name":"stdout","time":478.748750056,"data":"   \"ALLOW_MULTIPLE_LIBTPU_LOAD\": \"1\",\n"}
+,{"stream_name":"stdout","time":478.748752996,"data":"   \"CLOUD_TPU_TASK_ID\": null,\n"}
+,{"stream_name":"stdout","time":478.748758256,"data":"   \"LIBTPU_INIT_ARGS\": \" --xla_tpu_use_enhanced_launch_barrier=false --xla_latency_hiding_scheduler_rerun=1 --xla_tpu_prefer_async_allgather_to_allreduce=true --xla_tpu_enable_flash_attention=false --xla_enable_async_all_gather=true --xla_enable_async_collective_permute=true\",\n"}
+,{"stream_name":"stdout","time":478.748762716,"data":"   \"PJRT_DEVICE\": \"TPU\",\n"}
+,{"stream_name":"stdout","time":478.748765696,"data":"   \"PJRT_LOCAL_PROCESS_COUNT\": null,\n"}
+,{"stream_name":"stdout","time":478.748768676,"data":"   \"PJRT_LOCAL_PROCESS_RANK\": null,\n"}
+,{"stream_name":"stdout","time":478.748771336,"data":"   \"PJRT_SELECT_DEFAULT_DEVICE\": null,\n"}
+,{"stream_name":"stdout","time":478.748773626,"data":"   \"TPU_ACCELERATOR_TYPE\": \"v5litepod-8\",\n"}
+,{"stream_name":"stdout","time":478.748775976,"data":"   \"TPU_CHIPS_PER_HOST_BOUNDS\": \"2,4,1\",\n"}
+,{"stream_name":"stdout","time":478.748778326,"data":"   \"TPU_CHIPS_PER_PROCESS_BOUNDS\": null,\n"}
+,{"stream_name":"stdout","time":478.748780636,"data":"   \"TPU_HOST_BOUNDS\": \"1,1,1\",\n"}
+,{"stream_name":"stdout","time":478.748782996,"data":"   \"TPU_LIBRARY_PATH\": \"/usr/local/lib/python3.12/site-packages/libtpu/libtpu.so\",\n"}
+,{"stream_name":"stdout","time":478.748785426,"data":"   \"TPU_NAME\": null,\n"}
+,{"stream_name":"stdout","time":478.748790836,"data":"   \"TPU_PROCESS_ADDRESSES\": \"local\",\n"}
+,{"stream_name":"stdout","time":478.748793276,"data":"   \"TPU_PROCESS_BOUNDS\": null,\n"}
+,{"stream_name":"stdout","time":478.748795576,"data":"   \"TPU_PROCESS_PORT\": null,\n"}
+,{"stream_name":"stdout","time":478.748797846,"data":"   \"TPU_SKIP_MDS_QUERY\": \"1\",\n"}
+,{"stream_name":"stdout","time":478.748800146,"data":"   \"TPU_VISIBLE_CHIPS\": null,\n"}
+,{"stream_name":"stdout","time":478.748802406,"data":"   \"TPU_WORKER_HOSTNAMES\": \"localhost\",\n"}
+,{"stream_name":"stdout","time":478.748804856,"data":"   \"TPU_WORKER_ID\": \"0\",\n"}
+,{"stream_name":"stdout","time":478.748807216,"data":"   \"XLA_TPU_MAX_INFLIGHT_COMPUTATIONS\": null,\n"}
+,{"stream_name":"stdout","time":478.748809616,"data":"   \"XRT_TPU_CONFIG\": \"localservice;0;localhost:51011\",\n"}
+,{"stream_name":"stdout","time":478.748812176,"data":"   \"X_NUM_DEVICES\": null\n"}
+,{"stream_name":"stdout","time":478.748814456,"data":"  },\n"}
+,{"stream_name":"stdout","time":478.748816726,"data":"  \"memory_bytes_limit\": null,\n"}
+,{"stream_name":"stdout","time":478.748819036,"data":"  \"memory_bytes_used\": null,\n"}
+,{"stream_name":"stdout","time":478.748821326,"data":"  \"pytorch\": \"2.8.0+cpu\",\n"}
+,{"stream_name":"stdout","time":478.748823646,"data":"  \"torch_xla\": \"2.8.0\",\n"}
+,{"stream_name":"stdout","time":478.748826026,"data":"  \"tpu\": {\n"}
+,{"stream_name":"stdout","time":478.748829276,"data":"   \"metadata\": {\n"}
+,{"stream_name":"stdout","time":478.748831636,"data":"    \"ACCELERATOR_TYPE\": \"v5litepod-8\",\n"}
+,{"stream_name":"stdout","time":478.748834006,"data":"    \"TPU_CHIPS_PER_PROCESS_BOUNDS\": \"2,4,1\",\n"}
+,{"stream_name":"stdout","time":478.748836316,"data":"    \"TPU_PROCESS_BOUNDS\": \"1,1,1\",\n"}
+,{"stream_name":"stdout","time":478.748838826,"data":"    \"WORKER_ID\": \"0\"\n"}
+,{"stream_name":"stdout","time":478.748841176,"data":"   },\n"}
+,{"stream_name":"stdout","time":478.748843426,"data":"   \"pci_chips\": 8\n"}
+,{"stream_name":"stdout","time":478.748845746,"data":"  },\n"}
+,{"stream_name":"stdout","time":478.748848016,"data":"  \"xla_devices\": 8\n"}
+,{"stream_name":"stdout","time":478.748850336,"data":" },\n"}
+,{"stream_name":"stdout","time":478.748852586,"data":" \"errors\": [],\n"}
+,{"stream_name":"stdout","time":478.748855066,"data":" \"fp32\": {\n"}
+,{"stream_name":"stdout","time":478.748857356,"data":"  \"parameters\": 285336576,\n"}
+,{"stream_name":"stdout","time":478.748859666,"data":"  \"rebuild\": {\n"}
+,{"stream_name":"stdout","time":478.748861916,"data":"   \"expert_count_after\": 9,\n"}
+,{"stream_name":"stdout","time":478.748864216,"data":"   \"expert_id\": \"L11E8\",\n"}
+,{"stream_name":"stdout","time":478.748866706,"data":"   \"experts_added\": 1,\n"}
+,{"stream_name":"stdout","time":478.748869046,"data":"   \"first_step_seconds_including_compile\": 27.7649,\n"}
+,{"stream_name":"stdout","time":478.748871406,"data":"   \"rebuilt_layer\": \"L11\",\n"}
+,{"stream_name":"stdout","time":478.748873746,"data":"   \"steady_step_seconds_mean\": 11.009667,\n"}
+,{"stream_name":"stdout","time":478.748876316,"data":"   \"steady_step_seconds_min\": 1.008957,\n"}
+,{"stream_name":"stdout","time":478.748878666,"data":"   \"steps\": 4,\n"}
+,{"stream_name":"stdout","time":478.748881136,"data":"   \"tokens_per_second\": 372.0,\n"}
+,{"stream_name":"stdout","time":478.748883636,"data":"   \"tokens_per_step\": 4096\n"}
+,{"stream_name":"stdout","time":478.748886076,"data":"  },\n"}
+,{"stream_name":"stdout","time":478.748890696,"data":"  \"throughput\": {\n"}
+,{"stream_name":"stdout","time":478.748893086,"data":"   \"first_step_seconds_including_compile\": 68.7807,\n"}
+,{"stream_name":"stdout","time":478.748895426,"data":"   \"steady_step_seconds_mean\": 3.651043,\n"}
+,{"stream_name":"stdout","time":478.748897746,"data":"   \"steady_step_seconds_min\": 0.998992,\n"}
+,{"stream_name":"stdout","time":478.748900046,"data":"   \"steps\": 12,\n"}
+,{"stream_name":"stdout","time":478.748902326,"data":"   \"tokens_per_second\": 1121.9,\n"}
+,{"stream_name":"stdout","time":478.748904696,"data":"   \"tokens_per_step\": 4096\n"}
+,{"stream_name":"stdout","time":478.748907016,"data":"  }\n"}
+,{"stream_name":"stdout","time":478.748909226,"data":" },\n"}
+,{"stream_name":"stdout","time":478.748911436,"data":" \"independent_seeds\": {\n"}
+,{"stream_name":"stdout","time":478.748913776,"data":"  \"aggregate_definition\": \"the tokens the ranks pushed inside the window during which all of them were stepping (each rank's compile is outside it), divided by that window: one independent seed per device, one process, one thread per device\",\n"}
+,{"stream_name":"stdout","time":478.748916476,"data":"  \"aggregate_tokens_per_second\": 15034.2,\n"}
+,{"stream_name":"stdout","time":478.748918796,"data":"  \"completed\": 8,\n"}
+,{"stream_name":"stdout","time":478.748921076,"data":"  \"per_rank\": [\n"}
+,{"stream_name":"stdout","time":478.748923346,"data":"   {\n"}
+,{"stream_name":"stdout","time":478.748925596,"data":"    \"device\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":478.748927936,"data":"    \"first_step_seconds_including_compile\": 1.0762,\n"}
+,{"stream_name":"stdout","time":478.748930316,"data":"    \"rank\": 0,\n"}
+,{"stream_name":"stdout","time":478.748932586,"data":"    \"seconds_wall\": 24.173,\n"}
+,{"stream_name":"stdout","time":478.748934916,"data":"    \"seed\": 15000,\n"}
+,{"stream_name":"stdout","time":478.748937226,"data":"    \"steady_finished\": 654.346847,\n"}
+,{"stream_name":"stdout","time":478.748939576,"data":"    \"steady_started\": 631.313993,\n"}
+,{"stream_name":"stdout","time":478.748941916,"data":"    \"steady_step_seconds_mean\": 2.091075,\n"}
+,{"stream_name":"stdout","time":478.748944386,"data":"    \"steady_step_seconds_min\": 1.362959,\n"}
+,{"stream_name":"stdout","time":478.748946866,"data":"    \"steady_steps\": 11,\n"}
+,{"stream_name":"stdout","time":478.748949206,"data":"    \"steps\": 12,\n"}
+,{"stream_name":"stdout","time":478.748951626,"data":"    \"thread_device_after\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":478.748954216,"data":"    \"thread_device_before\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":478.748956556,"data":"    \"tokens_per_second\": 1958.8,\n"}
+,{"stream_name":"stdout","time":478.748958896,"data":"    \"tokens_per_step\": 4096\n"}
+,{"stream_name":"stdout","time":478.748961266,"data":"   },\n"}
+,{"stream_name":"stdout","time":478.748963666,"data":"   {\n"}
+,{"stream_name":"stdout","time":478.748965896,"data":"    \"device\": \"xla:1\",\n"}
+,{"stream_name":"stdout","time":478.748968236,"data":"    \"first_step_seconds_including_compile\": 1.1073,\n"}
+,{"stream_name":"stdout","time":478.748970686,"data":"    \"rank\": 1,\n"}
+,{"stream_name":"stdout","time":478.748972956,"data":"    \"seconds_wall\": 31.907,\n"}
+,{"stream_name":"stdout","time":478.748975276,"data":"    \"seed\": 15001,\n"}
+,{"stream_name":"stdout","time":478.748977596,"data":"    \"steady_finished\": 654.623656,\n"}
+,{"stream_name":"stdout","time":478.748979916,"data":"    \"steady_started\": 631.313831,\n"}
+,{"stream_name":"stdout","time":478.748982636,"data":"    \"steady_step_seconds_mean\": 2.11501,\n"}
+,{"stream_name":"stdout","time":478.748987466,"data":"    \"steady_step_seconds_min\": 1.411356,\n"}
+,{"stream_name":"stdout","time":478.748996846,"data":"    \"steady_steps\": 11,\n"}
+,{"stream_name":"stdout","time":478.748999156,"data":"    \"steps\": 12,\n"}
+,{"stream_name":"stdout","time":478.749001466,"data":"    \"thread_device_after\": \"xla:1\",\n"}
+,{"stream_name":"stdout","time":478.749004246,"data":"    \"thread_device_before\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":478.749007206,"data":"    \"tokens_per_second\": 1936.6,\n"}
+,{"stream_name":"stdout","time":478.749009646,"data":"    \"tokens_per_step\": 4096\n"}
+,{"stream_name":"stdout","time":478.749012106,"data":"   },\n"}
+,{"stream_name":"stdout","time":478.749014316,"data":"   {\n"}
+,{"stream_name":"stdout","time":478.749016526,"data":"    \"device\": \"xla:2\",\n"}
+,{"stream_name":"stdout","time":478.749018846,"data":"    \"first_step_seconds_including_compile\": 1.3232,\n"}
+,{"stream_name":"stdout","time":478.749021136,"data":"    \"rank\": 2,\n"}
+,{"stream_name":"stdout","time":478.749023376,"data":"    \"seconds_wall\": 25.491,\n"}
+,{"stream_name":"stdout","time":478.749026386,"data":"    \"seed\": 15002,\n"}
+,{"stream_name":"stdout","time":478.749028886,"data":"    \"steady_finished\": 655.258359,\n"}
+,{"stream_name":"stdout","time":478.749031346,"data":"    \"steady_started\": 631.31404,\n"}
+,{"stream_name":"stdout","time":478.749033666,"data":"    \"steady_step_seconds_mean\": 2.174142,\n"}
+,{"stream_name":"stdout","time":478.749035996,"data":"    \"steady_step_seconds_min\": 1.78182,\n"}
+,{"stream_name":"stdout","time":478.749038626,"data":"    \"steady_steps\": 11,\n"}
+,{"stream_name":"stdout","time":478.749041016,"data":"    \"steps\": 12,\n"}
+,{"stream_name":"stdout","time":478.749043306,"data":"    \"thread_device_after\": \"xla:2\",\n"}
+,{"stream_name":"stdout","time":478.749045656,"data":"    \"thread_device_before\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":478.749047986,"data":"    \"tokens_per_second\": 1884.0,\n"}
+,{"stream_name":"stdout","time":478.749050636,"data":"    \"tokens_per_step\": 4096\n"}
+,{"stream_name":"stdout","time":478.749052936,"data":"   },\n"}
+,{"stream_name":"stdout","time":478.749055176,"data":"   {\n"}
+,{"stream_name":"stdout","time":478.749057396,"data":"    \"device\": \"xla:3\",\n"}
+,{"stream_name":"stdout","time":478.749059686,"data":"    \"first_step_seconds_including_compile\": 1.1704,\n"}
+,{"stream_name":"stdout","time":478.749062026,"data":"    \"rank\": 3,\n"}
+,{"stream_name":"stdout","time":478.749064376,"data":"    \"seconds_wall\": 26.579,\n"}
+,{"stream_name":"stdout","time":478.749066666,"data":"    \"seed\": 15003,\n"}
+,{"stream_name":"stdout","time":478.749069346,"data":"    \"steady_finished\": 653.918277,\n"}
+,{"stream_name":"stdout","time":478.749071646,"data":"    \"steady_started\": 631.313918,\n"}
+,{"stream_name":"stdout","time":478.749073956,"data":"    \"steady_step_seconds_mean\": 2.052111,\n"}
+,{"stream_name":"stdout","time":478.749076256,"data":"    \"steady_step_seconds_min\": 1.28892,\n"}
+,{"stream_name":"stdout","time":478.749078576,"data":"    \"steady_steps\": 11,\n"}
+,{"stream_name":"stdout","time":478.749080896,"data":"    \"steps\": 12,\n"}
+,{"stream_name":"stdout","time":478.749083176,"data":"    \"thread_device_after\": \"xla:3\",\n"}
+,{"stream_name":"stdout","time":478.749085576,"data":"    \"thread_device_before\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":478.749088286,"data":"    \"tokens_per_second\": 1996.0,\n"}
+,{"stream_name":"stdout","time":478.749094096,"data":"    \"tokens_per_step\": 4096\n"}
+,{"stream_name":"stdout","time":478.749096476,"data":"   },\n"}
+,{"stream_name":"stdout","time":478.749098706,"data":"   {\n"}
+,{"stream_name":"stdout","time":478.749100926,"data":"    \"device\": \"xla:4\",\n"}
+,{"stream_name":"stdout","time":478.749103236,"data":"    \"first_step_seconds_including_compile\": 1.3993,\n"}
+,{"stream_name":"stdout","time":478.749105536,"data":"    \"rank\": 4,\n"}
+,{"stream_name":"stdout","time":478.749108186,"data":"    \"seconds_wall\": 25.375,\n"}
+,{"stream_name":"stdout","time":478.749110636,"data":"    \"seed\": 15004,\n"}
+,{"stream_name":"stdout","time":478.749113106,"data":"    \"steady_finished\": 655.288995,\n"}
+,{"stream_name":"stdout","time":478.749115406,"data":"    \"steady_started\": 631.313733,\n"}
+,{"stream_name":"stdout","time":478.749117696,"data":"    \"steady_step_seconds_mean\": 2.176928,\n"}
+,{"stream_name":"stdout","time":478.749119996,"data":"    \"steady_step_seconds_min\": 1.648222,\n"}
+,{"stream_name":"stdout","time":478.749122426,"data":"    \"steady_steps\": 11,\n"}
+,{"stream_name":"stdout","time":478.749124856,"data":"    \"steps\": 12,\n"}
+,{"stream_name":"stdout","time":478.749127116,"data":"    \"thread_device_after\": \"xla:4\",\n"}
+,{"stream_name":"stdout","time":478.749130236,"data":"    \"thread_device_before\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":478.749132566,"data":"    \"tokens_per_second\": 1881.6,\n"}
+,{"stream_name":"stdout","time":478.749134856,"data":"    \"tokens_per_step\": 4096\n"}
+,{"stream_name":"stdout","time":478.749137156,"data":"   },\n"}
+,{"stream_name":"stdout","time":478.749139386,"data":"   {\n"}
+,{"stream_name":"stdout","time":478.749141726,"data":"    \"device\": \"xla:5\",\n"}
+,{"stream_name":"stdout","time":478.749144026,"data":"    \"first_step_seconds_including_compile\": 1.2584,\n"}
+,{"stream_name":"stdout","time":478.749146726,"data":"    \"rank\": 5,\n"}
+,{"stream_name":"stdout","time":478.749149476,"data":"    \"seconds_wall\": 26.335,\n"}
+,{"stream_name":"stdout","time":478.749151756,"data":"    \"seed\": 15005,\n"}
+,{"stream_name":"stdout","time":478.749154016,"data":"    \"steady_finished\": 654.891248,\n"}
+,{"stream_name":"stdout","time":478.749156336,"data":"    \"steady_started\": 631.313766,\n"}
+,{"stream_name":"stdout","time":478.749158626,"data":"    \"steady_step_seconds_mean\": 2.140346,\n"}
+,{"stream_name":"stdout","time":478.749176586,"data":"    \"steady_step_seconds_min\": 1.357608,\n"}
+,{"stream_name":"stdout","time":478.749181496,"data":"    \"steady_steps\": 11,\n"}
+,{"stream_name":"stdout","time":478.749183846,"data":"    \"steps\": 12,\n"}
+,{"stream_name":"stdout","time":478.749186516,"data":"    \"thread_device_after\": \"xla:5\",\n"}
+,{"stream_name":"stdout","time":478.749188856,"data":"    \"thread_device_before\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":478.749191166,"data":"    \"tokens_per_second\": 1913.7,\n"}
+,{"stream_name":"stdout","time":478.749193466,"data":"    \"tokens_per_step\": 4096\n"}
+,{"stream_name":"stdout","time":478.749195776,"data":"   },\n"}
+,{"stream_name":"stdout","time":478.749198006,"data":"   {\n"}
+,{"stream_name":"stdout","time":478.749200206,"data":"    \"device\": \"xla:6\",\n"}
+,{"stream_name":"stdout","time":478.749202706,"data":"    \"first_step_seconds_including_compile\": 1.208,\n"}
+,{"stream_name":"stdout","time":478.749205496,"data":"    \"rank\": 6,\n"}
+,{"stream_name":"stdout","time":478.749207926,"data":"    \"seconds_wall\": 25.234,\n"}
+,{"stream_name":"stdout","time":478.749210416,"data":"    \"seed\": 15006,\n"}
+,{"stream_name":"stdout","time":478.749215896,"data":"    \"steady_finished\": 654.545645,\n"}
+,{"stream_name":"stdout","time":478.749218276,"data":"    \"steady_started\": 631.314215,\n"}
+,{"stream_name":"stdout","time":478.749220596,"data":"    \"steady_step_seconds_mean\": 2.109098,\n"}
+,{"stream_name":"stdout","time":478.749222896,"data":"    \"steady_step_seconds_min\": 1.244946,\n"}
+,{"stream_name":"stdout","time":478.749225206,"data":"    \"steady_steps\": 11,\n"}
+,{"stream_name":"stdout","time":478.749227746,"data":"    \"steps\": 12,\n"}
+,{"stream_name":"stdout","time":478.749230016,"data":"    \"thread_device_after\": \"xla:6\",\n"}
+,{"stream_name":"stdout","time":478.749232326,"data":"    \"thread_device_before\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":478.749234646,"data":"    \"tokens_per_second\": 1942.1,\n"}
+,{"stream_name":"stdout","time":478.749236926,"data":"    \"tokens_per_step\": 4096\n"}
+,{"stream_name":"stdout","time":478.749239256,"data":"   },\n"}
+,{"stream_name":"stdout","time":478.749241496,"data":"   {\n"}
+,{"stream_name":"stdout","time":478.749243736,"data":"    \"device\": \"xla:7\",\n"}
+,{"stream_name":"stdout","time":478.749246226,"data":"    \"first_step_seconds_including_compile\": 1.1514,\n"}
+,{"stream_name":"stdout","time":478.749248556,"data":"    \"rank\": 7,\n"}
+,{"stream_name":"stdout","time":478.749250926,"data":"    \"seconds_wall\": 27.374,\n"}
+,{"stream_name":"stdout","time":478.749253366,"data":"    \"seed\": 15007,\n"}
+,{"stream_name":"stdout","time":478.749256036,"data":"    \"steady_finished\": 655.114629,\n"}
+,{"stream_name":"stdout","time":478.749258356,"data":"    \"steady_started\": 631.314102,\n"}
+,{"stream_name":"stdout","time":478.749260646,"data":"    \"steady_step_seconds_mean\": 2.161135,\n"}
+,{"stream_name":"stdout","time":478.749262946,"data":"    \"steady_step_seconds_min\": 1.724705,\n"}
+,{"stream_name":"stdout","time":478.749265376,"data":"    \"steady_steps\": 11,\n"}
+,{"stream_name":"stdout","time":478.749267676,"data":"    \"steps\": 12,\n"}
+,{"stream_name":"stdout","time":478.749269946,"data":"    \"thread_device_after\": \"xla:7\",\n"}
+,{"stream_name":"stdout","time":478.749272236,"data":"    \"thread_device_before\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":478.749274536,"data":"    \"tokens_per_second\": 1895.3,\n"}
+,{"stream_name":"stdout","time":478.749276826,"data":"    \"tokens_per_step\": 4096\n"}
+,{"stream_name":"stdout","time":478.749279136,"data":"   }\n"}
+,{"stream_name":"stdout","time":478.749281376,"data":"  ],\n"}
+,{"stream_name":"stdout","time":478.749283716,"data":"  \"rank_threads\": \"each rank's thread bound to its own device before building (per_rank[i].thread_device_after; the process default it replaced is in thread_device_before)\",\n"}
+,{"stream_name":"stdout","time":478.749288176,"data":"  \"ratio_to_t4_pair\": 2.96,\n"}
+,{"stream_name":"stdout","time":478.749290626,"data":"  \"seed_note\": \"each rank's seed (15000-15007) is its input generator's; the model is constructed fresh in the rank's own thread, so the ranks are independent runs but a rank's initialisation is not reproducible from this seed (the process RNG is shared)\",\n"}
+,{"stream_name":"stdout","time":478.749293326,"data":"  \"steady_steps_per_rank\": 11,\n"}
+,{"stream_name":"stdout","time":478.749295846,"data":"  \"steady_tokens\": 360448,\n"}
+,{"stream_name":"stdout","time":478.749298166,"data":"  \"steady_window_seconds\": 23.975,\n"}
+,{"stream_name":"stdout","time":478.749300536,"data":"  \"taken_in\": \"single-process-thread-per-device\",\n"}
+,{"stream_name":"stdout","time":478.749302946,"data":"  \"wall_seconds\": 46.229,\n"}
+,{"stream_name":"stdout","time":478.749307566,"data":"  \"wall_tokens_per_second_including_startup\": 8505.8,\n"}
+,{"stream_name":"stdout","time":478.749309986,"data":"  \"workers\": 8\n"}
+,{"stream_name":"stdout","time":478.749312246,"data":" },\n"}
+,{"stream_name":"stdout","time":478.749314496,"data":" \"kind\": \"tpu-v0-session-probe\",\n"}
+,{"stream_name":"stdout","time":478.749317046,"data":" \"record_type\": \"hardware-probe\",\n"}
+,{"stream_name":"stdout","time":478.749319616,"data":" \"steps\": 12,\n"}
+,{"stream_name":"stdout","time":478.749322116,"data":" \"what_this_is\": \"A hardware probe of the declared 285M session shape on a TPU. No session trained and nothing here is a Gate-4 number: it reports throughput per core, the cost of a rebuild (a mutation or probed candidate), per-core memory, and the aggregate rate of one independent seed per core.\"\n"}
+,{"stream_name":"stdout","time":478.749324886,"data":"}\n"}
+,{"stream_name":"stdout","time":478.749327346,"data":"\n"}
+,{"stream_name":"stdout","time":478.749329656,"data":"wrote /kaggle/working/tpu-probe.json\n"}
+,{"stream_name":"stderr","time":494.10944256,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
+,{"stream_name":"stderr","time":496.345953119,"data":"[NbConvertApp] Writing 280524 bytes to __results__.html\n"}
+]
