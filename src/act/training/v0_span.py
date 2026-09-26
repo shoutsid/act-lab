@@ -46,7 +46,17 @@ def sample_windows(
     own stream identically. Windows may span story boundaries (token 0),
     matching the real-LM training script's window semantics.
     """
-    high = max(1, stream.shape[0] - width)
+    if stream.ndim != 1:
+        raise ValueError("token stream must be flat")
+    if count < 1:
+        raise ValueError("window count must be positive")
+    if width < 1 or width > stream.shape[0]:
+        raise ValueError(
+            f"window width must be between 1 and stream length ({stream.shape[0]})"
+        )
+    # There are N - width + 1 valid starts; torch.randint's upper bound is
+    # exclusive, so include the final legal start by passing that count.
+    high = stream.shape[0] - width + 1
     starts = torch.randint(0, high, (count,), generator=generator).tolist()
     windows = np.stack([stream[s : s + width] for s in starts]).astype(np.int64)
     return torch.from_numpy(windows)

@@ -91,6 +91,30 @@ def test_sample_windows_shapes_and_values(tmp_path: Path) -> None:
         assert (windows[row] >= 0).all() and (windows[row] < 64).all()
 
 
+def test_sample_windows_can_draw_the_final_legal_start() -> None:
+    stream = np.arange(5, dtype=np.uint16)
+    generator = torch.Generator().manual_seed(19)
+
+    windows = sample_windows(stream, generator, count=256, width=3)
+
+    assert windows.shape == (256, 3)
+    assert windows.min() >= 0
+    assert windows.max() <= 4
+    # Start 2 is the final valid position (N - width), which a range ending at
+    # N - width would incorrectly exclude.
+    assert any(torch.equal(window, torch.tensor([2, 3, 4])) for window in windows)
+
+
+def test_sample_windows_rejects_invalid_count_and_width() -> None:
+    stream = np.arange(5, dtype=np.uint16)
+    generator = torch.Generator().manual_seed(3)
+
+    with pytest.raises(ValueError, match="count must be positive"):
+        sample_windows(stream, generator, count=0, width=3)
+    with pytest.raises(ValueError, match="window width"):
+        sample_windows(stream, generator, count=1, width=6)
+
+
 def test_window_sampler_rejects_vocab_overflow(tmp_path: Path) -> None:
     stream_path = _write_stream(tmp_path / "stream.npy", vocab=64)
     with pytest.raises(ValueError, match="vocab_size"):
