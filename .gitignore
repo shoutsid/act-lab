@@ -59,8 +59,11 @@ artifacts/tpu-probe/*
 artifacts/tpu-probe/output/*
 # Named by the kernel version that produced it, not "the latest record": a fetch lands in
 # this directory and would otherwise overwrite the evidence under it. Each record is added
-# here when the journal cites its numbers, which is what makes them re-readable.
+# here when the journal cites its numbers, which is what makes them re-readable. v5 is the
+# run whose child process fixed v4's runtime precondition and then died in libtpu's
+# topology; the two together are what the aggregate measurement's redesign reads from.
 !artifacts/tpu-probe/output/tpu-probe-v4.json
+!artifacts/tpu-probe/output/tpu-probe-v5.json
 # The held-out stream the real-LM proof is scored on (2026-09-25). A perplexity
 # with nothing beside it proves nothing - 5.5 could be good or terrible - so the
 # record carries reference baselines, and those are recomputed from this file.

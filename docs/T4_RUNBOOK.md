@@ -934,8 +934,39 @@ Both drivers take `--save <dir>` now. Both fetch the *log* beside the files, bec
 it lands - the TPU probe runs `tpu_probe.evaluate` on the record it just kept - because a
 verdict that needs a second hand-run command is one that can be left unread. Then check
 `git status`: if what landed is evidence a document quotes, it belongs in the tree under
-the name of the run that produced it (`artifacts/tpu-probe/output/tpu-probe-v4.json`),
+the name of the run that produced it (`artifacts/tpu-probe/output/tpu-probe-v5.json`),
 not under the "latest record" name the next fetch will overwrite.
+
+### Pushing the probe waits for a gap in the campaign, and the wait is a script
+
+The TPU probe republishes the code dataset, and a session kernel's body and its mounted
+`src/` have to be one revision - so `push_tpu_probe.py` refuses to publish while a campaign
+session is live (exit 5). Measured 2026-09-26: the v6 push was refused with `act-t4-session`
+`RUNNING`, which is the guard working, and it leaves the push waiting for a gap that is a
+*platform* event rather than something to watch for by hand:
+
+```bash
+setsid nohup bash scripts/push_tpu_probe_when_idle.sh > /tmp/tpu-probe-push-watch.log 2>&1 &
+```
+
+It polls the guard's own `live_campaign_kernel()` rather than a second copy of that
+question, publishes nothing itself, and on a gap runs the push and arms this section's
+fetch watcher. Bounded at 144 polls of 300 s, so a queue that holds the driver's lock for
+hours ends the wait rather than hanging in it.
+
+It is armed **after the probe's own change is committed**, because the dataset ships HEAD
+rather than the working tree - `ensure_code_dataset` prints exactly that when the tree is
+dirty ("HEAD is what ships") - so a fix left uncommitted is a fix the kernel does not run.
+
+v6's change to the probe is one property, and it is the one an in-process aggregate cannot
+do without: each rank's thread **binds its own chip** (`torch_xla.device(rank)`) before it
+builds anything. `xm.mark_step()` is `torch_xla.sync()` in torch_xla 2.8 and marks the step
+on the *calling thread's* device; a thread that has never set one falls back to the process
+default, which every earlier phase of the probe leaves at `xla:0`. Unbound, all eight ranks
+would step chip 0, seven chips would compile graphs nobody executes, and the "steady step"
+would be graph construction - a fast, plausible, wrong number. The reports carry
+`thread_device_before`/`thread_device_after`, and the parent refuses a rank whose thread is
+not on the device it was given.
 
 ### Is the campaign alive? (one command, read from the durable side)
 

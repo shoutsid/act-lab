@@ -1,0 +1,73 @@
+{
+ "bf16": {
+  "parameters": 285336576,
+  "rebuild": {
+   "expert_count_after": 9,
+   "expert_id": "L11E8",
+   "experts_added": 1,
+   "first_step_seconds_including_compile": 28.7721,
+   "rebuilt_layer": "L11",
+   "steady_step_seconds_mean": 10.378804,
+   "steady_step_seconds_min": 0.989156,
+   "steps": 4,
+   "tokens_per_second": 394.7,
+   "tokens_per_step": 4096
+  },
+  "throughput": {
+   "first_step_seconds_including_compile": 65.0956,
+   "steady_step_seconds_mean": 3.615295,
+   "steady_step_seconds_min": 0.985439,
+   "steps": 12,
+   "tokens_per_second": 1133.0,
+   "tokens_per_step": 4096
+  }
+ },
+ "completed": [
+  "bf16.throughput",
+  "bf16.rebuild",
+  "fp32.throughput",
+  "fp32.rebuild"
+ ],
+ "declared_pair_tokens_per_second_on_t4": 5083.4,
+ "device": {
+  "device_kind": "xla:0",
+  "memory_bytes_limit": null,
+  "memory_bytes_used": null,
+  "pytorch": "2.8.0+cpu",
+  "torch_xla": "2.8.0",
+  "xla_devices": 8
+ },
+ "errors": [
+  {
+   "error": "RuntimeError: the seed-parallel child exited 1 without a record: \nu_probe.py\", line 781, in run_seeds_only\n    block = measure_independent_seeds(xmp=xmp, directory=directory, **request)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/tpu_probe.py\", line 842, in measure_independent_seeds\n    xmp.spawn(\n  File \"/usr/local/lib/python3.12/site-packages/torch_xla/distributed/xla_multiprocessing.py\", line 43, in spawn\n    return pjrt.spawn(fn, nprocs, start_method, args)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/torch_xla/_internal/pjrt.py\", line 213, in spawn\n    run_multiprocess(spawn_fn, start_method=start_method)\n  File \"/usr/local/lib/python3.12/site-packages/torch_xla/_internal/pjrt.py\", line 169, in run_multiprocess\n    replica_results = list(\n                      ^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/torch_xla/_internal/pjrt.py\", line 171, in <genexpr>\n    result.items() for result in process_results))\n                                 ^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/concurrent/futures/process.py\", line 636, in _chain_from_iterable_of_lists\n    for element in iterable:\n                   ^^^^^^^^\n  File \"/usr/local/lib/python3.12/concurrent/futures/_base.py\", line 619, in result_iterator\n    yield _result_or_cancel(fs.pop())\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/concurrent/futures/_base.py\", line 317, in _result_or_cancel\n    return fut.result(timeout)\n           ^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/concurrent/futures/_base.py\", line 456, in result\n    return self.__get_result()\n           ^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/concurrent/futures/_base.py\", line 401, in __get_result\n    raise self._exception\nRuntimeError: Bad StatusOr access: UNKNOWN: TPU initialization failed: Invalid --2a886c8_slice_builder_worker_addresses specified. Expected 8 worker addresses, got 1.\n",
+   "phase": "independent_seeds"
+  }
+ ],
+ "fp32": {
+  "parameters": 285336576,
+  "rebuild": {
+   "expert_count_after": 9,
+   "expert_id": "L11E8",
+   "experts_added": 1,
+   "first_step_seconds_including_compile": 30.0727,
+   "rebuilt_layer": "L11",
+   "steady_step_seconds_mean": 11.433596,
+   "steady_step_seconds_min": 1.019108,
+   "steps": 4,
+   "tokens_per_second": 358.2,
+   "tokens_per_step": 4096
+  },
+  "throughput": {
+   "first_step_seconds_including_compile": 71.8883,
+   "steady_step_seconds_mean": 3.832524,
+   "steady_step_seconds_min": 1.015185,
+   "steps": 12,
+   "tokens_per_second": 1068.7,
+   "tokens_per_step": 4096
+  }
+ },
+ "kind": "tpu-v0-session-probe",
+ "record_type": "hardware-probe",
+ "steps": 12,
+ "what_this_is": "A hardware probe of the declared 285M session shape on a TPU. No session trained and nothing here is a Gate-4 number: it reports throughput per core, the cost of a rebuild (a mutation or probed candidate), per-core memory, and the aggregate rate of one independent seed per core."
+}

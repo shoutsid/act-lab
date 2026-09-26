@@ -46,39 +46,68 @@ aggregate, and the fp32 diagnostic last. **Each measurement is contained**
 (``_run_phase``): one that cannot run is recorded as an error, stays out of ``completed``,
 and does not stop the measurements after it. A probe is queued for hours and runs once, so
 "the record holds whatever the hardware gave up before it broke" is the requirement, not a
-nicety. **The eight-worker aggregate runs in its own process** (``seeds_in_child``), because
-torch_xla refuses ``xmp.spawn`` once the XLA runtime is initialized -
-``torch_xla._internal.pjrt.run_multiprocess`` raises ``RuntimeError('Runtime is already
-initialized. Do not use the XLA device before calling xmp.spawn.')`` when
-``_XLAC._xla_runtime_is_initialized()`` is true - and every other measurement here, plus
-``_device_report`` before them, calls ``xm.xla_device()``.
+nicety. **The eight-worker aggregate rides the single-process path** (``_seed_rank``): one
+thread per device in the process that is already running, with an explicit ``xla:<rank>``
+per rank, because that is the only path this hardware has ever been measured on - and the
+process-based one has now failed three times for three different reasons.
 
 The costs of ignoring them are committed history, one run each: the 2026-09-21 run raised
 148 s in and wrote no record at all (6.5 h of queue, no number). The 2026-09-22 run saved
 its first measurement, then died inside **fp32's** rebuild - a dtype the decision never
-reads - losing bf16, the aggregate, and its own exit status. The *next* run (kernel v4,
-fetched 2026-09-25) completed four of five phases and lost the aggregate to that runtime
-check: bf16, both rebuilds and fp32 all measured, ``independent_seeds`` raised, and with it
-the only measurement the port headline is read from. The phase that decides is the phase
-that needs a process nothing has touched yet.
+reads - losing bf16, the aggregate, and its own exit status. The phase that decides is the
+one that has cost the most attempts, and each attempt died one layer further in than the
+last: ``nprocs=8`` was refused by torch_xla 2.8 (the aggregate never spawned); then
+``xmp.spawn`` refused the process it was called from, because
+``torch_xla._internal.pjrt.run_multiprocess`` opens with ``RuntimeError('Runtime is already
+initialized. Do not use the XLA device before calling xmp.spawn.')`` when
+``_XLAC._xla_runtime_is_initialized()`` is true, and ``_device_report`` initializes it
+before the first phase runs (kernel v4, fetched 2026-09-25). Kernel **v5** (fetched
+2026-09-26) fixed exactly that by handing the aggregate to a child process that had touched
+nothing; the child ran, and the failure moved one layer down into libtpu's topology -
+``RuntimeError: Bad StatusOr access: UNKNOWN: TPU initialization failed: Invalid
+--2a886c8_slice_builder_worker_addresses specified. Expected 8 worker addresses, got 1.``
+The parent's own client initializes with ``tpu_process_addresses="local"`` (the kernel
+log's E0000 line), while ``tpu.configure_topology``'s ``os.environ.setdefault`` calls handed
+the spawned ranks a process grid that wanted eight worker addresses and supplied one - and
+neither input to that arithmetic, the platform's topology environment nor the PCI chip
+count, was in any record the probe had written. They are recorded now
+(``TOPOLOGY_ENV_KEYS``, ``_tpu_report``), which is what a fourth attempt would need to be
+diagnosed from the artifact rather than from a kernel log.
+
+So the aggregate is taken where the hardware has already been measured doing this work: one
+process, one thread per device, one independent seed per device, and a barrier that releases
+only once every rank has compiled. Each rank's thread also binds itself to its own chip
+before it builds anything (``bind_thread_device``), because a step marker is not a device
+argument: ``xm.mark_step()`` is ``torch_xla.sync()`` in torch_xla 2.8, and that marks a step
+on the **calling thread's** current device - which a fresh thread has never chosen, so it
+falls back to the process default that every earlier phase left at ``xla:0``. Without the
+binding all eight ranks would mark chip 0's steps, seven of the eight chips would compile
+graphs nobody executes, and the "steady step" would be graph construction. It is the call
+torch_xla's own one-process/thread-per-device launcher makes at the top of each thread
+(``_run_thread_per_device``), and the ranks' reports carry both sides of it, so the parent
+checks the binding rather than trusting it. The number is then the tokens the ranks pushed
+inside a window in which all of them were stepping, and the record carries each rank's
+device, seed, window and compile cost - so the claim "one seed per chip" is checkable from
+the record rather than assumed from the spawn's behaviour. ``xmp.spawn``, its child process and the
+whole process boundary (``--seeds-only``, ``seeds_in_child``) are retired with it: the
+thread-per-device shape needs no untouched runtime, which is the only reason the boundary
+existed.
 
     PJRT_DEVICE=TPU python scripts/tpu_probe.py --steps 12 --workers 8
-
-``--seeds-only`` is that untouched process, run by the parent rather than by hand: it takes
-the aggregate alone and writes a record carrying just that block. It is not a mode to
-invoke on a fresh machine, because what makes it work is that *nothing before it ran*.
 """
 
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
+import functools
 import json
 import math
 import os
 import statistics
-import subprocess
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -454,19 +483,91 @@ def _run_phase(
     return name in record["completed"]
 
 
+#: The environment keys recorded beside the hardware: what the *platform* told the runtime
+#: about the TPU's topology. The process-based aggregate's v5 failure is what puts them here
+#: - ``configure_topology`` builds its process grid and its worker-address list out of these
+#: values with ``os.environ.setdefault``, so a value the platform already set wins over the
+#: one torch_xla computes, and "Expected 8 worker addresses, got 1" is that disagreement.
+#: Neither the values nor the PCI chip count (``_tpu_report``) was in any earlier record.
+TOPOLOGY_ENV_KEYS = (
+    "PJRT_DEVICE",
+    "PJRT_LOCAL_PROCESS_RANK",
+    "PJRT_LOCAL_PROCESS_COUNT",
+    "PJRT_SELECT_DEFAULT_DEVICE",
+    "TPU_ACCELERATOR_TYPE",
+    "TPU_PROCESS_BOUNDS",
+    "TPU_CHIPS_PER_PROCESS_BOUNDS",
+    "TPU_CHIPS_PER_HOST_BOUNDS",
+    "TPU_HOST_BOUNDS",
+    "TPU_PROCESS_ADDRESSES",
+    "TPU_PROCESS_PORT",
+    "TPU_WORKER_HOSTNAMES",
+    "TPU_WORKER_ID",
+    "TPU_NAME",
+    "TPU_VISIBLE_CHIPS",
+    "TPU_SKIP_MDS_QUERY",
+    "CLOUD_TPU_TASK_ID",
+    "XRT_TPU_CONFIG",
+    "XLA_TPU_MAX_INFLIGHT_COMPUTATIONS",
+    "LIBTPU_INIT_ARGS",
+    "ALLOW_MULTIPLE_LIBTPU_LOAD",
+    "TPU_LIBRARY_PATH",
+    "X_NUM_DEVICES",
+)
+
+
+def environment_report() -> dict[str, str | None]:
+    """The platform's TPU topology environment, with unset keys kept as ``None``.
+
+    ``None`` rather than an omitted key on purpose: a reader has to be able to tell "the
+    platform did not set it" from "this probe did not collect it", and the difference is
+    exactly what a ``setdefault`` that never fired hides.
+    """
+    return {key: os.environ.get(key) for key in TOPOLOGY_ENV_KEYS}
+
+
+def _tpu_report() -> dict[str, Any]:
+    """What the platform says this TPU *is*: chip count, and the metadata block.
+
+    Both numbers the process-based aggregate's failure is read through, and neither was
+    recorded before v5: ``tpu.num_local_processes()`` is ``min(pci chips, process bounds)``,
+    so a PCI scan that finds no chip (or a bounds value the platform set) is the difference
+    between eight spawned ranks and one - and ``configure_topology`` reads the metadata
+    block for the accelerator type it derives the process grid from. Failures are recorded
+    as their own names rather than raised: this is diagnostics for a decision, and a probe
+    that cannot read the metadata should still measure the hardware.
+    """
+    try:
+        from torch_xla._internal import tpu as tpu_internal  # noqa: PLC0415
+    except Exception as exc:  # pragma: no cover - not every runtime has the module
+        return {"unavailable": f"{type(exc).__name__}: {exc}"}
+    report: dict[str, Any] = {}
+    try:
+        report["pci_chips"] = tpu_internal.num_available_chips()
+    except Exception as exc:  # pragma: no cover - the scan is platform-specific
+        report["pci_chips"] = f"{type(exc).__name__}: {exc}"
+    try:
+        report["metadata"] = {str(k): str(v) for k, v in tpu_internal.get_tpu_env().items()}
+    except Exception as exc:  # pragma: no cover - the metadata server is platform-specific
+        report["metadata"] = f"{type(exc).__name__}: {exc}"
+    return report
+
+
 def _device_report(torch, xm, xr) -> dict[str, Any]:
-    """What the runtime actually gave us: device count, type, and per-core memory."""
+    """What the runtime actually gave us: device count, type, per-core memory, environment."""
     devices = xm.get_xla_supported_devices()
     device = xm.xla_device()
     report: dict[str, Any] = {
         "pytorch": torch.__version__,
         "xla_devices": len(devices),
         "device_kind": str(device),
+        "environment": environment_report(),
     }
     try:
         import torch_xla  # noqa: PLC0415
 
         report["torch_xla"] = torch_xla.__version__
+        report["tpu"] = _tpu_report()
     except Exception:  # pragma: no cover - version metadata only
         report["torch_xla"] = "unknown"
     try:
@@ -479,12 +580,18 @@ def _device_report(torch, xm, xr) -> dict[str, Any]:
     return report
 
 
-def _build_declared(torch, xm, dtype: str):
-    """The pre-registered 285M model and an optimizer over it, on the XLA device."""
+def _build_declared(torch, xm, dtype: str, *, device=None, config=None):
+    """The pre-registered 285M model and an optimizer over it, on an XLA device.
+
+    ``device`` is explicit for a caller that has several in play - the aggregate's ranks -
+    and defaults to the process's device, which is what the single-device phases use.
+    ``config`` is the declared session unless a caller names another one: the aggregate's
+    ranks each carry their own seed, and that is the one place a caller does.
+    """
     from act.model.factory import v0_moe_model_from_genome
     from act.training.v0_session import _genome_from_config, declared_session_config
 
-    config = declared_session_config()
+    config = config or declared_session_config()
     genome = _genome_from_config(config)
     model = v0_moe_model_from_genome(genome)
     if dtype == "bf16":
@@ -493,15 +600,34 @@ def _build_declared(torch, xm, dtype: str):
         model = model.to(torch.float32)
     else:  # pragma: no cover - guarded by argparse
         raise ValueError(dtype)
-    device = xm.xla_device()
+    if device is None:
+        device = xm.xla_device()
     model = model.to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
     total = sum(p.numel() for p in model.parameters())
     return config, genome, model, optimizer, total
 
 
-def _measure(torch, xm, model, optimizer, config, *, steps: int) -> dict[str, Any]:
-    """Time one short step loop, with the first (compiling) step reported separately."""
+def _measure(
+    torch,
+    xm,
+    model,
+    optimizer,
+    config,
+    *,
+    steps: int,
+    device=None,
+    after_first: Callable[[], None] | None = None,
+) -> dict[str, Any]:
+    """Time one short step loop, with the first (compiling) step reported separately.
+
+    ``after_first`` runs once, after the first step has been executed - the hook the
+    aggregate's ranks use to meet at their barrier, which is what keeps every rank's compile
+    out of the window the aggregate is measured over. The step *times* are not affected by
+    it: they are read from the same clock either way.
+    """
+    if device is None:
+        device = xm.xla_device()
     generator = torch.Generator().manual_seed(config.seed)
     batch = (config.batch_size, config.context_size)
     tokens_per_step = config.batch_size * config.context_size
@@ -509,7 +635,7 @@ def _measure(torch, xm, model, optimizer, config, *, steps: int) -> dict[str, An
     for step in range(steps):
         inputs = torch.randint(
             0, config.vocab_size, batch, generator=generator, dtype=torch.long
-        ).to(xm.xla_device())
+        ).to(device)
         start = time.perf_counter()
         optimizer.zero_grad(set_to_none=True)
         loss = model.loss(inputs)
@@ -519,6 +645,8 @@ def _measure(torch, xm, model, optimizer, config, *, steps: int) -> dict[str, An
         elapsed = time.perf_counter() - start
         step_seconds.append(elapsed)
         del loss, inputs
+        if step == 0 and after_first is not None:
+            after_first()
     steady = step_seconds[1:]
     steady_mean = statistics.fmean(steady) if steady else float("nan")
     return {
@@ -599,141 +727,181 @@ def _rebuild_cost(torch, xm, config, genome, *, dtype: str, steps: int) -> dict[
     return measured
 
 
-def _worker(rank: int, steps: int, dtype: str, directory: str) -> None:
-    """One independent seed on one core: no collectives, no shared state.
+def _seed_rank(
+    *,
+    rank: int,
+    device,
+    config: Any,
+    steps: int,
+    dtype: str,
+    directory: str | Path,
+    ready: threading.Barrier,
+    torch: Any,
+    torch_xla: Any,
+    xm: Any,
+) -> None:
+    """One independent seed on one chip: build, compile, then step with the other ranks.
 
-    This is the pattern that makes a TPU useful here. The campaign's arms and seeds are
-    independent, so 8 cores become 8 concurrent *seeds* rather than one data-parallel run -
-    which needs no AllReduce, keeps each core's graph sequential, and multiplies the
-    weekly throughput by the core count instead of by some scaling efficiency.
+    The pattern that makes a TPU useful here is unchanged - the campaign's arms and seeds
+    are independent, so eight chips become eight concurrent *seeds* rather than one
+    data-parallel run, which needs no AllReduce, keeps each chip's graph sequential, and
+    multiplies the weekly throughput by the chip count instead of by some scaling
+    efficiency. What changed on 2026-09-26 is who runs the ranks: this process, one thread
+    each, instead of ``xmp.spawn``'s child processes. The rank's device is *passed in* and
+    reported back, so "one seed per chip" is a value the parent checks rather than a
+    behaviour it trusts the spawn to have had - which is the property the three failed
+    process-based attempts at this phase could not state.
 
-    ``args`` is positional because ``xmp.spawn`` takes no keyword arguments.
+    The compile is deliberately outside the measured window. ``_wait_for_ranks`` is called
+    from ``_measure``'s ``after_first`` hook, so every rank compiles its own graph first and
+    the barrier releases only once the last one has: the steady steps the aggregate counts
+    then begin for all ranks together. Without that a slow compile would sit inside the
+    fast ranks' window and the aggregate would be an artifact of which compile the host
+    scheduled first.
+
+    Before any of that, the thread binds itself to the chip this rank was given
+    (:func:`bind_thread_device`). That is not bookkeeping: the step markers this rank issues
+    inside ``_measure`` are ``torch_xla.sync()``, which acts on the calling thread's current
+    device - so a rank that skipped the binding would mark steps on the process default
+    while its tensors sat on another chip, and the window would time graph construction.
     """
-    import torch
-    import torch_xla.core.xla_model as xm
+    thread_device_before, thread_device_after = bind_thread_device(torch_xla, device)
+    _, _, model, optimizer, _ = _build_declared(
+        torch, xm, dtype, device=device, config=config
+    )
+    stamps: dict[str, float] = {}
 
-    from act.training.v0_session import declared_session_config
+    def start_steady() -> None:
+        _wait_for_ranks(ready, rank=rank)
+        stamps["steady_started"] = time.perf_counter()
 
-    results_path = Path(directory) / f"rank-{rank}.json"
-    torch.manual_seed(10_000 + rank)
-    config = declared_session_config(seed=15_000 + rank)
-    _, _, model, optimizer, _ = _build_declared(torch, xm, dtype)
     started = time.perf_counter()
-    measured = _measure(torch, xm, model, optimizer, config, steps=steps)
-    measured["rank"] = rank
-    measured["seconds_wall"] = round(time.perf_counter() - started, 3)
-    measured["seed"] = 15_000 + rank
-    results_path.write_text(
+    measured = _measure(
+        torch,
+        xm,
+        model,
+        optimizer,
+        config,
+        steps=steps,
+        device=device,
+        after_first=start_steady,
+    )
+    stamps["steady_finished"] = time.perf_counter()
+    measured.update(
+        {
+            "rank": rank,
+            "seed": config.seed,
+            "device": str(device),
+            # Both sides of the binding, recorded rather than assumed: the process default a
+            # fresh thread inherits, and the chip its step markers actually act on. The
+            # parent compares the second with ``device``, so "this rank's steps went to its
+            # own chip" is a value in the record instead of a property of the runtime.
+            "thread_device_before": thread_device_before,
+            "thread_device_after": thread_device_after,
+            "seconds_wall": round(time.perf_counter() - started, 3),
+            # The compile step is not part of the window, so the tokens the window counts
+            # are the steps after it.
+            "steady_steps": max(0, steps - 1),
+            "steady_started": round(stamps["steady_started"], 6),
+            "steady_finished": round(stamps["steady_finished"], 6),
+        }
+    )
+    rank_report_path(directory, rank).write_text(
         json.dumps(measured, sort_keys=True) + "\n", encoding="utf-8"
     )
 
 
-def spawn_arguments(
-    workers: int, steps: int, dtype: str, directory: str
+def parallel_plan(
+    workers: int, steps: int, dtype: str, directory: str | Path
 ) -> dict[str, Any]:
-    """The arguments for ``xmp.spawn``, as data so the property is testable.
+    """The aggregate's shape as data, so what each rank was told is testable.
 
-    ``nprocs`` is **None**, not the worker count. Measured 2026-09-22: torch_xla 2.8
-    refuses ``nprocs=8`` with ``ValueError: Unsupported nprocs (8). Please use nprocs=1 or
-    None (default)``, and the acceptance takes ``None`` as "one process per available
-    device". The declared worker count still governs the measurement - the ranks that ran
-    are checked against it and it is carried in the record - but it is not what the spawn
-    call is told.
+    One thread per device in *this* process, and the ordinal is the rank: the device is
+    ``xla:<rank>`` rather than a default the runtime picked, which is what lets the record
+    carry the device each seed ran on. A plan rather than a spawn call because the shape is
+    the property - eight ranks, one per device, all of them required - and a test should be
+    able to hold it without a TPU.
     """
+    if workers < 1:
+        raise ValueError(f"the aggregate needs at least one rank, not {workers}")
     return {
-        "args": (steps, dtype, directory),
-        "nprocs": None,
-        "start_method": "fork",
-        "expected_workers": workers,
+        "workers": workers,
+        "steps": steps,
+        "dtype": dtype,
+        "directory": str(directory),
     }
 
 
-def seeds_child_arguments(
-    *, workers: int, steps: int, dtype: str, output: Path, probe: Path | None = None
-) -> list[str]:
-    """The argv of the process that takes the aggregate, as data so it is testable.
+def rank_report_path(directory: str | Path, rank: int) -> Path:
+    """Where one rank's report goes: one file per rank, so a missing rank is visible."""
+    return Path(directory) / f"rank-{rank}.json"
 
-    A *fresh* interpreter, and that is the whole point rather than an implementation
-    detail: ``xmp.spawn`` refuses to run once the XLA runtime is initialized, and this
-    probe initializes it before the aggregate's turn by design (``_device_report`` calls
-    ``xm.xla_device()`` to record what the hardware gave us, and every dtype's throughput
-    pass calls it too). So the one measurement the decision reads is taken by a process
-    that has done nothing else - the same interpreter, the same mounted probe, and an XLA
-    runtime that nothing has touched.
 
-    ``probe`` exists so the path is a parameter: run normally, ``__file__`` is this script
-    (or its mounted copy under ``/kaggle/input``, since the kernel entry runs it with
-    ``runpy.run_path``); the child needs that same path, and a test needs to name one.
+def rank_device(torch: Any, rank: int):
+    """The device one rank's seed runs on. Explicit, because the record has to say so."""
+    return torch.device("xla", rank)
+
+
+def bind_thread_device(torch_xla: Any, device) -> tuple[str, str]:
+    """Point the calling thread's XLA current device at the rank's device, and say both.
+
+    A step marker is not a device argument. In torch_xla 2.8 ``xm.mark_step()`` is
+    ``torch_xla.sync()``, and ``sync`` calls ``_XLAC._xla_step_marker(_xla_get_default_device(), ...)``
+    - i.e. it acts on the **calling thread's** current device. That value is a C++
+    ``thread_local`` (``g_current_device`` in ``torch_xla/csrc/aten_xla_bridge.cpp``) whose
+    fallback, when a thread has never set it, is the process default: the device every
+    earlier phase of this probe has left at ``xla:0``. So in a one-process, eight-thread
+    aggregate, seven ranks would issue step markers for chip 0, ``GetLiveTensors(device)``
+    would collect their tensors on the wrong chip, and their graphs would never execute -
+    the "steady step" would be graph construction, with a rate to match. Binding each
+    thread to its chip first is what torch_xla's own single-process launcher does
+    (``_run_thread_per_device`` sets the current device before running the body);
+    ``torch_xla.device(index)`` is the public spelling of that call and returns the device
+    it bound, so a rank's report can carry both what it was told to use and what its thread
+    ended up on.
+
+    Returns ``(before, after)``. ``before`` is normally ``xla:0`` - the process default a
+    fresh thread inherits - and it is recorded rather than assumed, because "this thread had
+    never chosen a device" is the state the binding exists to change. A device without an
+    ordinal is refused: the binding would then be a read of whatever the process default
+    happens to be, which is the failure it is here to prevent.
     """
-    return [
-        sys.executable,
-        str(probe or Path(__file__).resolve()),
-        "--seeds-only",
-        "--workers",
-        str(workers),
-        "--steps",
-        str(steps),
-        "--dtype",
-        dtype,
-        "--output",
-        str(output),
-    ]
-
-
-def seeds_in_child(
-    *,
-    workers: int,
-    steps: int,
-    dtype: str,
-    timeout: float | None = None,
-    probe: Path | None = None,
-) -> dict[str, Any]:
-    """Run the aggregate in a child process and return its ``independent_seeds`` block.
-
-    The child's whole record is read and its ``independent_seeds`` block returned, so the
-    parent records the same object the child measured rather than a re-derived summary.
-
-    A child that fails raises with its own stderr attached: this phase's failure has twice
-    been the run's failure, and a ``RuntimeError`` naming the child's exit code and nothing
-    else would have made this session's diagnosis a guess. The child is given a timeout
-    (``TPU_PROBE_SEEDS_TIMEOUT``, an hour by default) because eight compilations are slow
-    and a hung child would otherwise hold the kernel until the platform killed it.
-    """
-    if workers < 1:
-        raise ValueError(f"the aggregate needs at least one worker, not {workers}")
-    budget = timeout
-    if budget is None:
-        budget = float(os.environ.get("TPU_PROBE_SEEDS_TIMEOUT", 3600.0))
-    with tempfile.TemporaryDirectory(prefix="tpu-probe-seeds-") as temporary:
-        output = Path(temporary) / "seeds.json"
-        argv = seeds_child_arguments(
-            workers=workers, steps=steps, dtype=dtype, output=output, probe=probe
-        )
-        try:
-            proc = subprocess.run(argv, capture_output=True, text=True, timeout=budget)
-        except subprocess.TimeoutExpired as expired:
-            raise RuntimeError(
-                f"the seed-parallel child did not finish in {budget:.0f}s; raise "
-                "TPU_PROBE_SEEDS_TIMEOUT if the hardware is merely slow"
-            ) from expired
-        if proc.returncode != 0 or not output.is_file():
-            detail = (proc.stdout + proc.stderr)[-2000:]
-            raise RuntimeError(
-                f"the seed-parallel child exited {proc.returncode} without a record: "
-                f"\n{detail}"
-            )
-        payload = json.loads(output.read_text(encoding="utf-8"))
-    block = payload.get("independent_seeds")
-    if not isinstance(block, dict):
+    if device.index is None:
         raise RuntimeError(
-            "the seed-parallel child wrote a record with no independent_seeds block, so "
-            "the aggregate the decision divides by the cores was not measured"
+            f"cannot bind a rank's thread to {device}: it names no device ordinal, so the "
+            "binding would be a read of the process default rather than a choice"
         )
-    # Recorded beside the numbers, not in a log: a reader of the record has to be able to
-    # tell an aggregate taken in the child process from one taken after the runtime was
-    # already initialized - because the second is the measurement that cannot be trusted to
-    # have spawned at all, and it is what three runs produced before this existed.
-    return {**block, "taken_in": "child-process"}
+    before = str(torch_xla.device())
+    return before, str(torch_xla.device(device.index))
+
+
+def seeds_timeout() -> float:
+    """How long a rank waits for every rank to compile (``TPU_PROBE_SEEDS_TIMEOUT``).
+
+    The child process's variable, kept as the phase's clock: eight compilations are slow,
+    and a rank that waits forever is the failure that ends a kernel without a record.
+    """
+    return float(os.environ.get("TPU_PROBE_SEEDS_TIMEOUT", 3600.0))
+
+
+def _wait_for_ranks(ready: threading.Barrier, *, rank: int) -> None:
+    """Wait until every rank has compiled, and name the wait when it breaks.
+
+    A rank that fails before it reaches this point takes the others with it: they wait out
+    the budget, the barrier breaks, and each of them raises *this* - naming the rank and the
+    budget rather than a bare ``BrokenBarrierError``. A probe is queued for hours and runs
+    once, and the four failed attempts at this measurement each had to be diagnosed from a
+    line that did not name itself.
+    """
+    budget = seeds_timeout()
+    try:
+        ready.wait(timeout=budget)
+    except threading.BrokenBarrierError as broken:
+        raise RuntimeError(
+            f"rank {rank} waited {budget:.0f}s for every rank to compile and the barrier "
+            "broke - a rank that failed before compiling is the usual cause; raise "
+            "TPU_PROBE_SEEDS_TIMEOUT if the compiles are merely slow"
+        ) from broken
 
 
 def aggregate_dtype(dtype: str) -> str:
@@ -741,133 +909,194 @@ def aggregate_dtype(dtype: str) -> str:
 
     bf16 when the run measures both, because bf16 is what ``evaluate`` reads and what the
     session trains in - the aggregate is divided into per-core *training* hours, so taking
-    it at the diagnostic dtype would price a port nobody would run. One definition, used by
-    both the parent's request and the child that fulfils it, because two copies of this
-    choice would be two different measurements under one name.
+    it at the diagnostic dtype would price a port nobody would run. One definition, in one
+    place, because two copies of this choice would be two different measurements under one
+    name.
     """
     return dtype if dtype != "both" else MEASUREMENT_ORDER[0]
 
 
-def seeds_only_request(args: argparse.Namespace) -> dict[str, Any]:
-    """What the child measures - and the device count it must **not** ask for.
-
-    ``devices`` is ``None`` here on purpose and is the mechanism of the whole child
-    process: the host's device count is normally taken with
-    ``xm.get_xla_supported_devices()`` before spawning, which initializes the runtime
-    ``xmp.spawn`` requires untouched. This session's fetched v4 record is what that costs:
-    four phases measured, ``independent_seeds`` raised ``Runtime is already initialized``,
-    and the one measurement the decision reads was lost. The child is checked against the
-    ranks that ran instead (see ``measure_independent_seeds``).
-    """
-    workers = int(args.workers)
-    if workers < 1:
-        raise ValueError(
-            f"--seeds-only measures the aggregate, so --workers must be at least 1, not {workers}"
-        )
-    return {
-        "devices": None,
-        "workers": workers,
-        "steps": int(args.steps),
-        "dtype": aggregate_dtype(args.dtype),
-    }
-
-
-def run_seeds_only(args: argparse.Namespace) -> int:
-    """The child mode: take the aggregate and nothing else, in an untouched process."""
-    request = seeds_only_request(args)
-    import torch_xla.distributed.xla_multiprocessing as xmp
-
-    with tempfile.TemporaryDirectory(prefix="tpu-probe-ranks-") as directory:
-        block = measure_independent_seeds(xmp=xmp, directory=directory, **request)
-    record: dict[str, Any] = {
-        "record_type": "hardware-probe-seeds",
-        "kind": "tpu-v0-session-probe",
-        "what_this_is": (
-            "The eight-worker aggregate alone, taken by the child process the main probe "
-            "starts. Nothing here is a Gate-4 number: it is the rate at which one "
-            "independent seed per core runs the declared session shape."
-        ),
-        "independent_seeds": block,
-    }
-    _save(record, args.output)
-    print(json.dumps(record, indent=1, sort_keys=True))
-    print(f"\nwrote {args.output}")
-    return 0
-
-
 def measure_independent_seeds(
     *,
-    xmp: Any,
+    torch: Any,
+    xm: Any,
+    torch_xla: Any | None = None,
     devices: int | None,
     workers: int,
     steps: int,
     dtype: str,
-    directory: str,
+    directory: str | Path,
+    config_for: Callable[[int], Any] | None = None,
+    device_for: Callable[[int], Any] | None = None,
+    run_rank: Callable[..., None] | None = None,
 ) -> dict[str, Any]:
-    """One single-arm seed per core, and the aggregate the decision divides by the cores.
+    """One independent seed per device, all of them stepping, and the rate they sustain.
 
-    The aggregate is the **sum of the ranks' steady rates**, not total tokens over the
-    spawn's wall clock. Two reasons, both structural rather than conveniences: the decision
-    compares it with the T4 pair's *steady* rate (5,083.4 tokens/s) and divides it by the
-    worker count to get per-core training hours, and the wall clock carries one-off costs
-    the session pays once - eight process startups and eight XLA compilations - which
-    amortize over a 24.6M-token arm and are otherwise double-counted, since the rule models
-    recompiles separately from the rebuild measurement. The wall-based figure is recorded
-    beside it rather than dropped, so the difference between the two is visible in the
-    record instead of being an assumption.
+    The aggregate is the **tokens the ranks pushed inside the window during which all of
+    them were stepping**, divided by that window - not a sum of rates each rank measured
+    for itself. That is the difference the process-based version could not see and this one
+    does not need to: the barrier in ``_wait_for_ranks`` releases once every rank has
+    compiled, so the window opens for all of them together, and a step marker that turns
+    out to sync more than the rank that called it then stretches the *window* for everyone
+    instead of inflating one rank's rate, which a sum would count twice.
 
-    A rank that did not finish raises: a partial parallel measurement is not the
-    measurement the decision reads, and it is contained as a phase error rather than
-    averaged into a plausible number.
+    A rank that did not finish raises: a partial parallel measurement is not the measurement
+    the decision reads, and it is contained as a phase error rather than averaged into a
+    plausible number. So does a set of reports that does not name one distinct device per
+    rank, one that does not agree on the step's token count or the number of steady steps,
+    and one whose window holds no steady step - each of those makes the arithmetic below a
+    different measurement than the one the rule reads.
 
-    ``devices`` is the host's core count for a caller that already has it; **no
-    production caller does**, and that is the finding this argument carries: asking for it
-    needs ``xm.get_xla_supported_devices()``, which initializes the very runtime
-    ``xmp.spawn`` requires untouched. So the child passes ``None`` and is checked against
-    the ranks instead - with ``nprocs=None`` torch_xla derives the process count from the
-    TPU's own topology, so the number of rank reports *is* the device count that mattered,
-    and requiring all ``workers`` of them is the same property with no pre-spawn device
-    query at all. The two checks are kept distinct because the mismatch case has a
-    different fix (a wrong ``--workers``) from the missing-rank case (a core that failed).
+    ``devices`` is the host's device count when the caller has it. ``main`` does, because it
+    has already initialized the runtime and recorded that count in the hardware report, so
+    requiring ``devices == workers`` is a real check here rather than the one the child
+    process had to skip. The two refusal cases stay distinct because a mismatch has a
+    different fix (a wrong ``--workers``) from a rank that failed (a core that is not
+    there).
+
+    Each rank's thread has to *name* its own device before it steps (see
+    :func:`bind_thread_device`), so the rank reports are checked for that too: a report
+    whose thread ended up on another chip is refused by name rather than averaged in, since
+    its steps would have been compile-and-queue time rather than training time.
+
+    ``torch_xla`` is the module the default rank binds with; ``config_for``, ``device_for``
+    and ``run_rank`` exist so the arithmetic and every refusal can be tested without a TPU:
+    their defaults are the declared session's seeds, ``xla:<rank>``, and :func:`_seed_rank`.
+    A caller that supplies its own ``run_rank`` need not supply the module, but the default
+    path refuses to run without it.
     """
+    plan = parallel_plan(workers, steps, dtype, directory)
+    if run_rank is None and torch_xla is None:
+        raise RuntimeError(
+            "the aggregate needs the torch_xla module (or an explicit run_rank): every "
+            "rank's thread has to be bound to its own device before it steps, or its step "
+            "markers land on the process default and seven of the eight chips compile "
+            "graphs nobody executes"
+        )
     if devices is not None and devices != workers:
         raise RuntimeError(
             f"the host exposes {devices} XLA device(s) but the measurement declares "
             f"{workers} worker(s); the aggregate is divided by the worker count, so a "
             "mismatch is not a measurement"
         )
-    plan = spawn_arguments(workers, steps, dtype, directory)
-    paths = [Path(directory) / f"rank-{rank}.json" for rank in range(workers)]
+    directory = Path(plan["directory"])
+    directory.mkdir(parents=True, exist_ok=True)
+    if config_for is None:
+        from act.training.v0_session import declared_session_config  # noqa: PLC0415
+
+        config_for = lambda rank: declared_session_config(seed=15_000 + rank)  # noqa: E731
+    build_device = device_for or (lambda rank: rank_device(torch, rank))
+    body = run_rank or _seed_rank
+    ready = threading.Barrier(workers)
     started = time.perf_counter()
-    xmp.spawn(
-        _worker,
-        args=plan["args"],
-        nprocs=plan["nprocs"],
-        start_method=plan["start_method"],
-        join=True,
-    )
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [
+            pool.submit(
+                functools.partial(
+                    body,
+                    torch=torch,
+                    torch_xla=torch_xla,
+                    xm=xm,
+                    ready=ready,
+                    steps=plan["steps"],
+                    dtype=plan["dtype"],
+                    directory=directory,
+                ),
+                rank=rank,
+                device=build_device(rank),
+                config=config_for(rank),
+            )
+            for rank in range(workers)
+        ]
+        # A rank that raised is reported by its own exception, never averaged away.
+        for future in futures:
+            future.result()
     wall = time.perf_counter() - started
-    per_rank = [json.loads(path.read_text()) for path in paths if path.exists()]
-    if len(per_rank) != workers:
+
+    rows: list[dict[str, Any]] = []
+    for rank in range(workers):
+        path = rank_report_path(directory, rank)
+        if not path.is_file():
+            raise RuntimeError(
+                f"rank {rank} of {workers} wrote no report; the aggregate needs all of them"
+            )
+        rows.append(json.loads(path.read_text(encoding="utf-8")))
+    named = {str(row["device"]) for row in rows}
+    if len(named) != workers:
         raise RuntimeError(
-            f"{len(per_rank)} of {workers} ranks wrote a report; the aggregate needs all "
-            "of them"
+            f"the {workers} ranks named {len(named)} device(s) - {sorted(named)} - and the "
+            "aggregate's claim is one independent seed per device"
         )
-    steady = sum(float(row["tokens_per_second"]) for row in per_rank)
-    tokens = sum(row["tokens_per_step"] * steps for row in per_rank)
+    stray = [
+        (int(row["rank"]), str(row["device"]), str(row["thread_device_after"]))
+        for row in rows
+        if str(row["thread_device_after"]) != str(row["device"])
+    ]
+    if stray:
+        raise RuntimeError(
+            "a rank's thread is not bound to its own device: "
+            + "; ".join(
+                f"rank {rank} was given {device} but runs with {thread}"
+                for rank, device, thread in stray
+            )
+            + " - a step marker acts on the calling thread's device, so those steps "
+            "measured graph construction, not training"
+        )
+    shapes = {int(row["tokens_per_step"]) for row in rows}
+    steady_steps = {int(row["steady_steps"]) for row in rows}
+    if len(shapes) != 1 or len(steady_steps) != 1:
+        raise RuntimeError(
+            "the ranks did not measure one shape: tokens per step "
+            f"{sorted(shapes)}, steady steps {sorted(steady_steps)}"
+        )
+    per_step = shapes.pop()
+    counted = steady_steps.pop()
+    if counted < 1:
+        raise RuntimeError(
+            f"the ranks reported {counted} steady step(s); a window with no steady step "
+            "measures the compile and nothing else"
+        )
+    window = max(float(row["steady_finished"]) for row in rows) - min(
+        float(row["steady_started"]) for row in rows
+    )
+    if window <= 0:  # pragma: no cover - two readings of one clock cannot invert
+        raise RuntimeError(f"the steady window measured {window:.6f}s")
+    tokens = sum(int(row["steps"]) * int(row["tokens_per_step"]) for row in rows)
+    aggregate = workers * counted * per_step / window
+    seeds = sorted(int(row["seed"]) for row in rows)
     return {
         "workers": workers,
-        "completed": len(per_rank),
+        "completed": len(rows),
         "wall_seconds": round(wall, 3),
-        "aggregate_tokens_per_second": round(steady, 1),
+        "steady_window_seconds": round(window, 3),
+        "steady_steps_per_rank": counted,
+        "steady_tokens": workers * counted * per_step,
+        "aggregate_tokens_per_second": round(aggregate, 1),
         "wall_tokens_per_second_including_startup": round(tokens / wall, 1) if wall else None,
         "aggregate_definition": (
-            "sum of the ranks' steady tokens/s (compile excluded), which is the quantity "
-            "comparable to the T4 pair rate and to the per-core training hours the rule "
-            "divides by the worker count"
+            "the tokens the ranks pushed inside the window during which all of them were "
+            "stepping (each rank's compile is outside it), divided by that window: one "
+            "independent seed per device, one process, one thread per device"
         ),
-        "per_rank": per_rank,
-        "ratio_to_t4_pair": round(steady / T4_PAIR_TOKENS_PER_SECOND, 2),
+        "seed_note": (
+            f"each rank's seed ({seeds[0]}-{seeds[-1]}) is its input generator's; the model "
+            "is constructed fresh in the rank's own thread, so the ranks are independent "
+            "runs but a rank's initialisation is not reproducible from this seed (the "
+            "process RNG is shared)"
+        ),
+        "per_rank": rows,
+        # The property the step markers depend on, recorded beside the number: each rank's
+        # thread named its own chip before it built, and the parent checked that it did.
+        "rank_threads": (
+            "each rank's thread bound to its own device before building "
+            "(per_rank[i].thread_device_after; the process default it replaced is in "
+            "thread_device_before)"
+        ),
+        "ratio_to_t4_pair": round(aggregate / T4_PAIR_TOKENS_PER_SECOND, 2),
+        # The mechanism, named beside the number: a reader has to be able to tell this
+        # aggregate from the process-based one the three earlier attempts tried, because
+        # what it means is "eight seeds, one process".
+        "taken_in": "single-process-thread-per-device",
     }
 
 
@@ -880,11 +1109,6 @@ def main() -> int:
     )
     parser.add_argument("--dtype", choices=("fp32", "bf16", "both"), default="both")
     parser.add_argument("--output", type=Path, default=OUTPUT)
-    parser.add_argument(
-        "--seeds-only", action="store_true",
-        help="take the eight-worker aggregate alone and exit - the child mode the main run "
-        "starts, and only correct on a machine where nothing has used an XLA device yet",
-    )
     parser.add_argument(
         "--evaluate", type=Path, default=None,
         help="apply the pre-registered rule to a fetched record (needs no TPU); "
@@ -906,12 +1130,8 @@ def main() -> int:
             "DO-NOT-PORT": 1,
         }.get(decision["verdict"], 3)
 
-    if args.seeds_only:
-        # Before the torch import below, and before ``_device_report``: this mode's whole
-        # requirement is that no XLA device has been used in this process yet.
-        return run_seeds_only(args)
-
     import torch
+    import torch_xla
     import torch_xla.core.xla_model as xm
     import torch_xla.runtime as xr
 
@@ -961,17 +1181,34 @@ def main() -> int:
         )
 
     def independent_seeds() -> None:
-        """Eight cores, one independent seed each: the aggregate the decision reads first.
+        """Eight devices, one independent seed each: the aggregate the decision reads first.
 
-        Measured by a **child process**, never here: this parent has already initialized the
-        XLA runtime (``_device_report`` ran before the first phase), and ``xmp.spawn``
-        refuses to run against an initialized runtime. See ``seeds_in_child``.
+        Taken in *this* process, and that is the fix rather than a detail. ``xmp.spawn``
+        refuses a process whose XLA runtime is initialized, and ``_device_report``
+        initialized this one before the first phase ran - so this measurement was handed to
+        a child process for three attempts, and the last of them died in libtpu's topology.
+        The single-process path needs no such precondition: it is the path every other
+        phase in this file has already measured the declared shape through, and
+        ``measure_independent_seeds`` pins one rank per device explicitly, so the record
+        says which chip each seed ran on instead of trusting a spawn to have spread them.
         """
-        record["independent_seeds"] = seeds_in_child(
-            workers=args.workers,
-            steps=args.steps,
-            dtype=aggregate_dtype(args.dtype),
-        )
+        with tempfile.TemporaryDirectory(prefix="tpu-probe-seeds-") as directory:
+            record["independent_seeds"] = measure_independent_seeds(
+                torch=torch,
+                xm=xm,
+                # The module, not just ``xm``: each rank's thread binds its chip through
+                # ``torch_xla.device(rank)`` before it steps, which is the whole reason a
+                # one-process aggregate can say which chip each seed ran on.
+                torch_xla=torch_xla,
+                # Known here, and recorded: ``_device_report`` already asked for it, and the
+                # child process's version of this check had to skip it precisely because
+                # asking would have initialized the runtime its spawn required untouched.
+                devices=len(xm.get_xla_supported_devices()),
+                workers=args.workers,
+                steps=args.steps,
+                dtype=aggregate_dtype(args.dtype),
+                directory=directory,
+            )
 
     # The order is the decision's, not the dtypes': every dtype's own measurements, then
     # the aggregate the port headline is read from - ahead of the last dtype's diagnostic.

@@ -187,6 +187,18 @@ def _artifact_literals_in(source: str) -> tuple[set[str], set[str]]:
         tree = ast.parse(source)
     except SyntaxError:  # unparsable is not this check's business
         return set(), set()
+    # Docstrings are prose *about* paths, not reads of them - the same non-claim a comment
+    # makes, in the one other shape prose takes. A comment never reaches the AST; a docstring
+    # does, so it has to be exempted explicitly. Measured 2026-09-26: a test explaining a
+    # defect a smoke checkpoint had caused named that checkpoint in its docstring, and this
+    # check began failing on the mention the moment the running campaign wrote the file.
+    docstrings: set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef)):
+            continue
+        first = node.body[0] if node.body else None
+        if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant):
+            docstrings.add(id(first.value))
     named_to_skip: set[int] = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -201,11 +213,34 @@ def _artifact_literals_in(source: str) -> tuple[set[str], set[str]]:
     for node in ast.walk(tree):
         if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
             continue
-        if "artifacts/" not in node.value:
+        if "artifacts/" not in node.value or id(node) in docstrings:
             continue
         found = set(ARTIFACT_LITERAL.findall(node.value))
         (guarded if id(node) in named_to_skip else used).update(found)
     return used, guarded
+
+
+def test_a_path_named_in_a_docstring_is_not_a_read_of_it() -> None:
+    """The same class this check's docstring already names, in the one shape it missed.
+
+    Measured 2026-09-26: `test_train_code_lm.py` explains, in its docstring, a defect the
+    campaign's smoke checkpoint had caused - and names that checkpoint's path while doing so.
+    When the running campaign then wrote the real 2 GB file, this check began failing on the
+    *mention*: it looked like a test reading an uncommitted artifact, which is the state the
+    guard exists to find, and the difference between the two is prose versus a read. The
+    exemption is narrow rather than blanket: a module-level ``RECORD = "artifacts/..."``
+    assignment is still a claim about a file, and it is still checked.
+    """
+    used, guarded = _artifact_literals_in(
+        '"""Talks about artifacts/local.json while explaining something."""\n'
+        "def test_x():\n"
+        '    """And artifacts/other.json in here too."""\n'
+        "    assert True\n"
+    )
+    assert used == set() and guarded == set()
+
+    used, _ = _artifact_literals_in('RECORD = "artifacts/local.json"\n')
+    assert used == {"artifacts/local.json"}
 
 
 def test_every_artifact_a_test_reads_is_not_gitignored() -> None:
