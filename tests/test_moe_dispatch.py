@@ -111,6 +111,18 @@ def test_grouped_dispatch_preserves_zero_gradients_for_unused_experts() -> None:
     ):
         assert torch.allclose(dense_parameter, grouped_parameter, atol=1e-12)
 
+    # A second backward/step checks the existing-moment case, not just initial weight decay.
+    dense_optimizer.zero_grad(set_to_none=True)
+    grouped_optimizer.zero_grad(set_to_none=True)
+    dense(hidden).square().sum().backward()
+    grouped_forward(grouped, hidden).square().sum().backward()
+    dense_optimizer.step()
+    grouped_optimizer.step()
+    for dense_parameter, grouped_parameter in zip(
+        dense.parameters(), grouped.parameters(), strict=True
+    ):
+        assert torch.allclose(dense_parameter, grouped_parameter, atol=1e-12)
+
 
 def test_grouped_dispatch_skips_an_expert_that_receives_no_rows() -> None:
     """With fewer rows than experts, some expert gets nothing - and must not be run.
