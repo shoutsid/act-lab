@@ -29,7 +29,9 @@ Four further properties are load-bearing rather than incidental:
   be 1.78x the T4 pair against a declared 2.0x, and 1.73x at v4's;
 * **a rebuild's steady mean is not a steady step** - its fastest step matches the throughput
   pass's while its mean is 10x that - which is recorded because the rule's recompile-overhead
-  arithmetic subtracts that mean from the first step.
+  arithmetic subtracts that mean from the first step. Quantified below rather than left as a
+  caution: the caveat moves that condition by ~1.5x and both readings sit ~5x under its limit,
+  and the condition would only bind at a compile cost ~146-149 s.
 """
 
 from __future__ import annotations
@@ -188,6 +190,47 @@ def test_the_two_records_disagree_about_the_dtype_and_that_is_the_reading() -> N
         )
 
 
+def _overhead_forecast(rows: dict) -> tuple[float, float, float]:
+    """The rule's overhead condition, read off one record three ways.
+
+    Returns (as the rule computes it, the conservative reading, the compile cost that would
+    bind), all as fractions of the queue's per-core training time except the last, which is
+    seconds. The *aggregate* is a forecast here - ``v4`` and ``v5`` have none - so one core's
+    rate is the record's own single-core bf16 throughput, and a queue is
+    ``DECLARED_SEEDS_PER_QUEUE`` seeds of ``DECLARED_ARMS_PER_SEED`` arms, each arm paying
+    ``REBUILDS_PER_ARM`` recompiles, spread over the record's own device count.
+
+    The two readings differ in what a rebuild's steady step is: the rule subtracts
+    ``steady_step_seconds_mean`` from the first step, and the conservative one subtracts the
+    fastest step instead, because a four-step rebuild loop's mean is not a steady step (see
+    the test above). Neither is edited into the rule: this is what the condition *reads*.
+    """
+    rebuild = rows["bf16"]["rebuild"]
+    first = rebuild["first_step_seconds_including_compile"]
+    per_core = rows["bf16"]["throughput"]["tokens_per_second"]
+    queue_tokens = (
+        tpu_probe.DECLARED_SEEDS_PER_QUEUE
+        * tpu_probe.DECLARED_ARMS_PER_SEED
+        * tpu_probe.DECLARED_TOKENS_PER_ARM
+    )
+    training_seconds = (queue_tokens / rows["device"]["xla_devices"]) / per_core
+    rebuilds_per_core = (
+        (tpu_probe.DECLARED_SEEDS_PER_QUEUE / rows["device"]["xla_devices"])
+        * tpu_probe.DECLARED_ARMS_PER_SEED
+        * tpu_probe.REBUILDS_PER_ARM
+    )
+    binding = tpu_probe.RECOMPILE_OVERHEAD_LIMIT * training_seconds / rebuilds_per_core
+
+    def fraction(steady: float) -> float:
+        return rebuilds_per_core * max(0.0, first - steady) / training_seconds
+
+    return (
+        fraction(rebuild["steady_step_seconds_mean"]),
+        fraction(rebuild["steady_step_seconds_min"]),
+        binding,
+    )
+
+
 @pytest.mark.parametrize("name", RECORDS)
 def test_the_rebuilds_steady_mean_is_not_a_steady_step(name: str) -> None:
     """A record-level caution, so the journal does not read it as one.
@@ -198,6 +241,11 @@ def test_the_rebuilds_steady_mean_is_not_a_steady_step(name: str) -> None:
     subtracts ``steady_step_seconds_mean`` from the first step, so it under-states the compile
     - which is the *un*conservative direction for that condition. It is recorded here rather
     than smoothed over: the overhead condition is the one to re-derive before it is relied on.
+
+    Re-derived, it turns out to move the number without moving the verdict: the caveat is a
+    ~1.5x change on a condition that reads ~1.9% at its worst against a 10% limit, and binding
+    it would take a rebuild compile of ~2.5 minutes. Pinned so that a later record with a
+    genuinely slow compile is measured against the *derived* bar rather than this one's rate.
     """
     rows = record(name)
     for dtype in ("bf16", "fp32"):
@@ -207,3 +255,13 @@ def test_the_rebuilds_steady_mean_is_not_a_steady_step(name: str) -> None:
         assert fastest == pytest.approx(
             rows[dtype]["throughput"]["steady_step_seconds_min"], abs=0.05
         )
+
+    as_the_rule_reads_it, conservative, binding = _overhead_forecast(rows)
+    assert as_the_rule_reads_it < tpu_probe.RECOMPILE_OVERHEAD_LIMIT / 4
+    assert conservative < tpu_probe.RECOMPILE_OVERHEAD_LIMIT / 4
+    # Real (the conservative reading is ~1.5x the rule's) and not decisive here.
+    assert conservative > 1.4 * as_the_rule_reads_it
+    # ~14x this rebuild's own mean step and ~146x its fastest: a compile that slow would be
+    # its own finding, which is what makes the condition a sanity check rather than a driver.
+    assert binding > 100
+    assert binding / rows["bf16"]["rebuild"]["steady_step_seconds_mean"] > 10
