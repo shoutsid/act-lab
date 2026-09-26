@@ -3,7 +3,7 @@
 ## Gate 4 resumption authorized; primary session v9 running (2026-09-26)
 
 **Live update, 2026-09-26 19:12Z:** Kaggle reports the existing primary kernel v9 `RUNNING`;
-`campaign_health.py` confirms the campaign driver lock (PID 3295862) and **14.77/30 GPU-hours**
+`campaign_health.py` confirms the campaign driver lock (PID 3295862) and **14.68/30 GPU-hours**
 remaining, resuming at seed 15027. The TPU probe is `COMPLETE`. The launch snapshot and probe
 result follow below. No new Gate-4 kernel was launched for this update.
 

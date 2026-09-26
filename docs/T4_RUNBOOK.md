@@ -5,7 +5,7 @@ Operator runbook for executing the pre-registered compute-efficiency protocol
 §5.2. Everything below is already implemented and tested; this document adds
 only the exact commands, expected outputs, and decision points.
 
-> **RESUMPTION AUTHORIZED (2026-09-26).** The registered Gate-4 campaign is resuming without changing its preregistration. At launch, live Kaggle checks confirmed primary 3/12 (15024-15026), prior kernel `COMPLETE`, and 19.48/30 GPU-hours remaining until October 3; the sequential launcher pushed primary kernel v9, initially `QUEUED`. At the latest recorded health check, v9 is `RUNNING` under the existing campaign driver's lock, with 14.77 GPU-hours remaining and work resuming at seed 15027. Do not start a second driver or push manually. Control and null remain next in the registered sequence; no verdict exists. This is incomplete execution, not a protocol amendment, pass, or fail. Two separate fresh 12-seed real-TinyStories development-fidelity studies (§§5.40, 5.66) favored null over adaptive on 12/12 seeds; the declared-scale queue trains on synthetic tokens near the uniform-loss floor. These results are context only and do not change the registered seeds, knobs, data, or criteria. Separately, the TPU probe v6 returned **PORT** under its own registered rule; this is not a Gate-4 result or authorization to move a queue to TPU. See `docs/IMPLEMENTATION_STATUS.md` and `docs/RESEARCH_REPORT.md` §10.2.**
+> **RESUMPTION AUTHORIZED (2026-09-26).** The registered Gate-4 campaign is resuming without changing its preregistration. At launch, live Kaggle checks confirmed primary 3/12 (15024-15026), prior kernel `COMPLETE`, and 19.48/30 GPU-hours remaining until October 3; the sequential launcher pushed primary kernel v9, initially `QUEUED`. At the latest recorded health check, v9 is `RUNNING` under the existing campaign driver's lock, with 14.68 GPU-hours remaining and work resuming at seed 15027. Do not start a second driver or push manually. Control and null remain next in the registered sequence; no verdict exists. This is incomplete execution, not a protocol amendment, pass, or fail. Two separate fresh 12-seed real-TinyStories development-fidelity studies (§§5.40, 5.66) favored null over adaptive on 12/12 seeds; the declared-scale queue trains on synthetic tokens near the uniform-loss floor. These results are context only and do not change the registered seeds, knobs, data, or criteria. Separately, the TPU probe v6 returned **PORT** under its own registered rule; this is not a Gate-4 result or authorization to move a queue to TPU. See `docs/IMPLEMENTATION_STATUS.md` and `docs/RESEARCH_REPORT.md` §10.2.**
 
 **Pre-registration discipline: no knob is tuned at any point in this runbook.**
 The dtype rule, schedule constants, seed block, probe budget, criteria, and
@@ -947,7 +947,7 @@ not under the "latest record" name the next fetch will overwrite. The completed 
 preserved as `tpu-probe-v6.json` with its platform log `act-tpu-probe-v6.log`.
 
 **Live check, 2026-09-26 19:12Z:** Kaggle still reports the existing session kernel v9 `RUNNING`;
-`campaign_health.py` sees the driver lock and 14.77/30 GPU-hours remaining. The v6 TPU probe is
+`campaign_health.py` sees the driver lock and 14.68/30 GPU-hours remaining. The v6 TPU probe is
 `COMPLETE`. Let the existing driver supervise the session; do not duplicate it.
 
 ### Completed TPU probe v6 decision

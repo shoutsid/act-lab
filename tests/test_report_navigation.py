@@ -249,10 +249,13 @@ def test_the_study_index_status_row_is_live() -> None:
     assert "RESUMPTION AUTHORIZED" in runbook
     assert "Do not start a second driver" in runbook
     assert "TPU probe v6" in runbook
+    assert "14.68/30 GPU-hours remaining" in runbook
+    assert "14.77" not in runbook
     assert "15,034.2 tokens/s" in runbook
     assert "tpu-probe-v6.json" in runbook
     assert "15024-15035" in row, row
     assert "primary kernel v9 was running" in row, row
+    assert "14.68/30 GPU-hours remaining at the 19:12Z check" in row, row
     assert "act-v0-5-2" in row, row
     # The deliverables checklist is also an active status surface: keep its
     # seed denominator and artifact dataset aligned with the current queue.
