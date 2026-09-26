@@ -1,6 +1,8 @@
+import pytest
 import torch
 
 from act.model import V0CausalLM, V0ModelConfig
+from act.model.v0_moe import V0MoEConfig
 
 
 def test_v0_hybrid_model_produces_finite_logits_and_loss() -> None:
@@ -22,6 +24,26 @@ def test_v0_hybrid_model_produces_finite_logits_and_loss() -> None:
     assert torch.isfinite(logits).all()
     assert torch.isfinite(loss)
     assert model.parameter_count == model.active_parameter_count
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"attention_heads": 0},
+        {"hidden_size": 0},
+        {"context_size": 0},
+        {"vocab_size": 0},
+        {"depth": 0, "experts_per_layer": ()},
+        {"expert_width": 0},
+        {"rotary_base": float("inf")},
+        {"rotary_base": 0.0},
+        {"norm_epsilon": float("nan")},
+        {"norm_epsilon": 0.0},
+    ],
+)
+def test_v0_moe_config_rejects_nonpositive_or_nonfinite_dimensions(override: dict) -> None:
+    with pytest.raises(ValueError):
+        V0MoEConfig(**override)
 
 
 def test_v0_rejects_invalid_module_schedule() -> None:

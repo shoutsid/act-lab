@@ -25,6 +25,7 @@ vocab=32768, 8 experts/layer, 2 active, expert ffn 1024) this anatomy gives
 both reproduced to the parameter by :func:`estimated_parameter_count`.
 """
 
+import math
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -81,6 +82,22 @@ class V0MoEConfig:
     """
 
     def __post_init__(self) -> None:
+        if min(
+            self.vocab_size,
+            self.context_size,
+            self.hidden_size,
+            self.depth,
+            self.attention_heads,
+            self.expert_width,
+        ) < 1:
+            raise ValueError(
+                "vocab_size, context_size, hidden_size, depth, attention_heads, "
+                "and expert_width must be positive"
+            )
+        if not math.isfinite(self.rotary_base) or self.rotary_base <= 0:
+            raise ValueError("rotary_base must be finite and positive")
+        if not math.isfinite(self.norm_epsilon) or self.norm_epsilon <= 0:
+            raise ValueError("norm_epsilon must be finite and positive")
         if len(self.module_types) not in (0, self.depth):
             raise ValueError("module_types must be empty or carry one entry per layer")
         if self.gdn_chunk_size < 0:
@@ -97,8 +114,6 @@ class V0MoEConfig:
             raise ValueError("every layer is capped at 16 experts (grow ceiling)")
         if not 2 <= self.active_experts <= min(self.experts_per_layer):
             raise ValueError("active_experts must be between 2 and the layer minimum")
-        if self.depth < 1 or self.expert_width < 1:
-            raise ValueError("depth and expert_width must be positive")
         if len(self.expert_ids) not in (0, self.depth):
             raise ValueError("expert_ids must be empty or one tuple per layer")
         if self.expert_ids and any(
