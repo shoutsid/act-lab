@@ -38,9 +38,13 @@ def evaluate_perplexity(
             if tokens.ndim != 2 or tokens.shape[1] < 2:
                 raise ValueError("evaluation batches must have shape [batch, sequence>=2]")
             loss = model.loss(tokens)
-            count = (tokens.shape[0] * (tokens.shape[1] - 1))
+            if not torch.isfinite(loss).all():
+                raise ValueError("evaluation produced a non-finite loss")
+            count = tokens.shape[0] * (tokens.shape[1] - 1)
             total_loss += float(loss) * count
             total_tokens += count
     mean_loss = total_loss / total_tokens
+    if not math.isfinite(mean_loss):
+        raise ValueError("evaluation produced a non-finite mean loss")
     perplexity = math.exp(mean_loss) if mean_loss < math.log(sys.float_info.max) else float("inf")
     return PerplexityResult(mean_loss, perplexity, len(batches), total_tokens)

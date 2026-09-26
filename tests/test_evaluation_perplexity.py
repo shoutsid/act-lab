@@ -48,6 +48,14 @@ def test_perplexity_preserves_mixed_submodule_training_flags() -> None:
     assert [module.training for module in model.modules()] == before
 
 
+def test_perplexity_rejects_nonfinite_model_loss(monkeypatch) -> None:
+    model = DenseCausalLM(DenseBaselineConfig(hidden_size=8, num_heads=2))
+    monkeypatch.setattr(model, "loss", lambda tokens: torch.tensor(float("nan")))
+
+    with pytest.raises(ValueError, match="non-finite"):
+        evaluate_perplexity(model, [torch.randint(0, 128, (1, 4))])
+
+
 def test_perplexity_rejects_empty_or_short_batches() -> None:
     model = DenseCausalLM(DenseBaselineConfig(hidden_size=8, num_heads=2))
     with pytest.raises(ValueError, match="at least one"):

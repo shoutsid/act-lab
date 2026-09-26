@@ -31,6 +31,20 @@ def test_capability_probes_restore_training_mode_on_success_and_error() -> None:
     assert model.training
 
 
+def test_capability_probes_reject_nonfinite_loss_and_logits(monkeypatch) -> None:
+    model = DenseCausalLM(DenseBaselineConfig(hidden_size=8, num_heads=2))
+    tokens = torch.randint(0, 128, (1, 4))
+    monkeypatch.setattr(model, "loss", lambda batch: torch.tensor(float("nan")))
+    with pytest.raises(ValueError, match="non-finite loss"):
+        evaluate_capability_probes(model, {"copy": [tokens]})
+
+    monkeypatch.undo()
+    model = DenseCausalLM(DenseBaselineConfig(hidden_size=8, num_heads=2))
+    monkeypatch.setattr(model, "forward", lambda batch: torch.full((*batch.shape, 128), float("inf")))
+    with pytest.raises(ValueError, match="non-finite logits"):
+        evaluate_capability_probes(model, {"copy": [tokens]})
+
+
 def test_capability_probes_reject_invalid_inputs() -> None:
     model = DenseCausalLM(DenseBaselineConfig(hidden_size=8, num_heads=2))
     with pytest.raises(ValueError, match="at least one"):

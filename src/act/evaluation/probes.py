@@ -46,15 +46,19 @@ def evaluate_capability_probes(
                     raise ValueError(f"probe {name} batches need sequence length >= 2")
                 logits = model(tokens[:, :-1])
                 labels = tokens[:, 1:]
-                total_loss += float(model.loss(tokens)) * labels.numel()
+                loss = model.loss(tokens)
+                if not torch.isfinite(logits).all():
+                    raise ValueError(f"probe {name} produced non-finite logits")
+                if not torch.isfinite(loss).all():
+                    raise ValueError(f"probe {name} produced non-finite loss")
+                total_loss += float(loss) * labels.numel()
                 total_correct += int((logits.argmax(dim=-1) == labels).sum())
                 total_tokens += labels.numel()
+            mean_loss = total_loss / total_tokens
+            accuracy = total_correct / total_tokens
+            if not torch.isfinite(torch.tensor([mean_loss, accuracy])).all():
+                raise ValueError(f"probe {name} produced non-finite metrics")
             results.append(
-                CapabilityProbeResult(
-                    name,
-                    total_loss / total_tokens,
-                    total_correct / total_tokens,
-                    total_tokens,
-                )
+                CapabilityProbeResult(name, mean_loss, accuracy, total_tokens)
             )
     return tuple(results)
