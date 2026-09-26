@@ -81,7 +81,11 @@ def train_steps(
         ).to(device)
         with _autocast_context(device, config.mixed_precision):
             loss = model.loss(tokens)
-        (loss / config.gradient_accumulation_steps).backward()
+        group_start = (
+            batch_index // config.gradient_accumulation_steps
+        ) * config.gradient_accumulation_steps
+        group_size = min(config.gradient_accumulation_steps, count - group_start)
+        (loss / group_size).backward()
         should_step = (
             (batch_index + 1) % config.gradient_accumulation_steps == 0
             or batch_index == count - 1

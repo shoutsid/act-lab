@@ -1,3 +1,5 @@
+import torch
+
 from act.model.dense import DenseBaselineConfig, DenseCausalLM
 from act.training import (
     TrainingConfig,
@@ -24,6 +26,52 @@ def test_gradient_accumulation_counts_optimizer_steps() -> None:
     assert len(losses) == 4
     assert state.step == 2
     assert state.tokens == 32
+
+
+def test_incomplete_accumulation_group_uses_its_actual_microbatch_count() -> None:
+    config_accumulated = TrainingConfig(
+        batch_size=1,
+        sequence_length=8,
+        learning_rate=1e-3,
+        gradient_accumulation_steps=4,
+        device="cpu",
+    )
+    config_single = TrainingConfig(
+        batch_size=1,
+        sequence_length=8,
+        learning_rate=1e-3,
+        gradient_accumulation_steps=1,
+        device="cpu",
+    )
+    torch.manual_seed(31)
+    accumulated = DenseCausalLM(
+        DenseBaselineConfig(vocab_size=16, context_size=8, hidden_size=8, num_layers=1)
+    )
+    single = DenseCausalLM(
+        DenseBaselineConfig(vocab_size=16, context_size=8, hidden_size=8, num_layers=1)
+    )
+    single.load_state_dict(accumulated.state_dict())
+
+    accumulated_state = TrainingState()
+    single_state = TrainingState()
+    train_steps(
+        accumulated,
+        make_optimizer(accumulated, config_accumulated),
+        accumulated_state,
+        config_accumulated,
+        1,
+    )
+    train_steps(
+        single,
+        make_optimizer(single, config_single),
+        single_state,
+        config_single,
+        1,
+    )
+
+    assert accumulated_state.step == single_state.step == 1
+    for actual, expected in zip(accumulated.parameters(), single.parameters(), strict=True):
+        assert torch.equal(actual, expected)
 
 
 def test_scheduler_warms_up_and_decays() -> None:
