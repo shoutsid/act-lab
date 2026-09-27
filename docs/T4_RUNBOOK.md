@@ -1007,10 +1007,14 @@ PYTHONPATH=src python scripts/campaign_health.py --json    # for a script or cro
 PYTHONPATH=src python scripts/campaign_health.py --queue control
 ```
 
-It reads the published dataset (the queue's real progress - which seeds are
-complete at the *registered* step count, so a part-way snapshot does not read as
-done), the kernel's status, the weekly quota, and whether a driver holds the
-queue's lock. The verdict is the exit code:
+It reads the published dataset (the queue's real progress - a seed counts as
+complete when the *registered* step count is reached **and** the seed's own
+published record says `complete`), the kernel's status, the weekly quota, and
+whether a driver holds the queue's lock. Both halves are needed: the listing
+cannot tell a finished seed from one whose window closed just after its last
+checkpoint (seed 15027, measured 2026-09-27: both arms at step 6000, record
+`in-progress`, no final loss), and the runner's skip rule and the verdict read
+that same field. The verdict is the exit code:
 
 | verdict | exit | what it means |
 |---|---|---|
@@ -1018,7 +1022,7 @@ queue's lock. The verdict is the exit code:
 | `STALLED` | 1 | no session live, quota available, **lock unheld**: relaunch the campaign |
 | `WAITING_ON_QUOTA` | 2 | the week cannot fit a window; `--wait-for-quota` covers this, and hours left at the refresh are lost |
 | `FAILED` | 3 | the last session ended in ERROR: read the cause before pushing again |
-| `COMPLETE` | 4 | every declared seed is published; drive the next queue |
+| `COMPLETE` | 4 | every declared seed is published *complete* by its own record; drive the next queue |
 
 `STALLED` is the one that matters, and it is also the state a driver leaves
 behind when it exits 1 (a session failed) or is killed with its terminal - it
