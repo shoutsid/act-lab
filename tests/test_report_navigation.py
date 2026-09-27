@@ -243,7 +243,7 @@ def test_the_study_index_status_row_is_live() -> None:
     assert row is not None, "the §5 index no longer has a real-scale row"
     assert "RESUMPTION AUTHORIZED" in row, row
     assert "IN FLIGHT" not in row, row
-    assert "3 of 12" in row, row
+    assert "6 of 12" in row, row
     assert "docs/T4_RUNBOOK.md" in row, row
     runbook = (ROOT / "docs" / "T4_RUNBOOK.md").read_text()
     assert "RESUMPTION AUTHORIZED" in runbook
@@ -254,14 +254,15 @@ def test_the_study_index_status_row_is_live() -> None:
     assert "15,034.2 tokens/s" in runbook
     assert "tpu-probe-v6.json" in runbook
     assert "15024-15035" in row, row
-    assert "primary kernel v9 was running" in row, row
-    assert "14.68/30 GPU-hours remaining at the 19:12Z check" in row, row
+    assert "kernel v11 on 2026-09-27" in row, row
+    assert "15024-15026 published 2026-09-26" in row, row
+    assert 'code_revision: "unknown"' in row, row
     assert "act-v0-5-2" in row, row
     # The deliverables checklist is also an active status surface: keep its
     # seed denominator and artifact dataset aligned with the current queue.
     checklist = _text().split("## 7. Deliverables checklist", 1)[1].split("\n## ", 1)[0]
     assert "act-v0-5-2" in checklist
-    assert "3 of the active block's 12 seeds (15024-15026)" in checklist
+    assert "6 of the active block's 12 seeds (15024-15029)" in checklist
     assert "15000-15011" not in checklist
     # A live campaign's progress is a snapshot, never a pinned constant: the
     # row, the header and §4 must all say when they were true, so a stale count

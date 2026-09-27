@@ -2,7 +2,7 @@
 
 Status: the narrative report for the whole program to date - the factor map (section 3, Gate 3),
 the pre-registered study series (section 5, 101 subsections), the substrate audit (section 9) and
-the synthesis (section 10). **Updated: 2026-09-26** - sections 5.48-5.59 close the covariate
+the synthesis (section 10). **Updated: 2026-09-27** - sections 5.48-5.59 close the covariate
 programme (parameter count, layer width, expert count and total compute) and then measure the
 depth axis itself, out to six rungs above its onset, 5.60 and 5.61 bisect the one window
 that closure left open (the width axis's gate between 2.87x and 11.15x) to 1.97x and then 1.41x, 5.62
@@ -11,10 +11,11 @@ path gate 5 will need and pins that a fresh initialization is distinguishable fr
 5.64 declares the whole gate chain (with the questions each gate still leaves open), 5.65 re-reserves
 the declared block after its first four seeds were found to have run the pre-amendment rebuild, 5.66
 measures the dev-fidelity withholding-clause anchors on fresh seeds, and section 10 is re-read
-against that evidence. At campaign resumption, three of 12 primary seeds (15024-15026) were
-published; the control and null queues had not launched. Primary kernel v9 later moved from
-`QUEUED` to `RUNNING` under the existing driver; the Gate-4 campaign remains incomplete and has
-no verdict. Separately, TPU probe v6 completed with a registered **PORT** decision. That is a
+against that evidence. At the last recorded check the primary block stood at six of 12 seeds
+(15024-15029): 15024-15026 published on 2026-09-26, and 15027-15029 by kernel version 11 on
+2026-09-27 - the first session whose restore of published state worked, after three that
+re-trained the block instead. The control and null queues have not launched, and the Gate-4
+campaign remains incomplete with no verdict. Separately, TPU probe v6 completed with a registered **PORT** decision. That is a
 hardware-port decision, not a Gate-4 result or campaign amendment. See
 `docs/IMPLEMENTATION_STATUS.md` and `docs/T4_RUNBOOK.md` for the snapshots.
 
@@ -334,13 +335,15 @@ which is the plan's deferred compute-efficiency milestone - after which Gate 4
 longer a vague milestone: it is pre-registered as a protocol with declared
 config, predicted cost, and decision rules (section 5.1), amended by the
 do-nothing clause of section 5.14 and by the launch amendment of section 5.47,
-and **execution is partial** - the first primary session on the re-reserved block ran on
-Kaggle 2026-09-26 and published 3 of 12 seeds (15024-15026). The user authorized resumption
-without amendment. After live checks showed 19.48/30 GPU-hours available and no existing
-session, the campaign driver pushed primary kernel version 9; it later transitioned from
-`QUEUED` to `RUNNING` under the existing driver lock. At the last verified health check it was
-still training from seed 15027 with 14.68 GPU-hours remaining. Control and null remain
-unlaunched, so no three-queue verdict exists. The authoritative completed-session record is in
+and **execution is partial** - the primary block stands at **6 of 12 seeds (15024-15029)**: the
+first session on the re-reserved block published 15024-15026 on Kaggle 2026-09-26, and kernel
+version 11 published 15027-15029 on 2026-09-27 - the first session whose restore of published
+state worked, after three that re-trained the block instead (see 10.2). The user authorized
+resumption without amendment, and the campaign driver was relaunched to wait for the weekly
+refresh. The published records for 15024-15026 are the retrained copies the 403-era sessions
+wrote, and every manifest in the dataset reads `code_revision: \"unknown\"` because a kernel has
+no `.git`; the revision is recorded from seed 15030 on. Control and null remain unlaunched, so
+no three-queue verdict exists. The authoritative completed-session record is in
 `artifacts/v0-session-logs/NOTES.md`; `docs/T4_RUNBOOK.md` records the unchanged procedure.
 The controller
 default remains cap-4/2-batch; cap-4/1-batch is the validated cheaper option.
@@ -366,7 +369,7 @@ mutation the search can actually reach (5.53). Section 10.4 is the bound in full
 |---|---|---|---|---|---|---|
 | Horizon replication | study 3 config at steps=144 | cap4/2-batch, 3 events, steps=144 | fresh 8000-8383 | binomial sign test, alpha=0.05 | PASS -> pass generalizes; FAIL -> pass was horizon-specific | **DONE: PASS** (231/384, p 4.04e-05, t p 1.07e-08, cost 14.0%) |
 | Richness | candidate set size at fixed probe tokens | cap4/1-batch (A) vs cap2/2-batch (B), 3 events, steps=144 | fresh 7000-7383 | binomial sign test, alpha=0.05; factor claim: paired A-vs-B, one-tailed "rich better" | PASS & A>B -> richness is the active axis; B passes & B>=A -> probe quality is; neither -> both jointly necessary | **DONE: PASS for richness** (A 228/384, p 1.4e-04, t p 5.0e-05, cost 7.3%; B 193/384, p 0.48, cost 8.1%; paired A better 225/384, z = 3.37, p 8e-04) |
-| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config, **`probe_candidate_policy=spread`** (see 5.1/5.5) | **15024-15035** (adopted 5.5 change 4 to 15000-15011, then re-reserved by 5.65: that block's first four seeds ran the pre-5.47 rebuild and their harm numbers had been read) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] + **pool-matched control clause** | cost + band + harm guard clear **and the loss-blind control arm must not clear its own gate** -> Gate 4 authorized; control passes, control missing, band miss or harm guard -> Gate 4 withheld at exit 2 | **REGISTERED as revised (sections 5.5, 5.47, 5.65); EXECUTION PARTIAL, RESUMPTION AUTHORIZED** - the first primary session on the re-reserved block ran on Kaggle 2026-09-26 and published 3 of 12 seeds (15024-15026) to `act-v0-5-2`. At the last recorded health check, primary kernel v9 was running under the campaign driver with 14.68/30 GPU-hours remaining at the 19:12Z check, while control/null remained unlaunched; no three-queue verdict exists. Resumption is authorized without amendment. This is not a registration amendment, cost failure, or Gate-4 verdict. The authoritative session record is in `artifacts/v0-session-logs/NOTES.md`; the unchanged procedure is in `docs/T4_RUNBOOK.md` |
+| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config, **`probe_candidate_policy=spread`** (see 5.1/5.5) | **15024-15035** (adopted 5.5 change 4 to 15000-15011, then re-reserved by 5.65: that block's first four seeds ran the pre-5.47 rebuild and their harm numbers had been read) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] + **pool-matched control clause** | cost + band + harm guard clear **and the loss-blind control arm must not clear its own gate** -> Gate 4 authorized; control passes, control missing, band miss or harm guard -> Gate 4 withheld at exit 2 | **REGISTERED as revised (sections 5.5, 5.47, 5.65); EXECUTION PARTIAL, RESUMPTION AUTHORIZED** - the last recorded check has the primary block at **6 of 12 seeds (15024-15029)** in `act-v0-5-2`: 15024-15026 published 2026-09-26, 15027-15029 published by kernel v11 on 2026-09-27 after its restore of published state worked for the first time (three earlier sessions restored nothing and re-trained the block). Quota was exhausted at 1.65 of 30 GPU-hours with the campaign driver relaunched and waiting for the weekly refresh; control/null remained unlaunched, so no three-queue verdict exists. The published 15024-15026 records are the 403-era sessions' retrained copies and every manifest reads `code_revision: "unknown"`; the revision is recorded from seed 15030 on. Resumption is authorized without amendment. This is not a registration amendment, cost failure, or Gate-4 verdict. The authoritative session record is in `artifacts/v0-session-logs/NOTES.md`; the unchanged procedure is in `docs/T4_RUNBOOK.md` |
 | Depth-4 Gate 3 confirmation | substrate expressiveness + selection value, with the arm-RNG fix | cap4/2-batch, `spread`, `independent_arm_rng`, 3 events, steps=48, depth 4 | fresh 60000-60383 (384 pairs) | argmin vs uniform churn, alpha/3 = 0.01667 (>= 214/384); paired argmin vs pool-matched control | PASS -> Gate 3 established on a non-degenerate substrate, 5.5 adopted; POOL-DRIVEN -> withdraw the selection claim; NOT REPRODUCED -> Gate 3 open, 5.1 must not launch | **DONE: PASS** (argmin vs uniform 255/384, p `6.1e-11`; paired increment 236/384, p `4.1e-06`; pool-matched control 209/384, p `0.046`; validity control does not pass). Section 9.9 |
 
 ### 5.1 Protocol: real-scale compute-efficiency measurement (pre-registered; gates Gate 4)
@@ -8698,8 +8701,8 @@ was added to the declared block, and no number above was retaken.
 | 1. Source repository | DONE (this repository) |
 | 2. Reproducible Kaggle notebooks | DONE for the plan section 39 set (`00_environment` + section 104's `01`-`03` and `04`-`09` per section 39's role list; deterministic builder `scripts/build_notebooks.py`, byte-identical re-runs, all ten notebooks' cells executed and verified) |
 | 3. Dataset manifests | DONE for the declared path (the manifest contract - `act.ops.publish_artifacts` / `restore_artifacts` - is what the V0 checkpoint handoff publishes through: staged under a temporary directory, manifest checksummed and written **last**, then the seed directory swapped in, so a partial publish is never mistaken for a complete one; `src/act/training/v0_handoff.py`); the synthetic-tokenizer manifests remain as before |
-| 4. Baseline checkpoints | DONE for the declared block's published seeds: `act-v0-5-2` contains seeds 15024-15026, with each arm's latest event checkpoint, metrics JSON and seed summary; the non-adaptive arms use the same publish path as the adaptive arm |
-| 5. Adaptive checkpoints | DONE for the declared block's published seeds - the campaign's exit publish makes the session boundary survivable, and **3 of the active block's 12 seeds (15024-15026)** are published to `act-v0-5-2`; primary kernel v9 was running under the existing driver at the last status check, with no Gate-4 verdict yet (section 5.2 and `docs/T4_RUNBOOK.md`) |
+| 4. Baseline checkpoints | DONE for the declared block's published seeds: `act-v0-5-2` contains seeds 15024-15029, with each arm's latest event checkpoint, metrics JSON and seed summary; the non-adaptive arms use the same publish path as the adaptive arm |
+| 5. Adaptive checkpoints | DONE for the declared block's published seeds - the campaign's exit publish makes the session boundary survivable, and **6 of the active block's 12 seeds (15024-15029)** are published to `act-v0-5-2` at the last recorded check; the campaign driver is relaunched and waiting on the weekly quota, with no Gate-4 verdict yet (section 5.2 and `docs/T4_RUNBOOK.md`) |
 | 6. Architecture genomes | DONE for the gate model (serialization, hashing, fossils) |
 | 7. Topology evolution logs | PARTIAL (mutation histories and fossils in records) |
 | 8. Experiment registry | DONE for the gate (append-only JSONL + study summaries) |
@@ -9402,13 +9405,15 @@ decomposition above inherits that caveat, since all of them were read off prefix
   out-of-sample, 218/384 with spread and 225/384 with prefix (5.12b).
   The depth-1 instances of Gate 3 are re-quoted as churn suppression.
 -  **Gate 4 remains registered, incomplete, and has no verdict; resumption is authorized.**
-  The live block is 15024-15035; three primary seeds (15024-15026) were published before the
-  current session. Primary kernel version 9 was `RUNNING` under the campaign driver's lock at
-  the latest recorded check, with 14.68/30 GPU-hours remaining at 19:12Z. Control and null have not
-  launched. The registration is unchanged, and Gate 4 is neither passed nor
-  failed. The primary's three completed runs cannot answer the quality question: they train
-  on synthetic tokens and finish at the uniform-vocabulary loss floor. Completing the
-  registered block addresses its declared cost question, not real-text quality.
+  The live block is 15024-15035; at the last recorded check six primary seeds (15024-15029) are
+  published, the last three by kernel version 11 on 2026-09-27. The weekly quota is exhausted at
+  1.65 of 30 GPU-hours and the campaign driver is relaunched and waiting for it to refresh.
+  Control and null have not launched. The registration is unchanged, and Gate 4 is neither passed nor
+  failed. The primary's six completed runs cannot answer the quality question: they train
+  on synthetic tokens and finish at the uniform-vocabulary loss floor, where the arm
+difference is ~1e-4 and its sign moves seed to seed (2 wins, 4 losses for adaptive). Completing
+  the registered block addresses its declared cost question (every seed measures 0.0942%
+  against the 5% criterion), not real-text quality.
 
 
   **The real-text evidence already answers the adaptive-versus-null assumption at the tested
@@ -9435,8 +9440,8 @@ decomposition above inherits that caveat, since all of them were read off prefix
 The depth-3/4 covariate question is closed: sections 5.48-5.59 measure the named
 covariates and depth ladder, and 5.60-5.61 bound the width-axis price. The remaining
 registered Gate-4 question is the declared-scale cost measurement. Its execution is partial,
-with 3/12 primary seeds in the last recorded state and no control/null queues launched at that
-point, so it has no verdict and authorizes no downstream gate. Resumption is explicitly
+with 6 of the block's 12 primary seeds in the last recorded state (15024-15029) and no
+control/null queues launched, so it has no verdict and authorizes no downstream gate. Resumption is explicitly
 authorized; this is not a change to the registration or a claim that its cost criterion failed.
 
 The separate real-text selection assumption has a current, narrower answer: at development
