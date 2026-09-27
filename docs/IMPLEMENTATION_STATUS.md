@@ -2,17 +2,28 @@
 
 ## The health report counted a seed the queue had not finished (2026-09-27)
 
-**Live update, 2026-09-27 10:58Z:** the primary session kernel is version **11**, `QUEUED`
-since 10:12Z, mounting the code dataset published at the restore fix (`80699f9`), with
-**6.57/30 GPU-h** left. `campaign_health.py` now reports the block as **3 of 12 complete
-(15024, 15025, 15026); stepped but not finished 15027 (in-progress)** and resumes from seed
-**15027** - the seed the runner's own skip rule will start at.
+**Live update, 2026-09-27 11:05Z:** the primary session kernel is version **11**, `RUNNING`
+since 10:59Z (queued from 10:12Z), mounting the code dataset published at the restore fix
+(`80699f9`), with **6.57/30 GPU-h** left. `campaign_health.py` now reports the block as **3 of
+12 complete (15024, 15025, 15026); stepped but not finished 15027 (in-progress)** and resumes
+from seed **15027** - the seed the runner's own skip rule will start at. The platform's log
+stream is answering **500** for this run so far (the driver's live tailer records the failures
+in its capture), which is why the in-session restore line for v11 is not yet quoted here; the
+session's own `session-log.json` reaches the repo through the kernel output either way
+(`kaggle_queue.keep_session_evidence`).
+
+**What is left to buy.** After this window the block needs **8 primary pairs**, then **12
+control** and **12 null** pairs, each queue's 12 pairs at the measured **~1.7 h pair + 45 min
+reserve**: about **54 GPU-h against a 30 h week**, so the campaign cannot finish before the
+two refresh cycles at 2026-10-03 and 2026-10-10 and the driver *should* sit in
+`WAITING_ON_QUOTA` between them. That is the registered scale, not a fault to push sessions
+at - and the fitted window is what keeps the tail of a week from expiring unused.
 
 | | |
 |---|---|
 | **What it said, and what it says now** | Both measured on the live dataset, minutes apart. As committed at `aa28172`: `4 of 12 complete [15024, 15025, 15026, 15027] next 15028 partial []`. Now: `3 of 12 complete [15024, 15025, 15026] next 15027 unconfirmed [15027] {'15027': 'in-progress'}`. The written surfaces were already right - the report's §5 index row says "three of 12 primary seeds (15024-15026)" - so the tool that generates them was the one that disagreed. |
 | **Why the listing cannot answer it alone** | The listing carries file *names*, and a seed read as complete there when every declared arm's checkpoint name reached the declared step. A snapshot is written at each checkpoint while the evaluation runs after the last one, so a seed whose window closed in between has **both arms at `checkpoint-006000.pt`** and a record that still says `in-progress`. Measured on seed 15027: its `reports/seed-summary.json` is **1,676 B** with `status: in-progress`, `interrupted_step: 6000` and **no `final_loss` for either arm**, against seed 15024's **5,051 B**, `status: complete`, both arms' losses present. |
-| **Why that matters** | The runner skips a seed only when that same record says `complete` (`published_seed_status` -> `status == COMPLETE_STATUS`), so the report and the queue it describes disagreed about one seed: the report named **15028** as the next seed while the next session will start at **15027**. No quota was spent on this - the runner's rule is what gates training - but `verdict: COMPLETE` is the line that authorizes driving the *next* queue, and it would have fired on a block whose own record calls a seed unfinished. That is the state a queue reaches most often: the window closes right after a session's last checkpoint. |
+| **Why that matters** | The other two readers of this question already agreed with each other and disagreed with the report: the runner skips a seed only when that record says `complete` (`published_seed_status` -> `status == COMPLETE_STATUS`), and the verdict's `_seed_numbers` collects a seed only when the same field says `complete` (`v0_verdict.py`, which raises `seed N is not a complete version` otherwise). So the report named **15028** as the next seed while the next session will start at **15027**, and `verdict: COMPLETE` - the line that authorizes driving the *next* queue - would have fired on a block whose own record calls a seed unfinished. No quota was spent on this, because neither the runner nor the verdict ever read the listing; what was wrong was the surface an operator and these documents read. That is the state a queue reaches most often: the window closes right after a session's last checkpoint. |
 | **The fix** | `stepped_seeds` names the seeds the listing can only *nominate*; `seed_statuses` fetches each candidate's own record (one `-f` download per candidate, **1.1-1.3 s** measured against the live dataset, never the ~24 GB session dataset); and `seed_progress(seeds, statuses=...)` now requires those statuses and splits three ways - `partial` (an arm short of the declared step), `unconfirmed` (stepped, record does not say `complete`; `unconfirmed_status` tells `in-progress` from an unreadable `None`), `complete`. `missing` and `next_seed` count both unfinished buckets, so the complete verdict needs every seed's own record. Only candidates are fetched: a seed already short of the declared step cannot be changed by its record, and the healthy case is the model default in the tests. |
 | **Pinned** | `tests/test_campaign_health.py`: 15027's live shape (both arms at 6000, record `in-progress`) is not complete and is named in `missing`/`next_seed`; an unreadable record is `unconfirmed` with a `None` status rather than complete; the report line carries the seed and its own status; a stepped-but-unfinished tail seed keeps `verdict: COMPLETE` away; and the wiring test asserts `seed_statuses` is asked for the candidates only. The two step-based tests now pass statuses explicitly, with the reason recorded in the new one. **2028 tests pass.** |
 
