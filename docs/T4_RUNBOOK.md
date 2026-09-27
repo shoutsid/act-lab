@@ -1005,6 +1005,13 @@ PYTHONPATH=src .venv/bin/python scripts/push_tpu_session_rehearsal.py
 setsid nohup bash scripts/fetch_tpu_session_rehearsal_when_done.sh > /tmp/tpu-session-watch.log 2>&1 &
 ```
 
+**Live, 2026-09-27 17:09Z:** `act-tpu-session-rehearsal` is pushed as **version 1** (`QUEUED`,
+TPU on / GPU off) from the code dataset republished at **`9105dc4`**, and the fetch watcher
+above is running - so the record lands in `artifacts/tpu-session-rehearsal/output/` whichever
+state the kernel ends in. Nothing about the campaign's queues changes: no session kernel was
+live when the dataset was republished, and the driver is still sleeping to the 2026-10-03
+refresh with the lock held.
+
 The push republishes `act-lab-code`, so it goes through the probe's own guard
 (`push_tpu_probe.publish_code_dataset`): exit 5 and no push while a campaign session is
 mounted. The kernel is `act-tpu-session-rehearsal` (TPU on, GPU off, so it cannot answer on

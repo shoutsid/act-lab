@@ -2,6 +2,14 @@
 
 ## The TPU holds a session path to rehearse, and a checkpoint now says what wrote it (2026-09-27)
 
+**Live update, 2026-09-27 17:09Z:** the rehearsal is **pushed** -
+`sid123123234/act-tpu-session-rehearsal`, version **1**, `QUEUED`, TPU on and GPU off, staged
+from the code dataset republished at **`9105dc4`** - with
+`scripts/fetch_tpu_session_rehearsal_when_done.sh` armed to keep whatever it lands in
+`artifacts/tpu-session-rehearsal/output/`, on either terminal state. The campaign's own
+queues are untouched: no session kernel is live (the guard checked before republishing), the
+driver still holds the lock and is sleeping to the 2026-10-03 refresh.
+
 The probe answered a different question than the one the amendment needs. `tpu_probe.py` v6
 returned **PORT** on the *declared shape's step loop* (15,034.2 tokens/s, 2.96x the T4 pair,
 recompiles 2.07% of a per-core training hour), and §5.14's option 2 - the **null queue**, twelve
