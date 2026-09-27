@@ -15,7 +15,10 @@ from a distance: **is anything driving this, or has it stopped?**
 The verdict is deliberately one of five, because the right action differs for each:
 
 * ``RUNNING`` - a session is live; nothing to do.
-* ``COMPLETE`` - every declared seed is published; go on to the next queue.
+* ``COMPLETE`` - every declared seed is published *and its own record says ``complete``*;
+  go on to the next queue. A seed whose listing reaches the declared step but whose record
+  still says ``in-progress`` is reported as stepped-but-not-finished and keeps this verdict
+  away, because the next session will re-train it (measured on seed 15027, 2026-09-27).
 * ``FAILED`` - the last session ended in ERROR and nothing is live: read the cause.
 * ``WAITING_ON_QUOTA`` - the week cannot fit another session; the driver's own
   ``--wait-for-quota`` handles it, and unused hours expire at the refresh.
@@ -40,9 +43,12 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Mapping
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
+
+from act.training.v0_handoff import COMPLETE_STATUS  # noqa: E402
 
 import kaggle_queue  # noqa: E402
 import kaggle_t4  # noqa: E402
@@ -160,26 +166,102 @@ def published_seeds(dataset_id: str, *, timeout: float = 180.0) -> dict[int, dic
     return parse_seed_listing(dataset_listing(dataset_id, timeout=timeout))
 
 
-def seed_progress(seeds: dict[int, dict]) -> dict:
-    """Split the published seeds into complete and partial, and say what is next."""
-    complete, partial = [], []
+def stepped_seeds(seeds: dict[int, dict]) -> list[int]:
+    """The seeds the *listing* says reached the declared step on every declared arm.
+
+    That is a candidate, not a finished seed. Measured on the live block, 2026-09-27: seed
+    15027's listing carries ``checkpoint-006000.pt`` for both arms - a snapshot is taken after
+    each checkpoint, and the last one landed at the declared step - while the seed's own
+    published record says ``status: in-progress`` and carries no final loss for either arm,
+    because the evaluation that follows training never ran before the window ended. So the
+    listing cannot tell a finished seed from one whose window closed after its last
+    checkpoint; only the seed's own record can, which is why ``seed_progress`` asks it.
+    """
+    return [
+        seed
+        for seed in sorted(seeds)
+        if all(seeds[seed]["arms"].get(arm, 0) >= DECLARED_STEPS for arm in DECLARED_ARMS)
+    ]
+
+
+def seed_progress(
+    seeds: dict[int, dict], *, statuses: Mapping[int, str | None]
+) -> dict:
+    """Split the published seeds into complete, partial and stepped-but-unfinished.
+
+    ``statuses`` is required rather than optional, and it is the *seed's own published
+    status* (``fetch_seed_status``), not anything derived from the listing: the runner's
+    skip rule reads exactly this field, so a report that skipped it would be able to call a
+    seed finished that the next session will re-train - which is what happened to seed 15027
+    on 2026-09-27. A caller that only has the listing can pass ``{}`` and every candidate
+    reads as unconfirmed, which is the honest answer rather than a default.
+
+    Three buckets, because "did not finish the steps" and "finished the steps but its record
+    does not say complete" are different states with the same consequence for the queue -
+    neither is a seed the campaign can move past:
+
+    * ``partial`` - the listing shows at least one arm short of the declared step.
+    * ``unconfirmed`` - the listing shows every arm at the declared step, and the seed's own
+      record says something else (or cannot be read; ``unconfirmed_status`` distinguishes
+      the two, and ``None`` means unreadable).
+    * ``complete`` - every declared arm at the declared step *and* the record says
+      ``complete``.
+
+    ``missing`` and ``next_seed`` count both incomplete buckets, so they name the seed the
+    next session will actually start at.
+    """
+    complete, partial, unconfirmed = [], [], []
     for seed in sorted(seeds):
-        entry = seeds[seed]
-        finished = all(
-            entry["arms"].get(arm, 0) >= DECLARED_STEPS for arm in DECLARED_ARMS
-        )
-        (complete if finished else partial).append(seed)
+        if not all(
+            seeds[seed]["arms"].get(arm, 0) >= DECLARED_STEPS for arm in DECLARED_ARMS
+        ):
+            partial.append(seed)
+        elif statuses.get(seed) == COMPLETE_STATUS:
+            complete.append(seed)
+        else:
+            unconfirmed.append(seed)
     expected = list(DECLARED_SEEDS)
+    unfinished = [seed for seed in expected if seed not in complete]
     return {
         "complete": complete,
         "partial": partial,
+        "unconfirmed": unconfirmed,
+        "unconfirmed_status": {seed: statuses.get(seed) for seed in unconfirmed},
         "declared": expected,
-        "missing": [seed for seed in expected if seed not in complete],
+        "missing": unfinished,
         "complete_count": len(complete),
         "partial_count": len(partial),
+        "unconfirmed_count": len(unconfirmed),
         "declared_count": len(expected),
-        "next_seed": next((seed for seed in expected if seed not in complete), None),
+        "next_seed": next(iter(unfinished), None),
     }
+
+
+def fetch_seed_status(dataset_id: str, seed: int, *, timeout: float = 180.0) -> str | None:
+    """One published seed's own status, or ``None`` when it cannot be read.
+
+    This is the field the runner's skip rule tests (``published_seed_status`` -> the same
+    ``status`` key), so reading it here is what keeps the report and the queue telling the
+    same story. ``None`` covers both "no summary published" and "the fetch failed": both
+    mean the report cannot call the seed finished, and neither is a completed seed.
+    """
+    summary = fetch_seed_summary(dataset_id, seed, timeout=timeout)
+    status = (summary or {}).get("status")
+    return status if isinstance(status, str) else None
+
+
+def seed_statuses(
+    dataset_id: str, seeds, *, timeout: float = 180.0
+) -> dict[int, str | None]:
+    """Each candidate seed's published status: one small download per candidate.
+
+    Asked only for the seeds the listing calls stepped (``stepped_seeds``), not for every
+    published seed: a seed whose last checkpoint is short of the declared step is already
+    unfinished, so its record cannot change the answer. Measured 2026-09-27: 1.1-1.3 s per
+    seed against the live dataset - the block's twelve seeds cost well under a minute at a
+    queue boundary, and none of them is the ~24 GB session dataset.
+    """
+    return {seed: fetch_seed_status(dataset_id, seed, timeout=timeout) for seed in seeds}
 
 
 def fetch_seed_summary(dataset_id: str, seed: int, *, timeout: float = 180.0) -> dict | None:
@@ -314,7 +396,11 @@ def health(
     declared_window = float(window if window is not None else kaggle_t4.DEFAULT_HOURS)
     try:
         seeds = published_seeds(queue.dataset)
-        progress = seed_progress(seeds)
+        # Candidates are confirmed against their own published record before any of them is
+        # called complete, because the listing cannot tell a finished seed from one whose
+        # window closed just after its last checkpoint (see ``stepped_seeds``).
+        statuses = seed_statuses(queue.dataset, stepped_seeds(seeds))
+        progress = seed_progress(seeds, statuses=statuses)
         seeds_error = None
     except RuntimeError as error:
         # "Cannot tell" and "zero" are different states and the report has to say which
@@ -356,6 +442,8 @@ def health(
             "declared_count": progress.get("declared_count"),
             "complete": progress.get("complete"),
             "partial": progress.get("partial"),
+            "unconfirmed": progress.get("unconfirmed"),
+            "unconfirmed_status": progress.get("unconfirmed_status"),
             "next": progress.get("next_seed"),
             "error": seeds_error,
             # The denominator is a registered constant, so it survives a read failure even
@@ -374,7 +462,7 @@ def health(
 
 ACTIONS = {
     "RUNNING": "a session is training; the queue resumes from seed {next}",
-    "COMPLETE": "every declared seed is published; drive the next queue",
+    "COMPLETE": "every declared seed is published *complete* (its own record says so); drive the next queue",
     "FAILED": "the last session ended in ERROR and nothing is live: read the cause before pushing",
     "WAITING_ON_QUOTA": (
         "the week cannot fit a {window:.1f} h session (refresh {refresh}); the driver's "
@@ -401,6 +489,18 @@ def report(state: dict) -> str:
         else f"{seeds['complete_count']} of {seeds['declared_count']} complete"
         + (f" ({', '.join(str(s) for s in seeds['complete'])})" if seeds["complete"] else "")
         + (f"; partial {seeds['partial']}" if seeds["partial"] else "")
+        # Named apart from ``partial``: this seed finished its declared steps and its record
+        # still does not say complete, so it is neither a seed to skip nor a seed the queue
+        # has moved past - and the next session will re-train it.
+        + (
+            f"; stepped but not finished "
+            + ", ".join(
+                f"{seed} ({seeds.get('unconfirmed_status', {}).get(seed) or 'record unreadable'})"
+                for seed in seeds["unconfirmed"]
+            )
+            if seeds.get("unconfirmed")
+            else ""
+        )
     )
     lines = [
         f"Gate-4 campaign health ({state['queue']} queue)",

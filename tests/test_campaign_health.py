@@ -116,7 +116,9 @@ def test_the_padded_listing_parses_by_field_not_by_stripped_line() -> None:
 
 def test_a_seed_is_complete_only_with_every_arm_at_the_declared_step() -> None:
     """A snapshot that stopped part-way must not read as a finished seed."""
-    progress = campaign_health.seed_progress(campaign_health.parse_seed_listing(LISTING))
+    progress = campaign_health.seed_progress(
+        campaign_health.parse_seed_listing(LISTING), statuses={15000: "complete"}
+    )
     assert progress["complete"] == [15000]
     assert progress["partial"] == [15002]
     assert progress["complete_count"] == 1
@@ -127,6 +129,98 @@ def test_a_seed_is_complete_only_with_every_arm_at_the_declared_step() -> None:
     # semantics inside a partly-complete block are pinned separately, below.
     assert progress["next_seed"] == campaign_health.DECLARED_SEEDS[0]
     assert progress["declared"] == list(campaign_health.DECLARED_SEEDS)
+
+
+def test_the_declared_step_is_necessary_but_not_enough_on_its_own() -> None:
+    """Measured on the live block, 2026-09-27: seed 15027, stepped to 6000 and unfinished.
+
+    Its listing carries ``checkpoint-006000.pt`` for **both** arms - a snapshot is written at
+    every checkpoint and the window closed after the last one - while its own published record
+    says ``status: in-progress`` with no final loss, because the evaluation that follows
+    training never ran. The runner skips a seed only when that same record says ``complete``,
+    so a report that called 15027 finished would disagree with the queue it describes: it
+    said ``4 of 12 complete`` and ``resumes from seed 15028`` while the next session would
+    start at 15027.
+    """
+    listing = "\n".join(
+        f"seed-{seed}/seed-{seed}/checkpoints/{arm}/checkpoint-{step:06d}.pt"
+        f"  1  2026-09-27 03:33:09.095000"
+        for seed in (15026, 15027)
+        for arm, step in (("adaptive", 6000), ("random", 6000))
+    )
+
+    progress = campaign_health.seed_progress(
+        campaign_health.parse_seed_listing(listing),
+        statuses={15026: "complete", 15027: "in-progress"},
+    )
+
+    assert progress["complete"] == [15026]
+    assert progress["partial"] == []
+    assert progress["unconfirmed"] == [15027]
+    assert progress["unconfirmed_status"] == {15027: "in-progress"}
+    assert progress["complete_count"] == 1
+    # The seed the next session will actually start at, which is the seed the report has to
+    # name: an unfinished-but-stepped seed is not one the queue has moved past.
+    assert 15027 in progress["missing"]
+    # The listing still calls both seeds *candidates* - the distinction the report needs to
+    # make, and the reason the confirmation step exists rather than a stricter parser.
+    assert campaign_health.stepped_seeds(campaign_health.parse_seed_listing(listing)) == [
+        15026,
+        15027,
+    ]
+
+
+def test_a_stepped_seed_whose_record_cannot_be_read_is_unconfirmed_not_complete() -> None:
+    """A fetch that fails must not read as a finished seed - the two are different states.
+
+    ``None`` is what both "no summary published yet" and "the download failed" answer with,
+    and neither is evidence that the seed finished its evaluation. The bucket distinguishes
+    it from an ``in-progress`` record so the report can say which one it is looking at.
+    """
+    seeds = {15027: {"arms": {"random": 6000, "adaptive": 6000}, "max_step": 6000}}
+    progress = campaign_health.seed_progress(seeds, statuses={15027: None})
+
+    assert progress["complete"] == []
+    assert progress["unconfirmed"] == [15027]
+    assert progress["unconfirmed_status"] == {15027: None}
+    assert progress["next_seed"] == campaign_health.DECLARED_SEEDS[0]
+
+
+def test_the_report_names_a_stepped_unfinished_seed_and_its_own_status() -> None:
+    """The line an operator reads has to say which seed and *why* it is not counted."""
+    seeds = {15027: {"arms": {"random": 6000, "adaptive": 6000}, "max_step": 6000}}
+    progress = campaign_health.seed_progress(seeds, statuses={15027: "in-progress"})
+    state = {
+        "queue": "session",
+        "session_status": "COMPLETE",
+        "driver_lock": None,
+        "quota": {
+            "remaining_hours": 6.57,
+            "used_hours": 23.43,
+            "total_hours": 30.0,
+            "refresh_at": "2026-10-03T00:00:00",
+            "declared_window_hours": 6.5,
+        },
+        "seeds": {
+            "complete": progress["complete"],
+            "complete_count": progress["complete_count"],
+            "declared_count": progress["declared_count"],
+            "partial": progress["partial"],
+            "unconfirmed": progress["unconfirmed"],
+            "unconfirmed_status": progress["unconfirmed_status"],
+            "next": progress["next_seed"],
+            "error": None,
+            "declared": len(campaign_health.DECLARED_SEEDS),
+        },
+        "readout": None,
+        "verdict": "STALLED",
+    }
+
+    text = campaign_health.report(state)
+
+    assert "0 of 12 complete" in text
+    assert "stepped but not finished 15027 (in-progress)" in text
+    assert "15027" in text
 
 
 def test_next_seed_is_the_lowest_live_block_seed_not_complete() -> None:
@@ -142,7 +236,9 @@ def test_next_seed_is_the_lowest_live_block_seed_not_complete() -> None:
         )
     )
 
-    progress = campaign_health.seed_progress(campaign_health.parse_seed_listing(listing))
+    progress = campaign_health.seed_progress(
+        campaign_health.parse_seed_listing(listing), statuses={first: "complete"}
+    )
 
     assert progress["complete"] == [first]
     assert progress["next_seed"] == second
@@ -163,11 +259,22 @@ def _state(
     remaining: float,
     complete: list[int] | None = None,
     window: float = 7.0,
+    statuses: dict[int, str | None] | None = None,
 ) -> dict:
     seeds = {
         seed: {"arms": {"random": 6000, "adaptive": 6000}, "max_step": 6000}
         for seed in (complete or [])
     }
+    # Every candidate's *published record* has to be read before a seed can be called
+    # complete, so the state fixture owns that answer too - and it defaults to the state that
+    # published seeds are in on a healthy queue rather than to whatever the listing says.
+    monkeypatch.setattr(
+        campaign_health,
+        "seed_statuses",
+        lambda dataset_id, seeds, **kwargs: {
+            seed: (statuses or {}).get(seed, "complete") for seed in seeds
+        },
+    )
     monkeypatch.setattr(campaign_health.kaggle_queue, "active_status", lambda kernel: status)
     monkeypatch.setattr(
         campaign_health.kaggle_queue,
@@ -198,6 +305,86 @@ def test_every_declared_seed_published_is_complete(monkeypatch: pytest.MonkeyPat
         complete=list(campaign_health.DECLARED_SEEDS),
     )
     assert state["verdict"] == "COMPLETE"
+
+
+def test_a_stepped_but_unfinished_seed_keeps_the_complete_verdict_away(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The consequence of the 15027 misreading, at the level that decides to move on.
+
+    The last seed a session leaves behind is the one whose snapshot lands after its final
+    checkpoint, so this is the state a queue reaches *most often* - and ``verdict:
+    COMPLETE`` is what says the next queue may be driven. It must not fire while the block's
+    own record still calls a seed unfinished, or the control queue would start on top of an
+    incomplete primary block.
+    """
+    block = list(campaign_health.DECLARED_SEEDS)
+    state = _state(
+        monkeypatch,
+        status="COMPLETE",
+        remaining=6.0,
+        complete=block,
+        statuses={block[-1]: "in-progress"},
+    )
+
+    assert state["seeds"]["complete"] == block[:-1]
+    assert state["seeds"]["unconfirmed"] == [block[-1]]
+    assert state["seeds"]["next"] == block[-1]
+    assert state["verdict"] != "COMPLETE"
+    assert "stepped but not finished" in campaign_health.report(state)
+
+
+def test_health_confirms_the_candidates_and_leaves_the_partial_seeds_alone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The wiring is the pin: confirming *every* published seed pays a download for seeds
+    whose steps already answer the question, and confirming *none* is the defect this
+    fixed.
+
+    Measured 2026-09-27: a candidate's status costs 1.1-1.3 s (one small ``-f`` download),
+    so the report stays cheap by asking only about seeds whose listing reaches the declared
+    step on every arm.
+    """
+    stepped = list(campaign_health.DECLARED_SEEDS[:2])
+    listing = "\n".join(
+        f"seed-{seed}/seed-{seed}/checkpoints/{arm}/checkpoint-{step:06d}.pt"
+        f"  1  2026-09-21 08:05:15.249000"
+        for seed, arms in (
+            (stepped[0], (("random", 6000), ("adaptive", 6000))),
+            (stepped[1], (("random", 6000), ("adaptive", 6000))),
+            # A seed that stopped part-way: already unfinished, so its record cannot change
+            # the answer and it must not be fetched.
+            (campaign_health.DECLARED_SEEDS[2], (("random", 6000), ("adaptive", 3000))),
+        )
+        for arm, step in arms
+    )
+    asked: list[list[int]] = []
+
+    def fake_statuses(dataset_id: str, seeds, **kwargs) -> dict:
+        asked.append(list(seeds))
+        return {seed: "complete" for seed in seeds}
+
+    monkeypatch.setattr(campaign_health, "published_seeds", lambda dataset_id: campaign_health.parse_seed_listing(listing))
+    monkeypatch.setattr(campaign_health, "seed_statuses", fake_statuses)
+    monkeypatch.setattr(campaign_health.kaggle_queue, "active_status", lambda kernel: "COMPLETE")
+    monkeypatch.setattr(
+        campaign_health.kaggle_queue,
+        "active_quota",
+        lambda *a, **k: {
+            "remaining_hours": 6.0,
+            "used_hours": 24.0,
+            "total_hours": 30.0,
+            "refresh_at": "2026-10-03T00:00:00",
+        },
+    )
+    monkeypatch.setattr(campaign_health, "lock_holder", lambda kernel: None)
+
+    state = campaign_health.health("session")
+
+    assert asked == [stepped]
+    assert state["seeds"]["complete"] == stepped
+    assert state["seeds"]["partial"] == [campaign_health.DECLARED_SEEDS[2]]
+    assert state["seeds"]["unconfirmed"] == []
 
 
 def test_an_error_with_nothing_live_is_failed(monkeypatch: pytest.MonkeyPatch) -> None:
