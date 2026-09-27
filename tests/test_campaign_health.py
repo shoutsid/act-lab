@@ -566,6 +566,37 @@ def test_the_readout_is_opt_in() -> None:
     assert "readout: bool = False" in source
 
 
+def test_a_queue_whose_kernel_is_not_pushed_yet_says_so_instead_of_printing_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The control and null queues start with a kernel that does not exist yet.
+
+    ``kaggle kernels status`` then yields no token, and the line printed nothing at all -
+    which reads as a rendering fault rather than as the state the driver is about to act on
+    (``should_adopt("")`` means *push*). An empty status is also what a failed query returns,
+    and the report cannot tell those apart, so it names both.
+    """
+    state = _state(monkeypatch, status="", remaining=6.41, window=6.5)
+    text = campaign_health.report(state)
+
+    assert "session kernel  : " + campaign_health.UNKNOWN_KERNEL_NOTE in text
+    assert "session kernel  : \n" not in text
+
+
+def test_the_campaign_script_reports_the_window_the_sessions_will_use() -> None:
+    """The launcher fits HOURS to the week; a report testing the declared 7 h would lie.
+
+    Measured 2026-09-27, with the week's tail at 6.41 h and the driver pushing 6.5 h
+    windows: the boundary report said "cannot fit a 7.0 h session" - a verdict computed
+    against a window no session uses, printed at the moment an operator decides whether the
+    campaign is stuck.
+    """
+    source = (ROOT / "scripts" / "run_gate4_campaign.sh").read_text(encoding="utf-8")
+    health = source.split("campaign_health.py", 1)[1].split("2>&1", 1)[0]
+    assert '"${health[@]}"' in health
+    assert 'health+=(--window "$HOURS")' in source
+
+
 def test_the_verdict_is_the_exit_code() -> None:
     """A cron or a later session acts on the code, not on the prose."""
     assert set(campaign_health.VERDICT_EXIT) == {

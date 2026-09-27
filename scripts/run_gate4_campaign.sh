@@ -54,8 +54,15 @@ for queue in "${QUEUES[@]}"; do
   # expensive partly because nothing said where it had got to, and this report reads the
   # published dataset, the kernel status and the quota rather than anything local - so the
   # campaign's own log carries a record of what it was doing even when a driver dies.
+  # The window the sessions will actually use, so the quota verdict is stated against it: with
+  # HOURS fitted to a short week, a report testing the kernel's declared 7 h would print
+  # "cannot fit a 7.0 h session" while the driver is about to push a 6.5 h one.
+  health=(--queue "$queue")
+  if [[ -n "$HOURS" ]]; then
+    health+=(--window "$HOURS")
+  fi
   PYTHONPATH="$REPO_ROOT/src" "$PYTHON" "$REPO_ROOT/scripts/campaign_health.py" \
-    --queue "$queue" 2>&1 | sed 's/^/  /' || true
+    "${health[@]}" 2>&1 | sed 's/^/  /' || true
   attempt=0
   while :; do
     attempt=$((attempt + 1))

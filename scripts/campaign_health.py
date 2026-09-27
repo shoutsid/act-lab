@@ -79,6 +79,14 @@ VERDICT_EXIT = {
     "COMPLETE": 4,
 }
 
+#: What the report prints when ``kaggle kernels status`` returns no token. Empty is a state,
+#: not a hole: every queue but the primary starts with a kernel that has not been pushed yet,
+#: and the driver's push decision reads the same emptiness (``should_adopt("")`` means push).
+#: It is *also* what a failed query returns, and the two are indistinguishable from here, so
+#: the line names both instead of printing nothing - the same reason the seed count prints
+#: "unreadable" with its reason rather than a blank or a zero.
+UNKNOWN_KERNEL_NOTE = "unknown (not pushed yet, or the status query failed)"
+
 #: A published seed directory, with the arm and step of one of its checkpoints:
 #: ``seed-15000/seed-15000/checkpoints/adaptive/checkpoint-006000.pt``.
 SEED_PATH = re.compile(r"^seed-(\d+)/.*?/checkpoints/([^/]+)/checkpoint-(\d+)\.pt$")
@@ -505,7 +513,7 @@ def report(state: dict) -> str:
     lines = [
         f"Gate-4 campaign health ({state['queue']} queue)",
         f"  published seeds : {published}",
-        f"  session kernel  : {state['session_status']}"
+        f"  session kernel  : {state['session_status'] or UNKNOWN_KERNEL_NOTE}"
         + (f", driver lock held by pid {holder['pid']}" if holder and "pid" in holder else ""),
         f"  quota           : {quota['remaining_hours']} h remaining of {quota['total_hours']}"
         f" (refresh {quota['refresh_at']})",
