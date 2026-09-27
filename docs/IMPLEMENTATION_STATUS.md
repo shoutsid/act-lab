@@ -1,5 +1,34 @@
 # ACT Implementation Status
 
+## Every session was re-training the block: a 403 that read as "nothing published yet" (2026-09-27)
+
+**Live update, 2026-09-27 10:12Z:** the campaign driver is running again, this time with a
+fitted **6.5 h** window (the week has **6.57/30 GPU-h** left, refreshing 2026-10-03) and
+`--wait-for-quota`, so it sleeps to the refresh rather than letting the tail expire. The code
+dataset was republished at the restore fix (`80699f9`) and session kernel version **11** is
+`QUEUED`. The primary block is **3 complete + seed 15027 in-progress** as published; the
+runner will re-train 15027 because a pair is atomic and an in-progress snapshot is forensic
+only.
+
+**What the stop was.** The previous driver ended at 2026-09-27T03:30:28Z with exit **4** - "a
+session completed without advancing the queue (4 -> 3 of 12 seeds)", having spent 6.60 GPU-h.
+That exit is correct; the reading it was based on was not.
+
+| | |
+|---|---|
+| **The session's own account, verbatim** | v10's platform log: `Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2` at `t = 223.0 s`, then `no remote version of sid123123234/act-v0-5-2 available yet; training from scratch (atomic pairs make this safe)` at `t = 223.1 s`. It then trained **15024, 15025, 15026** and published 15027 as an in-progress snapshot. The dataset had held complete versions of 15024-15026 for hours and of 15027 since v9. |
+| **So the queue never advanced** | Every session restored nothing, so every session started at the first declared seed and re-trained seeds the queue already had - at ~1.5 h per pair, a whole window's quota per session - and *published over* them: v10 replaced v9's **complete** version of seed 15027 with an **in-progress** one. v9's own numbers say the same: 4 completed pairs and no `skipped_complete` entry, which is only possible if it saw no published state ~45 min after v7 had published it. |
+| **Why the code read it as "missing"** | `_is_missing_dataset_error` accepts any `requests.HTTPError` whose response is **403 or 404**. Measured 2026-09-27 against the live API: downloading an id that does not exist answers **403** (`sid123123234/act-definitely-missing` and another account's dataset both do), so the error cannot distinguish "nothing published yet" from "will not serve it" - and the code treated both as the bootstrap state. |
+| **It is not a permissions problem** | From the workstation the same account lists the dataset's files and mints a download URL for it; from inside a kernel the free CPU `restoreprobe` re-run at 2026-09-27 restored **4 seed version(s) [15024, 15025, 15026, 15027] in 12.4 min (25.24 GiB)** - the same call that failed in the sessions. So the path works; what the failing sessions hit is transient or version-state related, and **the error was never logged**, which is why it survived three sessions. |
+| **A window in which that 403 is expected** | A pushed version's files appear in the listing **5-8 min after the push** (the current version, pushed 03:27:40Z, carries 03:32-03:34 file times). A restore issued in that window can answer 403 for a dataset that plainly exists. Stated as the mechanism the retry exists for; it is not yet measured directly. |
+| **The fix** | `restore_latest` now classifies a download failure by asking the **owner's own listing** (`dataset_exists`: `dataset_list(mine=True)`, paged, ref-matched) instead of trusting the error code; "no such dataset" is still the bootstrap state and is not retried, an existing dataset is retried **4 times over 6 min**, and if it still will not download the session **raises** - the runbook's own rule ("a session that cannot get its requested remote state must stop here, not mid-pair"), which the 403 misread had been bypassing. Every failed attempt now logs its exception type and text. |
+| **Pinned** | `tests/test_kaggle_remote.py`: the bootstrap case does not retry and does not back off; an owned dataset that will not download retries `RESTORE_ATTEMPTS` times and then raises with the error text; a transient 403 that clears restores normally; and `dataset_exists` pages past a first page that does not carry the ref. `dataset_exists` was additionally exercised against the live API with both the workstation's `kaggle` 2.2.4 and the kernel's 2.0.2 (existing -> `True`, missing -> `False`). 2021 tests pass. |
+
+This is dry-run bookkeeping, not a verdict: no seed, knob, dataset or criterion changed, and the
+block remains 15024-15035 in `act-v0-5-2` (primary) / `-control` / `-null`.
+
+---
+
 ## Gate 4 resumption authorized; primary session v9 running (2026-09-26)
 
 **Live update, 2026-09-26 19:12Z:** Kaggle reports the existing primary kernel v9 `RUNNING`;
