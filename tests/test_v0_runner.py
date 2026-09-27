@@ -1405,3 +1405,68 @@ def test_a_summary_without_a_recorded_config_is_not_read_as_a_conflict(
             preserve_router_on_rebuild=True, new_expert_initialization="clone"
         ),
     )
+
+
+# --- the revision a Kaggle session records on every published seed ------------
+
+
+def test_the_handoff_revision_comes_from_the_mounted_marker_without_git(
+    tmp_path: Path,
+) -> None:
+    """Measured 2026-09-27: every published manifest of the campaign said ``unknown``.
+
+    A Kaggle session imports ``src/`` from a mounted dataset that has no ``.git``, so
+    ``git rev-parse`` is not a source of provenance there - and the field every seed's
+    manifest carries was the literal string ``unknown`` for all six published primary
+    seeds. The mounted tree does carry the commit the driver archived, in ``revision.txt``
+    beside ``pyproject.toml``, which is what this reads.
+    """
+    from act.training import cli
+
+    commit = "0123456789abcdef0123456789abcdef01234567"
+    (tmp_path / cli.REVISION_MARKER).write_text(commit + "\n", encoding="utf-8")
+
+    assert cli._revision_from_marker(tmp_path) == commit
+    # An explicit root is answered from that root alone: no git call, so this is the
+    # in-kernel path exercised for real.
+    assert cli._git_revision(tmp_path) == commit
+    # Neither source present is still `unknown` rather than an empty string.
+    assert cli._revision_from_marker(tmp_path / "elsewhere") is None
+    assert cli._git_revision(tmp_path / "elsewhere") == "unknown"
+    (tmp_path / cli.REVISION_MARKER).write_text("\n", encoding="utf-8")
+    assert cli._git_revision(tmp_path) == "unknown"
+
+
+def test_the_revision_marker_name_is_the_one_the_code_dataset_writes() -> None:
+    """The two sides have to agree on the file, or the fallback reads nothing forever.
+
+    ``kaggle_queue.stage_code_dataset`` writes the marker; this reader looks for it. They
+    are separate modules with a shared string, so the agreement is pinned rather than
+    assumed - the same failure shape as the doubled upload layout that made every kernel
+    die at bootstrap while the marker alone looked healthy.
+    """
+    import sys
+
+    from act.training import cli
+
+    root = Path(__file__).resolve().parent.parent
+    sys.path.insert(0, str(root / "scripts"))
+    import kaggle_queue  # noqa: PLC0415 - imported here so the pin is about the constant
+
+    assert cli.REVISION_MARKER == kaggle_queue.REVISION_MARKER
+
+
+def test_a_workstation_still_records_gits_own_answer(tmp_path: Path) -> None:
+    """The marker is a fallback, not a replacement: git answers first where it can."""
+    import subprocess
+
+    from act.training import cli
+
+    expected = subprocess.check_output(
+        ["git", "rev-parse", "--short", "HEAD"],
+        cwd=Path(__file__).resolve().parent.parent,
+        text=True,
+        stderr=subprocess.DEVNULL,
+    ).strip()
+
+    assert cli._git_revision() == expected

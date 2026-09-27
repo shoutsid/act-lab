@@ -118,16 +118,51 @@ def _run_v0(args: argparse.Namespace) -> None:
     print(json.dumps({key: value for key, value in summary.items() if key != "per_seed"}, sort_keys=True))
 
 
-def _git_revision() -> str:
-    """Short HEAD revision for the handoff manifests ('unknown' outside git)."""
+#: The revision marker the published code dataset carries beside the package tree
+#: (``kaggle_queue.REVISION_MARKER``, written from the same HEAD whose bytes it archived).
+REVISION_MARKER = "revision.txt"
+
+
+def _revision_from_marker(root: Path) -> str | None:
+    """The commit recorded in ``revision.txt`` at ``root``, or ``None``.
+
+    A Kaggle session imports the package from a *mounted dataset*, which has no ``.git`` -
+    so ``git rev-parse`` answers nothing there and this marker is the only statement of
+    which revision is running.
+    """
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-        ).strip()
-    except Exception:
-        return "unknown"
+        text = (Path(root) / REVISION_MARKER).read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return text or None
+
+
+def _git_revision(root: Path | None = None) -> str:
+    """The revision this code came from, for the handoff manifests.
+
+    ``git rev-parse --short HEAD`` answers on a workstation. On Kaggle the code arrives as
+    a mounted dataset with no ``.git``, so the fallback is the dataset's own
+    ``revision.txt`` beside the package tree - the commit whose bytes were archived, which
+    is exactly what the field means. Measured 2026-09-27: without it every published
+    manifest of the whole campaign read ``code_revision: unknown``, so a reader could not
+    attribute a seed to the code that trained it - and could not see that the primary
+    block's first three seeds (15024-15026, retrained by the 403-era sessions that restored
+    nothing and published over them) came from a different revision than its last three.
+
+    ``root`` is for tests and for a caller that knows where its tree is; ``None`` means
+    "ask git about the checkout this module is installed in, then read the marker beside
+    it". Full commit id from the marker, git's short form locally: either resolves.
+    """
+    if root is None:
+        try:
+            return subprocess.check_output(
+                ["git", "rev-parse", "--short", "HEAD"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+        except Exception:
+            root = Path(__file__).resolve().parents[3]
+    return _revision_from_marker(root) or "unknown"
 
 
 def _resolve_dtype(
@@ -320,12 +355,18 @@ def _run_pair_session(args: argparse.Namespace) -> None:
             f"{args.hours:g} h remain after {entry_minutes:.1f} min of startup",
             flush=True,
         )
+    # The revision is written into every seed's manifest, and it belongs in the session's
+    # own account too: a kernel log that does not say which code ran cannot be attributed
+    # afterwards, which is what the campaign's published manifests said (`unknown`) for
+    # every seed until the marker fallback above.
+    code_revision = _git_revision()
+    print(f"code revision: {code_revision}", flush=True)
     summary = run_pair_session(
         seeds=seeds,
         config=config,
         session_dir=args.session_dir,
         dataset_root=args.dataset_root,
-        code_revision=_git_revision(),
+        code_revision=code_revision,
         remaining_hours=remaining_hours,
         measured_tokens_per_second=schedule_rate,
         output=args.output,
