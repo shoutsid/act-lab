@@ -61,6 +61,24 @@ PUBLISH_LOG_NAME = "remote-publish-log.json"
 PUBLISH_ATTEMPTS = 3
 PUBLISH_RETRY_SECONDS = 5.0
 
+# How many times the startup restore re-attempts a download whose failure looks
+# like "no such dataset yet", and the base delay (multiplied by the attempt
+# number). The download endpoint answers 403 both for a dataset that does not
+# exist and for one it will not serve, and a version pushed minutes ago can be
+# in that second state while the service finishes indexing it - measured
+# 2026-09-27, a pushed version's files appear in the listing 5-8 min after the
+# push (a 03:27:40Z version carried 03:32-03:34 file times). So a single 403 is
+# not enough to conclude that the queue has published nothing, and the wait is
+# cheap against a session window: 60 + 120 + 180 s is 6 min of a 7 h window.
+RESTORE_ATTEMPTS = 4
+RESTORE_RETRY_SECONDS = 60.0
+
+# How many pages of the owner's own dataset listing the existence check reads
+# before giving up. The listing pages at 20 datasets and the campaign's account
+# holds a handful, so this is slack rather than a limit anyone reaches; the cap
+# exists so a misbehaving listing cannot make a session's startup unbounded.
+DATASET_LIST_PAGES = 5
+
 STATUS_PUBLISHED = "published"
 STATUS_FAILED = "failed"
 STATUS_NOTHING = "nothing_to_publish"
@@ -190,6 +208,10 @@ class KaggleDatasetClient(Protocol):
         """Download and extract the dataset's latest version into ``target``."""
         ...
 
+    def dataset_exists(self, dataset: str) -> bool:
+        """Whether the authenticated account owns a dataset with this id."""
+        ...
+
 
 class KaggleApiAdapter:
     """Production client wrapping the optional ``kaggle`` package.
@@ -247,6 +269,31 @@ class KaggleApiAdapter:
 
     def download_files(self, dataset: str, target: Path) -> None:
         self._api.dataset_download_files(dataset, path=str(target), unzip=True)
+
+    def dataset_exists(self, dataset: str) -> bool:
+        """Is this dataset one of the account's own? Asked of the owner's listing.
+
+        The download endpoint answers 403 both for "no such dataset" and for a
+        dataset it will not serve, so the error alone cannot tell a first
+        session (nothing published yet) from a session whose restore is broken.
+        The owner's own listing can: a dataset the account published is always
+        listed back to it, and ``mine=True`` is the only listing a *private*
+        dataset appears in - which every queue's dataset is.
+
+        Raises when the listing itself fails, which is the fail-fast direction:
+        a session that cannot establish whether remote state exists must not
+        start training over it. The page walk is capped so a listing that never
+        ends cannot make a session's startup unbounded.
+        """
+        owner, _, slug = dataset.partition("/")
+        wanted = f"{owner}/{slug}" if owner and slug else dataset
+        for page in range(1, DATASET_LIST_PAGES + 1):
+            listing = self._api.dataset_list(mine=True, page=page)
+            if not listing:
+                return False
+            if any(getattr(item, "ref", None) == wanted for item in listing):
+                return True
+        return False
 
 
 def stage_push(folder: str | Path, staging: str | Path) -> None:
@@ -430,6 +477,8 @@ def restore_latest(
     dataset: str,
     client: KaggleDatasetClient,
     log: Callable[[str], None] | None = None,
+    attempts: int = RESTORE_ATTEMPTS,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> list[int]:
     """Restore the newest remote version's seeds into the local handoff tree.
 
@@ -440,6 +489,18 @@ def restore_latest(
     seeds are kept. Raises on client errors - a session that asked for
     remote state and cannot get it must fail before training starts.
     Returns the restored seed numbers.
+
+    A download failure that *looks* like "no such dataset yet" is classified by
+    asking the owner's own listing rather than by trusting the error: the
+    download endpoint answers 403 both for a dataset that does not exist and for
+    one it will not serve, and the second case must not be read as the first.
+    Measured 2026-09-26/27, that misreading cost a whole session's quota at a
+    time and, worse, published a re-trained seed *over* its own complete version:
+    the sessions restored nothing, trained seeds 15024+ from scratch and
+    republished them, so the queue never advanced past the seeds already done
+    while the driver read the same partial progress each time. A missing dataset
+    (session 1) is still the normal bootstrap state and is not retried; an
+    existing one is retried, and then raises rather than training over it.
 
     The download's size and duration are logged because this cost is *unpriced*
     and grows with every seed the queue publishes: it is the whole published
@@ -456,19 +517,46 @@ def restore_latest(
     with tempfile.TemporaryDirectory(prefix="act-kaggle-restore-") as scratch:
         extracted = Path(scratch) / "download"
         download_started = time.monotonic()
-        try:
-            client.download_files(dataset, extracted)
-        except Exception as error:
-            if not _is_missing_dataset_error(error):
-                raise
-            # No remote version yet (session 1, or a dataset not created):
-            # training from scratch is always safe under the atomic-pair
-            # rule, so absence warns instead of blocking the launch.
-            logger(
-                f"no remote version of {dataset} available yet; "
-                "training from scratch (atomic pairs make this safe)"
-            )
-            return []
+        failure: Exception | None = None
+        for attempt in range(1, max(1, attempts) + 1):
+            try:
+                client.download_files(dataset, extracted)
+                failure = None
+                break
+            except Exception as error:  # noqa: BLE001 - classified below
+                if not _is_missing_dataset_error(error):
+                    raise
+                failure = error
+                # The error type alone cannot say whether the dataset exists,
+                # and the two answers need opposite responses: a dataset that
+                # has no version yet is the normal first-session state (train
+                # from scratch), while one that exists and will not download
+                # must stop the session before it re-trains published seeds.
+                if not client.dataset_exists(dataset):
+                    logger(
+                        f"no remote version of {dataset} available yet; "
+                        "training from scratch (atomic pairs make this safe)"
+                    )
+                    return []
+                if attempt < attempts:
+                    logger(
+                        f"the restore of {dataset} failed ({type(error).__name__}: "
+                        f"{error}) although the dataset exists; attempt "
+                        f"{attempt}/{attempts}, retrying in "
+                        f"{RESTORE_RETRY_SECONDS * attempt:.0f} s (published seeds "
+                        "are not re-trained over)"
+                    )
+                    sleep(RESTORE_RETRY_SECONDS * attempt)
+        if failure is not None:
+            # Every attempt failed on a dataset the account owns: this is not
+            # "nothing published yet", and training from scratch here would
+            # re-train - and republish over - the seeds the queue already has.
+            raise RuntimeError(
+                f"cannot restore {dataset}: the dataset exists but its download "
+                f"failed on all {attempts} attempt(s) "
+                f"({type(failure).__name__}: {failure}); training nothing rather "
+                "than re-training seeds the queue already published"
+            ) from failure
         logger(
             f"remote restore: {dataset} downloaded in "
             f"{(time.monotonic() - download_started) / 60.0:.1f} min "

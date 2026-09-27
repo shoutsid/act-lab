@@ -69,12 +69,20 @@ def stub_requests(monkeypatch, status_code: int) -> None:
 class FakeClient:
     """In-memory KaggleDatasetClient recording calls and staging versions."""
 
-    def __init__(self, *, fail: Exception | None = None, empty_download: bool = False):
+    def __init__(
+        self,
+        *,
+        fail: Exception | None = None,
+        empty_download: bool = False,
+        owns: bool = False,
+    ):
         self.fail = fail
         self.empty_download = empty_download
+        self.owns = owns
         self.versions: list[tuple[str, str]] = []  # (dataset, version_notes)
         self.downloads: list[str] = []
         self.snapshots: list[Path] = []  # staged copies, one per version
+        self.existence_checks: list[str] = []
 
     def create_version(self, folder: Path, version_notes: str) -> str:
         if self.fail is not None:
@@ -97,6 +105,10 @@ class FakeClient:
         if self.snapshots:
             source = self.snapshots[-1]
             shutil.copytree(source, target / source.name)
+
+    def dataset_exists(self, dataset: str) -> bool:
+        self.existence_checks.append(dataset)
+        return self.owns
 
 
 def _config(tmp_path: Path, seed: int) -> V0SessionConfig:
@@ -507,21 +519,103 @@ def test_restore_latest_treats_missing_dataset_as_bootstrap(
 ) -> None:
     """Session 1 has nothing to restore: absence warns and continues."""
     stub_requests(monkeypatch, status_code=404)
-    client = FakeClient()
+    client = FakeClient()  # owns=False: the account has no such dataset yet
 
     def missing_download(dataset: str, target: Path) -> None:
         raise StubHTTPError("404 not found", response=StubResponse(404))
 
     client.download_files = missing_download  # type: ignore[method-assign]
     messages: list[str] = []
+    slept: list[float] = []
     restored = restore_latest(
         tmp_path / "dataset",
         dataset="owner/ds",
         client=client,
         log=messages.append,
+        sleep=slept.append,
     )
     assert restored == []
     assert any("training from scratch" in message for message in messages)
+    # A dataset that does not exist is not a failure to retry: one download
+    # attempt, one existence check, no backoff.
+    assert client.existence_checks == ["owner/ds"]
+    assert slept == []
+    assert not any("retrying" in message for message in messages)
+
+
+def test_restore_latest_refuses_to_train_over_a_dataset_it_cannot_download(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """An existing dataset that will not download must stop the session.
+
+    The download endpoint answers 403/404 both for "no such dataset" and for a
+    dataset it will not serve, and the old reading - warn and train from scratch
+    - is what let a whole session's quota go to re-training seeds the queue had
+    already published, over their own complete versions. Measured 2026-09-26/27
+    on the primary queue: two sessions in a row restored nothing, re-trained
+    seeds 15024-15026, and the driver saw no progress (4/12 -> 3/12).
+    """
+    stub_requests(monkeypatch, status_code=403)
+    client = FakeClient(owns=True)
+
+    def forbidden_download(dataset: str, target: Path) -> None:
+        raise StubHTTPError("403 Forbidden", response=StubResponse(403))
+
+    client.download_files = forbidden_download  # type: ignore[method-assign]
+    messages: list[str] = []
+    slept: list[float] = []
+    with pytest.raises(RuntimeError, match="cannot restore owner/ds"):
+        restore_latest(
+            tmp_path / "dataset",
+            dataset="owner/ds",
+            client=client,
+            log=messages.append,
+            sleep=slept.append,
+        )
+    # It retried before giving up, and every failure named its cause - the
+    # silent version of this cost a campaign three sessions of progress.
+    assert len(client.existence_checks) == kaggle_remote.RESTORE_ATTEMPTS
+    assert len(slept) == kaggle_remote.RESTORE_ATTEMPTS - 1
+    assert any("403 Forbidden" in message for message in messages)
+
+
+def test_restore_latest_recovers_from_a_transient_download_failure(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A 403 that clears is not a reason to re-train a published block."""
+    stub_requests(monkeypatch, status_code=403)
+    dataset_root = _publish_local_seed(tmp_path, 42)
+    client = FakeClient(owns=True)
+    publish_on_exit(
+        dataset_root,
+        dataset="owner/ds",
+        client=client,
+        log=lambda message: None,
+    )
+    # Nothing local, so the restore below is the only source of seed 42.
+    shutil.rmtree(dataset_root / HANDOFF_DATASET / "seed-0042")
+    real_download = client.download_files
+    attempts = {"count": 0}
+    messages: list[str] = []
+
+    def flaky_download(dataset: str, target: Path) -> None:
+        attempts["count"] += 1
+        if attempts["count"] == 1:
+            raise StubHTTPError("403 Forbidden", response=StubResponse(403))
+        real_download(dataset, target)
+
+    client.download_files = flaky_download  # type: ignore[method-assign]
+    restored = restore_latest(
+        dataset_root,
+        dataset="owner/ds",
+        client=client,
+        log=messages.append,
+        sleep=lambda seconds: None,
+    )
+
+    assert restored == [42]
+    assert attempts["count"] == 2
+    assert any("retrying" in message for message in messages)
 
 
 def test_restore_latest_raises_on_unexpected_client_error(tmp_path: Path) -> None:
@@ -539,6 +633,35 @@ def test_restore_latest_raises_on_unexpected_client_error(tmp_path: Path) -> Non
             client=client,
             log=lambda message: None,
         )
+
+
+def test_dataset_exists_reads_the_owner_s_own_listing_by_paging() -> None:
+    """The check that tells a missing dataset from one that will not download.
+
+    The download endpoint cannot answer that question - it answers 403 in both
+    cases - so the classifier asks the owner's listing instead. A check that
+    stopped on page 1 would read a dataset listed on page 2 as missing, which is
+    exactly the reading ("no remote version yet") that re-trains published
+    seeds.
+    """
+    adapter = kaggle_remote.KaggleApiAdapter.__new__(kaggle_remote.KaggleApiAdapter)
+    pages = {
+        1: [types.SimpleNamespace(ref="owner/other")],
+        2: [types.SimpleNamespace(ref="owner/ds")],
+    }
+    asked: list[int] = []
+
+    class Api:
+        def dataset_list(self, *, mine: bool, page: int):
+            assert mine is True, "only the owner's own listing shows private datasets"
+            asked.append(page)
+            return pages.get(page, [])
+
+    adapter._api = Api()
+
+    assert adapter.dataset_exists("owner/ds") is True
+    assert asked == [1, 2]
+    assert adapter.dataset_exists("owner/missing") is False
 
 
 def test_default_client_requires_the_kaggle_package(monkeypatch) -> None:
