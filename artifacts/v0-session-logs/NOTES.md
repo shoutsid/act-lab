@@ -1,5 +1,31 @@
 # Campaign session logs - the evidence behind the exit-publish numbers
 
+## Why there is no kernel-version-10 log in this directory (2026-09-27)
+
+The session that stalled the queue - `act-t4-session` version 10, which completed
+2026-09-27 and advanced the queue by nothing - left an account that was read, quoted into
+`docs/IMPLEMENTATION_STATUS.md`, and then **destroyed by the next push**: `kaggle kernels
+logs` serves the log of the *latest* version only, and fetching `…/act-t4-session/10` after
+version 11 was queued returns an empty stream. The two lines that explain three sessions of
+lost quota are therefore quoted in the status entry rather than committed here:
+
+```
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2        (t = 223.0 s)
+no remote version of sid123123234/act-v0-5-2 available yet; training from scratch (t = 223.1 s)
+```
+
+Two things follow, and both are now in the tooling rather than in a habit. First, a download
+failure that *looks* like "nothing published yet" is classified against the owner's own
+dataset listing instead of trusted (a missing dataset and an unserved one both answer 403),
+retried, and then **stopping** the session rather than re-training published seeds
+(`src/act/ops/kaggle_remote.py`; the runbook's own "fail-fast" rule for a restore). Second,
+the driver keeps every session's own account at session end - the kernel log blob, the live
+capture and the runner's `session-log.json` - in this directory
+(`kaggle_queue.keep_session_evidence`, 2026-09-27), because a session that succeeds *and*
+advances nothing is not a failure path and nothing else fetches its log. The next synthetic
+session that ends this way therefore leaves `session-<queue>-<stamp>-kernel-log.json` here,
+and this paragraph is the reason that file exists.
+
 ## What `session-15000-03-log.json` is
 
 The platform's own log stream for `sid123123234/act-t4-session`, the Gate-4 primary
