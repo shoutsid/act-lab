@@ -1,0 +1,104 @@
+{
+  "declared_seed_queue": [
+    15024,
+    15025,
+    15026,
+    15027,
+    15028,
+    15029,
+    15030,
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ],
+  "dtype": "fp16",
+  "dtype_rule_tokens_per_second": 1453.665374626942,
+  "latest_published_seed": 15029,
+  "measured_tokens_per_second": 5181.528237896238,
+  "pair_time_hours": 1.4175006201333324,
+  "pairs": [
+    {
+      "action": "skipped_complete",
+      "seed": 15024
+    },
+    {
+      "action": "skipped_complete",
+      "seed": 15025
+    },
+    {
+      "action": "skipped_complete",
+      "seed": 15026
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 10.398457527160645,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": null,
+      "random_final_loss": 10.398536682128906,
+      "search_flops_by_arm": {
+        "adaptive": 13209492148224,
+        "random": 3457609728
+      },
+      "seed": 15027,
+      "training_flops_by_arm": {
+        "adaptive": 13870169063424000,
+        "random": 14127992930304000
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 10.3983473777771,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": null,
+      "random_final_loss": 10.398133039474487,
+      "search_flops_by_arm": {
+        "adaptive": 13209508925440,
+        "random": 3424038912
+      },
+      "seed": 15028,
+      "training_flops_by_arm": {
+        "adaptive": 13870169063424000,
+        "random": 14024863383552000
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 10.398276329040527,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": null,
+      "random_final_loss": 10.397966623306274,
+      "search_flops_by_arm": {
+        "adaptive": 13209542479872,
+        "random": 3407253504
+      },
+      "seed": 15029,
+      "training_flops_by_arm": {
+        "adaptive": 13870169063424000,
+        "random": 13973298610176000
+      }
+    }
+  ],
+  "pairs_completed": 3,
+  "protocol": "v0-compute-efficiency-5.2",
+  "remaining_hours_at_entry": 6.228538425649167,
+  "schedule_tokens_per_second": 5181.528237896238,
+  "seeds_requested": [
+    15024,
+    15025,
+    15026,
+    15027,
+    15028,
+    15029,
+    15030,
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ]
+}

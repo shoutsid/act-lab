@@ -130,6 +130,21 @@ artifacts/v0-session-logs/*
 !artifacts/v0-session-logs/session-15024-summary.json
 !artifacts/v0-session-logs/session-15025-summary.json
 !artifacts/v0-session-logs/session-15026-summary.json
+# The completed Gate-4 primary session (kernel v11, 2026-09-27): the first session whose
+# restore worked (three seeds skipped, three trained, 6/12 published), and the last one
+# nobody watched - the workstation rebooted while the driver was polling and the session
+# finished and published on Kaggle by itself. Its platform log, the runner's own
+# session-log, the publish receipt, the benchmark and the child's tee are the whole record;
+# there is no live capture because the reboot destroyed the driver's work directory. Its
+# per-seed records are also what exposed the provenance hole: the published 15024-15026 are
+# v10's retrained copies, and every manifest in the dataset says `code_revision: unknown`.
+!artifacts/v0-session-logs/session-15027-29-session.json
+!artifacts/v0-session-logs/session-15027-29-publish.json
+!artifacts/v0-session-logs/session-15027-29-benchmark.json
+!artifacts/v0-session-logs/session-15027-29-child-stream.log
+!artifacts/v0-session-logs/session-15027-summary.json
+!artifacts/v0-session-logs/session-15028-summary.json
+!artifacts/v0-session-logs/session-15029-summary.json
 # The two-seed concurrency rehearsal (2026-09-22): the blocker on the null queue's
 # two-seeds-per-pair amendment, which the journal prices at 8.49 GPU-h and which is also the
 # bar-level route to a one-week block. The record is the evidence - it carries both

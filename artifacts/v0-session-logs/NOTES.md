@@ -1,5 +1,75 @@
 # Campaign session logs - the evidence behind the exit-publish numbers
 
+## The session that finally advanced the queue (kernel v11, 2026-09-27)
+
+The first session in four whose restore *worked*: `act-t4-session` version **11**, declared
+window **6.5 h**, code dataset `80699f945648` (the restore fix), quota 6.57 h at entry and
+1.65 h after - **4.92 GPU-h** spent for **three** published pairs (15027, 15028, 15029), the
+queue moving **3 -> 6 of 12**. It ran unattended for its last hour: the workstation rebooted
+at **15:46:08Z** while the driver was polling, and the session finished on Kaggle at ~15:54Z
+and published at 15:57-15:59Z with nobody watching. The files here are the evidence fetched
+afterwards (2026-09-27 17:0xZ, `kaggle kernels logs` + `kaggle kernels output`, taken while
+version 11 was still the latest version - the next push replaces them).
+
+| file | what it is | sha256 |
+|---|---|---|
+| `session-15027-29-log.json` | the platform's execution log for kernel version 11: **73 events** (6 on stderr), 11,406 bytes, `time` in seconds from kernel start | `ec4ab749c9ed30bac1290957abf8a33aab6cb851794c28062c2b98fba24501a0` |
+| `session-15027-29-session.json` | the runner's own `session-log.json` (the queue loop's account: which seeds were skipped, which completed, per-pair losses and FLOPs) | `76b48c920333a5f134b81ce1c946654d295b10e3abcd4d5e44cae0ec8ac4d3cd` |
+| `session-15027-29-publish.json` | the exit-publish receipt: `status=published`, `seeds_published=6`, `error=null` | `2f391ef9500a975d6af593827add2629ac19ef2c55a5305fa7efe33c2b3c0992` |
+| `session-15027-29-benchmark.json` | the throughput benchmark that set the dtype (`fp16`) and the schedule (5,182 tokens/s, pair 1.4175 h) | `af4c10df1940aa0e17e2f2d5bc158ab27e9ef63ab6672fbeb1ada999b96f31fb` |
+| `session-15027-29-child-stream.log` | the child's tee from the kernel output (`session-stream.log`): the restore line, all three pair completions, the stop and the publish | `6b34370f4a94835eb1d23abd7bf16e3c02b394cb5023e6c8e8844f898104dd17` |
+| `session-15027-summary.json` | seed 15027's published record (re-trained this session; the window that produced it is the one the 403-era sessions had left `in-progress`) | `510bfa6f9de53ea8ba8fe482cda66bbae508ec92374b6a37177b95fa95eff861` |
+| `session-15028-summary.json` | seed 15028's published record | `962bdcc11d200bece9fd4d7e51b7f009fc1c0e999832af095058b0cfef438b54` |
+| `session-15029-summary.json` | seed 15029's published record | `d02d650b0ae3f23cd2761d5fe1658addcbba27379fbc484bbe1c05ffa0d55bb22` |
+
+There is **no live capture** for this session, unlike v7's: the driver's tailer writes into
+its own `mkdtemp` work directory, the reboot destroyed that directory, and the driver itself
+died with it - so nothing called `keep_session_evidence` either. What survives is what the
+platform kept: the log above and the version's output files. (The three recorded line types
+that matter - `remote restore: ... downloaded in 8.7 min (25.23 GiB on disk)`, `restored 4
+seed version(s) ... [15024, 15025, 15026, 15027]`, `remote publish: ... (6 seed version(s))` -
+are in the tee.)
+
+**What the session said, in its own lines.** The restore is the fix behaving: a 25.23 GiB
+download in 8.7 min, then three seeds recognised as done and skipped
+(`seed 15024/15025/15026: complete version exists, skipping`), the block treatment confirming
+(`preserve_router_on_rebuild=True, new_expert_initialization='clone'`), then
+`seed 15027: starting pair (remaining 6.23 h fits pair 1.42 h + 45 min reserve (rule 1))`,
+pairs at 15027-15029, `seed 15030: remaining 1.82 h does not fit pair 1.42 h + 45 min reserve
+(rule 1)`, `session done: 3 pair(s) completed, 1.82 h remaining`, and the publish. Compare
+kernel v10, whose *whole* account was "no remote version ... available yet; training from
+scratch": same command, same seeds, opposite outcome.
+
+**What the three pairs measured.** Every arm sits on the uniform-vocabulary floor
+`ln(32768) = 10.3972` nats, as the declared block's synthetic stream implies - adaptive and
+random differ by 1e-4, and the sign changes seed to seed:
+
+| seed | random | adaptive | `random - adaptive` |
+|---|---|---|---|
+| 15027 | 10.398536682 | 10.398457527 | `+7.9e-05` |
+| 15028 | 10.398133039 | 10.398347378 | `-2.1e-04` |
+| 15029 | 10.397966623 | 10.398276329 | `-3.1e-04` |
+
+Across all six published seeds the record is **2 wins and 4 losses** for the adaptive arm, and
+every seed's `predicted_cost_ratio` is identical to the benchmark's own
+`predicted_probe_cost_percent.cap4_1batch` (`0.000941636252059042` = **0.0942%**, against the
+registered 5% criterion and its `[0.047%, 0.189%]` band). The harm guard needs the adaptive
+arm to lose **10 of 12** to reject, so at this floor - where a 1e-4 difference is noise - the
+registered clauses have almost nothing to read; that is the recorded property of this block,
+not a new finding.
+
+**The provenance finding this fetch exposed.** The published records for **15024-15026 are
+not the ones kernel v7 published**, and the dataset cannot say whose they are:
+
+| | |
+|---|---|
+| **Measured** | The live dataset's `seed-15024/reports/seed-summary.json` checksums to `a07be977...` (its own manifest) and matches the copy in v11's output; the copy committed here from v7's output is `d27882c8...` and a **different training**: mutations at `L0E1`/`L11E4` against v7's `L10E1`/`L5E7`, architecture hash `64cd541996cd4609` against `291178c1d5309057`, adaptive loss `10.399189949` against `10.398051500`. Same for 15025 and 15026, whose manifests carry `8e15e277...` and `483394225...` rather than the committed copies' checksums. |
+| **Why v11 did not write them** | Its own session log says `skipped_complete` for 15024-15026 and `completed` for 15027-15029, and the three records it *did* write match its output byte-for-byte. So the replacement happened before v11's restore. |
+| **Who wrote them: v9 or v10, and that is as far as the artifact goes** | Only **v9** and **v10** ran between v7's publish and v11's restore, and both are documented as having restored nothing, retrained the block from its first seed and published over it. Which of the two wrote these three records is **not recoverable**: v9 ran the *same* revision as v7 (`2c0cf4ebfa61`), so if a declared-scale fp16 seed reproduces exactly then these are v10's - and v10 did run a **different tree**, which the driver's own log shows (`republishing from 1b0f210b7b7f`, naming `src/act/model/moe.py`), a revision whose `src/act/model/*` differs from both v7's and v11's. But exact reproduction at declared scale is **not established here**: the measurements are at development fidelity (the churn arm bit-identical across three pair roots on 12/12 seeds, and an arm's loss bit-identical with and without its co-running partner), and nothing in this tree pins cuDNN (`torch.backends.cudnn.deterministic` is never set), so a fp16 T4 run is not guaranteed bit-reproducible. So the honest statement is the pair of candidates and the reason they cannot be told apart - which is the same hole as the `unknown` below, seen from the other side. |
+| **What is *not* recorded anywhere** | Every published manifest says `code_revision: "unknown"` (measured: all six downloaded), and the v0 checkpoint payload carries no revision and no timestamp either - it is `version 5` + `model`/`optimizer`/`rng`/`scaler`/`training`/`v0_session`, nothing dated. So the dataset itself cannot attribute a seed to the code that trained it - which is exactly why the row above can name the pair of candidate sessions and not one of them. |
+| **Why it says unknown** | `act.training.cli._git_revision()` asks `git rev-parse`; a kernel imports `src/` from a **mounted dataset with no `.git`**, so the answer was always the literal `unknown`. The dataset does carry the commit - `code/revision.txt`, measured here as `80699f945648021b0111c9005c79b9b7048abb66` - beside the package tree, and nothing read it. It now does (the fallback added 2026-09-27), so the remaining primary seeds (15030-15035) and both later queues record the revision that trained them. |
+| **What it changes about the block** | Nothing about its criteria - each pair is internally consistent and every seed ran the declared configuration (v11's log confirms the block treatment matches: `preserve_router_on_rebuild=True, new_expert_initialization='clone'`) - but the first three records cannot be shown to come from the same tree as the last three, and the control/null queues will run under the current revision, so the verdict's cross-queue pairings (adaptive from the primary record, null from the null queue) pair records whose revisions are, at best, only partly recorded. Nothing here measures a difference; what is measured is that 15024-15026 changed hands between v7 and v11. Re-training them under the current revision would make the block homogeneous for ~4.3 GPU-h of quota; it is **not** done, because re-running published seeds to taste is what the pre-registration forbids and the published block is the block. |
+
 ## Why there is no kernel-version-10 log in this directory (2026-09-27)
 
 The session that stalled the queue - `act-t4-session` version 10, which completed
