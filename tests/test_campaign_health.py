@@ -260,6 +260,7 @@ def _state(
     complete: list[int] | None = None,
     window: float = 7.0,
     statuses: dict[int, str | None] | None = None,
+    driver: dict | None = None,
 ) -> dict:
     seeds = {
         seed: {"arms": {"random": 6000, "adaptive": 6000}, "max_step": 6000}
@@ -287,7 +288,12 @@ def _state(
         },
     )
     monkeypatch.setattr(campaign_health, "published_seeds", lambda dataset_id: seeds)
-    monkeypatch.setattr(campaign_health, "lock_holder", lambda kernel: None)
+    # ``holder`` is the answer ``lock_holder`` gives: ``None`` when the probe took the lock
+    # itself, i.e. when nobody is driving this queue. The fixture defaults to "nobody", and
+    # a test that needs a waiting driver passes its pid.
+    monkeypatch.setattr(
+        campaign_health, "lock_holder", lambda kernel: driver
+    )
     return campaign_health.health("session", window=window)
 
 
@@ -441,6 +447,54 @@ def test_nothing_live_with_no_quota_is_waiting_not_stalled(monkeypatch: pytest.M
     state = _state(monkeypatch, status="COMPLETE", remaining=3.0, complete=[15000])
     assert state["verdict"] == "WAITING_ON_QUOTA"
     assert campaign_health.VERDICT_EXIT["WAITING_ON_QUOTA"] == 2
+
+
+def test_a_quota_wait_says_whether_a_driver_is_actually_waiting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Measured 2026-09-27: the state a reboot leaves behind read like a healthy wait.
+
+    The workstation rebooted while the driver was sleeping to the refresh, and the session
+    that driver had already pushed completed unattended - three more seeds published, 6/12.
+    Nothing was waiting for the refresh any more, and the report still said
+    ``WAITING_ON_QUOTA`` with the action text that names the driver's own wait, because the
+    lock only appeared on the kernel line when it was *held*. Both states print the same
+    verdict (the quota is short either way, and the exit code is already documented as 2),
+    so the difference has to be in the words and in the lock line.
+    """
+    idle = _state(monkeypatch, status="COMPLETE", remaining=1.65, complete=[15024])
+    text = campaign_health.report(idle)
+    assert idle["verdict"] == "WAITING_ON_QUOTA"
+    assert "driver lock     : not held" in text
+    assert "nothing resumes at the refresh until the campaign is relaunched" in text
+
+    waiting = _state(
+        monkeypatch,
+        status="COMPLETE",
+        remaining=1.65,
+        complete=[15024],
+        driver={"pid": 4242},
+    )
+    text = campaign_health.report(waiting)
+    assert "driver lock     : held by pid 4242" in text
+    assert "a driver is waiting on it (pid 4242)" in text
+    assert "relaunched" not in text
+
+
+def test_a_lock_whose_holder_cannot_be_read_still_says_a_driver_is_there(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The name is the useful part, not the condition: an unreadable holder is still held."""
+    state = _state(
+        monkeypatch,
+        status="COMPLETE",
+        remaining=1.65,
+        complete=[15024],
+        driver={"detail": "an unidentified process"},
+    )
+    text = campaign_health.report(state)
+    assert "driver lock     : held by an unidentified process" in text
+    assert "a driver holds the lock and is waiting on it" in text
 
 
 def test_nothing_live_with_quota_available_is_stalled(monkeypatch: pytest.MonkeyPatch) -> None:

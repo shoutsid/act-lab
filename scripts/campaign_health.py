@@ -20,8 +20,13 @@ The verdict is deliberately one of five, because the right action differs for ea
   still says ``in-progress`` is reported as stepped-but-not-finished and keeps this verdict
   away, because the next session will re-train it (measured on seed 15027, 2026-09-27).
 * ``FAILED`` - the last session ended in ERROR and nothing is live: read the cause.
-* ``WAITING_ON_QUOTA`` - the week cannot fit another session; the driver's own
-  ``--wait-for-quota`` handles it, and unused hours expire at the refresh.
+* ``WAITING_ON_QUOTA`` - the week cannot fit another session, and unused hours expire at
+  the refresh. The driver's own ``--wait-for-quota`` handles it *when one is waiting*, so
+  this verdict says which of the two it is: a driver sleeping to the refresh, or no
+  driver at all - in which case nothing resumes until the campaign is relaunched
+  (measured 2026-09-27: a workstation reboot killed the waiting driver, the session it
+  had already pushed completed unattended, and the report said WAITING_ON_QUOTA while
+  the lock was free).
 * ``STALLED`` - no session is live, the quota could cover one, and nothing is driving it.
   This is the state both losses sat in.
 
@@ -370,6 +375,42 @@ def seed_readout(dataset_id: str, seeds, *, timeout: float = 180.0) -> dict:
     }
 
 
+#: The clause a quota wait's action text needs, in both states. They read as the same
+#: sentence on purpose - the only difference is *who* is waiting - because the failure this
+#: states is remembered as a report that looked identical either way (2026-09-27).
+DRIVER_WAITING = "a driver is waiting on it (pid {pid})"
+DRIVER_ABSENT = (
+    "nothing holds the driver's lock, so nothing resumes at the refresh until the campaign "
+    "is relaunched"
+)
+
+
+def driver_lock_line(holder: Mapping[str, object] | None) -> str:
+    """Who, if anyone, is driving this queue - stated when nobody is, too.
+
+    The lock used to appear only as a suffix on the kernel line *when it was held*, so "a
+    driver is sleeping to the refresh" and "nothing will resume this campaign" printed the
+    same way. Measured 2026-09-27: the workstation rebooted while the driver was waiting on
+    quota, the session it had already pushed completed unattended (three more seeds
+    published, 6/12), and this report said ``WAITING_ON_QUOTA`` - whose action text named
+    the driver's own wait - with no lock held at all.
+    """
+    if holder is None:
+        return "not held - nothing is waiting on this queue"
+    if "pid" in holder:
+        return f"held by pid {holder['pid']}"
+    return f"held by an unidentified process ({holder.get('detail', 'no detail')})"
+
+
+def driver_note(holder: Mapping[str, object] | None) -> str:
+    """The quota-wait clause: whether anybody is actually waiting on the refresh."""
+    if holder is None:
+        return DRIVER_ABSENT
+    if "pid" in holder:
+        return DRIVER_WAITING.format(pid=holder["pid"])
+    return "a driver holds the lock and is waiting on it"
+
+
 def lock_holder(kernel_id: str) -> dict | None:
     """Who holds the driver's lock for this kernel, if anyone.
 
@@ -473,8 +514,8 @@ ACTIONS = {
     "COMPLETE": "every declared seed is published *complete* (its own record says so); drive the next queue",
     "FAILED": "the last session ended in ERROR and nothing is live: read the cause before pushing",
     "WAITING_ON_QUOTA": (
-        "the week cannot fit a {window:.1f} h session (refresh {refresh}); the driver's "
-        "--wait-for-quota covers this, and hours left at the refresh are lost"
+        "the week cannot fit a {window:.1f} h session (refresh {refresh}), and {driver}; "
+        "hours left at the refresh are lost"
     ),
     "STALLED": (
         "no session is live, {remaining} h of quota remains, and nothing holds the driver "
@@ -513,8 +554,8 @@ def report(state: dict) -> str:
     lines = [
         f"Gate-4 campaign health ({state['queue']} queue)",
         f"  published seeds : {published}",
-        f"  session kernel  : {state['session_status'] or UNKNOWN_KERNEL_NOTE}"
-        + (f", driver lock held by pid {holder['pid']}" if holder and "pid" in holder else ""),
+        f"  session kernel  : {state['session_status'] or UNKNOWN_KERNEL_NOTE}",
+        f"  driver lock     : {driver_lock_line(holder)}",
         f"  quota           : {quota['remaining_hours']} h remaining of {quota['total_hours']}"
         f" (refresh {quota['refresh_at']})",
     ]
@@ -523,6 +564,7 @@ def report(state: dict) -> str:
         window=quota["declared_window_hours"],
         refresh=quota["refresh_at"],
         remaining=quota["remaining_hours"],
+        driver=driver_note(holder),
     )
     lines.append(f"  verdict         : {state['verdict']} - {action}")
     lines.extend(_readout_lines(state.get("readout")))
