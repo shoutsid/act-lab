@@ -1802,6 +1802,88 @@ def test_the_live_stream_keeps_the_cli_notices_out_of_the_log(monkeypatch) -> No
     assert seen["stderr"] != kaggle_queue.subprocess.STDOUT
 
 
+def test_keep_session_evidence_keeps_the_three_records(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A session's own account outlives the next push - and the driver says where.
+
+    Measured 2026-09-26/27: `kaggle kernels logs` serves the log of the *latest*
+    version, so the account that explained three sessions of lost quota was
+    replaced by the next push (the fetch then returned an empty stream). A
+    session that succeeds *and* advances nothing is not a failure path, so no
+    failure handler fetched its log at all - this is where a session records
+    itself instead, from the three channels it leaves behind.
+    """
+    output = tmp_path / "output"
+    output.mkdir()
+    (output / "session-log.json").write_text('{"pairs_completed": 3}\n', encoding="utf-8")
+    live = tmp_path / "live-session.log"
+    live.write_text("seed 15027: starting pair\n", encoding="utf-8")
+    calls: list[list[str]] = []
+
+    def fake_run(argv, **kwargs):  # noqa: ANN001, ANN003
+        calls.append(list(argv))
+        return subprocess.CompletedProcess(argv, 0, '[{"stream_name": "stdout"}]\n', "")
+
+    monkeypatch.setattr(kaggle_queue, "_run", fake_run)
+    root = tmp_path / "evidence"
+    kept = kaggle_queue.keep_session_evidence(
+        output,
+        "session",
+        kernel="owner/act-t4-session",
+        live_log=live,
+        root=root,
+        log=lambda message: None,
+    )
+
+    assert calls == [["kaggle", "kernels", "logs", "owner/act-t4-session"]]
+    assert [path.name for path in kept] == [
+        f"session-session-{_stamp_of(kept)}-kernel-log.json",
+        f"session-session-{_stamp_of(kept)}-live.log",
+        f"session-session-{_stamp_of(kept)}-session-log.json",
+    ]
+    assert all(path.parent == root for path in kept)
+    assert (root / f"session-session-{_stamp_of(kept)}-live.log").read_text(
+        encoding="utf-8"
+    ) == "seed 15027: starting pair\n"
+    assert "stream_name" in (root / f"session-session-{_stamp_of(kept)}-kernel-log.json").read_text(
+        encoding="utf-8"
+    )
+    assert (root / f"session-session-{_stamp_of(kept)}-session-log.json").read_text(
+        encoding="utf-8"
+    ) == '{"pairs_completed": 3}\n'
+
+
+def _stamp_of(kept: list[Path]) -> str:
+    """The run stamp the kept names share (``session-<queue>-<stamp>-...``)."""
+    return kept[0].name.split("-")[2]
+
+
+def test_keep_session_evidence_is_best_effort(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """It runs on the exit path of a session that already trained and published.
+
+    A log the platform no longer serves, a capture that never started, an output
+    directory without a runner summary - none of them may turn a finished
+    session into a failed one, and none of them may raise.
+    """
+    def failing_run(argv, **kwargs):  # noqa: ANN001, ANN003
+        return subprocess.CompletedProcess(argv, 1, "", "ERROR: no such kernel")
+
+    monkeypatch.setattr(kaggle_queue, "_run", failing_run)
+    kept = kaggle_queue.keep_session_evidence(
+        tmp_path / "empty-output",
+        "control",
+        kernel="owner/act-t4-control",
+        live_log=tmp_path / "never-written.log",
+        root=tmp_path / "evidence",
+        log=lambda message: None,
+    )
+
+    assert kept == []
+
+
 def test_the_capture_tails_while_the_session_runs_and_stops_afterwards(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

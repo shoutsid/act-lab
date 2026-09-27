@@ -19,7 +19,7 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def _no_live_log_tailer(monkeypatch):
+def _no_live_log_tailer(monkeypatch, tmp_path):
     """Keep the driver's live log tailer offline for every test.
 
     ``kaggle_queue.capture_live_log`` spawns ``kaggle kernels logs -f`` as a real
@@ -39,6 +39,15 @@ def _no_live_log_tailer(monkeypatch):
         yield
 
     monkeypatch.setattr(kaggle_queue, "capture_live_log", inert, raising=False)
+    # The same shape of guard, for the same reason: the session-evidence writer
+    # copies a finished session's records into the repository's own ``artifacts/``
+    # unless it is pointed elsewhere, and the driver tests drive ``drive()`` for
+    # real - so a test that did not think about it left a fake session's records
+    # in the project's own evidence trail (measured 2026-09-27: the first run of
+    # that code left five files there).
+    monkeypatch.setattr(
+        kaggle_queue, "EVIDENCE_ROOT", tmp_path / "session-evidence", raising=False
+    )
 
 if os.environ.get("PYTEST_XDIST_WORKER"):
     for variable in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):

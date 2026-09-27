@@ -113,6 +113,12 @@ artifacts/mixer-benchmark/*
 artifacts/v0-session-logs/*
 !artifacts/v0-session-logs/NOTES.md
 !artifacts/v0-session-logs/session-*-log.json
+# Per-session evidence kept by the driver since 2026-09-27: the platform serves
+# `kaggle kernels logs` for the *latest* version only, so a session's kernel log,
+# live capture and runner summary are copied here at its own end rather than
+# fetched later (when the next push has already replaced them). The kernel-log
+# and session-log names already match the glob above; the live capture is text.
+!artifacts/v0-session-logs/session-*-live.log
 # The completed Gate-4 primary session (kernel v7, 2026-09-26): keep its compact
 # machine-readable queue, benchmark, publish and per-seed audit records, plus the
 # child's tee used to reconcile the live capture. The multi-gigabyte checkpoints

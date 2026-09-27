@@ -651,6 +651,88 @@ def load_session_log(output_dir: str | Path) -> dict[str, object] | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+#: Where a session's own records are copied at session end, inside the
+#: git-ignored ``artifacts/`` (with an allow-list entry per name so a record can
+#: be committed without an edit). The platform keeps the log of the *latest*
+#: kernel version only, so this is the difference between a session's account
+#: existing and existing until the next push.
+EVIDENCE_DIR = "v0-session-logs"
+
+#: Where the records go. A module constant rather than a path built inside the
+#: function, so that the suite can point it at a temporary directory: the driver
+#: tests call ``drive()`` for real, and without this each fake session's records
+#: land in the repository's own ``artifacts/`` (measured 2026-09-27 - the first
+#: run of this code left five such files there).
+EVIDENCE_ROOT = REPO_ROOT / "artifacts" / EVIDENCE_DIR
+
+
+def keep_session_evidence(
+    output_dir: str | Path,
+    queue_mode: str,
+    *,
+    kernel: str,
+    live_log: str | Path | None = None,
+    root: str | Path | None = None,
+    log=print,
+) -> list[Path]:
+    """Copy a finished session's own account of itself somewhere durable.
+
+    Three records, none of which the driver previously kept: the platform's log
+    blob for the version that just ran, the live capture taken while it ran (the
+    only channel that survives a run the platform keeps nothing for), and the
+    runner's ``session-log.json`` from the downloaded output.
+
+    Why this exists, measured 2026-09-26/27: three sessions in a row advanced
+    nothing - each restored no published seed and re-trained the block - and the
+    campaign learned it only from a log that the next push then replaced
+    (``kaggle kernels logs`` serves the latest version, and the fetch returns an
+    empty stream once a newer version exists). The two lines that explain three
+    sessions of lost quota survive only because they were quoted into
+    ``docs/IMPLEMENTATION_STATUS.md``. A session that succeeds *and* advances
+    nothing is not a failure path, so no failure handler fetched its log; this
+    is where a session records its own account instead.
+
+    Best-effort by construction: the session has already trained and published
+    by the time this runs, and a copy that fails must not turn that into a
+    failed session.
+    """
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    root = Path(root) if root is not None else EVIDENCE_ROOT
+    kept: list[Path] = []
+
+    def keep(source: Path | None, suffix: str, *, text: str | None = None) -> None:
+        if source is None and text is None:
+            return
+        target = root / f"session-{queue_mode}-{stamp}-{suffix}"
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if text is not None:
+                target.write_text(text, encoding="utf-8")
+            elif source is not None and source.is_file():
+                shutil.copy2(source, target)
+            else:
+                return
+        except OSError as error:  # the trail is best-effort, never fatal
+            log(f"  could not keep {target.name}: {error}")
+            return
+        kept.append(target)
+
+    # Fetched here rather than on demand: this is the only moment the platform
+    # still serves *this* version's log.
+    fetched = _run(["kaggle", "kernels", "logs", kernel])
+    if fetched.returncode == 0 and fetched.stdout.strip():
+        keep(None, "kernel-log.json", text=fetched.stdout)
+    if live_log is not None:
+        keep(Path(live_log), "live.log")
+    keep(find_session_log(output_dir), "session-log.json")
+    if kept:
+        log(
+            "  kept this session's own account: "
+            + ", ".join(path.name for path in kept)
+        )
+    return kept
+
+
 def load_publish_log(output_dir: str | Path) -> dict[str, object] | None:
     """The session's exit-publish outcome, or ``None`` when it is absent.
 
@@ -1358,6 +1440,12 @@ def drive(
             )
         output_dir.mkdir(parents=True, exist_ok=True)
         _run(["kaggle", "kernels", "output", queue.kernel_id, "-p", str(output_dir)])
+        # Before anything else looks at it: the platform serves only the latest
+        # version's log, so this session's account has to leave the platform and
+        # the temporary work directory in the same pass.
+        keep_session_evidence(
+            output_dir, queue_mode, kernel=queue.kernel_id, live_log=live_log
+        )
 
         if status != SUCCESS_STATUS:
             ended = time.monotonic()
