@@ -124,6 +124,24 @@ def test_resolve_device_rejects_nonsense_and_keeps_cpu() -> None:
         resolve_device("cuda:-1")
 
 
+def test_resolve_device_accepts_xla_or_names_the_missing_package() -> None:
+    """Kaggle's TPU quota is separate from the GPU's, so a session may be rehearsed on it.
+
+    ``scripts/tpu_session_rehearsal.py`` runs the registered session path against
+    this device type before any queue moves there (2026-09-27), which means the
+    string has to be resolvable. The half worth pinning is the refusal: without
+    ``torch_xla`` the name would otherwise resolve and fail inside the first
+    ``.to()``, which on a queued kernel is hours after the run started.
+    """
+    try:
+        import torch_xla  # noqa: F401
+    except ImportError:
+        with pytest.raises(RuntimeError, match="torch_xla is not installed"):
+            resolve_device("xla")
+    else:
+        assert resolve_device("xla").type == "xla"
+
+
 def test_benchmark_artifact_carries_the_gpu_inventory(tmp_path) -> None:
     """The section 5.2 rate is only interpretable next to the device count."""
     output = tmp_path / "v0-benchmark.json"

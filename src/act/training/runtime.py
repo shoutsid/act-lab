@@ -187,11 +187,31 @@ def resolve_device(requested: str) -> torch.device:
     2026-09-15). An index the host does not have fails here, at startup, rather
     than inside a training step - and ``cuda:1`` on a one-GPU host is exactly
     the mistake worth catching early.
+
+    ``xla`` is the TPU's device type, accepted so a session can be *rehearsed*
+    on that hardware (2026-09-27) without the caller constructing a device
+    ``torch`` does not resolve here. It is refused when ``torch_xla`` is not
+    installed rather than resolved and then failing inside the first ``.to()``:
+    the two failure sites are hours apart on a queued kernel.
     """
     if requested == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if requested == "cpu":
         return torch.device("cpu")
+    if requested == "xla":
+        try:
+            import torch_xla
+        except ImportError as error:
+            raise RuntimeError(
+                "XLA was requested but torch_xla is not installed; a TPU session "
+                "needs it (the Kaggle entry installs it before the run)"
+            ) from error
+        # The *runtime's* default device rather than a bare ``torch.device("xla")``: the
+        # function returns the ordinal the default actually resolves to (``xla:0``), which is
+        # what the probe's own measured path passes explicitly, and what an arm records as its
+        # placement. A device with no ordinal would leave that resolution to the first
+        # ``.to()``, i.e. to the step loop rather than to startup.
+        return torch_xla.device()
     if requested == "cuda" or requested.startswith("cuda:"):
         # The *string* is validated before the hardware. `cuda:-1` is a typo on
         # every host, and resolving it to "CUDA was requested but no compatible
@@ -216,7 +236,7 @@ def resolve_device(requested: str) -> torch.device:
                 "device(s)"
             )
         return torch.device(requested)
-    raise ValueError("device must be auto, cpu, cuda, or cuda:N")
+    raise ValueError("device must be auto, cpu, cuda, cuda:N, or xla")
 
 
 def gpu_inventory() -> dict[str, object]:

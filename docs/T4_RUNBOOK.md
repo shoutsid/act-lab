@@ -966,6 +966,65 @@ for independent-seed ranks shares the process RNG, so those model initialization
 reproducible from each rank's input-generator seed. See the evidence table and regression test in
 `docs/IMPLEMENTATION_STATUS.md` and `tests/test_tpu_probe_evidence.py`.
 
+### The session path, rehearsed on the TPU before any queue moves there
+
+The port rule's verdict came from a *probe*: `tpu_probe.py` timed a step loop around a model
+it built by hand. The registered path is not that. A session adds activation checkpointing,
+an optimizer (and a GradScaler when the dtype is fp16), the per-arm RNG contract, a
+checkpoint that is saved *and resumed* across a stop, the seed handoff publish, and the
+two-arm placement - and none of it has ever run on XLA. §5.14's option 2 is what would move
+(the **null queue**, twelve single-arm seeds, **8.06 h** of TPU time at the port rule's own
+2.0x bar), so the cheap first step is to run the *path* rather than assume it:
+`scripts/tpu_session_rehearsal.py` runs the real `run_v0_session` at development fidelity in
+four contained phases and records whatever the hardware gives up.
+
+1. `environment` - torch and torch-xla versions, the platform's TPU topology block, the
+device count, a bound device, and a tensor round-trip (a `sum()` back to the host), because
+`torch.device("xla")` alone is a string.
+2. `session` - one **null** arm (the queue the amendment moves) with a revision written into
+every checkpoint; the file is then read back off the disk to say which revision is *in* it
+and that its tensors are host tensors.
+3. `resume` - the same session again from the checkpoint it just wrote. That contract is what
+makes a deadline stop survivable, and it is the first thing XLA can break.
+4. `handoff` - publish that seed through `publish_seed` into a temporary dataset root and read
+the summary back, because §5.14's null clause consumes exactly that file
+(`search_flops == 0`, `mutation_count == 0`, `status == complete`, and the manifest's
+`code_revision`).
+
+Every phase is contained (`tpu_probe._run_phase`), the record is saved after each one, and
+each phase files its own entry and log *before* it starts - so a run that dies inside the
+session still carries the environment reading and the exception that stopped the rest. The
+record is labelled `rehearsal: true`, `fidelity: "development"`, `declared_scale: false`, and
+names what it does **not** measure (per-core parallelism, declared-fidelity throughput, the
+two-arm pair placement). It is not a Gate-4 result, not a port, and it moves no queue.
+
+```bash
+# stage and push - commit first, because the dataset ships HEAD rather than the working tree
+PYTHONPATH=src .venv/bin/python scripts/push_tpu_session_rehearsal.py
+# or watch it and keep the record when it finishes (a TPU kernel can queue for hours)
+setsid nohup bash scripts/fetch_tpu_session_rehearsal_when_done.sh > /tmp/tpu-session-watch.log 2>&1 &
+```
+
+The push republishes `act-lab-code`, so it goes through the probe's own guard
+(`push_tpu_probe.publish_code_dataset`): exit 5 and no push while a campaign session is
+mounted. The kernel is `act-tpu-session-rehearsal` (TPU on, GPU off, so it cannot answer on
+the wrong accelerator), and the fetch keeps the record and the log and prints
+`push_tpu_session_rehearsal.verdict(record)` - which holds "nothing ran" apart from "these
+phases ran and those did not", because a run that died in the environment phase has said
+nothing at all about the session path.
+
+**And a checkpoint is written from the host now.** `save_v0_checkpoint` routes its payload
+through `_cpu_payload`, which moves every tensor to the CPU before `torch.save`. On the CPU
+and CUDA paths that is the copy `torch.save` makes while serializing (and a no-op on the
+host); on XLA it is a fix, because `torch.save` writes **XLA tensors** rather than copying
+them out - torch_xla ships `xm.save` for exactly that reason - and both ways that fails are
+unacceptable here: a payload of XLA-tagged tensors is unreadable off a device with a
+different device count (pytorch-lightning #2700, pytorch/xla #2364), and a lazy tensor whose
+storage was never materialized can serialize as the **wrong bytes**. A checkpoint that loads,
+checksums and publishes without being the training it names is the failure this project
+treats as worse than a crash, so the `session` phase's `checkpoint_tensor_devices` states
+which devices the file a fired rehearsal just wrote actually holds.
+
 ### Pushing the probe waits for a gap in the campaign, and the wait is a script
 
 The TPU probe republishes the code dataset, and a session kernel's body and its mounted

@@ -58,16 +58,13 @@ ENTRY_NAME = "run-tpu-probe.py"
 RECORD_NAME = "tpu-probe.json"
 WORK = ROOT / "artifacts" / "tpu-probe"
 
-#: The entry file. A script kernel gets only this text, so it must be self-sufficient:
-#: get Torch-XLA onto the image, find the probe inside the mounted repository, run it.
-ENTRY = '''"""Kaggle TPU kernel entry for the hardware probe (generated, do not edit)."""
-import glob
-import runpy
-import subprocess
-import sys
-
-
-def ensure_xla() -> str:
+#: The bootstrap every Torch-XLA kernel this project pushes shares: make ``torch_xla``
+#: importable on an image that may not carry it, and say which attempt (if any) worked.
+#: Shared rather than written twice, and for the same reason the mount search is: the two
+#: kernels are queued on the same platform, and a second copy is a second answer to "is
+#: torch_xla here?" - the failure mode being a run that dies of an ImportError an hour into
+#: the queue, with the other kernel's working bootstrap sitting in the repository.
+XLA_BOOTSTRAP = '''def ensure_xla() -> str:
     """Torch-XLA, installing it if the image does not already carry it."""
     try:
         import torch_xla  # noqa: F401
@@ -89,7 +86,21 @@ def ensure_xla() -> str:
                       flush=True)
         print(f"pip {spec} failed ({proc.returncode}):\\n{detail}", flush=True)
     return "unavailable"
+'''
 
+#: The entry file. A script kernel gets only this text, so it must be self-sufficient:
+#: get Torch-XLA onto the image, find the probe inside the mounted repository, run it.
+ENTRY = (
+    '''"""Kaggle TPU kernel entry for the hardware probe (generated, do not edit)."""
+import glob
+import runpy
+import subprocess
+import sys
+
+
+'''
+    + XLA_BOOTSTRAP
+    + '''
 
 def main() -> int:
     status = ensure_xla()
@@ -109,6 +120,7 @@ def main() -> int:
 if __name__ == "__main__":
     raise SystemExit(main())
 '''
+)
 
 
 def metadata(*, owner: str, steps: int, workers: int, dtype: str) -> dict[str, object]:

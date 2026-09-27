@@ -1,5 +1,32 @@
 # ACT Implementation Status
 
+## The TPU holds a session path to rehearse, and a checkpoint now says what wrote it (2026-09-27)
+
+The probe answered a different question than the one the amendment needs. `tpu_probe.py` v6
+returned **PORT** on the *declared shape's step loop* (15,034.2 tokens/s, 2.96x the T4 pair,
+recompiles 2.07% of a per-core training hour), and §5.14's option 2 - the **null queue**, twelve
+single-arm seeds, **8.06 h of TPU time at the rule's own 2.0x bar** against a **19.86/20 TPU-hour
+week** nobody else is using - is what that verdict was gating. But a session is not a step loop:
+it adds activation checkpointing, the optimizer (and a GradScaler when the dtype is fp16), the
+per-arm RNG contract, a checkpoint saved **and resumed** across a stop, the seed handoff publish,
+and the two-arm placement. None of that has ever run on XLA. So the first move is the cheap one -
+run the *path*, not assume it - and it is now staged to run.
+
+| | |
+|---|---|
+| **`scripts/tpu_session_rehearsal.py`** | Runs the real `run_v0_session` at development fidelity (declared `False`, one **null** arm - the queue the amendment moves) in four contained phases: `environment` (torch/torch-xla versions, the platform's TPU topology block, device count, a bound device, and a tensor round-trip), `session` (the path, with a revision written into every checkpoint and the file then read back off the disk), `resume` (the same session from the checkpoint it just wrote - the contract a deadline stop depends on, and the first thing XLA can break), and `handoff` (`publish_seed` into a temporary dataset root, then the null clause's own fields read back out of the published summary). Every phase is contained (`tpu_probe._run_phase`), the record is saved after each one, and each phase files its own entry and log *before* it starts - so a run that dies inside the session still carries the environment reading rather than only an exception. |
+| **It is labelled so it cannot be read as a result** | `rehearsal: true`, `fidelity: "development"`, `declared_scale: false`, and `not_measured` names the three things a reader could otherwise mistake it for: per-core parallelism (the probe's headline, measured there, not here), declared-fidelity throughput (the dev shape's tokens/s is a path measurement, not a schedule input), and the two-arm pair placement (the null queue is single-arm by construction). No queue moves on this record, and the kernel is pushed with `enable_tpu` **on** and `enable_gpu` off so it cannot answer on the wrong accelerator. |
+| **A checkpoint is written from the host now** | `save_v0_checkpoint` routes its payload through `_cpu_payload`, which moves every tensor to the CPU before `torch.save`. On the CPU and CUDA paths that is the copy `torch.save` makes while serializing, and on the host it is a no-op (`Tensor.cpu()` returns `self`); on XLA it is a **fix**. `torch.save` writes XLA tensors as they are rather than copying them out - torch_xla ships `xm.save` for exactly that reason - and both ways that fails are unacceptable here: a payload of XLA-tagged tensors is unreadable on a host with a different device count (pytorch-lightning #2700; pytorch/xla #2364), and a lazy tensor whose storage was never materialized can serialize as the **wrong bytes**. A checkpoint that loads, checksums and publishes without being the training it names is the failure this project treats as worse than a crash, so the conversion is explicit and the `session` phase records `checkpoint_tensor_devices` off the file the device just wrote. |
+| **`resolve_device` knows the device** | `xla` resolves to the *runtime's* default device (`torch_xla.device()`, which carries the ordinal `xla:0` rather than a bare type, so the resolution happens at startup and the arm records its placement), and it **refuses** with a named error when `torch_xla` is absent - the alternative is a name that resolves and then fails inside the first `.to()`, hours into a queued kernel. |
+| **Pushed through the probe's own guard** | `scripts/push_tpu_session_rehearsal.py` republishes `act-lab-code` (a script kernel receives **only** its own `code_file`, so the rehearsal and the `src/` it imports both arrive there), and it does so through `push_tpu_probe.publish_code_dataset` - imported, not re-implemented: exit 5 and no push while a campaign session is mounted, which is the defect that cost the 2026-09-21 session. Its `--fetch --save` keeps the record *and* the log and prints `verdict(record)`, which holds "nothing ran" apart from "these phases ran and those did not". |
+| **Pinned** | `tests/test_tpu_session_rehearsal.py` (new): the labels and the dev config, the phase order, the entry-and-log-filed-before-the-work property (a session that raises mid-step still lands its line), the null-clause guard recomputed from the published artifacts (six cases, including a mutating "null" arm), and one end-to-end CPU dry run whose record is the shape a fired run produces. `tests/test_push_tpu_session_rehearsal.py` (new): the accelerator flags, the three copies of the record name, the shared Torch-XLA bootstrap, the guard refusing before any push, the fetch keeping record + log + verdict, and the watcher fetching on **both** terminal states. `tests/test_v0_session.py` (**+2**): the save routes its payload through the host conversion, and the walk reaches every tensor in a nested payload while leaving device-free values alone. `tests/test_training_distributed.py` (**+1**): `xla` resolves, or the missing package is named. |
+
+The block remains 15024-15035 in `act-v0-5-2` (primary) / `-control` / `-null`; nothing here
+changes a seed, knob, dataset or criterion, and the null queue has **not** moved: the
+rehearsal is what makes that decision decidable, and it is not itself a Gate-4 result.
+
+---
+
 ## The first session whose restore worked advanced the queue, and nobody was watching (2026-09-27)
 
 **Live update, 2026-09-27 17:30Z:** kernel v11 is `COMPLETE` and moved the primary block
