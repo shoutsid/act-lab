@@ -479,18 +479,71 @@ def _latest_checkpoint(directory: Path) -> Path | None:
     return max(candidates, key=lambda item: item[0])[1]
 
 
+def _cpu_payload(value: object) -> object:
+    """A checkpoint payload with every tensor on the host, containers rebuilt.
+
+    **The version-5 payload is CPU-canonical**, and that is a property of the
+    format rather than of any device: every reader of these files loads with
+    ``map_location="cpu"`` and then hands the optimizer state to
+    ``move_optimizer_state``, so a CPU payload is the shape both ends already
+    assume. So the write converts, and the conflict this settles is one this
+    project has already been bitten by in its other form - a checkpoint that
+    loads and means something else.
+
+    The conversion is not a precaution for the CPU or CUDA paths. There it is
+    the same host copy ``torch.save`` makes while serializing, and on the CPU
+    it is literally a no-op (``Tensor.cpu()`` returns ``self``). It is a *fix*
+    for XLA, where ``torch.save`` writes the **XLA tensors themselves** rather
+    than copying them out: torch_xla ships ``xm.save`` for exactly this reason
+    (it moves everything to the host first), and the two ways the alternative
+    fails are both unacceptable here. A payload of XLA-tagged tensors is
+    unreadable on a host with a different device count (pytorch-lightning
+    #2700, and pytorch/xla #2364 before it), and a lazy tensor whose storage was
+    never materialized can serialize as the **wrong bytes** - a checkpoint that
+    loads, checksums, publishes, and is not the training it claims. This
+    campaign cannot tell that one from a good checkpoint, which is the failure
+    this project treats as worse than a crash.
+
+    Device-free values (the genome, the FLOP counters, the generator state,
+    which is already a CPU tensor) pass through unchanged.
+    """
+    if isinstance(value, torch.Tensor):
+        return value.cpu()
+    if isinstance(value, dict):
+        return {key: _cpu_payload(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_cpu_payload(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_cpu_payload(item) for item in value)
+    return value
+
+
 def save_v0_checkpoint(
     path: str | Path,
     model: V0MoECausalLM,
     optimizer: torch.optim.Optimizer,
     state: _SessionState,
     scaler: torch.amp.GradScaler | None = None,
+    *,
+    code_revision: str | None = None,
 ) -> None:
     """Persist resumable session state in the version-5 checkpoint contract.
 
     Version 5 adds the GradScaler state for fp16 sessions (``scaler`` is
     None in fp32 mode). Version-4 payloads remain loadable: they simply have
     no scaler entry, which a resumed fp32 session never needs.
+
+    The payload is written through :func:`_cpu_payload`, so the file holds host
+    tensors whichever device trained them - the shape every reader assumes, and
+    the only shape a lazy accelerator's tensor can be written without the risk
+    of a checkpoint that loads and is not the training it names.
+
+    ``code_revision`` is provenance carried *on the artifact*: the published
+    manifest records it too (2026-09-27), but a checkpoint separated from its
+    manifest carried nothing at all - the measured state of every checkpoint
+    this campaign published, since the payload had no revision and no timestamp
+    anywhere in it. It is written only when the caller has one, and a payload
+    without the key loads exactly as before.
 
     Written beside the target and renamed into place. A declared checkpoint is
     ~3.4 GB, so the write takes seconds, and a process killed inside it (the
@@ -503,26 +556,31 @@ def save_v0_checkpoint(
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary = target.with_name(target.name + ".partial")
+    training: dict[str, object] = {
+        "step": state.step,
+        "tokens": state.tokens,
+        "generator_state": state.generator_state,
+        "genome": state.genome.to_dict() if state.genome is not None else None,
+    }
+    if code_revision is not None:
+        training["code_revision"] = code_revision
     torch.save(
-        {
-            "version": 5,
-            "model": model.state_dict(),
-            "optimizer": optimizer.state_dict(),
-            "torch_rng_state": torch.get_rng_state(),
-            "scaler": scaler.state_dict() if scaler is not None else None,
-            "training": {
-                "step": state.step,
-                "tokens": state.tokens,
-                "generator_state": state.generator_state,
-                "genome": state.genome.to_dict() if state.genome is not None else None,
-            },
-            "v0_session": {
-                "training_flops": state.training_flops,
-                "search_flops": state.search_flops,
-                "mutations": state.mutations,
-                "mutation_history": state.mutation_history,
-            },
-        },
+        _cpu_payload(
+            {
+                "version": 5,
+                "model": model.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "torch_rng_state": torch.get_rng_state(),
+                "scaler": scaler.state_dict() if scaler is not None else None,
+                "training": training,
+                "v0_session": {
+                    "training_flops": state.training_flops,
+                    "search_flops": state.search_flops,
+                    "mutations": state.mutations,
+                    "mutation_history": state.mutation_history,
+                },
+            }
+        ),
         temporary,
     )
     os.replace(temporary, target)
@@ -1285,6 +1343,7 @@ def _train_arm(
     device: torch.device,
     log: Callable[[str], None] | None,
     deadline_check: Callable[[], bool] | None = None,
+    code_revision: str | None = None,
 ) -> V0ArmResult:
     """Train one arm with checkpoint/resume, returning its final result."""
     arm_dir = session_root / f"arm-{mode}"
@@ -1465,7 +1524,14 @@ def _train_arm(
                 )
         if policy.should_save(step):
             path = _checkpoint_path(arm_dir, step)
-            save_v0_checkpoint(path, model, optimizer, arm_state, scaler)
+            save_v0_checkpoint(
+                path,
+                model,
+                optimizer,
+                arm_state,
+                scaler,
+                code_revision=code_revision,
+            )
             policy.accept(path)
             retain_checkpoints(arm_dir, max_checkpoints=config.max_checkpoints)
             # Cooperative deadline stop: only at a saved checkpoint boundary,
@@ -1482,7 +1548,14 @@ def _train_arm(
 
     # Final checkpoint so a completed arm never needs recomputation.
     final_path = _checkpoint_path(arm_dir, config.total_steps)
-    save_v0_checkpoint(final_path, model, optimizer, arm_state, scaler)
+    save_v0_checkpoint(
+        final_path,
+        model,
+        optimizer,
+        arm_state,
+        scaler,
+        code_revision=code_revision,
+    )
     policy.accept(final_path)
     retain_checkpoints(arm_dir, max_checkpoints=config.max_checkpoints)
     if resumed_from is not None and log is not None:
@@ -1580,6 +1653,8 @@ def _train_arms_in_processes(
     root: Path,
     devices: tuple[torch.device, ...],
     deadline_budget_seconds: float | None,
+    *,
+    code_revision: str | None = None,
 ) -> tuple[V0ArmResult, ...]:
     """One subprocess per arm, joined in the declared order.
 
@@ -1620,6 +1695,10 @@ def _train_arms_in_processes(
                     device=str(arm_device),
                     deadline_seconds=deadline_budget_seconds,
                     output=output,
+                    # Provenance crosses the process boundary with the job: the
+                    # child writes the checkpoints, so it is the child that has
+                    # to record which revision wrote them.
+                    code_revision=code_revision,
                 ),
                 sort_keys=True,
             )
@@ -1678,6 +1757,8 @@ def _train_arms(
     log: Callable[[str], None] | None,
     deadline_check: Callable[[], bool] | None,
     deadline_budget_seconds: float | None,
+    *,
+    code_revision: str | None = None,
 ) -> tuple[V0ArmResult, ...]:
     """Train the pair's arms: one per device when the host has them.
 
@@ -1693,7 +1774,15 @@ def _train_arms(
         # Named per arm even here, so a sequential pair records the same kind
         # of placement evidence a concurrent one does.
         return tuple(
-            _train_arm(mode, config, root, arm_device, log, deadline_check)
+            _train_arm(
+                mode,
+                config,
+                root,
+                arm_device,
+                log,
+                deadline_check,
+                code_revision=code_revision,
+            )
             for mode, arm_device in zip(config.arms, devices, strict=True)
         )
     if log is not None:
@@ -1702,7 +1791,13 @@ def _train_arms(
             for mode, arm_device in zip(config.arms, devices, strict=True)
         )
         log(f"arms in parallel ({placement})")
-    return _train_arms_in_processes(config, root, devices, deadline_budget_seconds)
+    return _train_arms_in_processes(
+        config,
+        root,
+        devices,
+        deadline_budget_seconds,
+        code_revision=code_revision,
+    )
 
 
 def run_v0_session(
@@ -1712,6 +1807,7 @@ def run_v0_session(
     log: Callable[[str], None] | None = None,
     deadline_check: Callable[[], bool] | None = None,
     deadline_budget_seconds: float | None = None,
+    code_revision: str | None = None,
 ) -> V0SessionResult:
     """Run (or resume) a protocol session for one seed.
 
@@ -1726,6 +1822,12 @@ def run_v0_session(
     needed to run the arms concurrently, because a closure over the caller's
     clock cannot cross a process boundary - so a caller that has a clock should
     pass both, and one that passes neither gets sequential arms.
+
+    ``code_revision`` is written into every checkpoint this session saves, so a
+    published checkpoint can be attributed on its own. It is optional because a
+    study's checkpoints are already attributed by that study's own summary; the
+    campaign passes it (``run_pair_session`` has carried one all along for the
+    manifests).
     """
     if config.declared:
         validate_declared_v0_config(config.model_config())
@@ -1739,6 +1841,7 @@ def run_v0_session(
         log,
         deadline_check=deadline_check,
         deadline_budget_seconds=deadline_budget_seconds,
+        code_revision=code_revision,
     )
     return V0SessionResult(
         config=asdict(config),

@@ -398,6 +398,11 @@ def _run_one_pair(
             log=logger,
             deadline_check=deadline_reached,
             deadline_budget_seconds=arm_budget_seconds,
+            # Carried into every checkpoint, not only into the manifest: the
+            # manifest and its dataset are the durable record, but a checkpoint
+            # that leaves them behind had nothing saying which tree wrote it
+            # (2026-09-27, measured on all six published seeds).
+            code_revision=code_revision,
         )
     except V0SessionInterrupted as interrupt:
         logger(f"seed {seed}: {interrupt}; publishing in-progress snapshot")

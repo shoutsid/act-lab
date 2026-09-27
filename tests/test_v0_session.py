@@ -1441,3 +1441,215 @@ def test_arm_device_indices_places_one_arm_per_device(monkeypatch) -> None:
     # Never parallelise a single-arm pair (the null queue), and never off CUDA.
     assert arm_device_indices(1, cuda) == (0,)
     assert arm_device_indices(2, torch.device("cpu")) == (0, 0)
+
+
+# --- the revision a checkpoint records about itself ---------------------------
+
+
+def _null_rehearsal_config(seed: int, **overrides) -> V0SessionConfig:
+    """A tiny single-arm null config: the queue whose checkpoints are published.
+
+    The dev shape and the null arm, exactly as the two-seed concurrency rehearsal
+    builds it, plus a checkpoint at every step so both the periodic and the final
+    write can be read back.
+    """
+    settings = dict(
+        seed=seed,
+        arms=("null",),
+        device="cpu",
+        total_steps=2,
+        checkpoint_interval=1,
+        max_checkpoints=2,
+    )
+    settings.update(overrides)
+    return V0SessionConfig(**settings)
+
+
+def test_a_checkpoint_records_the_revision_that_trained_it(tmp_path: Path) -> None:
+    """Measured 2026-09-27: every published checkpoint carried no revision and no date.
+
+    The manifest records one (and now reads it from the mounted code dataset
+    instead of saying `unknown`), but a checkpoint separated from its manifest
+    had nothing at all - the payload is `version` + model/optimizer/rng/scaler +
+    `training`/`v0_session` with nothing dated in it. So the campaign could not
+    attribute the six published seeds' weights to the code that produced them.
+    """
+    result = run_v0_session(
+        _null_rehearsal_config(51),
+        checkpoint_dir=tmp_path,
+        code_revision="rev-checkpoint-provenance",
+    )
+    arm_dir = tmp_path / "seed-51" / "arm-null"
+    for step in (1, 2):
+        payload = torch.load(
+            arm_dir / f"checkpoint-{step:06d}.pt", map_location="cpu", weights_only=False
+        )
+        assert payload["version"] == 5
+        assert payload["training"]["code_revision"] == "rev-checkpoint-provenance"
+    assert result.arms[0].mode == "null"
+
+
+def test_a_checkpoint_without_a_revision_is_still_a_version_5_payload(
+    tmp_path: Path,
+) -> None:
+    """The field is additive: a study's checkpoint is unchanged, and still loads.
+
+    The sixteen study scripts call ``run_v0_session`` without a revision and
+    their records are already attributed by their own summaries, so the key must
+    be *absent* rather than `unknown` - and a payload without it has to resume
+    exactly as before, which is what the second half asserts.
+    """
+    config = _null_rehearsal_config(52)
+    run_v0_session(config, checkpoint_dir=tmp_path)
+    arm_dir = tmp_path / "seed-52" / "arm-null"
+    payload = torch.load(
+        arm_dir / "checkpoint-000002.pt", map_location="cpu", weights_only=False
+    )
+    assert "code_revision" not in payload["training"]
+
+    resumed = run_v0_session(
+        config,
+        checkpoint_dir=tmp_path,
+        log=None,
+        code_revision="rev-after-resume",
+    )
+    assert resumed.arms[0].mode == "null"
+    after = torch.load(
+        arm_dir / "checkpoint-000002.pt", map_location="cpu", weights_only=False
+    )
+    # The resume restored to the declared last step and re-saved it, this time
+    # attributed - which is the whole point of an additive field.
+    assert after["training"]["step"] == config.total_steps
+    assert after["training"]["code_revision"] == "rev-after-resume"
+
+
+def test_the_arm_worker_job_carries_the_revision_across_the_process(
+    tmp_path: Path,
+) -> None:
+    """The child writes the checkpoints, so the child is what has to know it.
+
+    Section 5.2 runs a pair's arms one per GPU in their own processes, and the
+    job file is the only thing that crosses that boundary - a revision passed to
+    the parent and not to the job would silently produce `unknown`-shaped
+    checkpoints on the declared path while tests on the sequential path passed.
+    """
+    import subprocess
+    import sys
+
+    from act.training.arm_worker import arm_job
+
+    # `session_root` is the *seed's* directory: the parent adds the ``seed-N``
+    # level, the child writes ``arm-<mode>`` under whatever it is handed.
+    root = tmp_path / "sessions" / "seed-53"
+    output = tmp_path / "result-null.json"
+    job_path = tmp_path / "job-null.json"
+    job = arm_job(
+        mode="null",
+        config=_null_rehearsal_config(53),
+        session_root=root,
+        device="cpu",
+        deadline_seconds=None,
+        output=output,
+        code_revision="rev-through-the-job",
+    )
+    assert job["code_revision"] == "rev-through-the-job"
+    job_path.write_text(json.dumps(job, sort_keys=True) + "\n", encoding="utf-8")
+
+    completed = subprocess.run(
+        [sys.executable, "-m", "act.training.arm_worker", str(job_path)],
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    payload = torch.load(
+        root / "arm-null" / "checkpoint-000002.pt",
+        map_location="cpu",
+        weights_only=False,
+    )
+    assert payload["training"]["code_revision"] == "rev-through-the-job"
+    # The child's own result file is what the parent assembles the pair from.
+    assert json.loads(output.read_text(encoding="utf-8"))["mode"] == "null"
+
+
+# --- the payload is written from the host -------------------------------------
+
+
+def test_a_saved_checkpoint_goes_through_the_host_conversion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every reader loads with ``map_location="cpu"``, so the writer must mean it.
+
+    The conversion is what the CPU and CUDA paths already did by accident (it is the
+    copy ``torch.save`` makes while serializing, and a no-op on the host), and what the
+    XLA path needs deliberately: ``torch.save`` writes XLA tensors as they are, which is
+    how a checkpoint ends up either unreadable off-device (pytorch-lightning #2700) or -
+    for a lazy tensor whose storage was never materialized - silently not the training it
+    names. Nothing here can build an XLA tensor, so this pins the *route* (the save calls
+    the conversion) and the contract (the file's tensors are host tensors); the device
+    case itself is what ``scripts/tpu_session_rehearsal.py`` verifies on the hardware.
+    """
+    from act.training import v0_session as module
+
+    converted: list[object] = []
+    original = module._cpu_payload
+
+    def watched(value: object) -> object:
+        converted.append(value)
+        return original(value)
+
+    monkeypatch.setattr(module, "_cpu_payload", watched)
+    run_v0_session(_null_rehearsal_config(54), checkpoint_dir=tmp_path)
+
+    assert converted, "the checkpoint write has to route its payload through the host"
+    payload = torch.load(
+        tmp_path / "seed-54" / "arm-null" / "checkpoint-000002.pt",
+        map_location="cpu",
+        weights_only=False,
+    )
+    assert payload["training"]["step"] == 2
+    assert all(value.device.type == "cpu" for value in payload["model"].values())
+    assert all(
+        value.device.type == "cpu"
+        for entry in payload["optimizer"]["state"].values()
+        for value in entry.values()
+        if isinstance(value, torch.Tensor)
+    )
+
+
+def test_the_host_conversion_reaches_tensors_and_leaves_the_rest_alone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The walk is structural on purpose: the payload nests dicts, lists and tuples.
+
+    ``Model.state_dict()`` is a mapping, the optimizer's state nests a dict per
+    parameter, and ``param_groups`` holds tuples (``betas``) and lists (``params``) -
+    so a conversion that only looked one level down would leave accelerator tensors
+    inside the payload it was written to clean. Counted through ``Tensor.cpu`` rather
+    than asserted on output, because on the host the move is a no-op that returns the
+    same object and a value assertion could not tell a conversion from its absence.
+    """
+    from act.training.v0_session import _cpu_payload
+
+    moved: list[str] = []
+    real = torch.Tensor.cpu
+
+    def watched(self, *args, **kwargs):
+        moved.append(str(self.shape))
+        return real(self, *args, **kwargs)
+
+    monkeypatch.setattr(torch.Tensor, "cpu", watched)
+    tensor = torch.zeros(2)
+    payload = _cpu_payload(
+        {
+            "model": {"weight": tensor},
+            "optimizer": {"state": {0: {"exp_avg": tensor, "step": 3}}},
+            "training": {"step": 7, "genome": {"layers": [{"experts": 8}]}},
+            "scaler": None,
+        }
+    )
+    assert moved == ["torch.Size([2])", "torch.Size([2])"], "both tensors, nothing else"
+    assert payload["model"]["weight"] is tensor, "cpu() on the host is not a copy"
+    assert payload["training"] == {"step": 7, "genome": {"layers": [{"experts": 8}]}}
+    assert payload["optimizer"]["state"][0]["step"] == 3
+    assert payload["optimizer"]["state"][0]["exp_avg"] is tensor
+    assert payload["scaler"] is None

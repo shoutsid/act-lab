@@ -22,8 +22,9 @@ Invoked by ``act.training.v0_session``, not by hand:
 
 The job file carries ``mode``, ``config`` (``V0SessionConfig`` fields),
 ``session_root``, ``device`` (``cuda:N``), ``deadline_seconds`` (how long the
-arm may run, or ``null`` for no deadline) and ``output`` (where to write the
-arm result as JSON).
+arm may run, or ``null`` for no deadline), ``output`` (where to write the arm
+result as JSON) and ``code_revision`` (what to record in the checkpoints this
+child writes, or ``null``).
 
 A child that stops at its **deadline** exits ``INTERRUPTED_EXIT_CODE`` and
 writes where it stopped to ``output`` instead of an arm result. The parent
@@ -82,6 +83,7 @@ def arm_job(
     device: str,
     deadline_seconds: float | None,
     output: Path,
+    code_revision: str | None = None,
 ) -> dict[str, object]:
     """The job payload for one arm (JSON-native, so it survives a process)."""
     return {
@@ -91,6 +93,7 @@ def arm_job(
         "device": device,
         "deadline_seconds": deadline_seconds,
         "output": str(output),
+        "code_revision": code_revision,
     }
 
 
@@ -115,6 +118,9 @@ def main(argv: list[str] | None = None) -> int:
             resolve_device(str(job["device"])),
             log=lambda line: print(f"[{mode}] {line}", flush=True),
             deadline_check=_deadline_check(job.get("deadline_seconds")),
+            # Absent in a job written before this key existed, which is why it is
+            # read with ``.get`` and may be None - the same shape the parent uses.
+            code_revision=job.get("code_revision"),
         )
     except V0SessionInterrupted as interrupt:
         # The same cooperative stop the sequential path raises through the
