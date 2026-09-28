@@ -1,0 +1,13 @@
+{
+  "artifacts": [
+    "checkpoints/null/checkpoint-000020.pt",
+    "reports/seed-summary.json"
+  ],
+  "checksums": {
+    "checkpoints/null/checkpoint-000020.pt": "be467333717ca4e09029d06e5db2e06ffafdc8025208fcdbcd3ad3ffed80236a",
+    "reports/seed-summary.json": "1ca3243a59b767f5e4d4f597fa5252b15d5ff572c5b7dcbf11376bc43ad084af"
+  },
+  "code_revision": "f3ed48f37ab11ff64ca5884c073bdb069f0884d8",
+  "dataset_id": "act-checkpoints/v0-5-1",
+  "seed": 51
+}

@@ -1,0 +1,222 @@
+{
+ "completed": [
+  "environment",
+  "session",
+  "resume",
+  "handoff"
+ ],
+ "declared_scale": false,
+ "device_requested": "xla",
+ "errors": [],
+ "fidelity": "development",
+ "handoff": {
+  "dataset_root": "/kaggle/working/tpu-session-work-7/dataset",
+  "log": [
+   "[null] resumed from /kaggle/working/tpu-session-work-7/session/seed-51/arm-null/checkpoint-000020.pt at step 20",
+   "[null] completed after resume from /kaggle/working/tpu-session-work-7/session/seed-51/arm-null/checkpoint-000020.pt"
+  ],
+  "manifest_code_revision": "f3ed48f37ab11ff64ca5884c073bdb069f0884d8",
+  "null_arm": {
+   "final_loss": 9.066792488098145,
+   "mutation_count": 0,
+   "search_flops": 0,
+   "validation_loss": 9.066792488098145
+  },
+  "seed_files": [
+   "act-checkpoints/v0-5-1/seed-0051/checkpoints/null/checkpoint-000020.pt",
+   "act-checkpoints/v0-5-1/seed-0051/manifests/manifest.json",
+   "act-checkpoints/v0-5-1/seed-0051/reports/seed-summary.json",
+   "act-checkpoints/v0-5-1/seed-0051/seed-summary.json"
+  ],
+  "summary_status": "complete"
+ },
+ "kind": "tpu-session-rehearsal",
+ "not_measured": [
+  "per-core parallelism (eight seeds at once, one per chip): the probe measured that pattern for the step loop, and this rehearsal's question is one session on one device",
+  "declared-fidelity throughput: the shape here is the development one, so its tokens/s is a path measurement and not a schedule input",
+  "the two-arm pair placement: the null queue is single-arm by construction, and the pair queues are not the ones this option moves"
+ ],
+ "phase_deadlines": {
+  "environment": 600.0,
+  "handoff": 600.0,
+  "resume": 900.0,
+  "session": 1800.0
+ },
+ "record_type": "session-rehearsal",
+ "rehearsal": true,
+ "resume": {
+  "checkpoint_files": [
+   "session/seed-51/arm-null/checkpoint-000010.pt",
+   "session/seed-51/arm-null/checkpoint-000020.pt"
+  ],
+  "log": [
+   "[null] resumed from /kaggle/working/tpu-session-work-7/session/seed-51/arm-null/checkpoint-000020.pt at step 20",
+   "[null] completed after resume from /kaggle/working/tpu-session-work-7/session/seed-51/arm-null/checkpoint-000020.pt"
+  ],
+  "resumed_from_a_checkpoint": true,
+  "same_loss_as_the_first_run": true,
+  "validation_loss": 9.066792488098145,
+  "wall_seconds": 1.558856725692749
+ },
+ "runtime": {
+  "bound_device": "xla:0",
+  "device_kind": "xla:0",
+  "environment": {
+   "ALLOW_MULTIPLE_LIBTPU_LOAD": "1",
+   "CLOUD_TPU_TASK_ID": null,
+   "LIBTPU_INIT_ARGS": " --xla_tpu_use_enhanced_launch_barrier=false --xla_latency_hiding_scheduler_rerun=1 --xla_tpu_prefer_async_allgather_to_allreduce=true --xla_tpu_enable_flash_attention=false --xla_enable_async_all_gather=true --xla_enable_async_collective_permute=true",
+   "PJRT_DEVICE": "TPU",
+   "PJRT_LOCAL_PROCESS_COUNT": null,
+   "PJRT_LOCAL_PROCESS_RANK": null,
+   "PJRT_SELECT_DEFAULT_DEVICE": null,
+   "TPU_ACCELERATOR_TYPE": "v5litepod-8",
+   "TPU_CHIPS_PER_HOST_BOUNDS": "2,4,1",
+   "TPU_CHIPS_PER_PROCESS_BOUNDS": null,
+   "TPU_HOST_BOUNDS": "1,1,1",
+   "TPU_LIBRARY_PATH": "/usr/local/lib/python3.12/site-packages/libtpu/libtpu.so",
+   "TPU_NAME": null,
+   "TPU_PROCESS_ADDRESSES": "local",
+   "TPU_PROCESS_BOUNDS": null,
+   "TPU_PROCESS_PORT": null,
+   "TPU_SKIP_MDS_QUERY": "1",
+   "TPU_VISIBLE_CHIPS": null,
+   "TPU_WORKER_HOSTNAMES": "localhost",
+   "TPU_WORKER_ID": "0",
+   "XLA_TPU_MAX_INFLIGHT_COMPUTATIONS": null,
+   "XRT_TPU_CONFIG": "localservice;0;localhost:51011",
+   "X_NUM_DEVICES": null
+  },
+  "memory_bytes_limit": null,
+  "memory_bytes_used": null,
+  "pytorch": "2.8.0+cpu",
+  "sum": 8.0,
+  "torch_xla": "2.8.0",
+  "tpu": {
+   "metadata": {
+    "ACCELERATOR_TYPE": "v5litepod-8",
+    "TPU_CHIPS_PER_PROCESS_BOUNDS": "2,4,1",
+    "TPU_PROCESS_BOUNDS": "1,1,1",
+    "WORKER_ID": "0"
+   },
+   "pci_chips": 8
+  },
+  "xla_devices": 8
+ },
+ "seed": 51,
+ "session": {
+  "arms": {
+   "null": {
+    "active_parameter_count": 7556160,
+    "architecture_hash": "7cefa40037ee09f7",
+    "checkpoints": [
+     {
+      "bytes": 179313571,
+      "name": "checkpoint-000010.pt"
+     },
+     {
+      "bytes": 179313635,
+      "name": "checkpoint-000020.pt"
+     }
+    ],
+    "device": "xla:0",
+    "final_loss": 9.066792488098145,
+    "mode": "null",
+    "mutation_count": 0,
+    "parameter_count": 14928960,
+    "search_flops": 0,
+    "tokens_per_second": 2012.5395976038178,
+    "training_flops": 2445960806400,
+    "validation_loss": 9.066792488098145,
+    "wall_time_seconds": 40.70478916168213
+   }
+  },
+  "checkpoint_files": [
+   "session/seed-51/arm-null/checkpoint-000010.pt",
+   "session/seed-51/arm-null/checkpoint-000020.pt"
+  ],
+  "checkpoint_revision": "f3ed48f37ab11ff64ca5884c073bdb069f0884d8",
+  "checkpoint_tensor_devices": [
+   "cpu"
+  ],
+  "code_revision": "f3ed48f37ab11ff64ca5884c073bdb069f0884d8",
+  "config": {
+   "activation_checkpointing": false,
+   "active_experts": 2,
+   "arms": [
+    "null"
+   ],
+   "attention_heads": 5,
+   "batch_size": 8,
+   "checkpoint_interval": 10,
+   "checkpoint_max_bytes": null,
+   "context_size": 512,
+   "data_path": null,
+   "declared": false,
+   "depth": 6,
+   "device": "xla",
+   "dtype": "fp32",
+   "expert_count": 8,
+   "expert_width": 320,
+   "gate_margin": 0.0,
+   "hidden_size": 320,
+   "learning_rate": 0.0003,
+   "max_checkpoints": 2,
+   "mutation_budget": 3,
+   "mutation_interval": 100,
+   "new_expert_initialization": "random",
+   "preserve_router_on_rebuild": false,
+   "probe_batch_count": 1,
+   "probe_candidate_cap": 4,
+   "probe_candidate_policy": "prefix",
+   "probe_data_source": "train",
+   "probe_finetune_steps": 0,
+   "probe_landscape": false,
+   "probe_selection": "argmin",
+   "seed": 51,
+   "total_steps": 20,
+   "val_data_path": null,
+   "validation_batches": 4,
+   "vocab_size": 8192
+  },
+  "log": [],
+  "wall_seconds": 45.35202765464783
+ },
+ "steps": 20,
+ "watch": {
+  "environment": [
+   {
+    "device_bytes_used": null,
+    "rss_kb": 533604,
+    "seconds": 0.0
+   }
+  ],
+  "handoff": [
+   {
+    "device_bytes_used": null,
+    "rss_kb": 13450808,
+    "seconds": 0.0
+   }
+  ],
+  "resume": [
+   {
+    "device_bytes_used": null,
+    "rss_kb": 13239824,
+    "seconds": 0.0
+   }
+  ],
+  "session": [
+   {
+    "device_bytes_used": null,
+    "rss_kb": 7045312,
+    "seconds": 0.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 11986972,
+    "seconds": 30.0
+   }
+  ]
+ },
+ "watch_seconds": 30.0,
+ "what_this_is": "A rehearsal of the registered V0 session path on the device named in `device_requested`, at development fidelity. It reports whether the path runs and what it booked - it is not a Gate-4 result, not a port, and not evidence about the hypothesis. No queue moves on this record."
+}

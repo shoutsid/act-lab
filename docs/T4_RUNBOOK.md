@@ -1021,11 +1021,40 @@ no-op on CPU and CUDA, so the campaign's own numbers are unchanged - and the reh
 report a hang instead of going quiet: session lines print as they arrive, each phase runs under a
 `_Watch` sampling host RSS and device bytes every 30 s (into the kernel log and a
 `*.watch.json` sidecar), and a per-phase `faulthandler` deadline dumps every thread's stack
-before the platform kills the kernel. **Re-armed:** version 2 is pushed from the code dataset at
-**`f3ed48f`** (the shipped `runtime.py`, `v0_session.py` and rehearsal were downloaded back out
-of the mount and checked to carry the marker and the watch), the watcher above is polling for
-24 h, and the watcher fetches on both terminal states - so a failure still lands in
-`artifacts/tpu-session-rehearsal/output/` and prints `verdict(record)`.
+before the platform kills the kernel. **Re-armed (returned below):** version 2 is pushed from the
+code dataset at **`f3ed48f`** (the shipped `runtime.py`, `v0_session.py` and rehearsal were
+downloaded back out of the mount and checked to carry the marker and the watch), the watcher
+above is polling for 24 h, and the watcher fetches on both terminal states - so a failure still
+lands in `artifacts/tpu-session-rehearsal/output/` and prints `verdict(record)`.
+
+**Live, 2026-09-28 19:36Z (v2: passed):** version 2 reached **`COMPLETE`** after ~**10.8 h** of
+queue and ~**2.5 min** of run, and the fetched record names **all four phases** in `completed`
+with `errors` empty - `environment` 23.2 s, `session` **45.9 s**, `resume` 1.6 s, `handoff` 1.3 s.
+The unmarked step was the whole of v1's failure: v2's session phase returns in 45.9 s against v1's
+three hours of silence, and the watch reports a phase that *finished* by rising (7,045,312 kB at
+0 s, 11,986,972 kB at 30 s). The contracts a deadline stop rests on came back off the artifact
+itself - `resume.resumed_from_a_checkpoint` true with a bit-identical loss
+(**9.066792488098145**), `session.checkpoint_tensor_devices` **`["cpu"]`** (a host payload off a
+lazy backend), `checkpoint_revision` == `manifest_code_revision` == **`f3ed48f37ab1`**, and the
+§5.14 fields (`search_flops` 0, `mutation_count` 0, `summary_status` complete) read back out of a
+real `publish_seed`.
+
+The same record carried a **second defect**, in the path this rehearsal exists to vouch for: the
+resumed arm's published `seed-summary.json` reports `tokens_per_second` **6871947673.6** over a
+`wall_time_seconds` of **1.1920928955078125e-05**, because `training.tokens` is restored
+**cumulatively** while `wall_time` measured only the segment this process ran - and the resume
+phase loads a checkpoint at step 20 of 20, so the segment was empty. It is not only that case: any
+*partial* resume divides the arm's whole token count by one segment's seconds, and a partial resume
+is what a deadline stop produces, so a queue that resumed after a stop would have published
+inflated rates. **Fixed:** `_SessionState.wall_seconds` is the arm's own training wall, stamped
+into `v0_session.wall_seconds` with every checkpoint before it is written, restored on resume and
+summed with the segment's, and `tests/test_v0_session.py` pins the whole-arm rate (running it
+against the pre-fix tree fails on the payload, so it is a pin and not a comment). The five fetched
+files are committed at `artifacts/tpu-session-rehearsal/` with their sha256s (`NOTES.md`).
+**§5.14's option 2 is still not signed:** it would pair a hardware- and dtype-changed do-nothing
+arm against the two-T4 fp16 primary, which is a registered amendment rather than a scheduling
+knob, and the TPU week (**16.80 of 20 h** left, against **1.65 of 30 GPU-h**, both refreshing
+2026-10-03) does fit its **8.06 h** if the operator signs it.
 
 The push republishes `act-lab-code`, so it goes through the probe's own guard
 (`push_tpu_probe.publish_code_dataset`): exit 5 and no push while a campaign session is

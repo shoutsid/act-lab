@@ -1,0 +1,257 @@
+[{"stream_name":"stderr","time":42.254362126,"data":"/usr/local/lib/python3.12/site-packages/torch_xla/experimental/gru.py:113: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":42.254397926,"data":"  * **h_n**: tensor of shape :math:`(D * \\text{num\\_layers}, H_{out})` or\n"}
+,{"stream_name":"stderr","time":57.73846267,"data":"/usr/local/lib/python3.12/site-packages/torch_xla/__init__.py:258: UserWarning: `tensorflow` can conflict with `torch-xla`. Prefer `tensorflow-cpu` when using PyTorch/XLA. To silence this warning, `pip uninstall -y tensorflow \u0026\u0026 pip install tensorflow-cpu`. If you are in a notebook environment such as Colab or Kaggle, restart your notebook runtime afterwards.\n"}
+,{"stream_name":"stderr","time":57.73848819,"data":"  warnings.warn(\n"}
+,{"stream_name":"stdout","time":59.592048093,"data":"torch_xla: already-present\n"}
+,{"stream_name":"stdout","time":60.277821038,"data":"rehearsal: /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/tpu_session_rehearsal.py\n"}
+,{"stream_name":"stdout","time":60.315502389,"data":"--- phase environment\n"}
+,{"stream_name":"stdout","time":60.315517359,"data":"    environment: deadline 600 s\n"}
+,{"stream_name":"stdout","time":60.315662339,"data":"[watch environment] {\"device_bytes_used\": null, \"rss_kb\": 533604, \"seconds\": 0.0}\n"}
+,{"stream_name":"stderr","time":73.682771184,"data":"WARNING: Logging before InitGoogle() is written to STDERR\n"}
+,{"stream_name":"stderr","time":73.682806964,"data":"E0000 00:00:1790624064.046808       7 common_lib.cc:648] Could not set metric server port: INVALID_ARGUMENT: Could not find SliceBuilder port 8471 in any of the 0 ports provided in `tpu_process_addresses`=\"local\"\n"}
+,{"stream_name":"stderr","time":73.682814784,"data":"=== Source Location Trace: ===\n"}
+,{"stream_name":"stderr","time":73.682819464,"data":"learning/45eac/tfrc/runtime/common_lib.cc:238\n"}
+,{"stream_name":"stdout","time":83.48386415,"data":"    environment: ok (23.2 s)\n"}
+,{"stream_name":"stdout","time":83.483897841,"data":"--- phase session\n"}
+,{"stream_name":"stdout","time":83.48390333,"data":"    session: deadline 1800 s\n"}
+,{"stream_name":"stdout","time":83.483907481,"data":"[watch session] {\"device_bytes_used\": null, \"rss_kb\": 7045312, \"seconds\": 0.0}\n"}
+,{"stream_name":"stdout","time":83.90079249,"data":"[session] null arm, 20 steps on xla, checkpoint every 10\n"}
+,{"stream_name":"stdout","time":113.484756942,"data":"[watch session] {\"device_bytes_used\": null, \"rss_kb\": 11986972, \"seconds\": 30.0}\n"}
+,{"stream_name":"stdout","time":129.360259213,"data":"    session: ok (45.9 s)\n"}
+,{"stream_name":"stdout","time":129.360290833,"data":"--- phase resume\n"}
+,{"stream_name":"stdout","time":129.360295323,"data":"    resume: deadline 900 s\n"}
+,{"stream_name":"stdout","time":129.360393943,"data":"[watch resume] {\"device_bytes_used\": null, \"rss_kb\": 13239824, \"seconds\": 0.0}\n"}
+,{"stream_name":"stdout","time":129.735079023,"data":"[resume] [null] resumed from /kaggle/working/tpu-session-work-7/session/seed-51/arm-null/checkpoint-000020.pt at step 20\n"}
+,{"stream_name":"stdout","time":130.78336568,"data":"[resume] [null] completed after resume from /kaggle/working/tpu-session-work-7/session/seed-51/arm-null/checkpoint-000020.pt\n"}
+,{"stream_name":"stdout","time":130.922101485,"data":"    resume: ok (1.6 s)\n"}
+,{"stream_name":"stdout","time":130.922132005,"data":"--- phase handoff\n"}
+,{"stream_name":"stdout","time":130.922137865,"data":"    handoff: deadline 600 s\n"}
+,{"stream_name":"stdout","time":130.922142205,"data":"[watch handoff] {\"device_bytes_used\": null, \"rss_kb\": 13450808, \"seconds\": 0.0}\n"}
+,{"stream_name":"stdout","time":131.195716286,"data":"[handoff] [null] resumed from /kaggle/working/tpu-session-work-7/session/seed-51/arm-null/checkpoint-000020.pt at step 20\n"}
+,{"stream_name":"stdout","time":131.884170031,"data":"[handoff] [null] completed after resume from /kaggle/working/tpu-session-work-7/session/seed-51/arm-null/checkpoint-000020.pt\n"}
+,{"stream_name":"stdout","time":132.238152753,"data":"    handoff: ok (1.3 s)\n"}
+,{"stream_name":"stdout","time":132.238406753,"data":"{\n"}
+,{"stream_name":"stdout","time":132.238415743,"data":" \"completed\": [\n"}
+,{"stream_name":"stdout","time":132.238419723,"data":"  \"environment\",\n"}
+,{"stream_name":"stdout","time":132.238422653,"data":"  \"session\",\n"}
+,{"stream_name":"stdout","time":132.238425383,"data":"  \"resume\",\n"}
+,{"stream_name":"stdout","time":132.238428043,"data":"  \"handoff\"\n"}
+,{"stream_name":"stdout","time":132.238431083,"data":" ],\n"}
+,{"stream_name":"stdout","time":132.238433743,"data":" \"declared_scale\": false,\n"}
+,{"stream_name":"stdout","time":132.238436553,"data":" \"device_requested\": \"xla\",\n"}
+,{"stream_name":"stdout","time":132.238439413,"data":" \"errors\": [],\n"}
+,{"stream_name":"stdout","time":132.238442053,"data":" \"fidelity\": \"development\",\n"}
+,{"stream_name":"stdout","time":132.238445403,"data":" \"handoff\": {\n"}
+,{"stream_name":"stdout","time":132.238448163,"data":"  \"dataset_root\": \"/kaggle/working/tpu-session-work-7/dataset\",\n"}
+,{"stream_name":"stdout","time":132.238450933,"data":"  \"log\": [\n"}
+,{"stream_name":"stdout","time":132.238453703,"data":"   \"[null] resumed from /kaggle/working/tpu-session-work-7/session/seed-51/arm-null/checkpoint-000020.pt at step 20\",\n"}
+,{"stream_name":"stdout","time":132.238456733,"data":"   \"[null] completed after resume from /kaggle/working/tpu-session-work-7/session/seed-51/arm-null/checkpoint-000020.pt\"\n"}
+,{"stream_name":"stdout","time":132.238459583,"data":"  ],\n"}
+,{"stream_name":"stdout","time":132.238462323,"data":"  \"manifest_code_revision\": \"f3ed48f37ab11ff64ca5884c073bdb069f0884d8\",\n"}
+,{"stream_name":"stdout","time":132.238465133,"data":"  \"null_arm\": {\n"}
+,{"stream_name":"stdout","time":132.238467913,"data":"   \"final_loss\": 9.066792488098145,\n"}
+,{"stream_name":"stdout","time":132.238470683,"data":"   \"mutation_count\": 0,\n"}
+,{"stream_name":"stdout","time":132.238473343,"data":"   \"search_flops\": 0,\n"}
+,{"stream_name":"stdout","time":132.238476143,"data":"   \"validation_loss\": 9.066792488098145\n"}
+,{"stream_name":"stdout","time":132.238478803,"data":"  },\n"}
+,{"stream_name":"stdout","time":132.238481343,"data":"  \"seed_files\": [\n"}
+,{"stream_name":"stdout","time":132.238483993,"data":"   \"act-checkpoints/v0-5-1/seed-0051/checkpoints/null/checkpoint-000020.pt\",\n"}
+,{"stream_name":"stdout","time":132.238486743,"data":"   \"act-checkpoints/v0-5-1/seed-0051/manifests/manifest.json\",\n"}
+,{"stream_name":"stdout","time":132.238489443,"data":"   \"act-checkpoints/v0-5-1/seed-0051/reports/seed-summary.json\",\n"}
+,{"stream_name":"stdout","time":132.238492123,"data":"   \"act-checkpoints/v0-5-1/seed-0051/seed-summary.json\"\n"}
+,{"stream_name":"stdout","time":132.238494803,"data":"  ],\n"}
+,{"stream_name":"stdout","time":132.238497363,"data":"  \"summary_status\": \"complete\"\n"}
+,{"stream_name":"stdout","time":132.238500073,"data":" },\n"}
+,{"stream_name":"stdout","time":132.238502663,"data":" \"kind\": \"tpu-session-rehearsal\",\n"}
+,{"stream_name":"stdout","time":132.238505383,"data":" \"not_measured\": [\n"}
+,{"stream_name":"stdout","time":132.238508083,"data":"  \"per-core parallelism (eight seeds at once, one per chip): the probe measured that pattern for the step loop, and this rehearsal's question is one session on one device\",\n"}
+,{"stream_name":"stdout","time":132.238532123,"data":"  \"declared-fidelity throughput: the shape here is the development one, so its tokens/s is a path measurement and not a schedule input\",\n"}
+,{"stream_name":"stdout","time":132.238535393,"data":"  \"the two-arm pair placement: the null queue is single-arm by construction, and the pair queues are not the ones this option moves\"\n"}
+,{"stream_name":"stdout","time":132.238538243,"data":" ],\n"}
+,{"stream_name":"stdout","time":132.238540963,"data":" \"phase_deadlines\": {\n"}
+,{"stream_name":"stdout","time":132.238543603,"data":"  \"environment\": 600.0,\n"}
+,{"stream_name":"stdout","time":132.238546273,"data":"  \"handoff\": 600.0,\n"}
+,{"stream_name":"stdout","time":132.238548883,"data":"  \"resume\": 900.0,\n"}
+,{"stream_name":"stdout","time":132.238551503,"data":"  \"session\": 1800.0\n"}
+,{"stream_name":"stdout","time":132.238554093,"data":" },\n"}
+,{"stream_name":"stdout","time":132.238556663,"data":" \"record_type\": \"session-rehearsal\",\n"}
+,{"stream_name":"stdout","time":132.238559303,"data":" \"rehearsal\": true,\n"}
+,{"stream_name":"stdout","time":132.238561963,"data":" \"resume\": {\n"}
+,{"stream_name":"stdout","time":132.238564573,"data":"  \"checkpoint_files\": [\n"}
+,{"stream_name":"stdout","time":132.238567233,"data":"   \"session/seed-51/arm-null/checkpoint-000010.pt\",\n"}
+,{"stream_name":"stdout","time":132.238569923,"data":"   \"session/seed-51/arm-null/checkpoint-000020.pt\"\n"}
+,{"stream_name":"stdout","time":132.238572583,"data":"  ],\n"}
+,{"stream_name":"stdout","time":132.238575123,"data":"  \"log\": [\n"}
+,{"stream_name":"stdout","time":132.238577753,"data":"   \"[null] resumed from /kaggle/working/tpu-session-work-7/session/seed-51/arm-null/checkpoint-000020.pt at step 20\",\n"}
+,{"stream_name":"stdout","time":132.238581053,"data":"   \"[null] completed after resume from /kaggle/working/tpu-session-work-7/session/seed-51/arm-null/checkpoint-000020.pt\"\n"}
+,{"stream_name":"stdout","time":132.238610223,"data":"  ],\n"}
+,{"stream_name":"stdout","time":132.238612903,"data":"  \"resumed_from_a_checkpoint\": true,\n"}
+,{"stream_name":"stdout","time":132.238615983,"data":"  \"same_loss_as_the_first_run\": true,\n"}
+,{"stream_name":"stdout","time":132.238618623,"data":"  \"validation_loss\": 9.066792488098145,\n"}
+,{"stream_name":"stdout","time":132.238621473,"data":"  \"wall_seconds\": 1.558856725692749\n"}
+,{"stream_name":"stdout","time":132.238624123,"data":" },\n"}
+,{"stream_name":"stdout","time":132.238626683,"data":" \"runtime\": {\n"}
+,{"stream_name":"stdout","time":132.238629273,"data":"  \"bound_device\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":132.238632063,"data":"  \"device_kind\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":132.238634673,"data":"  \"environment\": {\n"}
+,{"stream_name":"stdout","time":132.238637263,"data":"   \"ALLOW_MULTIPLE_LIBTPU_LOAD\": \"1\",\n"}
+,{"stream_name":"stdout","time":132.238639943,"data":"   \"CLOUD_TPU_TASK_ID\": null,\n"}
+,{"stream_name":"stdout","time":132.238643653,"data":"   \"LIBTPU_INIT_ARGS\": \" --xla_tpu_use_enhanced_launch_barrier=false --xla_latency_hiding_scheduler_rerun=1 --xla_tpu_prefer_async_allgather_to_allreduce=true --xla_tpu_enable_flash_attention=false --xla_enable_async_all_gather=true --xla_enable_async_collective_permute=true\",\n"}
+,{"stream_name":"stdout","time":132.238646773,"data":"   \"PJRT_DEVICE\": \"TPU\",\n"}
+,{"stream_name":"stdout","time":132.238649463,"data":"   \"PJRT_LOCAL_PROCESS_COUNT\": null,\n"}
+,{"stream_name":"stdout","time":132.238655513,"data":"   \"PJRT_LOCAL_PROCESS_RANK\": null,\n"}
+,{"stream_name":"stdout","time":132.238658323,"data":"   \"PJRT_SELECT_DEFAULT_DEVICE\": null,\n"}
+,{"stream_name":"stdout","time":132.238661003,"data":"   \"TPU_ACCELERATOR_TYPE\": \"v5litepod-8\",\n"}
+,{"stream_name":"stdout","time":132.238663723,"data":"   \"TPU_CHIPS_PER_HOST_BOUNDS\": \"2,4,1\",\n"}
+,{"stream_name":"stdout","time":132.238666403,"data":"   \"TPU_CHIPS_PER_PROCESS_BOUNDS\": null,\n"}
+,{"stream_name":"stdout","time":132.238669053,"data":"   \"TPU_HOST_BOUNDS\": \"1,1,1\",\n"}
+,{"stream_name":"stdout","time":132.238671773,"data":"   \"TPU_LIBRARY_PATH\": \"/usr/local/lib/python3.12/site-packages/libtpu/libtpu.so\",\n"}
+,{"stream_name":"stdout","time":132.238674553,"data":"   \"TPU_NAME\": null,\n"}
+,{"stream_name":"stdout","time":132.238677183,"data":"   \"TPU_PROCESS_ADDRESSES\": \"local\",\n"}
+,{"stream_name":"stdout","time":132.238679873,"data":"   \"TPU_PROCESS_BOUNDS\": null,\n"}
+,{"stream_name":"stdout","time":132.238682513,"data":"   \"TPU_PROCESS_PORT\": null,\n"}
+,{"stream_name":"stdout","time":132.238685193,"data":"   \"TPU_SKIP_MDS_QUERY\": \"1\",\n"}
+,{"stream_name":"stdout","time":132.238687843,"data":"   \"TPU_VISIBLE_CHIPS\": null,\n"}
+,{"stream_name":"stdout","time":132.238690493,"data":"   \"TPU_WORKER_HOSTNAMES\": \"localhost\",\n"}
+,{"stream_name":"stdout","time":132.238693473,"data":"   \"TPU_WORKER_ID\": \"0\",\n"}
+,{"stream_name":"stdout","time":132.238696443,"data":"   \"XLA_TPU_MAX_INFLIGHT_COMPUTATIONS\": null,\n"}
+,{"stream_name":"stdout","time":132.238699173,"data":"   \"XRT_TPU_CONFIG\": \"localservice;0;localhost:51011\",\n"}
+,{"stream_name":"stdout","time":132.238702063,"data":"   \"X_NUM_DEVICES\": null\n"}
+,{"stream_name":"stdout","time":132.238704713,"data":"  },\n"}
+,{"stream_name":"stdout","time":132.238707493,"data":"  \"memory_bytes_limit\": null,\n"}
+,{"stream_name":"stdout","time":132.238710203,"data":"  \"memory_bytes_used\": null,\n"}
+,{"stream_name":"stdout","time":132.238712863,"data":"  \"pytorch\": \"2.8.0+cpu\",\n"}
+,{"stream_name":"stdout","time":132.238715563,"data":"  \"sum\": 8.0,\n"}
+,{"stream_name":"stdout","time":132.238718163,"data":"  \"torch_xla\": \"2.8.0\",\n"}
+,{"stream_name":"stdout","time":132.238720803,"data":"  \"tpu\": {\n"}
+,{"stream_name":"stdout","time":132.238723433,"data":"   \"metadata\": {\n"}
+,{"stream_name":"stdout","time":132.238726143,"data":"    \"ACCELERATOR_TYPE\": \"v5litepod-8\",\n"}
+,{"stream_name":"stdout","time":132.238728943,"data":"    \"TPU_CHIPS_PER_PROCESS_BOUNDS\": \"2,4,1\",\n"}
+,{"stream_name":"stdout","time":132.238731653,"data":"    \"TPU_PROCESS_BOUNDS\": \"1,1,1\",\n"}
+,{"stream_name":"stdout","time":132.238734323,"data":"    \"WORKER_ID\": \"0\"\n"}
+,{"stream_name":"stdout","time":132.238737023,"data":"   },\n"}
+,{"stream_name":"stdout","time":132.238739593,"data":"   \"pci_chips\": 8\n"}
+,{"stream_name":"stdout","time":132.238742253,"data":"  },\n"}
+,{"stream_name":"stdout","time":132.238744853,"data":"  \"xla_devices\": 8\n"}
+,{"stream_name":"stdout","time":132.238747473,"data":" },\n"}
+,{"stream_name":"stdout","time":132.238750013,"data":" \"seed\": 51,\n"}
+,{"stream_name":"stdout","time":132.238752633,"data":" \"session\": {\n"}
+,{"stream_name":"stdout","time":132.238755293,"data":"  \"arms\": {\n"}
+,{"stream_name":"stdout","time":132.238757913,"data":"   \"null\": {\n"}
+,{"stream_name":"stdout","time":132.238760623,"data":"    \"active_parameter_count\": 7556160,\n"}
+,{"stream_name":"stdout","time":132.238763413,"data":"    \"architecture_hash\": \"7cefa40037ee09f7\",\n"}
+,{"stream_name":"stdout","time":132.238769593,"data":"    \"checkpoints\": [\n"}
+,{"stream_name":"stdout","time":132.238772473,"data":"     {\n"}
+,{"stream_name":"stdout","time":132.238775073,"data":"      \"bytes\": 179313571,\n"}
+,{"stream_name":"stdout","time":132.238777783,"data":"      \"name\": \"checkpoint-000010.pt\"\n"}
+,{"stream_name":"stdout","time":132.238780483,"data":"     },\n"}
+,{"stream_name":"stdout","time":132.238783073,"data":"     {\n"}
+,{"stream_name":"stdout","time":132.238785643,"data":"      \"bytes\": 179313635,\n"}
+,{"stream_name":"stdout","time":132.238788393,"data":"      \"name\": \"checkpoint-000020.pt\"\n"}
+,{"stream_name":"stdout","time":132.238791553,"data":"     }\n"}
+,{"stream_name":"stdout","time":132.238794203,"data":"    ],\n"}
+,{"stream_name":"stdout","time":132.238796763,"data":"    \"device\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":132.238799483,"data":"    \"final_loss\": 9.066792488098145,\n"}
+,{"stream_name":"stdout","time":132.238802163,"data":"    \"mode\": \"null\",\n"}
+,{"stream_name":"stdout","time":132.238804823,"data":"    \"mutation_count\": 0,\n"}
+,{"stream_name":"stdout","time":132.238807483,"data":"    \"parameter_count\": 14928960,\n"}
+,{"stream_name":"stdout","time":132.238810153,"data":"    \"search_flops\": 0,\n"}
+,{"stream_name":"stdout","time":132.238812923,"data":"    \"tokens_per_second\": 2012.5395976038178,\n"}
+,{"stream_name":"stdout","time":132.238815743,"data":"    \"training_flops\": 2445960806400,\n"}
+,{"stream_name":"stdout","time":132.238818413,"data":"    \"validation_loss\": 9.066792488098145,\n"}
+,{"stream_name":"stdout","time":132.238821073,"data":"    \"wall_time_seconds\": 40.70478916168213\n"}
+,{"stream_name":"stdout","time":132.238823743,"data":"   }\n"}
+,{"stream_name":"stdout","time":132.238826313,"data":"  },\n"}
+,{"stream_name":"stdout","time":132.238828853,"data":"  \"checkpoint_files\": [\n"}
+,{"stream_name":"stdout","time":132.238831623,"data":"   \"session/seed-51/arm-null/checkpoint-000010.pt\",\n"}
+,{"stream_name":"stdout","time":132.238834413,"data":"   \"session/seed-51/arm-null/checkpoint-000020.pt\"\n"}
+,{"stream_name":"stdout","time":132.238837083,"data":"  ],\n"}
+,{"stream_name":"stdout","time":132.238839653,"data":"  \"checkpoint_revision\": \"f3ed48f37ab11ff64ca5884c073bdb069f0884d8\",\n"}
+,{"stream_name":"stdout","time":132.238842473,"data":"  \"checkpoint_tensor_devices\": [\n"}
+,{"stream_name":"stdout","time":132.238845273,"data":"   \"cpu\"\n"}
+,{"stream_name":"stdout","time":132.238847903,"data":"  ],\n"}
+,{"stream_name":"stdout","time":132.238850643,"data":"  \"code_revision\": \"f3ed48f37ab11ff64ca5884c073bdb069f0884d8\",\n"}
+,{"stream_name":"stdout","time":132.238853413,"data":"  \"config\": {\n"}
+,{"stream_name":"stdout","time":132.238856333,"data":"   \"activation_checkpointing\": false,\n"}
+,{"stream_name":"stdout","time":132.238859043,"data":"   \"active_experts\": 2,\n"}
+,{"stream_name":"stdout","time":132.238861683,"data":"   \"arms\": [\n"}
+,{"stream_name":"stdout","time":132.238864323,"data":"    \"null\"\n"}
+,{"stream_name":"stdout","time":132.238866933,"data":"   ],\n"}
+,{"stream_name":"stdout","time":132.238869503,"data":"   \"attention_heads\": 5,\n"}
+,{"stream_name":"stdout","time":132.238872133,"data":"   \"batch_size\": 8,\n"}
+,{"stream_name":"stdout","time":132.238874833,"data":"   \"checkpoint_interval\": 10,\n"}
+,{"stream_name":"stdout","time":132.238877533,"data":"   \"checkpoint_max_bytes\": null,\n"}
+,{"stream_name":"stdout","time":132.238880203,"data":"   \"context_size\": 512,\n"}
+,{"stream_name":"stdout","time":132.238885413,"data":"   \"data_path\": null,\n"}
+,{"stream_name":"stdout","time":132.238888163,"data":"   \"declared\": false,\n"}
+,{"stream_name":"stdout","time":132.238890803,"data":"   \"depth\": 6,\n"}
+,{"stream_name":"stdout","time":132.238893433,"data":"   \"device\": \"xla\",\n"}
+,{"stream_name":"stdout","time":132.238896063,"data":"   \"dtype\": \"fp32\",\n"}
+,{"stream_name":"stdout","time":132.238898743,"data":"   \"expert_count\": 8,\n"}
+,{"stream_name":"stdout","time":132.238901433,"data":"   \"expert_width\": 320,\n"}
+,{"stream_name":"stdout","time":132.238904033,"data":"   \"gate_margin\": 0.0,\n"}
+,{"stream_name":"stdout","time":132.238906643,"data":"   \"hidden_size\": 320,\n"}
+,{"stream_name":"stdout","time":132.238909223,"data":"   \"learning_rate\": 0.0003,\n"}
+,{"stream_name":"stdout","time":132.238911873,"data":"   \"max_checkpoints\": 2,\n"}
+,{"stream_name":"stdout","time":132.238914523,"data":"   \"mutation_budget\": 3,\n"}
+,{"stream_name":"stdout","time":132.238917173,"data":"   \"mutation_interval\": 100,\n"}
+,{"stream_name":"stdout","time":132.238919843,"data":"   \"new_expert_initialization\": \"random\",\n"}
+,{"stream_name":"stdout","time":132.238922583,"data":"   \"preserve_router_on_rebuild\": false,\n"}
+,{"stream_name":"stdout","time":132.238925263,"data":"   \"probe_batch_count\": 1,\n"}
+,{"stream_name":"stdout","time":132.238927913,"data":"   \"probe_candidate_cap\": 4,\n"}
+,{"stream_name":"stdout","time":132.238930753,"data":"   \"probe_candidate_policy\": \"prefix\",\n"}
+,{"stream_name":"stdout","time":132.238933473,"data":"   \"probe_data_source\": \"train\",\n"}
+,{"stream_name":"stdout","time":132.238936173,"data":"   \"probe_finetune_steps\": 0,\n"}
+,{"stream_name":"stdout","time":132.238938813,"data":"   \"probe_landscape\": false,\n"}
+,{"stream_name":"stdout","time":132.238941463,"data":"   \"probe_selection\": \"argmin\",\n"}
+,{"stream_name":"stdout","time":132.238944313,"data":"   \"seed\": 51,\n"}
+,{"stream_name":"stdout","time":132.238946943,"data":"   \"total_steps\": 20,\n"}
+,{"stream_name":"stdout","time":132.238949553,"data":"   \"val_data_path\": null,\n"}
+,{"stream_name":"stdout","time":132.238952173,"data":"   \"validation_batches\": 4,\n"}
+,{"stream_name":"stdout","time":132.238954773,"data":"   \"vocab_size\": 8192\n"}
+,{"stream_name":"stdout","time":132.238957423,"data":"  },\n"}
+,{"stream_name":"stdout","time":132.238959963,"data":"  \"log\": [],\n"}
+,{"stream_name":"stdout","time":132.238962663,"data":"  \"wall_seconds\": 45.35202765464783\n"}
+,{"stream_name":"stdout","time":132.238965583,"data":" },\n"}
+,{"stream_name":"stdout","time":132.238968193,"data":" \"steps\": 20,\n"}
+,{"stream_name":"stdout","time":132.238970823,"data":" \"watch\": {\n"}
+,{"stream_name":"stdout","time":132.238973423,"data":"  \"environment\": [\n"}
+,{"stream_name":"stdout","time":132.239012723,"data":"   {\n"}
+,{"stream_name":"stdout","time":132.239020123,"data":"    \"device_bytes_used\": null,\n"}
+,{"stream_name":"stdout","time":132.239022873,"data":"    \"rss_kb\": 533604,\n"}
+,{"stream_name":"stdout","time":132.239025653,"data":"    \"seconds\": 0.0\n"}
+,{"stream_name":"stdout","time":132.239028423,"data":"   }\n"}
+,{"stream_name":"stdout","time":132.239031153,"data":"  ],\n"}
+,{"stream_name":"stdout","time":132.239033853,"data":"  \"handoff\": [\n"}
+,{"stream_name":"stdout","time":132.239036523,"data":"   {\n"}
+,{"stream_name":"stdout","time":132.239039083,"data":"    \"device_bytes_used\": null,\n"}
+,{"stream_name":"stdout","time":132.239041733,"data":"    \"rss_kb\": 13450808,\n"}
+,{"stream_name":"stdout","time":132.239047673,"data":"    \"seconds\": 0.0\n"}
+,{"stream_name":"stdout","time":132.239050363,"data":"   }\n"}
+,{"stream_name":"stdout","time":132.239052973,"data":"  ],\n"}
+,{"stream_name":"stdout","time":132.239055523,"data":"  \"resume\": [\n"}
+,{"stream_name":"stdout","time":132.239058173,"data":"   {\n"}
+,{"stream_name":"stdout","time":132.239060713,"data":"    \"device_bytes_used\": null,\n"}
+,{"stream_name":"stdout","time":132.239063493,"data":"    \"rss_kb\": 13239824,\n"}
+,{"stream_name":"stdout","time":132.239066463,"data":"    \"seconds\": 0.0\n"}
+,{"stream_name":"stdout","time":132.239069093,"data":"   }\n"}
+,{"stream_name":"stdout","time":132.239071683,"data":"  ],\n"}
+,{"stream_name":"stdout","time":132.239074553,"data":"  \"session\": [\n"}
+,{"stream_name":"stdout","time":132.239077203,"data":"   {\n"}
+,{"stream_name":"stdout","time":132.239080143,"data":"    \"device_bytes_used\": null,\n"}
+,{"stream_name":"stdout","time":132.239082783,"data":"    \"rss_kb\": 7045312,\n"}
+,{"stream_name":"stdout","time":132.239085403,"data":"    \"seconds\": 0.0\n"}
+,{"stream_name":"stdout","time":132.239088023,"data":"   },\n"}
+,{"stream_name":"stdout","time":132.239090583,"data":"   {\n"}
+,{"stream_name":"stdout","time":132.239093153,"data":"    \"device_bytes_used\": null,\n"}
+,{"stream_name":"stdout","time":132.239095923,"data":"    \"rss_kb\": 11986972,\n"}
+,{"stream_name":"stdout","time":132.239098553,"data":"    \"seconds\": 30.0\n"}
+,{"stream_name":"stdout","time":132.239101163,"data":"   }\n"}
+,{"stream_name":"stdout","time":132.239103733,"data":"  ]\n"}
+,{"stream_name":"stdout","time":132.239106303,"data":" },\n"}
+,{"stream_name":"stdout","time":132.239108863,"data":" \"watch_seconds\": 30.0,\n"}
+,{"stream_name":"stdout","time":132.239111623,"data":" \"what_this_is\": \"A rehearsal of the registered V0 session path on the device named in `device_requested`, at development fidelity. It reports whether the path runs and what it booked - it is not a Gate-4 result, not a port, and not evidence about the hypothesis. No queue moves on this record.\"\n"}
+,{"stream_name":"stdout","time":132.239114793,"data":"}\n"}
+,{"stream_name":"stderr","time":146.40538959,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
+,{"stream_name":"stderr","time":150.960318189,"data":"[NbConvertApp] Writing 280648 bytes to __results__.html\n"}
+]

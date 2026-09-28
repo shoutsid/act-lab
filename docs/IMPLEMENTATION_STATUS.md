@@ -1,5 +1,28 @@
 # ACT Implementation Status
 
+## The session path runs on the TPU, and its own record published an impossible rate (2026-09-28)
+
+**Live update, 2026-09-28 19:36Z:** the rehearsal came back **`COMPLETE`** - all four phases in
+`completed`, `errors` empty - after queueing **~10.8 h** and running **~2.5 min**. The whole
+account is committed under `artifacts/tpu-session-rehearsal/` (`NOTES.md`, with the five fetched
+files' sha256s). The campaign's own queues are untouched: the driver still holds the lock and is
+sleeping to the 2026-10-03 refresh.
+
+| | |
+|---|---|
+| **The four phases, measured** | `environment` **23.2 s**, `session` **45.9 s**, `resume` **1.6 s**, `handoff` **1.3 s**, off the platform log's own clock; the record is printed at 132.2 s of a 150.9 s kernel. |
+| **The v1 defect, confirmed fixed where it was found** | v1's session phase was three hours of silence and then `Killed`; v2's is **45.9 s** and returns, and the same twenty development-fidelity steps take 24 s on a CPU - so the unmarked step was the whole difference, and this is the first measurement that `runtime.step_marker` does what it was written to do. The instrumentation that could not report v1 now reports v2: `watch.session` samples **7,045,312 kB** at 0 s and **11,986,972 kB** at 30 s of a phase that *finished*, which is what working looks like against v1's climb to the kill. `device_bytes_used` is `null` in every sample (and in every `tpu-probe` record back to v4), so this runtime does not expose it and the host's resident set is the growth signal that carries the watch - measured working, not assumed. |
+| **The path's own contracts, each read off the artifact** | `resume.resumed_from_a_checkpoint` **true** with `same_loss_as_the_first_run` **true** and validation loss **9.066792488098145**, bit-identical to the fresh run - the contract a deadline stop depends on. `session.checkpoint_tensor_devices` is **`["cpu"]`**, so `_cpu_payload` is doing its job on a lazy backend and the checkpoint the TPU wrote is a host payload. `session.checkpoint_revision` and `manifest_code_revision` are both **`f3ed48f37ab1...`**, so a checkpoint separated from its manifest says what wrote it. And the §5.14 clause's own input came back off a real publish: `handoff.null_arm` is `{final_loss 9.066792488098145, mutation_count 0, search_flops 0}` with `summary_status: complete`. |
+| **A second defect this record found, in the resume path** | The published `seed-summary.json` - the file §5.14's clause consumes - carries `tokens_per_second` **6871947673.6** over `wall_time_seconds` **1.1920928955078125e-05** for the resumed arm. `_state_from_payload` restores `training.tokens` **cumulatively** (81,920 = 20 x 8 x 512) while `wall_time` measured only this process's segment, and the rehearsal resumes from a checkpoint at step 20 of 20 - so the loop's `range(21, 21)` is empty and a token count is divided by a bare pair of clock reads. It is not only that case: *any* partial resume divides the whole token count by one segment's seconds, and a partial resume is what a deadline stop produces (`V0SessionInterrupted` at a checkpoint boundary, then the queue resumes), so the null queue this was rehearsing for would have published inflated rates on every seed that survived a stop. **Fixed:** `_SessionState.wall_seconds` is the arm's own training wall, stamped into `v0_session.wall_seconds` with every checkpoint before it is written, restored on resume and summed with the segment's - a resumed arm now reports the whole arm's rate (81920 / 40.70 = **2,013**, the number the same arm had just measured) and a zero-step resume reports that instead of an empty loop's. |
+| **Pinned** | `tests/test_v0_session.py` (**+1**, 2071 in the suite): a fresh run's checkpoint carries a positive `wall_seconds` that grows with the arm, a resume with nothing left to run reproduces the arm's rate rather than an empty loop's, and a mid-run resume extends the wall instead of restarting it. Run against the pre-fix tree the test fails on the payload (`KeyError: 'wall_seconds'`), which is what makes it a pin rather than a description. |
+| **What it does not price, and the amendment it unblocks** | It says nothing about the declared-scale rate on the session path: **2,013 tokens/s** here against the **15,034** the probe's step loop measured, a gap that is fidelity (20 steps pay a compile and a per-step sync that 6,000 amortize) and not a number this record can settle - so §5.14 option 2's **8.06 h at the 2.0x bar** is still the port rule's figure, not a measured session. What did change is that it was the *last* objection standing: the registered case against moving the null queue to the TPU was that the port verdict measured a step loop while a session adds activation checkpointing, the optimizer and scaler state, the per-arm RNG contract, a checkpoint saved **and resumed** across a stop, the publish and the placement - and each of those has now run once on XLA. The TPU week stands at **16.80 of 20 h remaining** (3.20 used: the probe's 0.14, v1's 3.02, v2's ~0.04) against **1.65 of 30 GPU-h**, both refreshing **2026-10-03**, so the clock fits it. The option is still **not taken**, and for the reason recorded in the row below rather than for want of a rehearsal: it changes the do-nothing arm's hardware and dtype against a two-T4 fp16 primary, so it is a **registered amendment** - the operator's to sign, not a scheduling knob. |
+
+The rehearsal remains what its own record says it is - `rehearsal: true`, `declared_scale: false`,
+not a port and not a Gate-4 result - and it moved no queue: a defect that would have cost a GPU
+session a night was found and a second one was fixed on a TPU week that was otherwise idle.
+
+---
+
 ## The TPU rehearsal found the defect before it moved a queue (2026-09-28)
 
 **Live update, 2026-09-28 05:00Z:** the rehearsal came back **`ERROR`** -
@@ -18,8 +41,8 @@ untouched: the driver still holds the lock (pid 63681, 16 h up) and is sleeping 
 
 This is a rehearsal of the *path*, not a port and not a Gate-4 result, and it moved no queue -
 which is the point: a defect that costs a GPU session a night was found on a TPU week that stood
-at **19.86 of 20 hours idle**. The next run is the same rehearsal, re-armed: kernel
-`act-tpu-session-rehearsal` **version 2** is `QUEUED` (commit **`f3ed48f`**), the code dataset
+at **19.86 of 20 hours idle**. The next run is the same rehearsal, re-armed (**and returned above**: v2 ran all four phases):
+kernel `act-tpu-session-rehearsal` **version 2** is `QUEUED` (commit **`f3ed48f`**), the code dataset
 was republished at that revision and both the mount's `revision.txt` and the shipped
 `runtime.py`, `v0_session.py` and `tpu_session_rehearsal.py` were downloaded back and checked to
 carry the marker and the watch, and

@@ -435,6 +435,11 @@ class V0SessionInterrupted(RuntimeError):
 class _SessionState:
     step: int = 0
     tokens: int = 0
+    # The arm's own training wall, summed over the segments it ran in. It is not
+    # this process's clock: a resumed segment adds to the segments its checkpoint
+    # already carries, because ``tokens`` is cumulative and a rate has to divide
+    # it by a wall that covers the same work.
+    wall_seconds: float = 0.0
     training_flops: int = 0
     search_flops: int = 0
     mutations: int = 0
@@ -538,6 +543,12 @@ def save_v0_checkpoint(
     the only shape a lazy accelerator's tensor can be written without the risk
     of a checkpoint that loads and is not the training it names.
 
+    ``v0_session.wall_seconds`` is the arm's training wall so far, written with
+    every checkpoint so a resumed segment can add its own to it rather than
+    reporting the whole token count over a single segment's seconds. A payload
+    that predates the field carries none, and a resume from one falls back to the
+    segment it ran - the behaviour before the field existed.
+
     ``code_revision`` is provenance carried *on the artifact*: the published
     manifest records it too (2026-09-27), but a checkpoint separated from its
     manifest carried nothing at all - the measured state of every checkpoint
@@ -574,6 +585,7 @@ def save_v0_checkpoint(
                 "scaler": scaler.state_dict() if scaler is not None else None,
                 "training": training,
                 "v0_session": {
+                    "wall_seconds": state.wall_seconds,
                     "training_flops": state.training_flops,
                     "search_flops": state.search_flops,
                     "mutations": state.mutations,
@@ -613,6 +625,7 @@ def _state_from_payload(
     return _SessionState(
         step=int(training["step"]),
         tokens=int(training["tokens"]),
+        wall_seconds=float(session.get("wall_seconds", 0.0)),
         training_flops=int(session.get("training_flops", 0)),
         search_flops=int(session.get("search_flops", 0)),
         mutations=int(session.get("mutations", 0)),
@@ -1473,6 +1486,14 @@ def _train_arm(
 
     _prepare_model(model, config)
     wall_start = time.time()
+    # The arm's wall, not this process's. This process measures one segment; the
+    # checkpoint carries the segments before it, and the two are summed for the
+    # rate below. Without that sum a resume divides the checkpoint's *whole* token
+    # count by a single segment's seconds, and a resume with nothing left to run
+    # divides by a bare pair of clock reads - which is what the 2026-09-28
+    # rehearsal did when its resume phase loaded a completed checkpoint and
+    # published 6,871,947,673 tokens/s for an arm whose measured rate is 2,013.
+    prior_wall_seconds = arm_state.wall_seconds
     # The backend's step boundary, where it has one. On XLA the ops of a step are
     # traced into a graph that does not run until a step is marked, so a loop that
     # never marks one traces the whole run and executes it as a single program -
@@ -1532,6 +1553,9 @@ def _train_arm(
                     arm_state, model, optimizer, config, step, device
                 )
         if policy.should_save(step):
+            # Stamped before the write, so this checkpoint carries the arm's wall
+            # up to its own step and a resume from it starts from the right total.
+            arm_state.wall_seconds = prior_wall_seconds + (time.time() - wall_start)
             path = _checkpoint_path(arm_dir, step)
             save_v0_checkpoint(
                 path,
@@ -1552,7 +1576,8 @@ def _train_arm(
                 raise V0SessionInterrupted(
                     f"{mode} arm stopped at checkpoint boundary step {step}", step
                 )
-    wall_time = time.time() - wall_start
+    wall_time = prior_wall_seconds + (time.time() - wall_start)
+    arm_state.wall_seconds = wall_time
     arm_state.generator_state = generator.get_state()
 
     # Final checkpoint so a completed arm never needs recomputation.

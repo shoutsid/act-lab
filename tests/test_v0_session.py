@@ -371,6 +371,64 @@ def test_version4_checkpoint_still_loads(tmp_path: Path) -> None:
     assert resumed.arms[0].parameter_count > 0
 
 
+def test_a_resumed_arm_reports_the_rate_of_the_whole_arm(tmp_path: Path) -> None:
+    """A resumed arm divides its tokens by a wall that covers them.
+
+    The 2026-09-28 rehearsal resumed a *completed* arm, so the process ran zero
+    steps and divided the checkpoint's whole token count by a bare pair of clock
+    reads: it published 6,871,947,673 tokens/s for an arm that had measured
+    2,013. ``v0_session.wall_seconds`` is what makes a resume honest - the arm's
+    own training wall, carried in the checkpoint and extended by each segment.
+    """
+    config = V0SessionConfig(
+        seed=31,
+        arms=("null",),
+        declared=False,
+        device="cpu",
+        vocab_size=64,
+        context_size=256,
+        hidden_size=64,
+        depth=2,
+        attention_heads=4,
+        expert_count=4,
+        expert_width=32,
+        total_steps=4,
+        mutation_interval=100,
+        mutation_budget=1,
+        probe_batch_count=1,
+        validation_batches=2,
+        checkpoint_interval=2,
+        max_checkpoints=2,
+    )
+    first = run_v0_session(config, checkpoint_dir=tmp_path / "session")
+    rate = first.arms[0].tokens_per_second
+    assert rate > 0
+    arm_dir = tmp_path / "session" / "seed-31" / "arm-null"
+    final = arm_dir / "checkpoint-000004.pt"
+    carried = torch.load(final, map_location="cpu", weights_only=False)
+    assert carried["training"]["tokens"] == (
+        config.batch_size * config.context_size * config.total_steps
+    )
+    assert carried["v0_session"]["wall_seconds"] > 0
+    mid_wall = torch.load(
+        arm_dir / "checkpoint-000002.pt", map_location="cpu", weights_only=False
+    )["v0_session"]["wall_seconds"]
+    assert carried["v0_session"]["wall_seconds"] >= mid_wall > 0
+
+    # Nothing left to run: the arm is complete, so the rate it reports is the one
+    # it trained at, not its token count over an empty loop's wall.
+    resumed = run_v0_session(config, checkpoint_dir=tmp_path / "session")
+    assert resumed.arms[0].tokens_per_second == pytest.approx(rate, rel=0.05)
+
+    # A mid-run resume extends the wall instead of restarting it, so the resumed
+    # arm's accounting still covers every step the arm ran.
+    final.unlink()
+    resumed_mid = run_v0_session(config, checkpoint_dir=tmp_path / "session")
+    extended = torch.load(final, map_location="cpu", weights_only=False)
+    assert extended["v0_session"]["wall_seconds"] > mid_wall
+    assert resumed_mid.arms[0].tokens_per_second > 0
+
+
 def test_protocol_aggregation_and_harm_guard() -> None:
     def _result(adaptive_loss: float, random_loss: float) -> V0SessionResult:
         arm_values = {
