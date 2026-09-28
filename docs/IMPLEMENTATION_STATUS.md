@@ -18,8 +18,14 @@ untouched: the driver still holds the lock (pid 63681, 16 h up) and is sleeping 
 
 This is a rehearsal of the *path*, not a port and not a Gate-4 result, and it moved no queue -
 which is the point: a defect that costs a GPU session a night was found on a TPU week that stood
-at **19.86 of 20 hours idle**. The next run is the same rehearsal, re-armed, with the marker in
-place and the failure legible if it is not.
+at **19.86 of 20 hours idle**. The next run is the same rehearsal, re-armed: kernel
+`act-tpu-session-rehearsal` **version 2** is `QUEUED` (commit **`f3ed48f`**), the code dataset
+was republished at that revision and both the mount's `revision.txt` and the shipped
+`runtime.py`, `v0_session.py` and `tpu_session_rehearsal.py` were downloaded back and checked to
+carry the marker and the watch, and
+`scripts/fetch_tpu_session_rehearsal_when_done.sh` is armed for 24 h of polls so the record
+lands in `artifacts/tpu-session-rehearsal/output/` on either terminal state. The driver still
+holds the lock and still sleeps to the 2026-10-03 refresh.
 
 ---
 

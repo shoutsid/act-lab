@@ -1021,9 +1021,11 @@ no-op on CPU and CUDA, so the campaign's own numbers are unchanged - and the reh
 report a hang instead of going quiet: session lines print as they arrive, each phase runs under a
 `_Watch` sampling host RSS and device bytes every 30 s (into the kernel log and a
 `*.watch.json` sidecar), and a per-phase `faulthandler` deadline dumps every thread's stack
-before the platform kills the kernel. Re-push with the commands above; the watcher fetches on
-both terminal states, so a failure still lands in `artifacts/tpu-session-rehearsal/output/` and
-prints `verdict(record)`.
+before the platform kills the kernel. **Re-armed:** version 2 is pushed from the code dataset at
+**`f3ed48f`** (the shipped `runtime.py`, `v0_session.py` and rehearsal were downloaded back out
+of the mount and checked to carry the marker and the watch), the watcher above is polling for
+24 h, and the watcher fetches on both terminal states - so a failure still lands in
+`artifacts/tpu-session-rehearsal/output/` and prints `verdict(record)`.
 
 The push republishes `act-lab-code`, so it goes through the probe's own guard
 (`push_tpu_probe.publish_code_dataset`): exit 5 and no push while a campaign session is
