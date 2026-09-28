@@ -15,11 +15,22 @@
 # measurement gets left on Kaggle, which is what happened to the probe's v4 for three days.
 #
 #   setsid nohup bash scripts/fetch_tpu_session_rehearsal_when_done.sh > /tmp/tpu-session-watch.log 2>&1 &
+#
+# One poll loop serves every TPU kernel this project queues: the session price probe reuses it
+# with three values overridden, because a second copy of this loop is a second place for the
+# fetch-on-both-terminal-states branch to be missing.
+#
+#   KERNEL=sid123123234/act-tpu-session-price \
+#   OUT_DIR=artifacts/tpu-session-price/output \
+#   PUSHER=scripts/push_tpu_session_price_probe.py \
+#     setsid nohup bash scripts/fetch_tpu_session_rehearsal_when_done.sh >/tmp/x.log 2>&1 &
 set -uo pipefail
 
 KERNEL=${KERNEL:-sid123123234/act-tpu-session-rehearsal}
+#: Which pusher's ``--fetch`` collects the output, and where it keeps it.
+PUSHER=${PUSHER:-scripts/push_tpu_session_rehearsal.py}
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT_DIR="$REPO_ROOT/artifacts/tpu-session-rehearsal/output"
+OUT_DIR=${OUT_DIR:-$REPO_ROOT/artifacts/tpu-session-rehearsal/output}
 # 360 polls of 120 s is 12 h: a queued TPU kernel can wait hours, and the rehearsal itself is
 # minutes. Bounded rather than unbounded, because a waiter that never gives up is a process
 # nobody can tell from a hung one.
@@ -45,8 +56,7 @@ stamp() { date -u '+%Y-%m-%dT%H:%M:%SZ'; }
 # before it).
 fetch() {
   echo "$(stamp) fetching into $OUT_DIR"
-  PYTHONPATH=src "$INTERPRETER" scripts/push_tpu_session_rehearsal.py \
-    --fetch --save "$OUT_DIR" 2>&1 | tail -60
+  PYTHONPATH=src "$INTERPRETER" "$PUSHER" --fetch --save "$OUT_DIR" 2>&1 | tail -60
 }
 
 for poll in $(seq 1 "$MAX_POLLS"); do

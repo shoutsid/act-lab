@@ -79,7 +79,7 @@ import threading
 import time
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -124,16 +124,22 @@ NOT_MEASURED = (
 )
 
 
-def phase_deadline_seconds(name: str) -> float:
+def phase_deadline_seconds(
+    name: str, deadlines: Mapping[str, float] | None = None
+) -> float:
     """The deadline for one phase, overridable for a whole run.
 
     ``TPU_SESSION_DEADLINE`` sets every phase to the same value, which is what a
     shortened re-fire wants; the per-phase defaults are what an ordinary run uses.
+    ``deadlines`` names another table, for a caller whose phases cost more than these
+    do - the declared shape is ~19x the dev model per step, so the session phase's
+    1800 s leash here is not a leash there.
     """
     override = os.environ.get("TPU_SESSION_DEADLINE")
     if override:
         return float(override)
-    return PHASE_DEADLINE_SECONDS.get(name, PHASE_DEADLINE_SECONDS["session"])
+    table = deadlines or PHASE_DEADLINE_SECONDS
+    return table.get(name, table["session"])
 
 
 def watch_seconds() -> float:
@@ -329,7 +335,13 @@ def phase_environment(record: dict[str, Any], work: Path) -> None:
 
 
 def phase_session(
-    record: dict[str, Any], work: Path, *, device: str, steps: int, seed: int
+    record: dict[str, Any],
+    work: Path,
+    *,
+    device: str,
+    steps: int,
+    seed: int,
+    build: Callable[..., Any] | None = None,
 ) -> None:
     """Run the real session path once, at development fidelity, on this device.
 
@@ -338,10 +350,13 @@ def phase_session(
     dies inside a training step still lands the lines it printed - whereas writing the
     entry after the call, which is the obvious shape, leaves an exception text and nothing
     else from a run that is queued once.
+
+    ``build`` names the config the phase trains, so the declared-shape price probe runs this
+    same phase - the checkpoint host-payload assertions below are the reason it wants to.
     """
     from act.training.v0_session import run_v0_session
 
-    config = _dev_null_config(device, steps=steps, seed=seed)
+    config = (build or _dev_null_config)(device, steps=steps, seed=seed)
     revision = _revision()
     lines: list[str] = []
     record["session"] = {
@@ -413,12 +428,18 @@ def phase_session(
 
 
 def phase_resume(
-    record: dict[str, Any], work: Path, *, device: str, steps: int, seed: int
+    record: dict[str, Any],
+    work: Path,
+    *,
+    device: str,
+    steps: int,
+    seed: int,
+    build: Callable[..., Any] | None = None,
 ) -> None:
     """Run it again from the checkpoint: the resume contract, on this device."""
     from act.training.v0_session import run_v0_session
 
-    config = _dev_null_config(device, steps=steps, seed=seed)
+    config = (build or _dev_null_config)(device, steps=steps, seed=seed)
     lines: list[str] = []
     record["resume"] = {"log": lines}
     started = time.time()
@@ -479,7 +500,13 @@ def null_clause_defect(
 
 
 def phase_handoff(
-    record: dict[str, Any], work: Path, *, device: str, steps: int, seed: int
+    record: dict[str, Any],
+    work: Path,
+    *,
+    device: str,
+    steps: int,
+    seed: int,
+    build: Callable[..., Any] | None = None,
 ) -> None:
     """Publish the seed the way a session does, and read back what the verdict reads.
 
@@ -498,7 +525,7 @@ def phase_handoff(
     from act.training.v0_session import run_v0_session
 
     revision = _revision()
-    config = _dev_null_config(device, steps=steps, seed=seed)
+    config = (build or _dev_null_config)(device, steps=steps, seed=seed)
     lines: list[str] = []
     record["handoff"] = {"log": lines}
     result = run_v0_session(
@@ -543,6 +570,47 @@ def phase_handoff(
         raise RuntimeError(defect)
 
 
+def run_phases(
+    record: dict[str, Any],
+    output: Path,
+    phases: dict[str, Callable[[], None]],
+    *,
+    deadlines: Mapping[str, float] | None = None,
+) -> None:
+    """Run the phases under a watch and a deadline each, saving as they land.
+
+    Extracted so a *second* artifact can use the same containment without a second copy of
+    it: a watch or a leash that only one of two kernels has is the defect this mechanism was
+    written for, one fingerprint further along (2026-09-28, v1's three hours of silence).
+    """
+    record["watch"] = {}
+    for name in record["phase_order"]:
+        print(f"--- phase {name}", flush=True)
+        started = time.time()
+        deadline = phase_deadline_seconds(name, deadlines)
+        print(f"    {name}: deadline {deadline:.0f} s", flush=True)
+        watch = _Watch(
+            name,
+            seconds=watch_seconds(),
+            journal=Path(f"{output}.watch.json"),
+        ).start()
+        # A phase stuck inside an XLA call cannot be interrupted from Python, so the deadline
+        # does not cancel the work - it dumps every thread's stack into the log and stops the
+        # process. That *is* the reading this exists for: the stack names the call that hung.
+        faulthandler.dump_traceback_later(deadline, exit=True)
+        try:
+            tpu_probe._run_phase(record, name, phases[name], output)
+        finally:
+            faulthandler.cancel_dump_traceback_later()
+            watch.stop()
+        # Folded in and saved again, because `_run_phase` saved the record before this. The
+        # sidecar above covers the case where the process never reaches this line.
+        record["watch"][name] = watch.samples
+        tpu_probe._save(record, output)
+        print(f"    {name}: {'ok' if name in record['completed'] else 'failed'}"
+              f" ({time.time() - started:.1f} s)", flush=True)
+
+
 def base_record(args: argparse.Namespace) -> dict[str, Any]:
     """The record's labels, before any phase has run.
 
@@ -560,6 +628,10 @@ def base_record(args: argparse.Namespace) -> dict[str, Any]:
         "device_requested": args.device,
         "steps": args.steps,
         "seed": args.seed,
+        # What the phase loop walks, in the record rather than in the caller: `run_phases`
+        # reads it from here, so a second artifact's phases and this one's cannot be
+        # interleaved by a caller that passed them in a different order.
+        "phase_order": list(PHASES),
         "completed": [],
         "errors": [],
         # What a phase that hangs was given, and how often it was sampled: a reading
@@ -603,32 +675,7 @@ def main(argv: list[str] | None = None) -> int:
             record, work, device=args.device, steps=args.steps, seed=args.seed
         ),
     }
-    record["watch"] = {}
-    for name in PHASES:
-        print(f"--- phase {name}", flush=True)
-        started = time.time()
-        deadline = phase_deadline_seconds(name)
-        print(f"    {name}: deadline {deadline:.0f} s", flush=True)
-        watch = _Watch(
-            name,
-            seconds=watch_seconds(),
-            journal=Path(f"{args.output}.watch.json"),
-        ).start()
-        # A phase stuck inside an XLA call cannot be interrupted from Python, so the deadline
-        # does not cancel the work - it dumps every thread's stack into the log and stops the
-        # process. That *is* the reading this exists for: the stack names the call that hung.
-        faulthandler.dump_traceback_later(deadline, exit=True)
-        try:
-            tpu_probe._run_phase(record, name, phases[name], Path(args.output))
-        finally:
-            faulthandler.cancel_dump_traceback_later()
-            watch.stop()
-        # Folded in and saved again, because `_run_phase` saved the record before this. The
-        # sidecar above covers the case where the process never reaches this line.
-        record["watch"][name] = watch.samples
-        tpu_probe._save(record, Path(args.output))
-        print(f"    {name}: {'ok' if name in record['completed'] else 'failed'}"
-              f" ({time.time() - started:.1f} s)", flush=True)
+    run_phases(record, Path(args.output), phases)
 
     print(json.dumps(record, indent=1, sort_keys=True, default=str), flush=True)
     # The exit status is a signal, not the result: the record is the result, and it was
