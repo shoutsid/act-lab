@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -15,7 +16,8 @@ from act.training import (
     initialize_distributed,
     wrap_distributed,
 )
-from act.training.runtime import resolve_device
+from act.training import runtime as runtime_module
+from act.training.runtime import resolve_device, step_marker
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BENCHMARK = REPO_ROOT / "scripts" / "v0_throughput_benchmark.py"
@@ -140,6 +142,66 @@ def test_resolve_device_accepts_xla_or_names_the_missing_package() -> None:
             resolve_device("xla")
     else:
         assert resolve_device("xla").type == "xla"
+
+
+def test_step_marker_is_a_no_op_where_a_step_is_already_a_step() -> None:
+    """The CPU and CUDA paths must not pay for XLA's execution model.
+
+    ``torch`` runs eagerly there, so the step *is* the step; a marker that did
+    anything on those devices would change the campaign's measured loop to
+    rehearse a TPU. Identity rather than behaviour: the same no-op object, so a
+    later branch cannot quietly become a synchronize call.
+    """
+    assert step_marker(torch.device("cpu")) is runtime_module._no_step_marker
+    assert step_marker(torch.device("cuda")) is runtime_module._no_step_marker
+    assert step_marker(torch.device("cpu"))() is None
+
+
+def test_step_marker_is_the_xla_sync_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    """On XLA the marker is ``torch_xla.sync`` - the call ``xm.mark_step()`` aliases.
+
+    Measured 2026-09-28: the session rehearsal's step loop never marked a step,
+    and its session phase produced no checkpoint inside three hours on a v5e-8
+    where the same twenty development-fidelity steps take 24 s on a CPU. The
+    probe's own measured loop marks after ``optimizer.step()``; this is the same
+    call, reached without a second import.
+    """
+    calls: list[int] = []
+    fake = types.ModuleType("torch_xla")
+    fake.sync = lambda: calls.append(1)  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "torch_xla", fake)
+
+    marker = step_marker(torch.device("xla"))
+    marker()
+
+    assert marker is fake.sync
+    assert calls == [1]
+
+
+def test_step_marker_falls_back_to_the_older_torch_xla_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The platform's torch_xla version is not ours to pin.
+
+    ``sync`` is the 2.8 name; an image that predates it still has
+    ``xla_model.mark_step``. A missing marker would put the campaign back in the
+    unmarked loop this fix exists for, on hardware nobody can debug from here.
+    """
+    calls: list[int] = []
+    fake = types.ModuleType("torch_xla")  # deliberately no `sync`
+    core = types.ModuleType("torch_xla.core")
+    xla_model = types.ModuleType("torch_xla.core.xla_model")
+    xla_model.mark_step = lambda: calls.append(1)  # type: ignore[attr-defined]
+    core.xla_model = xla_model  # type: ignore[attr-defined]
+    fake.core = core  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "torch_xla", fake)
+    monkeypatch.setitem(sys.modules, "torch_xla.core", core)
+    monkeypatch.setitem(sys.modules, "torch_xla.core.xla_model", xla_model)
+
+    marker = step_marker(torch.device("xla"))
+    marker()
+
+    assert calls == [1]
 
 
 def test_benchmark_artifact_carries_the_gpu_inventory(tmp_path) -> None:

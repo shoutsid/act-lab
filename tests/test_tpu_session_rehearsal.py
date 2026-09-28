@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -201,3 +202,112 @@ def test_a_cpu_dry_run_produces_the_record_a_fired_run_would(tmp_path: Path) -> 
     assert any(
         name.endswith("seed-summary.json") for name in record["handoff"]["seed_files"]
     )
+
+
+def test_the_session_log_is_printed_as_it_arrives(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Both copies, because they fail differently.
+
+    v1's session phase was killed three hours in and its whole account was the phase
+    boundary: the session's lines go into the *record's* list, and the record is only
+    written when the phase returns. The printed copy is what a killed run still has.
+    """
+    lines: list[str] = []
+    log = rehearsal._session_log(lines, "session")
+    log("resumed from checkpoint-000002.pt at step 2")
+
+    assert lines == ["resumed from checkpoint-000002.pt at step 2"]
+    assert "[session] resumed from checkpoint-000002.pt at step 2" in capsys.readouterr().out
+
+
+def test_the_watch_prints_and_keeps_what_the_process_looked_like(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The trace a killed run never had, in both places a killed run can still be read.
+
+    The sample at ``seconds: 0`` is the baseline a reader compares the rest against: flat
+    samples are a phase that is working, climbing ones are a phase that is accumulating,
+    which is the failure mode this rehearsal exists to catch. The sidecar is written through
+    a rename so a process killed mid-write leaves a whole file rather than half of one.
+    """
+    journal = tmp_path / "tpu-session-rehearsal.json.watch.json"
+    watch = rehearsal._Watch("session", seconds=0.01, journal=journal).start()
+    deadline = time.time() + 5
+    while len(watch.samples) < 3 and time.time() < deadline:
+        time.sleep(0.01)
+    watch.stop()
+
+    assert len(watch.samples) >= 3, "one at the start, then on the timer"
+    assert [sample["seconds"] for sample in watch.samples] == sorted(
+        sample["seconds"] for sample in watch.samples
+    )
+    assert set(watch.samples[0]) == {"seconds", "rss_kb", "device_bytes_used"}
+    assert watch.samples[0]["seconds"] == 0.0
+    # A host without /proc (or a runtime without a memory report) says so with a null,
+    # never with a zero that would read as a perfectly flat run.
+    for sample in watch.samples:
+        assert sample["rss_kb"] is None or sample["rss_kb"] > 0
+
+    assert json.loads(journal.read_text(encoding="utf-8")) == watch.samples
+    assert not journal.with_name(journal.name + ".part").exists()
+    assert "[watch session]" in capsys.readouterr().out
+
+
+def test_the_deadline_and_the_watch_are_part_of_the_record(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A reading through a deadline is a different reading, so the leash is recorded.
+
+    v1 had none, which is how a hang became a three-hour slot with no artifact and no
+    explanation. The session gets the longest leash because it is the phase that trains;
+    ``TPU_SESSION_DEADLINE`` overrides every phase at once, which is what a shortened re-fire
+    wants - and it is read at call time rather than at import, so a test can set it.
+    """
+    record = rehearsal.base_record(_args(device="xla"))
+
+    assert record["phase_deadlines"]["session"] == 1800.0
+    assert record["phase_deadlines"]["environment"] == 600.0
+    assert set(record["phase_deadlines"]) == set(rehearsal.PHASES)
+    assert record["watch_seconds"] == 30.0
+
+    monkeypatch.setenv("TPU_SESSION_DEADLINE", "45")
+    monkeypatch.setenv("TPU_SESSION_WATCH", "2.5")
+    shortened = rehearsal.base_record(_args(device="xla"))
+
+    assert set(shortened["phase_deadlines"].values()) == {45.0}
+    assert shortened["watch_seconds"] == 2.5
+
+
+def test_a_phase_is_deadlined_and_watched_around_its_own_work(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The wiring: every phase arms a deadline, cancels it, and lands its samples.
+
+    Asserted for all four phases on a CPU dry run, because the property that failed in v1
+    belongs to the runner rather than to the set of phases that happened to be reached.
+    """
+    armed: list[float] = []
+    cancelled: list[int] = []
+
+    def fake_deadline(seconds: float, **kwargs: object) -> None:
+        armed.append(seconds)
+
+    monkeypatch.setattr(rehearsal.faulthandler, "dump_traceback_later", fake_deadline)
+    monkeypatch.setattr(
+        rehearsal.faulthandler,
+        "cancel_dump_traceback_later",
+        lambda: cancelled.append(1),
+    )
+    monkeypatch.setenv("TPU_SESSION_WATCH", "0.01")
+    output = tmp_path / "tpu-session-rehearsal.json"
+
+    rehearsal.main(["--device", "cpu", "--steps", "1", "--seed", "8", "--output", str(output)])
+
+    record = json.loads(output.read_text(encoding="utf-8"))
+    assert armed == [rehearsal.phase_deadline_seconds(name) for name in rehearsal.PHASES]
+    assert len(cancelled) == len(rehearsal.PHASES), "cancelled even when the phase failed"
+    assert sorted(record["watch"]) == sorted(rehearsal.PHASES)
+    assert all(samples for samples in record["watch"].values())
+    # Beside the record, under a name the fetch keeps: `save_fetched` keeps `*.json`.
+    assert (tmp_path / f"{output.name}.watch.json").is_file()

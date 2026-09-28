@@ -38,6 +38,25 @@ each phase files its own entry - and its log - *before* the work starts, so a ph
 in the middle of a training step still leaves the lines it printed rather than only the
 exception that ended it.
 
+v1 (2026-09-27) was queued once and came back with nothing to read, so v2 is built around the
+failure it actually had. The session phase never returned: the log carries ``--- phase
+session``, then three hours of silence, then ``Killed``, and no checkpoint was ever written -
+where the same twenty development-fidelity steps take 24 s on a CPU. Everything the run could
+have said was in a record that only gets written when a phase returns, and the session's own
+log lines go into that record's list. So the session's lines are now **printed as they
+arrive**, and every phase runs under a :class:`_Watch` that samples the host's resident set and
+the device's bytes in use on a timer, printing each sample and rewriting a sidecar file beside
+the record. A run that is killed rather than raised then still leaves a trace with a shape -
+flat means the phase is working, climbing means it is accumulating - and a per-phase
+``faulthandler`` deadline dumps every thread's stack before the platform's own kill, which
+names the call that hung instead of leaving it to be guessed at.
+
+The training path itself was the other half. XLA is lazy: the ops of a step are traced into a
+graph that does not execute until a step is marked, and ``_train_arm`` never marked one, so the
+loop traced the whole run and executed it as a single program. ``runtime.step_marker`` now
+marks the step after the optimizer's update - the point the probe's own measured loop marks,
+and a no-op on the CPU and on CUDA, so the registered campaign's numbers are untouched.
+
 **What this is not.** It is not a Gate-4 result, not a port, and not evidence about the
 hypothesis: it trains at development fidelity on synthetic tokens and reports whether the
 *path* runs on this device and what it booked. It does not move any queue, and it does not
@@ -52,9 +71,11 @@ one session on one device is the new question. ``not_measured`` says so in the r
 from __future__ import annotations
 
 import argparse
+import faulthandler
 import json
 import os
 import sys
+import threading
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -77,6 +98,20 @@ OUTPUT = Path(os.environ.get("TPU_SESSION_OUTPUT", f"/kaggle/working/{RECORD_NAM
 #: break; the handoff last because it needs a result to publish.
 PHASES = ("environment", "session", "resume", "handoff")
 
+#: How long one phase may run before the run dumps every thread's stack and stops itself.
+#: The session gets the longest leash because it is the phase that trains; the others are
+#: bookkeeping around it. Bounded rather than unlimited, because a rehearsal whose failure
+#: mode is "three hours then killed" costs the whole queued slot and reports nothing.
+PHASE_DEADLINE_SECONDS = {
+    "environment": 600.0,
+    "session": 1800.0,
+    "resume": 900.0,
+    "handoff": 600.0,
+}
+
+#: How often :class:`_Watch` samples the process while a phase runs.
+WATCH_SECONDS = 30.0
+
 #: What this rehearsal deliberately leaves alone, stated in the record so a reader does not
 #: read a partial rehearsal as a complete port study.
 NOT_MEASURED = (
@@ -87,6 +122,127 @@ NOT_MEASURED = (
     "the two-arm pair placement: the null queue is single-arm by construction, and the pair "
     "queues are not the ones this option moves",
 )
+
+
+def phase_deadline_seconds(name: str) -> float:
+    """The deadline for one phase, overridable for a whole run.
+
+    ``TPU_SESSION_DEADLINE`` sets every phase to the same value, which is what a
+    shortened re-fire wants; the per-phase defaults are what an ordinary run uses.
+    """
+    override = os.environ.get("TPU_SESSION_DEADLINE")
+    if override:
+        return float(override)
+    return PHASE_DEADLINE_SECONDS.get(name, PHASE_DEADLINE_SECONDS["session"])
+
+
+def watch_seconds() -> float:
+    """How often the watch samples, overridable through ``TPU_SESSION_WATCH``."""
+    return float(os.environ.get("TPU_SESSION_WATCH") or WATCH_SECONDS)
+
+
+def _rss_kb() -> int | None:
+    """This process's resident set, from the kernel's own accounting.
+
+    ``/proc/self/status`` rather than a dependency: the sample has to be cheap enough to run
+    on a timer for the length of a training phase, and ``None`` is the honest reading on a
+    host that does not have the file rather than a zero that would read as flat.
+    """
+    try:
+        for line in Path("/proc/self/status").read_text(encoding="utf-8").splitlines():
+            if line.startswith("VmRSS:"):
+                return int(line.split()[1])
+    except (OSError, ValueError, IndexError):
+        return None
+    return None
+
+
+def _device_bytes_used() -> int | None:
+    """TPU memory in use, or ``None`` where the runtime does not report it.
+
+    The second growth signal beside the host's resident set. A traced-but-unexecuted graph
+    grows on *both* - the HLO in the host's heap and the buffers the device allocator is
+    holding - so a trace that watched only one of them could call an accumulating phase flat.
+    """
+    try:  # pragma: no cover - only a TPU host reaches the body
+        import torch_xla
+        import torch_xla.runtime as xr
+
+        return int(xr.memory_info(torch_xla.device()).get("bytes_used") or 0)
+    except Exception:  # noqa: BLE001 - a diagnostic, never a failure
+        return None
+
+
+class _Watch:
+    """What the process looked like while a phase ran, printed and kept.
+
+    Every phase in v1 could hang and say nothing, and the session phase did. The session's
+    log lines live in the record's list, and the record is only written when a phase returns,
+    so a killed run's whole account was the phase boundary and, three hours later, ``Killed``.
+    This samples the host's resident set and the device's bytes in use on a timer, prints each
+    sample into the kernel log (the one channel a killed run still has) and rewrites a sidecar
+    file beside the record (the other). Climbing samples are the accumulating-graph failure
+    this rehearsal exists to catch; flat ones are a phase that is simply working.
+    """
+
+    def __init__(self, name: str, *, seconds: float, journal: Path) -> None:
+        self.name = name
+        self.samples: list[dict[str, Any]] = []
+        self._seconds = seconds
+        self._journal = journal
+        self._stopped = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._started = time.time()
+
+    def _sample(self) -> dict[str, Any]:
+        sample = {
+            "seconds": round(time.time() - self._started, 1),
+            "rss_kb": _rss_kb(),
+            "device_bytes_used": _device_bytes_used(),
+        }
+        self.samples.append(sample)
+        print(f"[watch {self.name}] {json.dumps(sample, sort_keys=True)}", flush=True)
+        self._write_journal()
+        return sample
+
+    def _write_journal(self) -> None:
+        """Rewrite the sidecar through a rename, so a killed process leaves a whole file."""
+        temporary = self._journal.with_name(self._journal.name + ".part")
+        temporary.write_text(
+            json.dumps(self.samples, indent=1) + "\n", encoding="utf-8"
+        )
+        os.replace(temporary, self._journal)
+
+    def _run(self) -> None:
+        while not self._stopped.wait(self._seconds):
+            self._sample()
+
+    def start(self) -> "_Watch":
+        self._sample()
+        self._thread = threading.Thread(
+            target=self._run, name=f"watch-{self.name}", daemon=True
+        )
+        self._thread.start()
+        return self
+
+    def stop(self) -> None:
+        self._stopped.set()
+        if self._thread is not None:
+            self._thread.join(timeout=self._seconds + 1)
+
+
+def _session_log(lines: list[str], label: str) -> Callable[[str], None]:
+    """The session's log callback: printed as it arrives *and* kept in the record.
+
+    Both, because they fail differently. The record's copy is what a completed run is read
+    through; the printed copy is what a killed run still has, which is the run that needs it.
+    """
+
+    def record_line(line: str) -> None:
+        print(f"[{label}] {line}", flush=True)
+        lines.append(line)
+
+    return record_line
 
 
 def _revision() -> str:
@@ -193,11 +349,16 @@ def phase_session(
         "code_revision": revision,
         "log": lines,
     }
+    print(
+        f"[session] {config.arms[0]} arm, {config.total_steps} steps on {config.device}, "
+        f"checkpoint every {config.checkpoint_interval}",
+        flush=True,
+    )
     started = time.time()
     result = run_v0_session(
         config,
         checkpoint_dir=work / "session",
-        log=lines.append,
+        log=_session_log(lines, "session"),
         code_revision=revision,
     )
     root = work / "session"
@@ -264,7 +425,7 @@ def phase_resume(
     result = run_v0_session(
         config,
         checkpoint_dir=work / "session",
-        log=lines.append,
+        log=_session_log(lines, "resume"),
         code_revision=_revision(),
     )
     arm = result.arms[0]
@@ -343,7 +504,7 @@ def phase_handoff(
     result = run_v0_session(
         config,
         checkpoint_dir=work / "session",
-        log=lines.append,
+        log=_session_log(lines, "handoff"),
         code_revision=revision,
     )
     dataset_root = work / "dataset"
@@ -401,6 +562,13 @@ def base_record(args: argparse.Namespace) -> dict[str, Any]:
         "seed": args.seed,
         "completed": [],
         "errors": [],
+        # What a phase that hangs was given, and how often it was sampled: a reading
+        # through a deadline is a different reading from one a phase finished under, so the
+        # leash the run was on is part of the record rather than a property of the runner.
+        "phase_deadlines": {
+            name: phase_deadline_seconds(name) for name in PHASES
+        },
+        "watch_seconds": watch_seconds(),
         "not_measured": list(NOT_MEASURED),
         "what_this_is": (
             "A rehearsal of the registered V0 session path on the device named in "
@@ -435,10 +603,30 @@ def main(argv: list[str] | None = None) -> int:
             record, work, device=args.device, steps=args.steps, seed=args.seed
         ),
     }
+    record["watch"] = {}
     for name in PHASES:
         print(f"--- phase {name}", flush=True)
         started = time.time()
-        tpu_probe._run_phase(record, name, phases[name], Path(args.output))
+        deadline = phase_deadline_seconds(name)
+        print(f"    {name}: deadline {deadline:.0f} s", flush=True)
+        watch = _Watch(
+            name,
+            seconds=watch_seconds(),
+            journal=Path(f"{args.output}.watch.json"),
+        ).start()
+        # A phase stuck inside an XLA call cannot be interrupted from Python, so the deadline
+        # does not cancel the work - it dumps every thread's stack into the log and stops the
+        # process. That *is* the reading this exists for: the stack names the call that hung.
+        faulthandler.dump_traceback_later(deadline, exit=True)
+        try:
+            tpu_probe._run_phase(record, name, phases[name], Path(args.output))
+        finally:
+            faulthandler.cancel_dump_traceback_later()
+            watch.stop()
+        # Folded in and saved again, because `_run_phase` saved the record before this. The
+        # sidecar above covers the case where the process never reaches this line.
+        record["watch"][name] = watch.samples
+        tpu_probe._save(record, Path(args.output))
         print(f"    {name}: {'ok' if name in record['completed'] else 'failed'}"
               f" ({time.time() - started:.1f} s)", flush=True)
 

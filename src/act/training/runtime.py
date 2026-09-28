@@ -5,7 +5,7 @@ from contextlib import nullcontext
 from numbers import Integral
 import math
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import torch
 from torch import Tensor
@@ -237,6 +237,47 @@ def resolve_device(requested: str) -> torch.device:
             )
         return torch.device(requested)
     raise ValueError("device must be auto, cpu, cuda, cuda:N, or xla")
+
+
+def _no_step_marker() -> None:
+    """The no-op for a backend where a step is already a step."""
+    return None
+
+
+def step_marker(device: torch.device) -> Callable[[], None]:
+    """The step boundary this backend needs, or a no-op where it needs none.
+
+    On the CPU and on CUDA ``torch`` runs eagerly, so a training step *is* the
+    step and this returns a no-op. XLA is lazy: the ops of a step are traced
+    into a graph that does not execute until a step is marked, which is why the
+    probe's own measured loop calls ``xm.mark_step()`` after ``optimizer.step()``
+    - and why its runbook notes that without a marker the "steady step" being
+    timed is graph construction. A session that never marks a step is therefore
+    not the loop the port rule was priced on.
+
+    Measured 2026-09-28: the rehearsal of that path reached its session phase and
+    produced no checkpoint inside three hours on a v5e-8 - the same twenty
+    development-fidelity steps take 24 s on the CPU - and the process was killed
+    with nothing in the log but the phase boundary. Marking the step after the
+    optimizer's update is what bounds the traced graph to one step instead of
+    the whole run, at the same point in the step the probe marks.
+
+    ``torch_xla.sync`` is the call itself rather than the alias (``xm.mark_step()``
+    is ``torch_xla.sync()`` in torch_xla 2.8), and it is imported here rather
+    than at module scope so a CPU or CUDA session never pays for it. The
+    ``xla_model`` fallback is for an image whose torch_xla predates the alias;
+    the platform's version is not ours to pin.
+    """
+    if device.type != "xla":
+        return _no_step_marker
+    import torch_xla
+
+    marker = getattr(torch_xla, "sync", None)
+    if marker is not None:
+        return marker
+    from torch_xla.core import xla_model  # pragma: no cover - older torch_xla
+
+    return xla_model.mark_step
 
 
 def gpu_inventory() -> dict[str, object]:

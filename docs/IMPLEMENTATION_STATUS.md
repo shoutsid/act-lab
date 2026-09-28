@@ -1,5 +1,28 @@
 # ACT Implementation Status
 
+## The TPU rehearsal found the defect before it moved a queue (2026-09-28)
+
+**Live update, 2026-09-28 05:00Z:** the rehearsal came back **`ERROR`** -
+`sid123123234/act-tpu-session-rehearsal` v1, which queued for **8.9 h** and then ran **3.02 h**
+before Kaggle killed it - and that is the reading, not a lost run. The campaign's own queues are
+untouched: the driver still holds the lock (pid 63681, 16 h up) and is sleeping to the
+2026-10-03 refresh with **1.65 of 30 GPU-h** left.
+
+| | |
+|---|---|
+| **What came back, and what it did not** | The fetched record reads `completed: ["environment"]`, `errors: []`, and the fetched log carries `--- phase session` followed by **three hours of nothing** and then `Killed`. `errors` is empty because a phase's outcome is written when the phase *returns* - and this one never did - so the account is the phase boundary. No `session` entry survived (its entry and log were in memory), and the kernel's output holds no checkpoint: the loop never reached step 10 of 20. The fetch's `verdict` names exactly that state: `partial rehearsal: ran environment; session, resume, handoff did not run (no error recorded)`. |
+| **What the environment phase did measure** | The hardware and the runtime are fine: `v5litepod-8`, eight bound devices (`xla:0`), `TPU_CHIPS_PER_PROCESS_BOUNDS 2,4,1`, torch **2.8.0+cpu** with torch_xla **2.8.0**, and a tensor round-trip to the bound device (`.sum() == 8.0`) in 14.1 s. The failure is in the **training loop**, which on this host is not the loop the port rule was priced on. |
+| **The defect: the step was never marked** | XLA is lazy - the ops of a step are traced into a graph that does not execute until a step is marked - and `_train_arm` never marked one, so the loop traced the whole run and executed it as a single program. The probe's measured loop (15,034 tokens/s, the `PORT` verdict) marks after `optimizer.step()`; the runbook's own note is that without a marker the "steady step" being timed is graph construction. The same twenty development-fidelity steps take **24 s on the CPU**, which is what makes three hours a defect rather than slowness. `runtime.step_marker(device)` now returns `torch_xla.sync` on XLA (falling back to `xla_model.mark_step` on an image that predates the alias) and a no-op on CPU and CUDA, and the loop calls it after the optimizer's update - so the CPU and CUDA paths the campaign actually runs are numerically unchanged. |
+| **And a rehearsal that could not report a hang** | Every phase could hang silently, for the reason above: the session's log lines live in the record's list, and the record is only written when a phase returns. The session's lines are now **printed as they arrive**, every phase runs under a `_Watch` that samples the host's resident set and the device's bytes in use every 30 s (printed into the kernel log *and* rewritten into a sidecar `*.watch.json` beside the record, through a rename so a killed process leaves a whole file), and a per-phase `faulthandler` deadline (1800 s for the session, 600-900 s for the rest, `TPU_SESSION_DEADLINE` overriding) dumps every thread's stack before the platform's own kill. A killed run now leaves a trace with a shape - flat is working, climbing is accumulating - and a stack that names the call it hung in, which is the artifact this run did not have. |
+| **Pinned** | `tests/test_training_distributed.py` (**+3**): the marker is the same no-op object on CPU and CUDA, is `torch_xla.sync` on XLA, and falls back to `xla_model.mark_step`. `tests/test_v0_session.py` (**+1**): one marker per arm built from the arm's device, called **once per step** - so a refactor that hoists it out of the loop is caught here rather than on hardware nobody can attach a debugger to. `tests/test_tpu_session_rehearsal.py` (**+4**): the session log is printed and kept, the watch's samples and sidecar (the first sample is the baseline a reader compares against), the deadline and watch settings are part of the record, and every phase arms and cancels a deadline and lands its samples. |
+
+This is a rehearsal of the *path*, not a port and not a Gate-4 result, and it moved no queue -
+which is the point: a defect that costs a GPU session a night was found on a TPU week that stood
+at **19.86 of 20 hours idle**. The next run is the same rehearsal, re-armed, with the marker in
+place and the failure legible if it is not.
+
+---
+
 ## The TPU holds a session path to rehearse, and a checkpoint now says what wrote it (2026-09-27)
 
 **Live update, 2026-09-27 17:09Z:** the rehearsal is **pushed** -

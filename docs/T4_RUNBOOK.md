@@ -1005,12 +1005,25 @@ PYTHONPATH=src .venv/bin/python scripts/push_tpu_session_rehearsal.py
 setsid nohup bash scripts/fetch_tpu_session_rehearsal_when_done.sh > /tmp/tpu-session-watch.log 2>&1 &
 ```
 
-**Live, 2026-09-27 17:09Z:** `act-tpu-session-rehearsal` is pushed as **version 1** (`QUEUED`,
-TPU on / GPU off) from the code dataset republished at **`9105dc4`**, and the fetch watcher
-above is running - so the record lands in `artifacts/tpu-session-rehearsal/output/` whichever
-state the kernel ends in. Nothing about the campaign's queues changes: no session kernel was
-live when the dataset was republished, and the driver is still sleeping to the 2026-10-03
-refresh with the lock held.
+**Live, 2026-09-27 17:09Z (returned below):** `act-tpu-session-rehearsal` is pushed as
+**version 1** (`QUEUED`, TPU on / GPU off) from the code dataset republished at **`9105dc4`**,
+and the fetch watcher above is running - so the record lands in
+`artifacts/tpu-session-rehearsal/output/` whichever state the kernel ends in. Nothing about the
+campaign's queues changes: no session kernel was live when the dataset was republished, and the
+driver is still sleeping to the 2026-10-03 refresh with the lock held.
+
+**Live, 2026-09-28 05:00Z:** v1 came back **`ERROR`** - queued **8.9 h**, ran **3.02 h**, killed
+with nothing after `--- phase session` and no checkpoint written. It found the defect it was
+staged to find: **the training loop never marked a step**, and XLA is lazy, so the whole run was
+traced as one graph instead of twenty marked steps (the same twenty take 24 s on a CPU, and the
+probe's measured loop marks after `optimizer.step()`). `runtime.step_marker` now does that - a
+no-op on CPU and CUDA, so the campaign's own numbers are unchanged - and the rehearsal can
+report a hang instead of going quiet: session lines print as they arrive, each phase runs under a
+`_Watch` sampling host RSS and device bytes every 30 s (into the kernel log and a
+`*.watch.json` sidecar), and a per-phase `faulthandler` deadline dumps every thread's stack
+before the platform kills the kernel. Re-push with the commands above; the watcher fetches on
+both terminal states, so a failure still lands in `artifacts/tpu-session-rehearsal/output/` and
+prints `verdict(record)`.
 
 The push republishes `act-lab-code`, so it goes through the probe's own guard
 (`push_tpu_probe.publish_code_dataset`): exit 5 and no push while a campaign session is

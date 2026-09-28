@@ -1653,3 +1653,36 @@ def test_the_host_conversion_reaches_tensors_and_leaves_the_rest_alone(
     assert payload["optimizer"]["state"][0]["step"] == 3
     assert payload["optimizer"]["state"][0]["exp_avg"] is tensor
     assert payload["scaler"] is None
+
+
+def test_every_training_step_is_marked_for_the_backend_that_needs_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The step boundary the loop was missing, and where in the step it belongs.
+
+    Measured 2026-09-28: the rehearsal of this path reached its session phase on a
+    v5e-8, wrote no checkpoint, and was killed three hours later - the same twenty
+    development-fidelity steps take 24 s on a CPU. XLA is lazy, so the ops of a
+    step are traced into a graph that does not execute until a step is marked, and
+    this loop never marked one; the probe's measured loop marks after
+    ``optimizer.step()``. The assertion is the placement as well as the count: one
+    marker per arm built from the arm's device, called once per step, so a refactor
+    that hoisted it out of the loop (or into it twice) is caught here rather than on
+    the hardware nobody can attach a debugger to.
+    """
+    import act.training.v0_session as session_module
+
+    marks: list[str] = []
+    built: list[torch.device] = []
+
+    def fake_marker(device: torch.device):
+        built.append(device)
+        return lambda: marks.append(str(device))
+
+    monkeypatch.setattr(session_module, "step_marker", fake_marker)
+    result = run_v0_session(_null_rehearsal_config(54), checkpoint_dir=tmp_path)
+
+    assert built == [torch.device("cpu")], "resolved once per arm, not once per step"
+    assert marks == ["cpu", "cpu"], "one mark per step (total_steps=2)"
+    assert result.arms[0].mode == "null"
+    assert result.arms[0].mutation_count == 0, "a mark is not a mutation"

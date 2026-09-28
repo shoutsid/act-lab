@@ -55,7 +55,7 @@ from act.topology import (
     prune_expert,
     quietest_prune_index,
 )
-from act.training.runtime import move_optimizer_state, resolve_device
+from act.training.runtime import move_optimizer_state, resolve_device, step_marker
 from act.training.session import SessionCheckpointPolicy, retain_checkpoints
 from act.training.v0_span import WindowSampler
 
@@ -1473,6 +1473,12 @@ def _train_arm(
 
     _prepare_model(model, config)
     wall_start = time.time()
+    # The backend's step boundary, where it has one. On XLA the ops of a step are
+    # traced into a graph that does not run until a step is marked, so a loop that
+    # never marks one traces the whole run and executes it as a single program -
+    # not the loop the port rule was priced on, and on 2026-09-28 not a loop that
+    # finished a development-fidelity rehearsal. A no-op on the CPU and on CUDA.
+    mark_step = step_marker(device)
     for step in range(arm_state.step + 1, config.total_steps + 1):
         tokens = draw_training_batch(generator)
         optimizer.zero_grad(set_to_none=True)
@@ -1487,6 +1493,9 @@ def _train_arm(
         else:
             loss.backward()
             optimizer.step()
+        # Marked where the probe's own measured loop marks: after the optimizer's
+        # update, so the graph executes one step wide.
+        mark_step()
         arm_state.training_flops += model.parameter_count * tokens.numel() * 2
         arm_state.tokens += tokens.numel()
         arm_state.step = step
