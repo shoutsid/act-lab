@@ -1005,6 +1005,32 @@ PYTHONPATH=src .venv/bin/python scripts/push_tpu_session_rehearsal.py
 setsid nohup bash scripts/fetch_tpu_session_rehearsal_when_done.sh > /tmp/tpu-session-watch.log 2>&1 &
 ```
 
+```bash
+# the price probe: one session at the DECLARED shape, and what the null queue costs at it
+PYTHONPATH=src .venv/bin/python scripts/push_tpu_session_price_probe.py
+KERNEL=sid123123234/act-tpu-session-price \
+OUT_DIR=$PWD/artifacts/tpu-session-price/output \
+PUSHER=scripts/push_tpu_session_price_probe.py MAX_POLLS=720 \
+  setsid nohup bash scripts/fetch_tpu_session_rehearsal_when_done.sh > /tmp/tpu-price-watch.log 2>&1 &
+```
+
+**Live, 2026-09-28 20:54Z:** `act-tpu-session-price` is pushed as **version 1** (`QUEUED`, TPU
+on / GPU off) from the code dataset republished at **`98d5574`**, and the watcher above is
+polling for 24 h. It measures the one number §5.14's option 2 is priced on and that nothing has
+measured on the path that would run it: **8.06 h** at the port rule's 2.0x bar is `tpu_probe.py`
+v6's figure, taken on a **hand-built step loop**, while the rehearsal's own `not_measured` says
+the development shape's tokens/s is "a path measurement and not a schedule input". So
+`scripts/tpu_session_price_probe.py` runs the real `run_v0_session` on
+`declared_session_config()` - 285M total / 134M active, batch 2 x context 2048, fp16,
+checkpointed activations - as a single **null** arm, and prices the result through
+`tpu_probe.queue_tpu_hours`, so this figure and the 8.06 h bar cannot be computed two different
+ways. Read it as a **floor**: 240 declared steps pay the graph's compile inside the wall they
+divide by, where a 6,000-step seed would amortize it. It is labelled `declared_shape: true`
+beside `declared_seed: false` and its handoff publishes into a scratch root, so a rate cannot be
+mistaken for a queue record. Quota at the fire: **TPU 16.80 of 20 h**, **GPU 1.65 of 30 h**, both
+refreshing 2026-10-03 - minutes of TPU against a clock that has nothing else to spend it on
+before the refresh.
+
 **Live, 2026-09-27 17:09Z (returned below):** `act-tpu-session-rehearsal` is pushed as
 **version 1** (`QUEUED`, TPU on / GPU off) from the code dataset republished at **`9105dc4`**,
 and the fetch watcher above is running - so the record lands in

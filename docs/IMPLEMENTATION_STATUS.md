@@ -21,6 +21,32 @@ The rehearsal remains what its own record says it is - `rehearsal: true`, `decla
 not a port and not a Gate-4 result - and it moved no queue: a defect that would have cost a GPU
 session a night was found and a second one was fixed on a TPU week that was otherwise idle.
 
+**Live update, 2026-09-28 20:54Z:** the one number §5.14's option 2 is priced on has now been
+put to the path that would run it. The price - **8.06 h** - is the port rule's, measured by
+`tpu_probe.py` v6 on a **hand-built step loop** at the declared shape, and the rehearsal's own
+record declines to price anything: its `not_measured` says the development shape's tokens/s is
+"a path measurement and not a schedule input". So
+`scripts/tpu_session_price_probe.py` runs the real `run_v0_session` on
+`declared_session_config()` - 285M total / 134M active, batch 2 x context 2048, fp16,
+checkpointed activations - as a single **null** arm, and prices the result through
+`tpu_probe.queue_tpu_hours`, the campaign's own arithmetic, so this figure and the 8.06 h bar
+cannot be computed two different ways. It reports the multiple, the queue's hours at that rate,
+the same hours if the eight chips do not scale, and whether it fits the week. Kernel
+`act-tpu-session-price` **version 1** is `QUEUED` (TPU on, GPU off) from the code dataset
+republished at **`98d5574`**; the mount was downloaded back and carries `revision.txt` at that
+revision and the probe beside it, and
+`scripts/fetch_tpu_session_rehearsal_when_done.sh` is polling for 24 h with `KERNEL`,
+`OUT_DIR` and `PUSHER` overridden, so the record lands in `artifacts/tpu-session-price/output/`
+on either terminal state.
+
+Three things keep it from being read as more than it is. It is labelled - `declared_shape:true`
+beside `declared_seed:false`, a scratch handoff root rather than any campaign dataset, and
+`not_measured` naming what it does not establish. It trains **240** steps, not a seed's 6,000, so
+its figure is a **floor**: the declared graph's compile sits inside the wall it divides by,
+where a 6,000-step seed pays it once. And it costs minutes of the week's **16.80 h remaining**
+beside a GPU week at **1.65 of 30**, both refreshing 2026-10-03 - so the measurement it buys
+costs the campaign nothing it could otherwise spend before the refresh.
+
 ---
 
 ## The TPU rehearsal found the defect before it moved a queue (2026-09-28)
