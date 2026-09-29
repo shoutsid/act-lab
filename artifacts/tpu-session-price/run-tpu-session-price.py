@@ -40,6 +40,7 @@ def main() -> int:
     print(f"price probe: {probe}", flush=True)
     sys.argv = [
         probe, "--device", "xla", "--steps", str(240), "--seed", str(15012),
+        "--dtype", "fp32",
         "--output", "/kaggle/working/tpu-session-price-probe.json",
     ]
     runpy.run_path(probe, run_name="__main__")

@@ -1054,8 +1054,12 @@ placing it took a day), and the price is taken in **fp32** - section 5.14's opti
 arm is a registered change to section 5.2's session model rather than a flag. fp32 is registered,
 needs no unmeasured autocast/scaler path on a TPU, and is the slower of the two dtypes
 `tpu_probe` v5 put within 6% of each other - so the price errs against the queue. **Re-armed:**
-version 2 is pushed from the code dataset at the fix, the watcher above is polling for 24 h, and
-quota stands at **TPU 16.77 of 20 h** and **GPU 1.65 of 30 h**, both refreshing 2026-10-03. The
+code dataset `sid123123234/act-lab-code` republished at **`ecdde2491c03`** and
+`act-tpu-session-price` **version 2** pushed (`QUEUED`, TPU on / GPU off) at **10:20Z**; the mount
+was downloaded back and carries `src/act/model/checkpointing.py`, the probe's `DTYPE = "fp32"` and
+`choices=("fp32", "fp16")`, `revision.txt` at that revision, and both `activation_checkpoint`
+call sites in `src/act/model/v0_moe.py`. The watcher above polls for 24 h. Quota at the re-fire:
+**TPU 16.77 of 20 h** and **GPU 1.65 of 30 h**, both refreshing 2026-10-03. The
 amendment is still **unsigned**, and now has the session model's own dtype to settle as well.
 
 **Live, 2026-09-27 17:09Z (returned below):** `act-tpu-session-rehearsal` is pushed as
