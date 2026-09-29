@@ -28,7 +28,12 @@ record, the log and the watch sidecar, and printing `verdict(record)` — which 
 line quoted above. No campaign queue moved: the GPU driver still holds the lock and is sleeping to
 the 2026-10-03 refresh.
 
-| file | what it is | sha256 |
+The fetcher writes fixed names into `output/`, so v2's fetch overwrites v1's there. **This time
+both survive:** v1's three files were copied to `v1/` before the re-fire, and the hashes below are
+that copy's. (The rehearsal's evidence folder could not do this - v2's fetch had already landed
+when the overlap was noticed - so its note carries the apology this one does not need to make.)
+
+| file (in `v1/`) | what it is | sha256 |
 |---|---|---|
 | `tpu-session-price-probe.json` | the record: `completed` (one phase), the three errors, `session.config` (the declared shape at 240 steps, fp16 as fired), `session.code_revision 98d5574...`, `runtime`, `phase_deadlines`, and the folded-in `watch` samples | `6a007a6c7ce07e75e38845298306af683fcf15f62df3d87f29216fa58a6c4cf5` |
 | `act-tpu-session-price.log` | the platform's execution log, events with `time` seconds from kernel start — the phases' walls (environment ok 77.5 s, session failed 82.0 s, resume failed 85.1 s, handoff failed 88.8 s) and the record printed at 88.8 s | `bda1012fb599c8f79b8d7850e49e716f00f275a16f01d2baa1e0a54f8d0e9780` |

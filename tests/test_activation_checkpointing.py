@@ -146,6 +146,53 @@ def test_a_checkpointed_model_routes_every_block_through_the_dispatch(
     assert devices == ["cpu"] * 4
 
 
+def test_the_v0_session_path_checkpoints_its_blocks_through_the_dispatch(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The path that would run on a TPU is the one that has to take the dispatch.
+
+    The training-runtime test above covers the dense baseline, and the liveness suite covers the
+    V0 session only for *trajectory* inertness - a checkpointing call that silently did nothing
+    would leave every loss identical and pass there. This is the V0 session itself, one **null**
+    arm (the queue section 5.14's option 2 moves), with the flag the declared config sets: one
+    call per block per step, on the tensors' own device.
+    """
+    from act.model import v0_moe as v0_moe_module
+    from act.training.v0_session import V0SessionConfig, run_v0_session
+
+    devices: list[str] = []
+    real = v0_moe_module.activation_checkpoint
+
+    def recorder(device: torch.device, function, *args):
+        devices.append(device.type)
+        return real(device, function, *args)
+
+    monkeypatch.setattr(v0_moe_module, "activation_checkpoint", recorder)
+
+    run_v0_session(
+        V0SessionConfig(
+            seed=11,
+            device="cpu",
+            arms=("null",),
+            vocab_size=64,
+            context_size=32,
+            hidden_size=32,
+            depth=2,
+            attention_heads=4,
+            expert_count=4,
+            expert_width=16,
+            total_steps=2,
+            checkpoint_interval=2,
+            validation_batches=1,
+            mutation_interval=100,
+            activation_checkpointing=True,
+        ),
+        checkpoint_dir=tmp_path / "session",
+    )
+
+    assert devices == ["cpu"] * 4
+
+
 def test_activation_checkpointing_preserves_finite_training() -> None:
     torch.manual_seed(3)
     model = DenseCausalLM(
