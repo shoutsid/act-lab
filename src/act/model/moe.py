@@ -4,9 +4,8 @@ from dataclasses import dataclass
 
 import torch
 from torch import Tensor, nn
-from torch.utils.checkpoint import checkpoint
-
 from ._inputs import validate_token_batch
+from .checkpointing import activation_checkpoint
 
 
 @dataclass(frozen=True)
@@ -159,7 +158,7 @@ class StaticMoECausalLM(nn.Module):
         )
         for block in self.blocks:
             if self.training and self.activation_checkpointing:
-                hidden = checkpoint(block, hidden, mask, use_reentrant=False)
+                hidden = activation_checkpoint(hidden.device, block, hidden, mask)
             else:
                 hidden = block(hidden, mask)
         hidden = self.final_norm(hidden)

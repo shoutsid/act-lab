@@ -1,0 +1,202 @@
+[{"stream_name":"stderr","time":41.210586083,"data":"/usr/local/lib/python3.12/site-packages/torch_xla/experimental/gru.py:113: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":41.210628563,"data":"  * **h_n**: tensor of shape :math:`(D * \\text{num\\_layers}, H_{out})` or\n"}
+,{"stream_name":"stderr","time":55.25295096,"data":"/usr/local/lib/python3.12/site-packages/torch_xla/__init__.py:258: UserWarning: `tensorflow` can conflict with `torch-xla`. Prefer `tensorflow-cpu` when using PyTorch/XLA. To silence this warning, `pip uninstall -y tensorflow \u0026\u0026 pip install tensorflow-cpu`. If you are in a notebook environment such as Colab or Kaggle, restart your notebook runtime afterwards.\n"}
+,{"stream_name":"stderr","time":55.25298108,"data":"  warnings.warn(\n"}
+,{"stream_name":"stdout","time":60.041665565,"data":"torch_xla: already-present\n"}
+,{"stream_name":"stdout","time":60.664771131,"data":"price probe: /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/tpu_session_price_probe.py\n"}
+,{"stream_name":"stdout","time":60.718422718,"data":"--- phase environment\n"}
+,{"stream_name":"stdout","time":60.718445029,"data":"    environment: deadline 900 s\n"}
+,{"stream_name":"stdout","time":60.718605809,"data":"[watch environment] {\"device_bytes_used\": null, \"rss_kb\": 528852, \"seconds\": 0.0}\n"}
+,{"stream_name":"stderr","time":66.958034547,"data":"WARNING: Logging before InitGoogle() is written to STDERR\n"}
+,{"stream_name":"stderr","time":66.958067627,"data":"E0000 00:00:1790660032.965973       7 common_lib.cc:648] Could not set metric server port: INVALID_ARGUMENT: Could not find SliceBuilder port 8471 in any of the 0 ports provided in `tpu_process_addresses`=\"local\"\n"}
+,{"stream_name":"stderr","time":66.958074607,"data":"=== Source Location Trace: ===\n"}
+,{"stream_name":"stderr","time":66.958079307,"data":"learning/45eac/tfrc/runtime/common_lib.cc:238\n"}
+,{"stream_name":"stdout","time":77.487845585,"data":"    environment: ok (16.8 s)\n"}
+,{"stream_name":"stdout","time":77.487895805,"data":"--- phase session\n"}
+,{"stream_name":"stdout","time":77.487900795,"data":"    session: deadline 3600 s\n"}
+,{"stream_name":"stdout","time":77.487964975,"data":"[watch session] {\"device_bytes_used\": null, \"rss_kb\": 7044976, \"seconds\": 0.0}\n"}
+,{"stream_name":"stdout","time":78.264354681,"data":"[session] null arm, 240 steps on xla, checkpoint every 120\n"}
+,{"stream_name":"stdout","time":82.036075576,"data":"    session: failed (4.5 s)\n"}
+,{"stream_name":"stdout","time":82.036114876,"data":"--- phase resume\n"}
+,{"stream_name":"stdout","time":82.036120726,"data":"    resume: deadline 1800 s\n"}
+,{"stream_name":"stdout","time":82.036186716,"data":"[watch resume] {\"device_bytes_used\": null, \"rss_kb\": 8048152, \"seconds\": 0.0}\n"}
+,{"stream_name":"stdout","time":85.123865531,"data":"    resume: failed (3.1 s)\n"}
+,{"stream_name":"stdout","time":85.123892481,"data":"--- phase handoff\n"}
+,{"stream_name":"stdout","time":85.123897441,"data":"    handoff: deadline 1800 s\n"}
+,{"stream_name":"stdout","time":85.124007161,"data":"[watch handoff] {\"device_bytes_used\": null, \"rss_kb\": 8273536, \"seconds\": 0.0}\n"}
+,{"stream_name":"stdout","time":88.809049361,"data":"    handoff: failed (3.7 s)\n"}
+,{"stream_name":"stdout","time":88.809558621,"data":"{\n"}
+,{"stream_name":"stdout","time":88.809567791,"data":" \"completed\": [\n"}
+,{"stream_name":"stdout","time":88.809573311,"data":"  \"environment\"\n"}
+,{"stream_name":"stdout","time":88.809578131,"data":" ],\n"}
+,{"stream_name":"stdout","time":88.809582521,"data":" \"declared_scale\": false,\n"}
+,{"stream_name":"stdout","time":88.809587021,"data":" \"declared_seed\": false,\n"}
+,{"stream_name":"stdout","time":88.809606961,"data":" \"declared_shape\": true,\n"}
+,{"stream_name":"stdout","time":88.809610141,"data":" \"device_requested\": \"xla\",\n"}
+,{"stream_name":"stdout","time":88.809613211,"data":" \"errors\": [\n"}
+,{"stream_name":"stdout","time":88.809616251,"data":"  {\n"}
+,{"stream_name":"stdout","time":88.809619181,"data":"   \"error\": \"AttributeError: module 'torch' has no attribute 'xla'\",\n"}
+,{"stream_name":"stdout","time":88.809622391,"data":"   \"phase\": \"session\"\n"}
+,{"stream_name":"stdout","time":88.809625421,"data":"  },\n"}
+,{"stream_name":"stdout","time":88.809628401,"data":"  {\n"}
+,{"stream_name":"stdout","time":88.809631711,"data":"   \"error\": \"AttributeError: module 'torch' has no attribute 'xla'\",\n"}
+,{"stream_name":"stdout","time":88.809635051,"data":"   \"phase\": \"resume\"\n"}
+,{"stream_name":"stdout","time":88.809638061,"data":"  },\n"}
+,{"stream_name":"stdout","time":88.809640961,"data":"  {\n"}
+,{"stream_name":"stdout","time":88.809643821,"data":"   \"error\": \"AttributeError: module 'torch' has no attribute 'xla'\",\n"}
+,{"stream_name":"stdout","time":88.809646891,"data":"   \"phase\": \"handoff\"\n"}
+,{"stream_name":"stdout","time":88.809649841,"data":"  }\n"}
+,{"stream_name":"stdout","time":88.809652661,"data":" ],\n"}
+,{"stream_name":"stdout","time":88.809655461,"data":" \"handoff\": {\n"}
+,{"stream_name":"stdout","time":88.809658411,"data":"  \"log\": []\n"}
+,{"stream_name":"stdout","time":88.809661401,"data":" },\n"}
+,{"stream_name":"stdout","time":88.809664281,"data":" \"kind\": \"tpu-session-price-probe\",\n"}
+,{"stream_name":"stdout","time":88.809667271,"data":" \"not_measured\": [\n"}
+,{"stream_name":"stdout","time":88.809670351,"data":"  \"a declared seed: this trains the declared *shape* for --steps steps, not the protocol's 24,576,000 tokens, so it prices the queue without producing any of its records\",\n"}
+,{"stream_name":"stdout","time":88.809673631,"data":"  \"the eight-chips-at-once placement: one session ran on one device, and the aggregate below multiplies it by eight rather than measuring eight\",\n"}
+,{"stream_name":"stdout","time":88.809676861,"data":"  \"mutation and rebuild events: the null arm never fires one, and --steps stays below the declared mutation interval, so the rebuild cost the port probe priced is not in this figure\"\n"}
+,{"stream_name":"stdout","time":88.809680031,"data":" ],\n"}
+,{"stream_name":"stdout","time":88.809682851,"data":" \"phase_deadlines\": {\n"}
+,{"stream_name":"stdout","time":88.809685731,"data":"  \"environment\": 900.0,\n"}
+,{"stream_name":"stdout","time":88.809688771,"data":"  \"handoff\": 1800.0,\n"}
+,{"stream_name":"stdout","time":88.809691781,"data":"  \"resume\": 1800.0,\n"}
+,{"stream_name":"stdout","time":88.809694751,"data":"  \"session\": 3600.0\n"}
+,{"stream_name":"stdout","time":88.809697651,"data":" },\n"}
+,{"stream_name":"stdout","time":88.809700521,"data":" \"phase_order\": [\n"}
+,{"stream_name":"stdout","time":88.809703491,"data":"  \"environment\",\n"}
+,{"stream_name":"stdout","time":88.809706521,"data":"  \"session\",\n"}
+,{"stream_name":"stdout","time":88.809727251,"data":"  \"resume\",\n"}
+,{"stream_name":"stdout","time":88.809730491,"data":"  \"handoff\"\n"}
+,{"stream_name":"stdout","time":88.809733431,"data":" ],\n"}
+,{"stream_name":"stdout","time":88.809736541,"data":" \"record_type\": \"session-price-probe\",\n"}
+,{"stream_name":"stdout","time":88.809739671,"data":" \"rehearsal\": false,\n"}
+,{"stream_name":"stdout","time":88.809742621,"data":" \"resume\": {\n"}
+,{"stream_name":"stdout","time":88.809749811,"data":"  \"log\": []\n"}
+,{"stream_name":"stdout","time":88.809752881,"data":" },\n"}
+,{"stream_name":"stdout","time":88.809755751,"data":" \"runtime\": {\n"}
+,{"stream_name":"stdout","time":88.809758671,"data":"  \"bound_device\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":88.809761621,"data":"  \"device_kind\": \"xla:0\",\n"}
+,{"stream_name":"stdout","time":88.809764611,"data":"  \"environment\": {\n"}
+,{"stream_name":"stdout","time":88.809767521,"data":"   \"ALLOW_MULTIPLE_LIBTPU_LOAD\": \"1\",\n"}
+,{"stream_name":"stdout","time":88.809770561,"data":"   \"CLOUD_TPU_TASK_ID\": null,\n"}
+,{"stream_name":"stdout","time":88.809774301,"data":"   \"LIBTPU_INIT_ARGS\": \" --xla_tpu_use_enhanced_launch_barrier=false --xla_latency_hiding_scheduler_rerun=1 --xla_tpu_prefer_async_allgather_to_allreduce=true --xla_tpu_enable_flash_attention=false --xla_enable_async_all_gather=true --xla_enable_async_collective_permute=true\",\n"}
+,{"stream_name":"stdout","time":88.809777761,"data":"   \"PJRT_DEVICE\": \"TPU\",\n"}
+,{"stream_name":"stdout","time":88.809781191,"data":"   \"PJRT_LOCAL_PROCESS_COUNT\": null,\n"}
+,{"stream_name":"stdout","time":88.809784211,"data":"   \"PJRT_LOCAL_PROCESS_RANK\": null,\n"}
+,{"stream_name":"stdout","time":88.809787171,"data":"   \"PJRT_SELECT_DEFAULT_DEVICE\": null,\n"}
+,{"stream_name":"stdout","time":88.809790141,"data":"   \"TPU_ACCELERATOR_TYPE\": \"v5litepod-8\",\n"}
+,{"stream_name":"stdout","time":88.809793141,"data":"   \"TPU_CHIPS_PER_HOST_BOUNDS\": \"2,4,1\",\n"}
+,{"stream_name":"stdout","time":88.809796121,"data":"   \"TPU_CHIPS_PER_PROCESS_BOUNDS\": null,\n"}
+,{"stream_name":"stdout","time":88.809799061,"data":"   \"TPU_HOST_BOUNDS\": \"1,1,1\",\n"}
+,{"stream_name":"stdout","time":88.809802641,"data":"   \"TPU_LIBRARY_PATH\": \"/usr/local/lib/python3.12/site-packages/libtpu/libtpu.so\",\n"}
+,{"stream_name":"stdout","time":88.809805781,"data":"   \"TPU_NAME\": null,\n"}
+,{"stream_name":"stdout","time":88.809808761,"data":"   \"TPU_PROCESS_ADDRESSES\": \"local\",\n"}
+,{"stream_name":"stdout","time":88.809811901,"data":"   \"TPU_PROCESS_BOUNDS\": null,\n"}
+,{"stream_name":"stdout","time":88.809815051,"data":"   \"TPU_PROCESS_PORT\": null,\n"}
+,{"stream_name":"stdout","time":88.809818031,"data":"   \"TPU_SKIP_MDS_QUERY\": \"1\",\n"}
+,{"stream_name":"stdout","time":88.809820961,"data":"   \"TPU_VISIBLE_CHIPS\": null,\n"}
+,{"stream_name":"stdout","time":88.809823911,"data":"   \"TPU_WORKER_HOSTNAMES\": \"localhost\",\n"}
+,{"stream_name":"stdout","time":88.809826891,"data":"   \"TPU_WORKER_ID\": \"0\",\n"}
+,{"stream_name":"stdout","time":88.809829821,"data":"   \"XLA_TPU_MAX_INFLIGHT_COMPUTATIONS\": null,\n"}
+,{"stream_name":"stdout","time":88.809832851,"data":"   \"XRT_TPU_CONFIG\": \"localservice;0;localhost:51011\",\n"}
+,{"stream_name":"stdout","time":88.809835941,"data":"   \"X_NUM_DEVICES\": null\n"}
+,{"stream_name":"stdout","time":88.809838941,"data":"  },\n"}
+,{"stream_name":"stdout","time":88.809841801,"data":"  \"memory_bytes_limit\": null,\n"}
+,{"stream_name":"stdout","time":88.809844821,"data":"  \"memory_bytes_used\": null,\n"}
+,{"stream_name":"stdout","time":88.809847771,"data":"  \"pytorch\": \"2.8.0+cpu\",\n"}
+,{"stream_name":"stdout","time":88.809850751,"data":"  \"sum\": 8.0,\n"}
+,{"stream_name":"stdout","time":88.809853711,"data":"  \"torch_xla\": \"2.8.0\",\n"}
+,{"stream_name":"stdout","time":88.809856681,"data":"  \"tpu\": {\n"}
+,{"stream_name":"stdout","time":88.809859571,"data":"   \"metadata\": {\n"}
+,{"stream_name":"stdout","time":88.809862531,"data":"    \"ACCELERATOR_TYPE\": \"v5litepod-8\",\n"}
+,{"stream_name":"stdout","time":88.809868621,"data":"    \"TPU_CHIPS_PER_PROCESS_BOUNDS\": \"2,4,1\",\n"}
+,{"stream_name":"stdout","time":88.809871691,"data":"    \"TPU_PROCESS_BOUNDS\": \"1,1,1\",\n"}
+,{"stream_name":"stdout","time":88.809874671,"data":"    \"WORKER_ID\": \"0\"\n"}
+,{"stream_name":"stdout","time":88.809877651,"data":"   },\n"}
+,{"stream_name":"stdout","time":88.809880511,"data":"   \"pci_chips\": 8\n"}
+,{"stream_name":"stdout","time":88.809883441,"data":"  },\n"}
+,{"stream_name":"stdout","time":88.809886281,"data":"  \"xla_devices\": 8\n"}
+,{"stream_name":"stdout","time":88.809889311,"data":" },\n"}
+,{"stream_name":"stdout","time":88.809892251,"data":" \"scratch_root\": \"the handoff publishes into a temporary root under --output's parent, not into any campaign dataset\",\n"}
+,{"stream_name":"stdout","time":88.809895551,"data":" \"seed\": 15012,\n"}
+,{"stream_name":"stdout","time":88.809898461,"data":" \"session\": {\n"}
+,{"stream_name":"stdout","time":88.809901451,"data":"  \"code_revision\": \"98d5574e8b3f10e34f14da1b243e08a5c4be0fd3\",\n"}
+,{"stream_name":"stdout","time":88.809904441,"data":"  \"config\": {\n"}
+,{"stream_name":"stdout","time":88.809907411,"data":"   \"activation_checkpointing\": true,\n"}
+,{"stream_name":"stdout","time":88.809910341,"data":"   \"active_experts\": 2,\n"}
+,{"stream_name":"stdout","time":88.809913431,"data":"   \"arms\": [\n"}
+,{"stream_name":"stdout","time":88.809916331,"data":"    \"null\"\n"}
+,{"stream_name":"stdout","time":88.809919221,"data":"   ],\n"}
+,{"stream_name":"stdout","time":88.809922031,"data":"   \"attention_heads\": 16,\n"}
+,{"stream_name":"stdout","time":88.809925011,"data":"   \"batch_size\": 2,\n"}
+,{"stream_name":"stdout","time":88.809927911,"data":"   \"checkpoint_interval\": 120,\n"}
+,{"stream_name":"stdout","time":88.809930861,"data":"   \"checkpoint_max_bytes\": null,\n"}
+,{"stream_name":"stdout","time":88.809933841,"data":"   \"context_size\": 2048,\n"}
+,{"stream_name":"stdout","time":88.809936791,"data":"   \"data_path\": null,\n"}
+,{"stream_name":"stdout","time":88.809939721,"data":"   \"declared\": true,\n"}
+,{"stream_name":"stdout","time":88.809942641,"data":"   \"depth\": 12,\n"}
+,{"stream_name":"stdout","time":88.809945581,"data":"   \"device\": \"xla\",\n"}
+,{"stream_name":"stdout","time":88.809948541,"data":"   \"dtype\": \"fp16\",\n"}
+,{"stream_name":"stdout","time":88.809951481,"data":"   \"expert_count\": 8,\n"}
+,{"stream_name":"stdout","time":88.809954391,"data":"   \"expert_width\": 1024,\n"}
+,{"stream_name":"stdout","time":88.809957291,"data":"   \"gate_margin\": 0.0,\n"}
+,{"stream_name":"stdout","time":88.809960211,"data":"   \"hidden_size\": 1024,\n"}
+,{"stream_name":"stdout","time":88.809963131,"data":"   \"learning_rate\": 0.0003,\n"}
+,{"stream_name":"stdout","time":88.809966101,"data":"   \"max_checkpoints\": 2,\n"}
+,{"stream_name":"stdout","time":88.809969081,"data":"   \"mutation_budget\": 3,\n"}
+,{"stream_name":"stdout","time":88.809974331,"data":"   \"mutation_interval\": 1500,\n"}
+,{"stream_name":"stdout","time":88.809977601,"data":"   \"new_expert_initialization\": \"random\",\n"}
+,{"stream_name":"stdout","time":88.809980831,"data":"   \"preserve_router_on_rebuild\": false,\n"}
+,{"stream_name":"stdout","time":88.809984041,"data":"   \"probe_batch_count\": 1,\n"}
+,{"stream_name":"stdout","time":88.809987231,"data":"   \"probe_candidate_cap\": 4,\n"}
+,{"stream_name":"stdout","time":88.809990191,"data":"   \"probe_candidate_policy\": \"prefix\",\n"}
+,{"stream_name":"stdout","time":88.80999323099999,"data":"   \"probe_data_source\": \"train\",\n"}
+,{"stream_name":"stdout","time":88.809998941,"data":"   \"probe_finetune_steps\": 0,\n"}
+,{"stream_name":"stdout","time":88.810001881,"data":"   \"probe_landscape\": false,\n"}
+,{"stream_name":"stdout","time":88.810004851,"data":"   \"probe_selection\": \"argmin\",\n"}
+,{"stream_name":"stdout","time":88.810007791,"data":"   \"seed\": 15012,\n"}
+,{"stream_name":"stdout","time":88.810010681,"data":"   \"total_steps\": 240,\n"}
+,{"stream_name":"stdout","time":88.810013631,"data":"   \"val_data_path\": null,\n"}
+,{"stream_name":"stdout","time":88.810016531,"data":"   \"validation_batches\": 4,\n"}
+,{"stream_name":"stdout","time":88.810019391,"data":"   \"vocab_size\": 32768\n"}
+,{"stream_name":"stdout","time":88.810022291,"data":"  },\n"}
+,{"stream_name":"stdout","time":88.810025111,"data":"  \"log\": []\n"}
+,{"stream_name":"stdout","time":88.810027981,"data":" },\n"}
+,{"stream_name":"stdout","time":88.810030831,"data":" \"steps\": 240,\n"}
+,{"stream_name":"stdout","time":88.810033751,"data":" \"wall_seconds\": 28.09059476852417,\n"}
+,{"stream_name":"stdout","time":88.810037061,"data":" \"watch\": {\n"}
+,{"stream_name":"stdout","time":88.810039951,"data":"  \"environment\": [\n"}
+,{"stream_name":"stdout","time":88.810042851,"data":"   {\n"}
+,{"stream_name":"stdout","time":88.810045671,"data":"    \"device_bytes_used\": null,\n"}
+,{"stream_name":"stdout","time":88.81004862099999,"data":"    \"rss_kb\": 528852,\n"}
+,{"stream_name":"stdout","time":88.810051551,"data":"    \"seconds\": 0.0\n"}
+,{"stream_name":"stdout","time":88.810054541,"data":"   }\n"}
+,{"stream_name":"stdout","time":88.810057351,"data":"  ],\n"}
+,{"stream_name":"stdout","time":88.810060371,"data":"  \"handoff\": [\n"}
+,{"stream_name":"stdout","time":88.810063481,"data":"   {\n"}
+,{"stream_name":"stdout","time":88.810066301,"data":"    \"device_bytes_used\": null,\n"}
+,{"stream_name":"stdout","time":88.810069201,"data":"    \"rss_kb\": 8273536,\n"}
+,{"stream_name":"stdout","time":88.810072171,"data":"    \"seconds\": 0.0\n"}
+,{"stream_name":"stdout","time":88.810081741,"data":"   }\n"}
+,{"stream_name":"stdout","time":88.810084691,"data":"  ],\n"}
+,{"stream_name":"stdout","time":88.810087511,"data":"  \"resume\": [\n"}
+,{"stream_name":"stdout","time":88.810090451,"data":"   {\n"}
+,{"stream_name":"stdout","time":88.810093431,"data":"    \"device_bytes_used\": null,\n"}
+,{"stream_name":"stdout","time":88.810096321,"data":"    \"rss_kb\": 8048152,\n"}
+,{"stream_name":"stdout","time":88.810099221,"data":"    \"seconds\": 0.0\n"}
+,{"stream_name":"stdout","time":88.810102121,"data":"   }\n"}
+,{"stream_name":"stdout","time":88.810105081,"data":"  ],\n"}
+,{"stream_name":"stdout","time":88.810107911,"data":"  \"session\": [\n"}
+,{"stream_name":"stdout","time":88.810110791,"data":"   {\n"}
+,{"stream_name":"stdout","time":88.810113641,"data":"    \"device_bytes_used\": null,\n"}
+,{"stream_name":"stdout","time":88.810116541,"data":"    \"rss_kb\": 7044976,\n"}
+,{"stream_name":"stdout","time":88.810119441,"data":"    \"seconds\": 0.0\n"}
+,{"stream_name":"stdout","time":88.810122331,"data":"   }\n"}
+,{"stream_name":"stdout","time":88.810125141,"data":"  ]\n"}
+,{"stream_name":"stdout","time":88.810127951,"data":" },\n"}
+,{"stream_name":"stdout","time":88.810130761,"data":" \"watch_seconds\": 30.0,\n"}
+,{"stream_name":"stdout","time":88.810133821,"data":" \"what_this_is\": \"A price: the registered V0 session path, at the declared 285M shape but for 240 steps rather than a seed's 24,576,000 tokens, on the device named in `device_requested`. It reports what one session path sustains there, and what twelve null-queue seeds would therefore cost. It is not a declared seed, not a Gate-4 result, and not evidence about the hypothesis; no queue moves on this record.\"\n"}
+,{"stream_name":"stdout","time":88.810140641,"data":"}\n"}
+,{"stream_name":"stderr","time":101.764440126,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
+,{"stream_name":"stderr","time":104.51495657,"data":"[NbConvertApp] Writing 280556 bytes to __results__.html\n"}
+]

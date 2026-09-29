@@ -1,0 +1,172 @@
+{
+ "completed": [
+  "environment"
+ ],
+ "declared_scale": false,
+ "declared_seed": false,
+ "declared_shape": true,
+ "device_requested": "xla",
+ "errors": [
+  {
+   "error": "AttributeError: module 'torch' has no attribute 'xla'",
+   "phase": "session"
+  },
+  {
+   "error": "AttributeError: module 'torch' has no attribute 'xla'",
+   "phase": "resume"
+  },
+  {
+   "error": "AttributeError: module 'torch' has no attribute 'xla'",
+   "phase": "handoff"
+  }
+ ],
+ "handoff": {
+  "log": []
+ },
+ "kind": "tpu-session-price-probe",
+ "not_measured": [
+  "a declared seed: this trains the declared *shape* for --steps steps, not the protocol's 24,576,000 tokens, so it prices the queue without producing any of its records",
+  "the eight-chips-at-once placement: one session ran on one device, and the aggregate below multiplies it by eight rather than measuring eight",
+  "mutation and rebuild events: the null arm never fires one, and --steps stays below the declared mutation interval, so the rebuild cost the port probe priced is not in this figure"
+ ],
+ "phase_deadlines": {
+  "environment": 900.0,
+  "handoff": 1800.0,
+  "resume": 1800.0,
+  "session": 3600.0
+ },
+ "phase_order": [
+  "environment",
+  "session",
+  "resume",
+  "handoff"
+ ],
+ "record_type": "session-price-probe",
+ "rehearsal": false,
+ "resume": {
+  "log": []
+ },
+ "runtime": {
+  "bound_device": "xla:0",
+  "device_kind": "xla:0",
+  "environment": {
+   "ALLOW_MULTIPLE_LIBTPU_LOAD": "1",
+   "CLOUD_TPU_TASK_ID": null,
+   "LIBTPU_INIT_ARGS": " --xla_tpu_use_enhanced_launch_barrier=false --xla_latency_hiding_scheduler_rerun=1 --xla_tpu_prefer_async_allgather_to_allreduce=true --xla_tpu_enable_flash_attention=false --xla_enable_async_all_gather=true --xla_enable_async_collective_permute=true",
+   "PJRT_DEVICE": "TPU",
+   "PJRT_LOCAL_PROCESS_COUNT": null,
+   "PJRT_LOCAL_PROCESS_RANK": null,
+   "PJRT_SELECT_DEFAULT_DEVICE": null,
+   "TPU_ACCELERATOR_TYPE": "v5litepod-8",
+   "TPU_CHIPS_PER_HOST_BOUNDS": "2,4,1",
+   "TPU_CHIPS_PER_PROCESS_BOUNDS": null,
+   "TPU_HOST_BOUNDS": "1,1,1",
+   "TPU_LIBRARY_PATH": "/usr/local/lib/python3.12/site-packages/libtpu/libtpu.so",
+   "TPU_NAME": null,
+   "TPU_PROCESS_ADDRESSES": "local",
+   "TPU_PROCESS_BOUNDS": null,
+   "TPU_PROCESS_PORT": null,
+   "TPU_SKIP_MDS_QUERY": "1",
+   "TPU_VISIBLE_CHIPS": null,
+   "TPU_WORKER_HOSTNAMES": "localhost",
+   "TPU_WORKER_ID": "0",
+   "XLA_TPU_MAX_INFLIGHT_COMPUTATIONS": null,
+   "XRT_TPU_CONFIG": "localservice;0;localhost:51011",
+   "X_NUM_DEVICES": null
+  },
+  "memory_bytes_limit": null,
+  "memory_bytes_used": null,
+  "pytorch": "2.8.0+cpu",
+  "sum": 8.0,
+  "torch_xla": "2.8.0",
+  "tpu": {
+   "metadata": {
+    "ACCELERATOR_TYPE": "v5litepod-8",
+    "TPU_CHIPS_PER_PROCESS_BOUNDS": "2,4,1",
+    "TPU_PROCESS_BOUNDS": "1,1,1",
+    "WORKER_ID": "0"
+   },
+   "pci_chips": 8
+  },
+  "xla_devices": 8
+ },
+ "scratch_root": "the handoff publishes into a temporary root under --output's parent, not into any campaign dataset",
+ "seed": 15012,
+ "session": {
+  "code_revision": "98d5574e8b3f10e34f14da1b243e08a5c4be0fd3",
+  "config": {
+   "activation_checkpointing": true,
+   "active_experts": 2,
+   "arms": [
+    "null"
+   ],
+   "attention_heads": 16,
+   "batch_size": 2,
+   "checkpoint_interval": 120,
+   "checkpoint_max_bytes": null,
+   "context_size": 2048,
+   "data_path": null,
+   "declared": true,
+   "depth": 12,
+   "device": "xla",
+   "dtype": "fp16",
+   "expert_count": 8,
+   "expert_width": 1024,
+   "gate_margin": 0.0,
+   "hidden_size": 1024,
+   "learning_rate": 0.0003,
+   "max_checkpoints": 2,
+   "mutation_budget": 3,
+   "mutation_interval": 1500,
+   "new_expert_initialization": "random",
+   "preserve_router_on_rebuild": false,
+   "probe_batch_count": 1,
+   "probe_candidate_cap": 4,
+   "probe_candidate_policy": "prefix",
+   "probe_data_source": "train",
+   "probe_finetune_steps": 0,
+   "probe_landscape": false,
+   "probe_selection": "argmin",
+   "seed": 15012,
+   "total_steps": 240,
+   "val_data_path": null,
+   "validation_batches": 4,
+   "vocab_size": 32768
+  },
+  "log": []
+ },
+ "steps": 240,
+ "wall_seconds": 28.09059476852417,
+ "watch": {
+  "environment": [
+   {
+    "device_bytes_used": null,
+    "rss_kb": 528852,
+    "seconds": 0.0
+   }
+  ],
+  "handoff": [
+   {
+    "device_bytes_used": null,
+    "rss_kb": 8273536,
+    "seconds": 0.0
+   }
+  ],
+  "resume": [
+   {
+    "device_bytes_used": null,
+    "rss_kb": 8048152,
+    "seconds": 0.0
+   }
+  ],
+  "session": [
+   {
+    "device_bytes_used": null,
+    "rss_kb": 7044976,
+    "seconds": 0.0
+   }
+  ]
+ },
+ "watch_seconds": 30.0,
+ "what_this_is": "A price: the registered V0 session path, at the declared 285M shape but for 240 steps rather than a seed's 24,576,000 tokens, on the device named in `device_requested`. It reports what one session path sustains there, and what twelve null-queue seeds would therefore cost. It is not a declared seed, not a Gate-4 result, and not evidence about the hypothesis; no queue moves on this record."
+}

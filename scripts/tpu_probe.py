@@ -109,6 +109,7 @@ import sys
 import tempfile
 import threading
 import time
+import traceback
 from pathlib import Path
 from typing import Any, Callable
 
@@ -475,7 +476,18 @@ def _run_phase(
         work()
     except Exception as exc:  # noqa: BLE001 - recorded, not swallowed
         record.setdefault("errors", []).append(
-            {"phase": name, "error": f"{type(exc).__name__}: {exc}"}
+            {
+                "phase": name,
+                "error": f"{type(exc).__name__}: {exc}",
+                # Where it was raised, not only what it said - because on 2026-09-29 the
+                # message alone cost a day. The declared-shape price probe died in three
+                # phases on `AttributeError: module 'torch' has no attribute 'xla'`, and
+                # torch has more than a dozen `getattr(torch, <device_type>)` lookups that
+                # raise exactly that: the record named the symptom and not one of them, so
+                # the site had to be found by reading torch's source instead of a record.
+                # A failure is the thing a queued run is least able to explain twice.
+                "traceback": traceback.format_exc(),
+            }
         )
     else:
         record["completed"].append(name)

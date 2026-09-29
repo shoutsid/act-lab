@@ -1,0 +1,17 @@
+{
+  "id": "sid123123234/act-tpu-session-price",
+  "title": "act-tpu-session-price",
+  "code_file": "run-tpu-session-price.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": true,
+  "machine_shape": "",
+  "enable_internet": true,
+  "dataset_sources": [
+    "sid123123234/act-lab-code"
+  ],
+  "competition_sources": [],
+  "kernel_sources": []
+}

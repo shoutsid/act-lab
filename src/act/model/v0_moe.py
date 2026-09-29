@@ -31,9 +31,8 @@ from typing import Literal
 
 import torch
 from torch import Tensor, nn
-from torch.utils.checkpoint import checkpoint
-
 from ._inputs import validate_token_batch
+from .checkpointing import activation_checkpoint
 
 
 MoEModuleType = Literal["attention", "gdn", "hybrid"]
@@ -406,7 +405,8 @@ class _GatedDeltaMixer(nn.Module):
             pieces: list[Tensor] = []
             for start in range(0, seq, chunk_size):
                 stop = min(start + chunk_size, seq)
-                state, piece = checkpoint(
+                state, piece = activation_checkpoint(
+                    q.device,
                     self.scan_segment,
                     state,
                     q[:, start:stop],
@@ -414,7 +414,6 @@ class _GatedDeltaMixer(nn.Module):
                     v[:, start:stop],
                     alpha[:, start:stop],
                     beta[:, start:stop],
-                    use_reentrant=False,
                 )
                 pieces.append(piece)
             stacked = torch.cat(pieces, dim=1)
@@ -594,7 +593,7 @@ class V0MoECausalLM(nn.Module):
         hidden = self.token_embedding(tokens)
         for block in self.blocks:
             if self.training and self.activation_checkpointing:
-                hidden = checkpoint(block, hidden, positions, use_reentrant=False)
+                hidden = activation_checkpoint(hidden.device, block, hidden, positions)
             else:
                 hidden = block(hidden, positions)
         hidden = self.final_norm(hidden)

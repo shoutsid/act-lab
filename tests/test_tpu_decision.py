@@ -992,13 +992,18 @@ def test_a_phase_that_cannot_run_is_recorded_and_the_rest_still_run(tmp_path: Pa
     assert tpu_probe._run_phase(record, "independent_seeds", later, path) is True
 
     assert record["completed"] == ["independent_seeds"]
-    assert record["errors"] == [
-        {
-            "phase": "fp32.rebuild",
-            "error": "RuntimeError: Bad StatusOr access: RESOURCE_EXHAUSTED: "
-            "Attempting to reserve 7.96G",
-        }
-    ]
+    assert len(record["errors"]) == 1
+    failure = record["errors"][0]
+    assert failure["phase"] == "fp32.rebuild"
+    assert failure["error"] == (
+        "RuntimeError: Bad StatusOr access: RESOURCE_EXHAUSTED: "
+        "Attempting to reserve 7.96G"
+    )
+    # The message is the symptom; the frames are the site. Pinned because the message
+    # alone was ambiguous enough to cost a day on 2026-09-29, and because it is the one
+    # thing a failure has to carry when the run that produced it is queued once.
+    assert "RuntimeError: Bad StatusOr access" in failure["traceback"]
+    assert "exhausted" in failure["traceback"]
     assert ran == ["independent_seeds"]
 
 
@@ -1027,9 +1032,10 @@ def test_the_record_reaches_disk_before_the_next_measurement_runs(tmp_path: Path
     tpu_probe._run_phase(record, "fp32.throughput", exhausted, path)
 
     assert on_disk == [{"completed": ["bf16.throughput"], "errors": []}]
-    assert json.loads(path.read_text())["errors"] == [
-        {"phase": "fp32.throughput", "error": "RuntimeError: RESOURCE_EXHAUSTED"}
-    ]
+    failure = json.loads(path.read_text())["errors"][0]
+    assert failure["phase"] == "fp32.throughput"
+    assert failure["error"] == "RuntimeError: RESOURCE_EXHAUSTED"
+    assert "RuntimeError: RESOURCE_EXHAUSTED" in failure["traceback"]
 
 
 def test_each_phase_is_bound_to_its_own_dtype_and_state() -> None:

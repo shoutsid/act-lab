@@ -50,6 +50,9 @@ def test_the_entry_runs_the_mounted_probe_and_writes_the_record_the_fetch_looks_
     assert f"/kaggle/working/{pusher.RECORD_NAME}" in pusher.ENTRY
     assert "scripts/tpu_session_price_probe.py" in pusher.ENTRY
     assert '\"--device\", \"xla\"' in pusher.ENTRY
+    # The dtype is on the queued command line, not only in the probe's default: which dtype
+    # a price was taken in is the first thing a reader of the kernel text needs (see DTYPE).
+    assert '\"--dtype\", \"DTYPE\"' in pusher.ENTRY
 
 
 def test_the_entry_bootstraps_torch_xla_the_same_way_the_other_two_do() -> None:
@@ -63,7 +66,7 @@ def test_the_entry_bootstraps_torch_xla_the_same_way_the_other_two_do() -> None:
     assert "status = ensure_xla()" in pusher.ENTRY
 
 
-def test_stage_substitutes_the_steps_and_the_seed(
+def test_stage_substitutes_the_steps_the_seed_and_the_dtype(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The entry is generated text with no runtime of its own, so the substitution is it."""
@@ -73,8 +76,9 @@ def test_stage_substitutes_the_steps_and_the_seed(
 
     assert folder == tmp_path
     entry = (tmp_path / pusher.ENTRY_NAME).read_text(encoding="utf-8")
-    assert "STEPS" not in entry and "SEED" not in entry
+    assert "STEPS" not in entry and "SEED" not in entry and "DTYPE" not in entry
     assert "str(240)" in entry and f"str({price_probe.SEED})" in entry
+    assert f'\"{price_probe.DTYPE}\"' in entry
     written = json.loads((tmp_path / "kernel-metadata.json").read_text(encoding="utf-8"))
     assert written == pusher.metadata(owner="someone")
 

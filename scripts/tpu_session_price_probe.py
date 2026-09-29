@@ -11,10 +11,21 @@ one, so its tokens/s is a path measurement and not a schedule input".
 
 So the one number the amendment's price rests on has never been measured on the path that
 would run it. This measures it. ``run_v0_session`` on ``declared_session_config()`` - 285M
-total / 134M active parameters, batch 2 x context 2048, fp16, checkpointed activations - as a
+total / 134M active parameters, batch 2 x context 2048, checkpointed activations - as a
 single **null** arm on one device, and the result is priced through
 ``tpu_probe.queue_tpu_hours``, the campaign's own arithmetic, so this figure and the port
 rule's 8.06 h cannot be computed two different ways.
+
+**The dtype is fp32, and that is a finding rather than a preference** (2026-09-29, kernel v1).
+The amendment pairs a **bf16** arm against the two-T4 fp16 primary, but bf16 is not a dtype
+this session has: ``V0SessionConfig`` accepts ``fp32`` and ``fp16`` and refuses the rest, so a
+bf16 session is a **registration change** (section 5.2's session model), not a flag on this
+command. fp16 is the declared dtype and is what kernel v1 was fired with - and it is the one
+dtype that needs ``torch.autocast(device_type="xla", ...)`` plus a ``GradScaler``, neither of
+which any record shows running on a TPU. fp32 is the dtype left: registered, runnable there
+without unmeasured machinery, and the **slower** end of the two dtypes ``tpu_probe`` v5
+measured within 6% of each other on this shape - so this price errs against the queue rather
+than for it, which is the same direction the compile-in-the-wall choice already errs.
 
 **What it is not.** It is not a declared seed: it trains ``--steps`` steps (240 by default,
 enough that the steady phase dominates the compile), not 6,000, and it publishes nothing to
@@ -82,9 +93,20 @@ PHASE_DEADLINE_SECONDS = {
 #: place. The benchmark uses the same one for the same reason.
 SEED = 15012
 
+#: The dtype the price is taken in. See the module docstring: bf16, which is what the
+#: amendment names, is not a session dtype at all, and fp16 - the declared one - is the dtype
+#: whose TPU support is unmeasured (it needs autocast on ``xla`` and a GradScaler). fp32 is
+#: registered, needs no such machinery, and is the slower of the two dtypes the port probe
+#: put within 6% of each other, so the price below is the conservative one.
+DTYPE = "fp32"
+
 NOT_MEASURED = (
     "a declared seed: this trains the declared *shape* for --steps steps, not the protocol's "
     "24,576,000 tokens, so it prices the queue without producing any of its records",
+    "the amendment's own dtype (bf16): the session's registered dtype accepts fp32 and fp16 "
+    "only, so a bf16 session is a registration change rather than a flag, and fp16 is the "
+    "dtype whose autocast and scaler path nothing has run on a TPU. This price is the fp32 "
+    "session, which tpu_probe v5 put within 6% of bf16 on this shape",
     "the eight-chips-at-once placement: one session ran on one device, and the aggregate "
     "below multiplies it by eight rather than measuring eight",
     "mutation and rebuild events: the null arm never fires one, and --steps stays below the "
@@ -93,14 +115,17 @@ NOT_MEASURED = (
 )
 
 
-def price_config(device: str, *, steps: int, seed: int):
+def price_config(device: str, *, steps: int, seed: int, dtype: str = DTYPE):
     """The declared session shape, with only the step budget and cadence this run needs.
 
     Everything that *defines* the shape comes from `declared_session_config` - 285M total /
-    134M active, batch 2 x context 2048, fp16, checkpointed activations, the declared vocab -
+    134M active, batch 2 x context 2048, checkpointed activations, the declared vocab -
     because a price measured on a shape nobody will run is not a price. Overridden: the step
     budget (a rate does not need 6,000 steps), the seed (see :data:`SEED`), the checkpoint
-    cadence, and the arm set (the null queue is single-arm by construction).
+    cadence, the arm set (the null queue is single-arm by construction), and the dtype (see
+    :data:`DTYPE` - the declared ``fp16`` is the one that would need an unmeasured autocast
+    and scaler path on a TPU, and the amendment's ``bf16`` is not a registered session dtype
+    at all).
     """
     from act.training.v0_session import declared_session_config
 
@@ -108,6 +133,7 @@ def price_config(device: str, *, steps: int, seed: int):
         device=device,
         seed=seed,
         arms=("null",),
+        dtype=dtype,
         total_steps=steps,
         checkpoint_interval=max(1, steps // 2),
         max_checkpoints=2,
@@ -170,6 +196,7 @@ def base_record(args: argparse.Namespace) -> dict[str, Any]:
         "declared_seed": False,
         "declared_scale": False,
         "device_requested": args.device,
+        "dtype": args.dtype,
         "steps": args.steps,
         "seed": args.seed,
         "scratch_root": "the handoff publishes into a temporary root under --output's parent, "
@@ -185,11 +212,11 @@ def base_record(args: argparse.Namespace) -> dict[str, Any]:
         "not_measured": list(NOT_MEASURED),
         "what_this_is": (
             "A price: the registered V0 session path, at the declared 285M shape but for "
-            f"{args.steps} steps rather than a seed's 24,576,000 tokens, on the device named "
-            "in `device_requested`. It reports what one session path sustains there, and "
-            "what twelve null-queue seeds would therefore cost. It is not a declared seed, "
-            "not a Gate-4 result, and not evidence about the hypothesis; no queue moves on "
-            "this record."
+            f"{args.steps} steps rather than a seed's 24,576,000 tokens, in the dtype named "
+            "in `dtype` and on the device named in `device_requested`. It reports what one "
+            "session path sustains there, and what twelve null-queue seeds would therefore "
+            "cost. It is not a declared seed, not a Gate-4 result, and not evidence about "
+            "the hypothesis; no queue moves on this record."
         ),
     }
 
@@ -206,7 +233,8 @@ def verdict(record: dict[str, Any]) -> str:
         return "no price: the session phase did not leave a throughput to read"
     return (
         f"the declared session path sustains {rate:,.1f} tokens/s on one chip "
-        f"({price['multiple_of_t4_pair']:.2f}x the T4 pair across {XLA_CHIPS} chips: "
+        f"(in {record.get('dtype', 'unknown')}; "
+        f"{price['multiple_of_t4_pair']:.2f}x the T4 pair across {XLA_CHIPS} chips: "
         f"{price['implied_aggregate_tokens_per_second']:,.0f} tokens/s), so the null queue is "
         f"{price['null_queue_hours_at_this_rate']:.2f} h against the "
         f"{price['null_queue_hours_at_the_2_0x_bar']:.2f} h at the rule's 2.0x bar and a "
@@ -222,8 +250,18 @@ def main(argv: list[str] | None = None) -> int:
         "--steps", type=int, default=240, help="declared-shape training steps (one arm)"
     )
     parser.add_argument("--seed", type=int, default=SEED, help="see SEED in this module")
+    parser.add_argument(
+        "--dtype",
+        default=DTYPE,
+        choices=("fp32", "fp16"),
+        help="a registered session dtype; see DTYPE for why the price is taken in fp32",
+    )
     parser.add_argument("--output", type=Path, default=OUTPUT)
     args = parser.parse_args(argv)
+
+    def build(device: str, *, steps: int, seed: int):
+        """The config builder the rehearsal's phases call, with this run's dtype bound."""
+        return price_config(device, steps=steps, seed=seed, dtype=args.dtype)
 
     record = base_record(args)
     work = Path(args.output).parent / f"tpu-price-work-{os.getpid()}"
@@ -236,7 +274,7 @@ def main(argv: list[str] | None = None) -> int:
             device=args.device,
             steps=args.steps,
             seed=args.seed,
-            build=price_config,
+            build=build,
         )
         # Priced the moment the session lands rather than after the phases that follow it:
         # the price is this run's whole product, and a later phase that dies must not take it
@@ -255,7 +293,7 @@ def main(argv: list[str] | None = None) -> int:
             device=args.device,
             steps=args.steps,
             seed=args.seed,
-            build=price_config,
+            build=build,
         ),
         "handoff": lambda: rehearsal.phase_handoff(
             record,
@@ -263,7 +301,7 @@ def main(argv: list[str] | None = None) -> int:
             device=args.device,
             steps=args.steps,
             seed=args.seed,
-            build=price_config,
+            build=build,
         ),
     }
 

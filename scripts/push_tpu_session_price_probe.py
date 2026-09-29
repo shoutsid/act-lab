@@ -79,6 +79,7 @@ def main() -> int:
     print(f"price probe: {probe}", flush=True)
     sys.argv = [
         probe, "--device", "xla", "--steps", str(STEPS), "--seed", str(SEED),
+        "--dtype", "DTYPE",
         "--output", "/kaggle/working/tpu-session-price-probe.json",
     ]
     runpy.run_path(probe, run_name="__main__")
@@ -110,12 +111,20 @@ def metadata(*, owner: str) -> dict[str, object]:
     }
 
 
-def stage(*, owner: str, steps: int, seed: int) -> Path:
-    """Write the kernel folder (entry + metadata) and return it."""
+def stage(*, owner: str, steps: int, seed: int, dtype: str = price_probe.DTYPE) -> Path:
+    """Write the kernel folder (entry + metadata) and return it.
+
+    ``dtype`` is substituted rather than left to the probe's default so the queued command is
+    readable in the kernel's own text: which dtype a price was taken in is the first thing a
+    reader has to know about it (see ``tpu_session_price_probe.DTYPE``).
+    """
     WORK.mkdir(parents=True, exist_ok=True)
     entry = WORK / ENTRY_NAME
     entry.write_text(
-        ENTRY.replace("STEPS", str(steps)).replace("SEED", str(seed)), encoding="utf-8"
+        ENTRY.replace("STEPS", str(steps))
+        .replace("SEED", str(seed))
+        .replace("DTYPE", dtype),
+        encoding="utf-8",
     )
     (WORK / "kernel-metadata.json").write_text(
         json.dumps(metadata(owner=owner), indent=2) + "\n", encoding="utf-8"
@@ -129,6 +138,12 @@ def main() -> int:
         "--steps", type=int, default=240, help="declared-shape training steps (one arm)"
     )
     parser.add_argument("--seed", type=int, default=price_probe.SEED)
+    parser.add_argument(
+        "--dtype",
+        default=price_probe.DTYPE,
+        choices=("fp32", "fp16"),
+        help="a registered session dtype; see tpu_session_price_probe.DTYPE",
+    )
     parser.add_argument("--stage-only", action="store_true", help="write the folder, do not push")
     parser.add_argument("--status", action="store_true", help="print the kernel's status")
     parser.add_argument("--fetch", action="store_true", help="download the kernel's output")
@@ -140,7 +155,7 @@ def main() -> int:
     args = parser.parse_args()
 
     owner = kaggle_queue.code_dataset_id().split("/")[0]
-    folder = stage(owner=owner, steps=args.steps, seed=args.seed)
+    folder = stage(owner=owner, steps=args.steps, seed=args.seed, dtype=args.dtype)
     print(f"staged {folder}")
     print(json.dumps(metadata(owner=owner), indent=2))
 

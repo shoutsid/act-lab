@@ -1007,6 +1007,9 @@ setsid nohup bash scripts/fetch_tpu_session_rehearsal_when_done.sh > /tmp/tpu-se
 
 ```bash
 # the price probe: one session at the DECLARED shape, and what the null queue costs at it
+# --dtype defaults to fp32; see tpu_session_price_probe.DTYPE for why (bf16, which section
+# 5.14's option 2 names, is not a registered session dtype at all, and fp16 needs an
+# autocast and scaler path nothing has run on a TPU)
 PYTHONPATH=src .venv/bin/python scripts/push_tpu_session_price_probe.py
 KERNEL=sid123123234/act-tpu-session-price \
 OUT_DIR=$PWD/artifacts/tpu-session-price/output \
@@ -1030,6 +1033,30 @@ beside `declared_seed: false` and its handoff publishes into a scratch root, so 
 mistaken for a queue record. Quota at the fire: **TPU 16.80 of 20 h**, **GPU 1.65 of 30 h**, both
 refreshing 2026-10-03 - minutes of TPU against a clock that has nothing else to spend it on
 before the refresh.
+
+**Live, 2026-09-29 05:36Z (v1: returned `ERROR`, fix landed, v2 re-armed):** v1 came back after
+**8.7 h** of queue and **28.09 s** of run with `completed: ["environment"]` and three errors, all
+`AttributeError: module 'torch' has no attribute 'xla'` - `session` at 4.5 s, `resume` at 3.1 s,
+`handoff` at 3.7 s - and the fetch printed *"no price: the session phase did not leave a
+throughput to read"*. The site is `torch/utils/checkpoint.py`'s `_get_device_module`, which
+resolves a checkpointed tensor's device module as `getattr(torch, device)`: for `device="xla"`
+that is an attribute of `torch` that does not exist, because XLA is a separate package. It is the
+**declared-only** field that hid it - `declared_session_config` sets `activation_checkpointing=True`
+while the rehearsal's development config has it off, so the rehearsal ran the real session path on
+XLA and never entered a checkpointed block. PyTorch/XLA ships a fork of that file for exactly this
+(`torch_xla.utils.checkpoint`), and its entry point *rejects* `use_reentrant=False`, so the fix is
+a dispatch rather than a swap: `act.model.checkpointing.activation_checkpoint(device, fn, *args)`
+keeps the upstream non-reentrant call on CPU and CUDA and uses the fork on `xla`, at all four call
+sites. Two more things changed with it: every `_run_phase` error now carries a **`traceback`** (the
+message alone was ambiguous across more than a dozen `getattr(torch, <device_type>)` lookups, and
+placing it took a day), and the price is taken in **fp32** - section 5.14's option 2 names a
+**bf16** arm, and `bf16` is not a dtype this session has (it accepts `fp32` and `fp16`), so that
+arm is a registered change to section 5.2's session model rather than a flag. fp32 is registered,
+needs no unmeasured autocast/scaler path on a TPU, and is the slower of the two dtypes
+`tpu_probe` v5 put within 6% of each other - so the price errs against the queue. **Re-armed:**
+version 2 is pushed from the code dataset at the fix, the watcher above is polling for 24 h, and
+quota stands at **TPU 16.77 of 20 h** and **GPU 1.65 of 30 h**, both refreshing 2026-10-03. The
+amendment is still **unsigned**, and now has the session model's own dtype to settle as well.
 
 **Live, 2026-09-27 17:09Z (returned below):** `act-tpu-session-rehearsal` is pushed as
 **version 1** (`QUEUED`, TPU on / GPU off) from the code dataset republished at **`9105dc4`**,

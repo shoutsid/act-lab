@@ -83,6 +83,16 @@ stop, the seed handoff publish and the two-arm placement. Each of those has now 
 development fidelity, and the two that a lazy backend can silently break - the marked step and the
 host-written checkpoint - are the two this run measured.
 
+*(**Corrected 2026-09-29.** "Each of those has run once" was one item too long, and this sentence
+is where it was claimed. **Activation checkpointing** had not run and could not: this run's
+development config carries it **off** (the dev default, where memory is not the constraint) while
+the declared config carries it **on**, so the session phase above never entered a checkpointed
+block. The declared-shape price probe fired on 2026-09-28 died on exactly that field in every
+phase that trains - `torch.utils.checkpoint` resolves a checkpointed tensor's device module as
+`getattr(torch, "xla")`, which does not exist - see `artifacts/tpu-session-price/NOTES.md`. The
+record's own `declared_scale: false` and its `not_measured` list were right about it; this
+paragraph was the part that overreached.)*
+
 What it does **not** price is the declared-scale rate on the session path: 2,013 tokens/s here
 against the 15,034 the probe's step loop measured, a difference that is fidelity (20 steps pay a
 compile and a per-step sync that 6,000 amortize) and not something this record can settle. So the

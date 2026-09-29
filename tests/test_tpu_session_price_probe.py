@@ -31,7 +31,12 @@ import tpu_session_rehearsal as rehearsal  # noqa: E402
 
 
 def _args(**overrides) -> argparse.Namespace:
-    settings = {"device": "cpu", "steps": 240, "seed": price_probe.SEED}
+    settings = {
+        "device": "cpu",
+        "steps": 240,
+        "seed": price_probe.SEED,
+        "dtype": price_probe.DTYPE,
+    }
     settings.update(overrides)
     return argparse.Namespace(**settings)
 
@@ -53,6 +58,7 @@ def test_the_labels_price_a_declared_shape_without_claiming_a_declared_seed() ->
     assert record["declared_scale"] is False
     assert record["phase_order"] == list(price_probe.PHASES)
     assert record["completed"] == [] and record["errors"] == []
+    assert record["dtype"] == price_probe.DTYPE
     assert "not a declared seed" in record["what_this_is"]
     assert "not a Gate-4 result" in record["what_this_is"]
     # Nothing here publishes to a campaign dataset, and the field says so rather than leaving
@@ -62,6 +68,9 @@ def test_the_labels_price_a_declared_shape_without_claiming_a_declared_seed() ->
     joined = " ".join(record["not_measured"])
     assert "not the protocol's" in joined
     assert "eight-chips-at-once" in joined
+    # The dtype the amendment names is not the dtype this can price, and the record has to
+    # say so: a reader comparing the figure to the amendment would otherwise take it as one.
+    assert "bf16" in joined and "registration change" in joined
 
 
 def test_the_declared_shape_needs_a_longer_leash_than_the_rehearsal_s() -> None:
@@ -89,14 +98,21 @@ def test_the_declared_shape_needs_a_longer_leash_than_the_rehearsal_s() -> None:
 
 def test_the_config_is_the_declared_shape_with_only_the_run_s_budget_overridden() -> None:
     """Every field that defines the declared shape survives; only the budget is this run's."""
-    from act.training.v0_session import declared_session_config
+    from act.training.v0_session import V0SessionConfig, declared_session_config
 
     declared = price_probe.price_config("cpu", steps=240, seed=price_probe.SEED)
 
     reference = declared_session_config()
     assert declared.model_config() == reference.model_config()
     assert declared.batch_size == 2 and declared.context_size == 2048
-    assert declared.dtype == "fp16"
+    # Priced in the dtype the run can take, not the declared one: see DTYPE. What matters
+    # here is that it *is* a registered session dtype and that the declared fp16 is only a
+    # default being overridden - and that the amendment's bf16 is not available to override
+    # it with, which is the finding this whole exercise produced (2026-09-29).
+    assert declared.dtype == price_probe.DTYPE == "fp32"
+    assert declared.dtype != reference.dtype
+    with pytest.raises(ValueError, match="unsupported session dtype"):
+        V0SessionConfig(dtype="bf16")
     assert declared.activation_checkpointing is True
     assert declared.declared is True
     assert declared.arms == ("null",)
@@ -175,7 +191,10 @@ def test_a_cpu_dry_run_prices_the_queue_from_a_real_session(
     lands in the record the fetch reads, even though the environment phase cannot run on a
     host with no Torch-XLA.
     """
-    monkeypatch.setattr(price_probe, "price_config", rehearsal._dev_null_config)
+    def dev_shape(device: str, *, steps: int, seed: int, dtype: str):
+        return rehearsal._dev_null_config(device, steps=steps, seed=seed)
+
+    monkeypatch.setattr(price_probe, "price_config", dev_shape)
     monkeypatch.setenv("TPU_SESSION_WATCH", "0.01")
     output = tmp_path / price_probe.RECORD_NAME
 
@@ -184,6 +203,7 @@ def test_a_cpu_dry_run_prices_the_queue_from_a_real_session(
     record = json.loads(output.read_text(encoding="utf-8"))
     assert record["kind"] == "tpu-session-price-probe"
     assert "session" in record["completed"]
+    assert record["dtype"] == "fp32"
     assert record["price"]["per_session_tokens_per_second"] > 0
     assert record["price"]["null_queue_hours_at_this_rate"] > 0
     # The watch's sidecar, under a name the fetch keeps: `save_fetched` keeps `*.json`.
