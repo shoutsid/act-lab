@@ -1,5 +1,35 @@
 # ACT Implementation Status
 
+## The null queue is fired on the TPU: twelve declared seeds, one per chip (2026-09-29)
+
+**Live update, 2026-09-29 13:05Z:** with the GPU week spent (**1.65 of 30 h**) and the TPU week at
+**16.77 of 20 h** until the 2026-10-03 refresh, the operator reopened section 5.14's option 2 and
+gave the go to spend it producing the block rather than pricing it. The two grounds the earlier
+disposition rested on are **not** withdrawn - `bf16` is still not a session dtype, and the one
+dtype the path can run, `fp32`, still differs from the registered fp16 - so what changed is not
+the measurement but **whose decision it was**: the entry recorded the amendment as "the operator's
+to sign, not a scheduling knob", and it has been signed as far as the run is concerned. What
+follows is the runner that takes it, the pusher that fires it, and the reading that says whether
+it landed.
+
+| | |
+|---|---|
+| **What is being run, in the registration's own terms** | The registered null queue: the block's **twelve seeds** (`15024-15035`), one arm each (`--session-arms null`), the declared config (285M total / 134M active, batch 2 x context 2048, **6,000 steps**, checkpoint cadence 500, `max_checkpoints` 2 - the section 5.2 pin), the section 5.47 rebuild treatment on the arm, and `publish_seed` into the null queue's own dataset root (`act-v0-5-2-null`, i.e. `sid123123234/act-v0-5-2-null`). This is `kaggle_t4.session_argv(QUEUES["null"])`'s command with **two** differences, both named in the record: `--device xla`, and the placement - the CLI walks seeds **in turn on one device**, and at the probe's per-chip rate that is ~43 h against a 20 h week, while a v5e-8 carries eight at once. |
+| **The dtype, which is the one field that is not the registration** | `DTYPE = "fp32"`: `V0SessionConfig` admits `fp32` and `fp16` and raises for anything else, and the declared `fp16` on a TPU needs `torch.autocast(device_type="xla", ...)` plus a `GradScaler`, which no record in this repository shows working. `fp32` is registered, needs no such machinery, and is the **slower** end of the two dtypes `tpu_probe` v5 put within 6% of each other - so the block errs toward slower, and the record carries `dtype` so twelve TPU-fp32 null seeds cannot be read as the registered fp16 block. **Whether the verdict may consume them as the registered null clause is a separate decision and is not taken here**; what is taken here is producing them, which is the part the idle week can do and six GPU seeds are not going to. |
+| **The defect the first draft of the runner would have hit, found by reading the campaign's own kernel instead of by losing a wave** | The runner defaulted its **handoff roots to `--output`'s parent** - i.e. to `/kaggle/working`, which is a **20 GB loopback mount** (`kaggle_t4.workspace_root`'s own measurement: 19.5 GiB on `/dev/loop1`), while one completed seed publishes ~3.2 GiB of resume state *including the AdamW moments*. Twelve seeds is ~38 GiB: the mount fills and the file that fails to be written is the **record**, which is the one artifact a fetch reads. The T4 path already answers this - roots in the container overlay (`/tmp`, token-scoped because the overlay is host-shared), the working mount for the record and the published-you-don't-need-it summaries - so the runner now delegates to `kaggle_t4.workspace_root` on a kernel and keeps the output-relative placement only locally, where it stays inspectable. `--scratch` overrides it. |
+| **And the second half of that defect: the exit path** | A queue is not a measurement, so the remote half matters: with `--dataset` given the run follows **section 5.2** the way a session does - **restore** the newest published version before training, **skip** the seeds that version already carries (a published seed is never re-trained over: measured 2026-09-26/27, the misreading of a 403 cost a session's quota and republished a seed over itself), and **publish** at exit through `kaggle_remote.publish_on_exit`, which retries and never raises because the container ends with the kernel. A restore that fails on a dataset the account owns stops the run **before** it trains (`exit 2`, `errors: ["restore"]`). The per-seed summaries are copied flat into the output directory as well, through the campaign's own `_keep_seed_summaries`, so a failed push still leaves every number the verdict reads. |
+| **The reading the fetch prints, so the record cannot go unread** | `tpu_null_queue.verdict(record)`: how many of the twelve landed, in which dtype, how many arms **do nothing** (`search_flops 0` and `mutation_count 0` - the null clause's own built-in check, so a policy arm cannot be read as this queue), and the final losses' mean, min and max. It is printed by `--fetch` for the reason `artifacts/tpu-probe/NOTES.md` records: a result that needs a second hand-run command is a result that can be left unread. |
+| **A third defect, in shared code, found staging this kernel** | `push_tpu_probe.XLA_BOOTSTRAP` - the fragment all four Torch-XLA entries paste in - calls `subprocess.run` but relies on its **entry** importing `subprocess` at module level. The price probe's entry names only `glob`, `runpy` and `sys`, so on the first image that actually needed the install the bootstrap would have died on a `NameError` *inside the code whose own prints are the diagnosis*. It never fired because the image already carries `torch_xla` (`already-present`), which is also why it was invisible. Fixed **in the fragment** rather than in one copy of it, with the reason recorded beside it. |
+| **Verified on a real `xla` device before any TPU hour** | The whole changed path ran locally on **XLA:CPU** (`PJRT_DEVICE=CPU`, torch 2.8.0 / torch_xla 2.8.0 in a throwaway `/tmp` env): two development seeds, one worker, 20 steps, `errors: []`, `seeds_completed: 2`, final loss mean **9.0736** (min 9.0733, max 9.0739), **1,041.5 tokens/s** per chip, `search_flops 0` / `mutation_count 0` on both arms, and the new split visible in the artifact tree - the record plus two `seed-NNNN-summary.json` files under `--output`'s directory (**12 KB**), and the two published seed trees with their checkpoints under `--scratch` (**343 MB**), with the session directories cleaned after publish. Two seeds at dev fidelity is not a schedule input; it is the statement that the publish, the split and the reading work on this device. |
+| **Pinned** | `tests/test_tpu_null_queue.py` (new, 20) and `tests/test_push_tpu_null_queue.py` (new, 9), plus one in `tests/test_push_tpu_probe.py` and one in `tests/test_push_tpu_session_price_probe.py` (2112 -> **2122** in the suite). They hold the quiet ones: a seed spec that reads backwards or repeats is refused rather than silently training nothing; the declared seed is the registered config and **names its own dtype**; the development seed is the dev shape, so a dry run cannot be read as the declared one; on a kernel the roots are the campaign's answer and **not** `--output`'s parent; `main` writes the record to `--output` and the roots to `--scratch`; a restored seed is skipped and its losses read back from its own published summary; a failed restore trains nothing; the verdict counts a non-null arm against the clause; and the publish is the probe's own guard, whose refusal (exit 5) leaves no `kaggle kernels push` behind it. |
+| **The state** | Kernel **`sid123123234/act-tpu-null-queue`** pushed on **TPU on / GPU off**, staging `--device xla --seeds 15024-15035 --steps 6000 --workers 8 --fidelity declared --dataset sid123123234/act-v0-5-2-null`, with the code dataset republished at this revision **through the probe's guard** and the mount downloaded back and checked to carry the runner. Expected wall: **~5-6 h** (twelve seeds, eight chips, two waves) against **16.77 h**, and Kaggle bills wall clock. The GPU week is untouched: the primary block stays at 6 of 12 and the next GPU work is the 2026-10-03 refresh. |
+| **A correction to the two entries below: the driver's lock is **not** held (measured 2026-09-29)** | Both 2026-09-28/29 entries say "the driver still holds the lock and is sleeping to the 2026-10-03 refresh". It does not: pid **63681** is **gone**, and the last thing it wrote is the *pre-commitment* rather than the wait - `quota: 1.65 h remaining of 30.0 ... waiting rather than billing a partial session` at `2026-09-27T16:33:44Z`. The campaign's own health line says the same thing in the other direction (`driver lock: not held - nothing is waiting on this queue`), and it names the consequence: **nothing resumes at the refresh until the campaign is relaunched**, so hours left at 2026-10-03 are lost if nobody is watching. That is a fact about the *GPU* half of the campaign and does not touch this run; it is corrected here because two entries assert otherwise, and the conclusion each of them draws (no GPU queue moved) is unaffected. |
+
+What this does not do is decide the amendment. A block of TPU-fp32 null seeds is evidence about
+whether the *route* works - and it is the last piece of §5.14 option 2 that had never run once on
+the hardware - but pairing it against the two-T4 fp16 primary is still two registration changes,
+and this entry does not take them.
+
 ## The price probe bought the finding it was built for: the declared shape could not run on a TPU at all (2026-09-29)
 
 **Live update, 2026-09-29 05:36Z (read 10:17Z):** `act-tpu-session-price` v1 came back **`ERROR`** -
@@ -7,8 +37,10 @@
 returned is the most useful reading the TPU week has produced: the registered session path at the
 declared shape **cannot start on XLA**, for a reason no earlier record could have shown, and it
 is now fixed. The evidence is committed under `artifacts/tpu-session-price/` (`NOTES.md` with the
-three fetched files' sha256s). No campaign queue moved: the driver still holds the lock and is
-sleeping to the 2026-10-03 refresh.
+three fetched files' sha256s). No campaign queue moved. *(**Corrected 2026-09-29:** this sentence
+said "the driver still holds the lock and is sleeping to the 2026-10-03 refresh"; measured, the
+driver process is **gone** and the lock is **not** held - see the leading entry. Nothing about the
+price probe's reading changes.)*
 
 | | |
 |---|---|
@@ -50,8 +82,10 @@ the next real work in this campaign is the GPU refresh.
 **Live update, 2026-09-28 19:36Z:** the rehearsal came back **`COMPLETE`** - all four phases in
 `completed`, `errors` empty - after queueing **~10.8 h** and running **~2.5 min**. The whole
 account is committed under `artifacts/tpu-session-rehearsal/` (`NOTES.md`, with the five fetched
-files' sha256s). The campaign's own queues are untouched: the driver still holds the lock and is
-sleeping to the 2026-10-03 refresh.
+files' sha256s). The campaign's own queues are untouched. *(**Corrected 2026-09-29:** "the driver
+still holds the lock" was wrong at the time of writing - the process had already exited after
+declining to bill a partial session, which is why nothing resumes at the refresh until the campaign
+is relaunched. See the leading entry.)*
 
 | | |
 |---|---|

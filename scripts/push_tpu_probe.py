@@ -63,9 +63,16 @@ WORK = ROOT / "artifacts" / "tpu-probe"
 #: Shared rather than written twice, and for the same reason the mount search is: the two
 #: kernels are queued on the same platform, and a second copy is a second answer to "is
 #: torch_xla here?" - the failure mode being a run that dies of an ImportError an hour into
-#: the queue, with the other kernel's working bootstrap sitting in the repository.
+#: the queue, with the other kernel's working bootstrap sitting in the repository).
+#: Its own imports travel with it for the same reason: the fragment is pasted into entries that
+#: do not all import ``subprocess`` at module level (measured 2026-09-29 - the price probe's
+#: entry names only ``glob``, ``runpy`` and ``sys``, so the first image that actually needed the
+#: install would have died on a ``NameError`` inside the bootstrap, which is exactly where the
+#: bootstrap's own prints are the diagnosis).
 XLA_BOOTSTRAP = '''def ensure_xla() -> str:
     """Torch-XLA, installing it if the image does not already carry it."""
+    import subprocess
+
     try:
         import torch_xla  # noqa: F401
         return "already-present"

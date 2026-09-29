@@ -40,11 +40,32 @@ it errs toward slower rather than faster. The record says which dtype produced i
 Each seed checkpoints on the registered cadence, so a kernel that hits the platform's wall can be
 followed by a second run that resumes from those checkpoints rather than restarting the seed.
 
+**Where the roots live, and where the record lives.** A Kaggle kernel's ``/kaggle/working`` is a
+20 GB loopback mount (measured: 19.5 GiB on ``/dev/loop1``) while the container's overlay has about
+a terabyte free, and one completed seed publishes roughly 3.2 GiB of resume state - so the handoff
+roots go to the overlay, through ``kaggle_t4.workspace_root``, which is the campaign's own answer
+to exactly this (``/tmp`` on a kernel, repo-relative locally), and never beside the record. Twelve
+seeds written into the working mount would fill it and lose the **record**, which is the one
+artifact the fetch reads. ``--scratch`` names the root; the record stays at ``--output``.
+
+**What a kernel does that the dry run does not.** With ``--dataset`` given (a kernel passes the
+registered null queue's own id) the run follows section 5.2 the way a session does: it **restores**
+the newest published version before training, **skips the seeds that version already carries**
+rather than re-training over them, and **publishes** at exit through
+``kaggle_remote.publish_on_exit`` - which retries and never raises, because the container ends with
+the kernel and that push is the only durable copy of the block. The per-seed summaries are copied
+flat into the output directory as well (``kaggle_t4._keep_seed_summaries``), so a failed push still
+leaves every number the verdict reads.
+
     # development fidelity, one worker - the shape a local XLA:CPU dry run can carry
     PJRT_DEVICE=CPU python scripts/tpu_null_queue.py --device xla --fidelity development \
         --seeds 15024-15025 --workers 1 --steps 20
     # the queue itself, on a TPU
     python scripts/tpu_null_queue.py --device xla --seeds 15024-15035 --workers 8
+    # what the pushed kernel entry runs: record into the kernel output, roots onto the overlay
+    python scripts/tpu_null_queue.py --device xla --seeds 15024-15035 --workers 8 \
+        --dataset sid123123234/act-v0-5-2-null \
+        --output /kaggle/working/tpu-null-queue.json
 """
 
 from __future__ import annotations
@@ -58,13 +79,16 @@ import threading
 import time
 import traceback
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-# Reused rather than re-implemented: the probe's per-thread device binding (and the reason for it),
-# the record saver, and the rehearsal's development-fidelity config and revision lookup.
+# Reused rather than re-implemented: the probe's per-thread device binding (and the reason for it)
+# and its record saver, the rehearsal's development-fidelity config and revision lookup, and the
+# campaign's own answer to "where do handoff roots live on a kernel" (`kaggle_t4.workspace_root`)
+# plus the summary-keeping it does on a session's exit path.
+import kaggle_t4  # noqa: E402
 import tpu_probe  # noqa: E402
 import tpu_session_rehearsal as rehearsal  # noqa: E402
 
@@ -94,6 +118,29 @@ DTYPE = "fp32"
 #: resume rather than a re-run. The declared cadence is 500; at ~1,879 tokens/s per chip a step is
 #: 4,096 tokens, so this is a few minutes of work per checkpoint.
 CHECKPOINT_INTERVAL = 500
+
+#: The campaign dataset this run publishes into, in the form ``kaggle_t4.Queue.dataset`` builds
+#: (``<owner>/<slug>-null``). Unset means no remote half at all: the local dry run's behaviour,
+#: which is why it is not defaulted to a dataset rather than to nothing.
+DATASET: str | None = None
+
+#: Where the working mount is, when there is one. A module constant rather than a literal inside
+#: the function so the placement rule is testable without a Kaggle host.
+KAGGLE_WORKING = Path("/kaggle/working")
+
+
+def scratch_root(output: Path) -> Path:
+    """Where this run's handoff roots go - the overlay on a kernel, beside the output locally.
+
+    See the module docstring: the roots are gigabytes and the working mount is 20 GB, so they
+    cannot share it with the record. On a kernel the answer is ``kaggle_t4.workspace_root``'s
+    (``/tmp/act-lab-null-queue-<run token>``, token-scoped because the overlay is host-shared
+    and two runs must never share a directory). Off a kernel it is the output's own parent, so
+    a dry run stays inspectable where the caller put it.
+    """
+    if kaggle_t4.run_token():
+        return kaggle_t4.workspace_root("null-queue")
+    return Path(output).parent / f"{DATASET_ROOT}-scratch"
 
 
 def parse_seeds(spec: str) -> list[int]:
@@ -198,11 +245,15 @@ def run_seed(
             "search_flops": arm.search_flops,
             "mutation_count": arm.mutation_count,
         }
+        # ``clean_working_dir``: the published copy is the durable one and a resume restores
+        # from it, so holding the session's own second copy of the same checkpoint would cost
+        # the block another ~3.2 GiB per seed of overlay for nothing.
         publish_seed(
             dataset_root,
             result,
             session_dir=session_dir,
             code_revision=revision,
+            clean_working_dir=True,
         )
         entry["published"] = True
     except Exception as exc:  # noqa: BLE001 - recorded, not swallowed
@@ -238,6 +289,145 @@ def device_count() -> int:
         return 1
 
 
+def restore_published(
+    dataset_root: Path, dataset: str | None, *, log: Callable[[str], None] | None = None
+) -> dict[str, Any]:
+    """Section 5.2's startup half: bring the block's already-published seeds local.
+
+    A run that asked for remote state and cannot get it must stop **before** it trains, and
+    this one does: ``restore_latest`` raises rather than letting a fresh block be trained and
+    published over a complete one. Measured 2026-09-26/27, that misreading cost a session's
+    quota and republished a seed over its own version while the driver read the same partial
+    progress every time. Without ``--dataset`` there is nothing remote to ask for, and a dry
+    run restores nothing.
+    """
+    if not dataset:
+        return {"dataset": None, "restored": [], "error": None}
+    from act.ops.kaggle_remote import default_client, restore_latest
+
+    try:
+        restored = restore_latest(
+            dataset_root, dataset=dataset, client=default_client(), log=log
+        )
+    except Exception as exc:  # noqa: BLE001 - reported in the record, not swallowed
+        return {"dataset": dataset, "restored": [], "error": f"{type(exc).__name__}: {exc}"}
+    return {"dataset": dataset, "restored": sorted(int(seed) for seed in restored), "error": None}
+
+
+def skipped_entry(dataset_root: Path, seed: int) -> dict[str, Any]:
+    """A seed the restored version already carries, read back from its published summary.
+
+    Read rather than merely counted: a block assembled over two runs still has to report every
+    seed's losses, and the restored version is where the earlier run's numbers live.
+    """
+    entry: dict[str, Any] = {
+        "seed": seed,
+        "skipped": "already published in the restored version",
+        "published": True,
+    }
+    try:
+        from act.training.v0_handoff import load_seed_summary
+
+        arm = (load_seed_summary(dataset_root, seed).get("arms") or {}).get("null") or {}
+        entry["arm"] = {
+            "mode": "null",
+            "final_loss": arm.get("final_loss"),
+            "validation_loss": arm.get("validation_loss"),
+            "tokens_per_second": arm.get("tokens_per_second"),
+            "wall_time_seconds": arm.get("wall_time_seconds"),
+            "search_flops": arm.get("search_flops"),
+            "mutation_count": arm.get("mutation_count"),
+        }
+    except Exception as exc:  # noqa: BLE001 - the skip still counts as complete
+        entry["summary_read"] = f"{type(exc).__name__}: {exc}"
+    return entry
+
+
+def keep_summaries(dataset_root: Path, output_dir: Path) -> int:
+    """Copy every seed's summary flat into the output directory, as a session does.
+
+    The push is the durable copy and it is also the one step that can fail *after* hours of
+    training; every number the verdict reads per seed is in these kilobyte files. Reuses the
+    campaign's own keeper rather than a second spelling of "which summary is whose" - the
+    publisher writes each payload twice (under the seed and under its ``reports/``), and the
+    flat name has to carry the seed because they are all called ``seed-summary.json``.
+    """
+    return kaggle_t4._keep_seed_summaries(dataset_root, output=output_dir)
+
+
+def publish_remote(
+    dataset_root: Path,
+    dataset: str | None,
+    *,
+    seeds: int,
+    log: Callable[[str], None] | None = None,
+    log_path: Path | None = None,
+) -> dict[str, Any]:
+    """Push the block to its dataset on the exit path; never raises.
+
+    This is the only durable copy of a twelve-seed block - the roots live in the container
+    overlay, which ends with the kernel - so the outcome is *recorded* rather than trusted, and
+    a failure here is a fact the record carries, not an exception that loses the run's account
+    of itself. ``publish_on_exit`` already retries and never raises; the guard here is for the
+    steps around it (building the client can fail with no credentials at all).
+    """
+    if not dataset:
+        return {"dataset": None, "status": "not_requested"}
+    try:
+        from act.ops.kaggle_remote import default_client, publish_on_exit
+
+        result = publish_on_exit(
+            dataset_root,
+            dataset=dataset,
+            client=default_client(),
+            version_notes=f"tpu null queue: {seeds} seed version(s)",
+            log=log,
+            log_path=log_path,
+        )
+        return result.to_dict()
+    except Exception as exc:  # noqa: BLE001 - the exit path never raises
+        return {
+            "dataset": dataset,
+            "status": "failed",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+
+def verdict(record: dict[str, Any]) -> str:
+    """One line: how many of the queue's seeds landed, and what they trained to.
+
+    Stated in the null clause's own terms - this is the do-nothing arm, so the fields that say
+    so are ``search_flops`` and ``mutation_count``, and the losses are what the primary record
+    gets paired against. It is the fetch's read, so it cannot be left to a second hand-run
+    command (`artifacts/tpu-probe/NOTES.md` records what that costs).
+    """
+    seeds = record.get("seeds") or {}
+    if not seeds:
+        return "no seeds: the run left no per-seed entry to read"
+    arms = [entry["arm"] for entry in seeds.values() if isinstance(entry.get("arm"), dict)]
+    losses = [float(arm["final_loss"]) for arm in arms if arm.get("final_loss") is not None]
+    zeroed = sum(
+        1 for arm in arms if arm.get("search_flops") == 0 and arm.get("mutation_count") == 0
+    )
+    rates = [float(arm.get("tokens_per_second") or 0.0) for arm in arms]
+    line = (
+        f"{record.get('seeds_completed', 0)} of {len(record.get('seeds_requested') or [])} "
+        f"seed(s) landed in {record.get('dtype', 'unknown')} on XLA; {zeroed} of {len(arms)} "
+        "arm(s) do nothing (search_flops 0, mutation_count 0)"
+    )
+    if losses:
+        line += (
+            f"; final loss mean {sum(losses) / len(losses):.4f}, min {min(losses):.4f}, "
+            f"max {max(losses):.4f}"
+        )
+    if rates and max(rates) > 0:
+        line += f"; {sum(rates) / len(rates):,.1f} tokens/s per chip"
+    errors = record.get("errors") or []
+    if errors:
+        line += f"; {len(errors)} error(s): {errors[:4]}"
+    return line
+
+
 def base_record(args: argparse.Namespace, revision: str) -> dict[str, Any]:
     """This record's labels, before any seed has run.
 
@@ -260,13 +450,16 @@ def base_record(args: argparse.Namespace, revision: str) -> dict[str, Any]:
         "seeds_requested": parse_seeds(args.seeds),
         "dataset_root": str(DATASET_ROOT),
         "tpu_dataset_root_name": DATASET_ROOT,
+        "dataset": args.dataset,
         "rebuild_treatment": dict(REBUILD_TREATMENT),
         "code_revision": revision,
         "checkpoint_interval": CHECKPOINT_INTERVAL,
         "scratch_root": (
-            "each seed's session checkpoints live under --output's parent; the published seed "
-            "artifacts go to the dataset root named in `tpu_dataset_root_name`"
+            "the seed checkpoints and the dataset root live under --scratch (the container "
+            "overlay on a kernel), never beside the record: the block is ~38 GiB and the "
+            "working mount is 20 GB"
         ),
+        "clean_working_dir_after_publish": True,
         "completed": [],
         "errors": [],
         "seeds": {},
@@ -297,26 +490,60 @@ def main(argv: list[str] | None = None) -> int:
         default="declared",
         help="development is the local dry run: the dev shape, not the queue's",
     )
+    parser.add_argument(
+        "--dataset",
+        default=DATASET,
+        help="campaign dataset to restore from and publish into; unset = no remote half",
+    )
+    parser.add_argument(
+        "--scratch",
+        type=Path,
+        default=None,
+        help="where the handoff roots go; default keeps them off the kernel's working mount",
+    )
     parser.add_argument("--output", type=Path, default=OUTPUT)
     args = parser.parse_args(argv)
 
+    def log(line: str) -> None:
+        # Printed as it arrives, because a kernel the platform kills still carries these.
+        print(f"[queue] {line}", flush=True)
+
     revision = rehearsal._revision()
     record = base_record(args, revision)
-    work = Path(args.output).parent
-    dataset_root = work / DATASET_ROOT
-    dataset_root.mkdir(parents=True, exist_ok=True)
     path = Path(args.output)
+    scratch = Path(args.scratch) if args.scratch else scratch_root(path)
+    scratch.mkdir(parents=True, exist_ok=True)
+    dataset_root = scratch / DATASET_ROOT
+    dataset_root.mkdir(parents=True, exist_ok=True)
+    record["scratch"] = str(scratch)
 
     seeds = parse_seeds(args.seeds)
+    # Section 5.2 before a token is trained: what the queue already carries is restored, and a
+    # restore that fails on a dataset the account owns stops the run rather than re-training
+    # over it. A block assembled over two runs reports the earlier run's seeds too.
+    record["restore"] = restore_published(dataset_root, args.dataset, log=log)
+    if record["restore"]["error"]:
+        record["errors"].append("restore")
+        record["seeds_completed"] = 0
+        tpu_probe._save(record, path)
+        print(json.dumps({k: v for k, v in record.items() if k != "seeds"}, indent=1, default=str))
+        return 2
+    published = set(record["restore"]["restored"])
+    pending = [seed for seed in seeds if seed not in published]
+    for seed in seeds:
+        if seed in published:
+            record["seeds"][str(seed)] = skipped_entry(dataset_root, seed)
+            record["completed"].append(seed)
+
     available = device_count()
     workers = args.workers if args.workers > 0 else available
-    workers = max(1, min(workers, len(seeds)))
+    workers = max(1, min(workers, len(pending)))
     record["devices_available"] = available
     record["workers"] = workers
-    print(
-        f"[queue] {len(seeds)} seed(s), {workers} worker(s) of {available} device(s), "
-        f"fidelity {args.fidelity}, {args.steps} steps -> {dataset_root}",
-        flush=True,
+    log(
+        f"{len(seeds)} seed(s) requested, {len(published)} already published, "
+        f"{len(pending)} to train; {workers} worker(s) of {available} device(s), "
+        f"fidelity {args.fidelity}, {args.steps} steps -> {dataset_root}"
     )
     tpu_probe._save(record, path)
 
@@ -333,20 +560,30 @@ def main(argv: list[str] | None = None) -> int:
                 steps=args.steps,
                 fidelity=args.fidelity,
                 dataset_root=dataset_root,
-                work=work,
+                work=scratch,
                 revision=revision,
                 record=record,
                 path=path,
             )
-            for rank, seed in enumerate(seeds)
+            for rank, seed in enumerate(pending)
         ]
         for future in concurrent.futures.as_completed(futures):
             future.result()
 
     record["wall_seconds"] = time.time() - started
     record["seeds_completed"] = len(record["completed"])
+    # Exit path, in the order a session's is: keep the kilobyte summaries in the output first
+    # (so a failed push still leaves the losses), then push, then write the outcome down.
+    kept = keep_summaries(dataset_root, path.parent)
+    log(f"kept {kept} seed summaries in {path.parent}")
+    publish_log = path.parent / "tpu-null-queue-publish-log.json"
+    record["publish"] = publish_remote(
+        dataset_root, args.dataset, seeds=len(pending), log=log, log_path=publish_log
+    )
+    log(f"publish: {record['publish'].get('status')}")
     tpu_probe._save(record, path)
     print(json.dumps({k: v for k, v in record.items() if k != "seeds"}, indent=1, default=str))
+    print(verdict(record))
     return 0 if len(record["completed"]) == len(seeds) else 1
 
 

@@ -1113,6 +1113,85 @@ call sites in `src/act/model/v0_moe.py`. The watcher above polls for 24 h. Quota
 **TPU 16.77 of 20 h** and **GPU 1.65 of 30 h**, both refreshing 2026-10-03. The
 amendment is still **unsigned**, and now has the session model's own dtype to settle as well.
 
+### Section 5.14's option 2, live: the null queue on the TPU week (2026-09-29)
+
+The GPU week is spent - **1.65 of 30 h** until the 2026-10-03 refresh, and six of the block's
+twelve seeds published - while the TPU week stands at **16.77 of 20 h**. The operator reopened
+section 5.14's option 2 on that reading and gave the go, so the idle week is being spent
+**producing** the null queue's block rather than measuring it. This is the registered command with
+`--device xla` and a change of placement that the session CLI does not have: the CLI walks seeds
+**in turn on one device**, and at the probe's per-chip rate twelve seeds is ~43 h against a 20 h
+week, so `scripts/tpu_null_queue.py` runs **one declared seed per chip** (a v5e-8 takes eight at
+once, two waves, ~5-6 h of wall clock - and Kaggle bills wall clock).
+
+What it reuses rather than re-implements is the point: `run_v0_session` and `publish_seed` (the
+registered path), the probe's per-thread device binding (a step marker acts on the *calling
+thread's* device, so an unbound rank would mark chip 0 and compile graphs nobody executes), the
+rehearsal's revision and development config, the section 5.47 rebuild treatment on the arm, and
+`kaggle_t4.workspace_root` for where the roots live.
+
+**The one field that is not the registration, and why.** The dtype is **fp32**, not the registered
+fp16: `V0SessionConfig` admits `fp32` and `fp16` only - the amendment's `bf16` is not a session
+dtype at all - and fp16 on a TPU needs `torch.autocast(device_type="xla", ...)` plus a
+`GradScaler`, neither of which any record here shows working. fp32 is registered, needs no such
+machinery, and is the **slower** of the two dtypes `tpu_probe` v5 put within 6% of each other, so
+it errs against the queue. The record carries `dtype`, and the walkthrough below is explicit that
+this produces a *block*, not an adopted amendment.
+
+**What the kernel does at startup and at exit** (`--dataset sid123123234/act-v0-5-2-null`):
+**restores** the newest published version, **skips** the seeds it already carries (a published seed
+is never re-trained over), and **publishes** at exit through `kaggle_remote.publish_on_exit`, which
+retries and never raises. A restore that fails on a dataset the account owns stops the run before
+it trains (exit 2, `errors: ["restore"]`). The record goes to `--output`
+(`/kaggle/working/tpu-null-queue.json`); the ~38 GiB of handoff roots go to `--scratch`, which on a
+kernel is the container overlay - `/kaggle/working` is a **20 GB loopback mount**, so a twelve-seed
+block put there fills the mount and loses the record. The per-seed summaries are copied flat into
+the output directory as insurance, so a failed push still leaves the losses.
+
+```bash
+# stage and push - commit first: the code dataset ships HEAD, and a fix left uncommitted is a fix
+# the kernel does not run. The publish goes through the probe's own guard (exit 5 while a campaign
+# session is mounted).
+PYTHONPATH=src .venv/bin/python scripts/push_tpu_null_queue.py
+# what was staged, before it is fired (record name, placement, dataset, step budget)
+PYTHONPATH=src .venv/bin/python scripts/push_tpu_null_queue.py --stage-only
+# watch it and keep the record when it lands (a TPU kernel can queue for hours)
+KERNEL=sid123123234/act-tpu-null-queue \
+OUT_DIR=$PWD/artifacts/tpu-null-queue/output \
+PUSHER=scripts/push_tpu_null_queue.py MAX_POLLS=720 \
+  setsid nohup bash scripts/fetch_tpu_session_rehearsal_when_done.sh > /tmp/tpu-null-watch.log 2>&1 &
+# the reading, in one line: how many of the twelve landed, in which dtype, how many arms do nothing
+# (search_flops 0, mutation_count 0 - the clause's own check), and the losses
+PYTHONPATH=src .venv/bin/python scripts/push_tpu_null_queue.py --fetch \
+    --save artifacts/tpu-null-queue/output
+```
+
+```bash
+# the same path on XLA:CPU first, which is what a local dry run is for (development fidelity only:
+# the declared shape needs 33 GB of host memory and dies mid-phase)
+LIB=/home/shoutsid/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib
+env LD_LIBRARY_PATH=$LIB PJRT_DEVICE=CPU PYTHONPATH=src /tmp/xla-local/bin/python \
+  scripts/tpu_null_queue.py --device xla --fidelity development \
+  --seeds 15024-15025 --workers 1 --steps 20 \
+  --scratch /tmp/xla-null-check --output /tmp/xla-null-check-out/tpu-null-queue.json
+```
+
+**What a fetch has to show, and what it would mean if it does not.** `seeds_completed: 12`,
+`errors: []`, twelve `arm.search_flops == 0` with `mutation_count == 0`, `code_revision` matching
+the pushed revision, and `publish.status: published` (a `failed` push with twelve summaries in the
+output directory is recoverable: the numbers are what the clause reads). A partial block is not a
+lost block - the runner skips what the restored version carries, so a second fire finishes it.
+
+**Live, 2026-09-29 13:05Z:** the runner and this push were verified on a real `xla` device before
+any TPU hour was spent - two development seeds, one worker, `errors: []`, the null arm at
+`search_flops 0` / `mutation_count 0`, the record and two flat summaries (**12 KB**) under
+`--output`, and the two published seed trees (**343 MB**) under `--scratch` with the session
+directories cleaned after publish - and the local dry run is also what caught the second draft's
+placeholder bug (a `'V0ArmResult' object has no attribute 'tokens'` that would have failed every
+seed after training its wave). **Checked with it:** the GPU week is untouched (the primary block
+stays 6 of 12), and the driver's lock is **not** held - `campaign_health.py` says so in as many
+words, and it means nothing resumes at the 2026-10-03 refresh until the campaign is relaunched.
+
 **Live, 2026-09-27 17:09Z (returned below):** `act-tpu-session-rehearsal` is pushed as
 **version 1** (`QUEUED`, TPU on / GPU off) from the code dataset republished at **`9105dc4`**,
 and the fetch watcher above is running - so the record lands in

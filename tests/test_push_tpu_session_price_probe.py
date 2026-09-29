@@ -64,6 +64,11 @@ def test_the_entry_bootstraps_torch_xla_the_same_way_the_other_two_do() -> None:
     """
     assert push_tpu_probe.XLA_BOOTSTRAP in pusher.ENTRY
     assert "status = ensure_xla()" in pusher.ENTRY
+    # This entry names only ``glob``, ``runpy`` and ``sys``, so the bootstrap's install branch
+    # would have raised ``NameError`` on the first image that needed it - measured 2026-09-29,
+    # and fixed in the shared fragment rather than in one copy of it.
+    assert "import subprocess" not in pusher.ENTRY.split(push_tpu_probe.XLA_BOOTSTRAP)[0]
+    assert "import subprocess" in push_tpu_probe.XLA_BOOTSTRAP
 
 
 def test_stage_substitutes_the_steps_the_seed_and_the_dtype(

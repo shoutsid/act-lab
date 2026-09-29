@@ -129,3 +129,17 @@ def test_the_record_name_is_the_one_the_kernel_writes() -> None:
     constant here; a rename on one side alone is a fetch that finds a log and no measurement."""
     assert push_tpu_probe.RECORD_NAME in push_tpu_probe.ENTRY
     assert f"/kaggle/working/{push_tpu_probe.RECORD_NAME}" in push_tpu_probe.ENTRY
+
+
+def test_the_shared_bootstrap_carries_the_imports_it_uses() -> None:
+    """The fragment is pasted into entries that do not all import ``subprocess``.
+
+    Measured 2026-09-29: the price probe's entry names only ``glob``, ``runpy`` and ``sys``, so
+    the install branch of this bootstrap would have raised ``NameError`` on the first image that
+    needed it - inside the one piece of code whose own prints are the diagnosis. Pinned on the
+    fragment rather than on each entry, because the fragment is what gets copied.
+    """
+    assert "import subprocess" in push_tpu_probe.XLA_BOOTSTRAP
+    assert "def ensure_xla() -> str:" in push_tpu_probe.XLA_BOOTSTRAP
+    # And the installer it guards is still the one that tries the extras build too.
+    assert "torch_xla[tpu]" in push_tpu_probe.XLA_BOOTSTRAP
