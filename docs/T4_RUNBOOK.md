@@ -1153,6 +1153,11 @@ the output directory as insurance, so a failed push still leaves the losses.
 # the kernel does not run. The publish goes through the probe's own guard (exit 5 while a campaign
 # session is mounted).
 PYTHONPATH=src .venv/bin/python scripts/push_tpu_null_queue.py
+# Kaggle allows ONE TPU session at a time, and the push is refused while another TPU kernel holds
+# the slot (`Maximum batch TPU session count of 1 reached`). The wait is a script, and it pushes
+# the *staged* folder rather than re-running the pusher - so the revision the kernel mounts is the
+# one the runner was committed at, not whatever HEAD is when the slot frees.
+setsid nohup bash scripts/push_tpu_null_queue_when_free.sh > /tmp/tpu-null-push-watch.log 2>&1 &
 # what was staged, before it is fired (record name, placement, dataset, step budget)
 PYTHONPATH=src .venv/bin/python scripts/push_tpu_null_queue.py --stage-only
 # watch it and keep the record when it lands (a TPU kernel can queue for hours)
@@ -1181,6 +1186,14 @@ env LD_LIBRARY_PATH=$LIB PJRT_DEVICE=CPU PYTHONPATH=src /tmp/xla-local/bin/pytho
 the pushed revision, and `publish.status: published` (a `failed` push with twelve summaries in the
 output directory is recoverable: the numbers are what the clause reads). A partial block is not a
 lost block - the runner skips what the restored version carries, so a second fire finishes it.
+
+**Live, 2026-09-29 13:20Z:** the push was **refused** - `Maximum batch TPU session count of 1
+reached` - because the price probe's v2 is queued on the TPU and the account's TPU limit is one
+session at a time. That is why the slot waiter exists rather than a hand-watched terminal, and it
+is also why the probe is **not** cancelled: it is a declared-shape smoke test of the same path, and
+if the declared shape still cannot run on a TPU, a ~30 s run says so before the block's first wave
+does. The order that follows is the useful one: probe boots, prices the declared shape, ends; then
+the null queue's push goes out and its twelve seeds start.
 
 **Live, 2026-09-29 13:05Z:** the runner and this push were verified on a real `xla` device before
 any TPU hour was spent - two development seeds, one worker, `errors: []`, the null arm at

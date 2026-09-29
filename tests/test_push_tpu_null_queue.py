@@ -119,6 +119,29 @@ def test_the_publish_is_the_probes_guard_and_its_refusal_stops_the_push(
     assert calls == [], "a refused publish must not be followed by a push"
 
 
+def test_the_slot_waiter_pushes_what_was_staged_and_publishes_nothing_itself() -> None:
+    """Kaggle allows one TPU session at a time, so the queue's push can be refused by a slot.
+
+    The refusal is a platform event rather than a mistake, so it is waited out - and the wait
+    pushes the folder the pusher already staged instead of re-running it: re-running would
+    republish the code dataset at HEAD, which would let a later commit become the revision the
+    kernel mounts and the record names.
+    """
+    text = (ROOT / "scripts" / "push_tpu_null_queue_when_free.sh").read_text(encoding="utf-8")
+
+    assert f"{pusher.KERNEL_SLUG}" in text
+    assert "kaggle kernels push -p" in text
+    assert "fetch_tpu_session_rehearsal_when_done.sh" in text
+    # The pusher is named exactly once, as the fetch watcher's PUSHER: it is never *run* here,
+    # because running it would republish the code dataset at HEAD on the way to the push.
+    assert text.count("push_tpu_null_queue.py") == 1
+    assert "PUSHER=scripts/push_tpu_null_queue.py" in text
+    assert "ensure_code_dataset" not in text
+    # Bounded, and the slot's holder is named in the log rather than left to be guessed.
+    assert "MAX_POLLS" in text and "gave up" in text
+    assert "BLOCKER" in text and "tpu-session-price" in text
+
+
 def test_the_fetch_keeps_the_record_the_log_and_the_queue_s_reading(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
