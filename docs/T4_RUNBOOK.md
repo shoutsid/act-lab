@@ -1187,6 +1187,13 @@ the pushed revision, and `publish.status: published` (a `failed` push with twelv
 output directory is recoverable: the numbers are what the clause reads). A partial block is not a
 lost block - the runner skips what the restored version carries, so a second fire finishes it.
 
+**The GPU half is back on the rails while the TPU slot is waited out.** The driver was gone, which
+is `campaign_health.py`'s `STALLED` state, so `run_gate4_campaign.sh` was relaunched (`setsid nohup`, appending to
+`artifacts/gate4-campaign.log`) and is sleeping to the 2026-10-03 refresh under `--wait-for-quota`
+with the lock held. Its next GPU week goes to the registered order: the primary block's remaining
+six seeds, the control queue, then the null queue - which the TPU block makes nearly free, since
+the CLI labels an already-published seed `skipped_complete` rather than re-training it.
+
 **Its exit code is not the answer to "did it fire?"** - measured 2026-09-29: `kaggle kernels push -p
 artifacts/tpu-null-queue` prints `Kernel push error: Maximum batch TPU session count of 1
 reached.` and **exits 0**. The slot waiter's first version trusted `$?` and reported a queue that
@@ -1194,7 +1201,7 @@ never left (the account's own kernel list showed no such kernel). Both the waite
 `push_tpu_null_queue.push_kernel` (exit 6) now read the CLI's `successfully pushed` line instead,
 and so should anything else that decides whether a run went out.
 
-**Live, 2026-09-29 13:20Z:** the push was **refused** - `Maximum batch TPU session count of 1
+**Live, 2026-09-29 11:50Z:** the push was **refused** - `Maximum batch TPU session count of 1
 reached` - because the price probe's v2 is queued on the TPU and the account's TPU limit is one
 session at a time. That is why the slot waiter exists rather than a hand-watched terminal, and it
 is also why the probe is **not** cancelled: it is a declared-shape smoke test of the same path, and
@@ -1202,7 +1209,17 @@ if the declared shape still cannot run on a TPU, a ~30 s run says so before the 
 does. The order that follows is the useful one: probe boots, prices the declared shape, ends; then
 the null queue's push goes out and its twelve seeds start.
 
-**Live, 2026-09-29 13:05Z:** the runner and this push were verified on a real `xla` device before
+**One provenance catch, because a queued kernel mounts the dataset's *latest* version.** The GPU
+driver's relaunch republished `act-lab-code` (11:56Z, `d5fdd7b`), so the revision the null queue
+will *name* is not the revision it was pushed from. Nothing runs differently - `diff` between the
+two commits and a second download of the dataset both show `scripts/tpu_null_queue.py` at sha256
+**`9e744d9c2edce37123782d29bd9b14b7ee1cf042c0ae9077e73ca12619c1e971`** and
+`src/act/model/checkpointing.py` at **`0bf0ee2e6de98a1c947aef8ade03611d816fafd504aa5f84d6de24a8f37917d2`**
+in both - so the runner's **hash** is what identifies the code, and the record's `code_revision` is
+read from the mount at run time and names whatever is latest then. Editing the runner after the
+push but before the kernel starts would move that hash silently.
+
+**Live, 2026-09-29 11:45Z:** the runner and this push were verified on a real `xla` device before
 any TPU hour was spent - two development seeds, one worker, `errors: []`, the null arm at
 `search_flops 0` / `mutation_count 0`, the record and two flat summaries (**12 KB**) under
 `--output`, and the two published seed trees (**343 MB**) under `--scratch` with the session
