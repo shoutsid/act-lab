@@ -1102,8 +1102,10 @@ placing it took a day), and the price is taken in **fp32** - section 5.14's opti
 **bf16** arm, and `bf16` is not a dtype this session has (it accepts `fp32` and `fp16`), so that
 arm is a registered change to section 5.2's session model rather than a flag. fp32 is registered,
 needs no unmeasured autocast/scaler path on a TPU, and is the slower of the two dtypes
-`tpu_probe` v5 put within 6% of each other - so the price errs against the queue. **Re-armed:**
-code dataset `sid123123234/act-lab-code` republished at **`ecdde2491c03`** and
+`tpu_probe` v5 put within 6% of each other - so the price errs against the queue. **Re-armed,
+informational only:** section 5.14's option 2 is **not adopted** (see the disposition in
+`docs/IMPLEMENTATION_STATUS.md`, 2026-09-29), so this number decides nothing by itself and the TPU
+week is left unspent. Code dataset `sid123123234/act-lab-code` republished at **`ecdde2491c03`** and
 `act-tpu-session-price` **version 2** pushed (`QUEUED`, TPU on / GPU off) at **10:20Z**; the mount
 was downloaded back and carries `src/act/model/checkpointing.py`, the probe's `DTYPE = "fp32"` and
 `choices=("fp32", "fp16")`, `revision.txt` at that revision, and both `activation_checkpoint`

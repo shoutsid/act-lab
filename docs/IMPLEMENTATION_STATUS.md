@@ -28,6 +28,23 @@ The measurement that was meant to price the amendment instead priced its feasibi
 "measure before committing 8.06 h" was for: 8.06 h of TPU time against a path that would have
 died in its first phase, four seconds in, after the same queue.
 
+**Disposition of section 5.14's option 2, taken on this evidence (2026-09-29): not adopted.** The
+open question was never the price - it was whether the *pairing* the amendment needs is one the
+registration can carry, and this run answered that it is not, on two measured grounds. (1) The arm
+it names is **TPU/bf16**, and `bf16` is not a session dtype: `V0SessionConfig` admits `fp32` and
+`fp16`, so the arm requires a change to section 5.2's session model *and* would then pair a
+TPU-produced null loss against a two-T4 **fp16** primary loss - two registration changes, not one
+flag. (2) The alternative the path can actually run is **fp32**, which is the *slower* end of the
+two dtypes `tpu_probe` v5 put within 6% of each other - i.e. the amendment's only runnable form
+carries a dtype difference from the primary as well. Against that, what the move buys is calendar:
+the GPU week is spent (**1.65 of 30 h** remaining) until the **2026-10-03** refresh, so a queue
+that leaves the GPU for TPU hours would matter to a block that is trying to fit one week - and it
+is not worth two changes to the registered protocol. The TPU week is therefore left **unspent at
+16.77 of 20 h**, and the re-armed price probe is informational from here: if it lands it bounds
+the cost of a variant this entry does not adopt, and if it never runs nothing is blocked on it.
+Neither the primary block (`15024-15035`, 6 of 12 complete) nor the driver's lock is affected;
+the next real work in this campaign is the GPU refresh.
+
 ## The session path runs on the TPU, and its own record published an impossible rate (2026-09-28)
 
 **Live update, 2026-09-28 19:36Z:** the rehearsal came back **`COMPLETE`** - all four phases in
