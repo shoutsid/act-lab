@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -142,6 +143,32 @@ def stage(
     return WORK
 
 
+def push_kernel(folder: Path) -> int:
+    """Push the staged folder, reading the CLI's own success line rather than its exit code.
+
+    Measured 2026-09-29: with another TPU kernel holding the account's single TPU session,
+    ``kaggle kernels push`` printed ``Kernel push error: Maximum batch TPU session count of 1
+    reached.`` and exited **0**. The exit code therefore cannot tell a fired queue from a push
+    that never left - which is exactly the question a caller reads this script's status for, and
+    it is the state this kernel's first push was in. Success is the CLI's own line; anything else
+    is 6, with the output printed either way so the reason is in the log and not only in the code.
+    """
+    proc = subprocess.run(
+        ["kaggle", "kernels", "push", "-p", str(folder)], capture_output=True, text=True
+    )
+    out = proc.stdout + proc.stderr
+    print(out, flush=True)
+    if "successfully pushed" in out:
+        return 0
+    print(
+        "the push did not report success: nothing was queued (the CLI exits 0 on this path, "
+        "so this line, not the exit code, is the answer)",
+        file=sys.stderr,
+        flush=True,
+    )
+    return 6
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -219,7 +246,7 @@ def main() -> int:
     blocked = push_tpu_probe.publish_code_dataset()
     if blocked is not None:
         return blocked
-    return push_tpu_probe._kaggle(["kaggle", "kernels", "push", "-p", str(folder)])
+    return push_kernel(folder)
 
 
 if __name__ == "__main__":

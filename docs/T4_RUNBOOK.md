@@ -1187,6 +1187,13 @@ the pushed revision, and `publish.status: published` (a `failed` push with twelv
 output directory is recoverable: the numbers are what the clause reads). A partial block is not a
 lost block - the runner skips what the restored version carries, so a second fire finishes it.
 
+**Its exit code is not the answer to "did it fire?"** - measured 2026-09-29: `kaggle kernels push -p
+artifacts/tpu-null-queue` prints `Kernel push error: Maximum batch TPU session count of 1
+reached.` and **exits 0**. The slot waiter's first version trusted `$?` and reported a queue that
+never left (the account's own kernel list showed no such kernel). Both the waiter and
+`push_tpu_null_queue.push_kernel` (exit 6) now read the CLI's `successfully pushed` line instead,
+and so should anything else that decides whether a run went out.
+
 **Live, 2026-09-29 13:20Z:** the push was **refused** - `Maximum batch TPU session count of 1
 reached` - because the price probe's v2 is queued on the TPU and the account's TPU limit is one
 session at a time. That is why the slot waiter exists rather than a hand-watched terminal, and it

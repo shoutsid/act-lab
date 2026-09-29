@@ -11,7 +11,9 @@
 # The pusher republishes the code dataset at HEAD before it pushes; the dataset here was published
 # at the commit that carries the runner, and a republish at push time would let a *later* commit -
 # a docs-only one, say - become the revision the kernel mounts and the record names. The wait is
-# for the slot, not for a republish, so nothing is published here at all.
+# for the slot, not for a republish, so nothing is published here at all. The pusher's own
+# `push_kernel` reads the same success line this loop does, so the two cannot disagree about what
+# a fired push looks like.
 #
 # A refused push is retried whether the refusal names the batch limit or not: the platform can
 # refuse a push for its own reasons, the folder on disk is already the one that should go out, and
@@ -39,9 +41,15 @@ FETCH_LOG=${FETCH_LOG:-/tmp/tpu-null-watch.log}
 
 stamp() { date -u '+%Y-%m-%dT%H:%M:%SZ'; }
 
+# The push's success is read off the CLI's own line, **not** its exit code. Measured 2026-09-29:
+# `kaggle kernels push` printed `Kernel push error: Maximum batch TPU session count of 1 reached.`
+# and exited **0** - so the one failure this waiter exists for is invisible to `$?`. The first
+# version of this script trusted `$?` and announced a push that never left; the kernel was absent
+# from the account's own list, and the fetch watcher it armed polled a 404 for two minutes.
 for attempt in $(seq 1 "$MAX_POLLS"); do
   blocker=$(kaggle kernels status "$BLOCKER" 2>&1 | tail -1)
-  if out=$(kaggle kernels push -p "$FOLDER" 2>&1); then
+  out=$(kaggle kernels push -p "$FOLDER" 2>&1)
+  if [[ "$out" == *"successfully pushed"* ]]; then
     echo "$(stamp) $KERNEL pushed on attempt $attempt ($BLOCKER was: $blocker)"
     # One poll loop serves every TPU kernel this project queues; the null queue is three values
     # overridden, because a second copy of that loop is a second place for the
@@ -54,7 +62,7 @@ for attempt in $(seq 1 "$MAX_POLLS"); do
     echo "$(stamp) fetch watcher pid $! (its log: $FETCH_LOG)"
     exit 0
   fi
-  echo "$(stamp) attempt $attempt/$MAX_POLLS: the push was refused - $out"
+  echo "$(stamp) attempt $attempt/$MAX_POLLS: nothing was queued - $out"
   echo "$(stamp)   one TPU session at a time; $BLOCKER is $blocker"
   sleep "$POLL_SECONDS"
 done

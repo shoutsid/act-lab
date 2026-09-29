@@ -12,6 +12,7 @@ being called rather than a copy of its logic.
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -119,6 +120,37 @@ def test_the_publish_is_the_probes_guard_and_its_refusal_stops_the_push(
     assert calls == [], "a refused publish must not be followed by a push"
 
 
+def test_a_push_that_never_left_is_not_reported_as_fired(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The CLI exits **0** on this failure, so the fired/not-fired answer is its own line.
+
+    Measured 2026-09-29: with another TPU kernel holding the account's single TPU session,
+    `kaggle kernels push` printed `Kernel push error: Maximum batch TPU session count of 1
+    reached.` and returned 0. A caller that read the exit code - which is what this script did
+    first, and what the slot waiter did too - announced a queue that never left, and armed a
+    fetch watcher against a kernel that did not exist.
+    """
+    refused = "Kernel push error: Maximum batch TPU session count of 1 reached.\n"
+    monkeypatch.setattr(
+        pusher.subprocess,
+        "run",
+        lambda *a, **k: subprocess.CompletedProcess(a, 0, refused, ""),
+    )
+
+    assert pusher.push_kernel(tmp_path) == 6
+    assert "nothing was queued" in capsys.readouterr().err
+
+    fired = "Kernel version 1 successfully pushed.  Please check progress at https://x\n"
+    monkeypatch.setattr(
+        pusher.subprocess,
+        "run",
+        lambda *a, **k: subprocess.CompletedProcess(a, 0, fired, ""),
+    )
+
+    assert pusher.push_kernel(tmp_path) == 0
+
+
 def test_the_slot_waiter_pushes_what_was_staged_and_publishes_nothing_itself() -> None:
     """Kaggle allows one TPU session at a time, so the queue's push can be refused by a slot.
 
@@ -137,6 +169,10 @@ def test_the_slot_waiter_pushes_what_was_staged_and_publishes_nothing_itself() -
     assert text.count("push_tpu_null_queue.py") == 1
     assert "PUSHER=scripts/push_tpu_null_queue.py" in text
     assert "ensure_code_dataset" not in text
+    assert "fetch_tpu_session_rehearsal_when_done.sh" in text
+    # And it cannot be fooled by a refused push, because the CLI exits 0 on one: the waiter reads
+    # the success line, the same answer `push_kernel` reads.
+    assert 'successfully pushed' in text
     # Bounded, and the slot's holder is named in the log rather than left to be guessed.
     assert "MAX_POLLS" in text and "gave up" in text
     assert "BLOCKER" in text and "tpu-session-price" in text
