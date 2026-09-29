@@ -31,7 +31,12 @@ import tpu_session_rehearsal as rehearsal  # noqa: E402
 
 
 def _args(**overrides) -> argparse.Namespace:
-    settings = {"device": "cpu", "steps": 2, "seed": 51}
+    settings = {
+        "device": "cpu",
+        "steps": 2,
+        "seed": 51,
+        "activation_checkpointing": False,
+    }
     settings.update(overrides)
     return argparse.Namespace(**settings)
 
@@ -60,6 +65,36 @@ def test_the_labels_say_rehearsal_and_name_what_is_not_measured() -> None:
     # measurement, so a reader cannot take the rehearsal as a second reading of it.
     assert "per-core parallelism" in not_measured
     assert "two-arm pair placement" in not_measured
+
+
+def test_the_checkpointed_path_can_be_rehearsed_too(tmp_path: Path) -> None:
+    """The declared config's activation checkpointing, put back into a dev-fidelity run.
+
+    Measured 2026-09-29: the rehearsal ran the path at dev fidelity and went green, while the
+    declared-shape probe on the same path died in its first step - because
+    ``declared_session_config`` sets ``activation_checkpointing`` and the dev config does not,
+    so no rehearsal had ever entered a checkpointed block on XLA. The flag exists so that gap
+    can be closed without a TPU (XLA:CPU runs this in about two minutes), and the record has
+    to say which way it was run.
+    """
+    output = tmp_path / "tpu-session-rehearsal.json"
+
+    rehearsal.main(
+        [
+            "--device", "cpu", "--steps", "1", "--seed", "9",
+            "--checkpoint-activations", "--output", str(output),
+        ]
+    )
+
+    record = json.loads(output.read_text(encoding="utf-8"))
+    assert record["activation_checkpointing"] is True
+    assert record["session"]["config"]["activation_checkpointing"] is True
+    assert "session" in record["completed"]
+
+    # And the unfixed default is still the developmental one, which is what the rehearsal's
+    # own record has always meant by `fidelity: development`.
+    assert rehearsal._dev_null_config("cpu", steps=1, seed=9).activation_checkpointing is False
+    assert rehearsal.base_record(_args())["activation_checkpointing"] is False
 
 
 def test_the_dev_config_is_the_single_arm_null_queue_at_dev_fidelity() -> None:

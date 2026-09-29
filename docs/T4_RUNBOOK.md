@@ -966,6 +966,55 @@ for independent-seed ranks shares the process RNG, so those model initialization
 reproducible from each rank's input-generator seed. See the evidence table and regression test in
 `docs/IMPLEMENTATION_STATUS.md` and `tests/test_tpu_probe_evidence.py`.
 
+### Before firing at a TPU: run the XLA branch on XLA:CPU, locally
+
+A TPU kernel queues for hours, so a defect in the XLA-only code costs a night of wall clock
+per attempt. **Every failure this campaign has had on that path lived in code that only runs
+when `device.type == "xla"`** - the unmarked step (v1's three hours of silence, 2026-09-28) and
+the activation-checkpointing call (the declared-shape probe, 4.5 s in, 2026-09-29) - and a
+`--device cpu` dry run cannot reach either branch, so "it worked locally" was never evidence
+about the TPU path. It is now, because `torch_xla` can run XLA **on a CPU host**: the same
+`xla` device type, the same `torch_xla.utils.checkpoint` fork, `PJRT_DEVICE=CPU`.
+
+```bash
+# a throwaway env pinned to the pair the Kaggle image runs (the project venv is torch 2.14,
+# and torch_xla's _XLAC.so is built against 2.8/2.9 - an ABI mismatch is not a finding)
+uv venv /tmp/xla-local --python 3.11
+uv pip install --python /tmp/xla-local/bin/python --index-url https://download.pytorch.org/whl/cpu torch==2.8.0
+uv pip install --python /tmp/xla-local/bin/python --no-deps torch_xla==2.8.0
+uv pip install --python /tmp/xla-local/bin/python absl-py numpy pyyaml requests
+
+# a uv-managed python keeps libpython off the default linker path, so _XLAC needs it named
+LIB=$(/tmp/xla-local/bin/python -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))")
+env LD_LIBRARY_PATH=$LIB PJRT_DEVICE=CPU PYTHONPATH=src TPU_SESSION_WATCH=15 \
+  /tmp/xla-local/bin/python scripts/tpu_session_rehearsal.py \
+    --device xla --steps 20 --checkpoint-activations --output /tmp/xla-dry/dev.json
+```
+
+`--checkpoint-activations` is not optional here. It turns on the one field where the
+development and declared configs disagree in a way that matters
+(`declared_session_config` sets `activation_checkpointing=True`, the dev default is `False`),
+and that disagreement is exactly how the 2026-09-29 defect reached a queue: the rehearsal ran
+the real path with the field off and went green, while the declared-shape probe died on it.
+The record carries `activation_checkpointing` so two runs can be told apart.
+
+**What it caught, 2026-09-29, in about two minutes each.** The pre-fix call raises the
+recorded failure verbatim on a real `xla` tensor - `torch/utils/checkpoint.py`
+`_checkpoint_without_reentrant_generator` → `_get_device_module` → `getattr(torch, "xla")`
+→ `AttributeError: module 'torch' has no attribute 'xla'` - so the diagnosis that cost a day
+of source reading is now a two-line reproduction. And the fixed path runs the whole session:
+all four phases, `errors: []`, `activation_checkpointing: true`, the arm at **754-776
+tokens/s**, the checkpoint a **host** payload (`["cpu"]`), the resume bit-identical, and the
+handoff publishing a null arm at `search_flops 0, mutation_count 0`.
+
+**What it cannot do.** The declared 285M shape is not runnable on XLA:CPU. Tried 2026-09-29:
+the session phase's resident set climbed from 0.5 GB to **33.27 GB in 195 s** on a 45 GB host
+and the process was killed mid-phase with no traceback and no further watch sample (the host
+copies a declared-size graph across the CPU client's boundary on every execute; `dmesg` was
+not readable here, so the kill is read off the silence rather than quoted from a kernel line).
+So the local run is **development fidelity only** - which is where a portfolio of XLA failures
+is cheapest - and the declared-shape price still comes from a queued TPU run.
+
 ### The session path, rehearsed on the TPU before any queue moves there
 
 The port rule's verdict came from a *probe*: `tpu_probe.py` timed a step loop around a model

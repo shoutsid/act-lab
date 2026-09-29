@@ -66,6 +66,13 @@ one session on one device is the new question. ``not_measured`` says so in the r
 
     PYTHONPATH=src python scripts/tpu_session_rehearsal.py --device cpu --steps 4   # dry run
     PYTHONPATH=src python scripts/tpu_session_rehearsal.py --device xla            # on a TPU
+
+``--device cpu`` cannot reach the branches that only run on XLA, which is where every failure
+on this path has been. ``torch_xla`` also runs XLA on a CPU host (``PJRT_DEVICE=CPU``), so the
+same torch/torch_xla pair the platform runs can be rehearsed locally at development fidelity -
+see the runbook's "Before firing at a TPU" section for the throwaway env, and add
+``--checkpoint-activations`` to take the declared config's activation-checkpointing field with
+it (the field whose absence from the dev config let the 2026-09-29 defect reach a queue).
 """
 
 from __future__ import annotations
@@ -263,12 +270,22 @@ def _revision() -> str:
     return _git_revision()
 
 
-def _dev_null_config(device: str, *, steps: int, seed: int):
+def _dev_null_config(
+    device: str, *, steps: int, seed: int, activation_checkpointing: bool = False
+):
     """The dev shape with one null arm: the queue section 5.14's option would move.
 
     The dev shape (``declared=False``) rather than the declared 285M config, because this is
     a rehearsal of the *path*: the probe already measured the declared shape's throughput, and
     a portfolio of fresh XLA failures is cheaper to find at 20 steps than at 6,000.
+
+    ``activation_checkpointing`` is carried as a flag because it is the one field where the
+    development and declared configs disagree in a way that matters: the dev default is off
+    (memory is not the constraint) and ``declared_session_config`` sets it on. Measured
+    2026-09-29: a rehearsal that ran the path at dev fidelity with this at its dev value went
+    green, and the declared-shape probe fired at the same path died in its first step because
+    ``torch.utils.checkpoint`` cannot run on XLA at all. A rehearsal of the *path* is then
+    only as good as the fields it turns on with it.
     """
     from act.training.v0_session import V0SessionConfig
 
@@ -279,6 +296,7 @@ def _dev_null_config(device: str, *, steps: int, seed: int):
         total_steps=steps,
         checkpoint_interval=max(1, steps // 2),
         max_checkpoints=2,
+        activation_checkpointing=activation_checkpointing,
     )
 
 
@@ -628,6 +646,10 @@ def base_record(args: argparse.Namespace) -> dict[str, Any]:
         "device_requested": args.device,
         "steps": args.steps,
         "seed": args.seed,
+        # Whether this run took the field that the declared config sets and the development
+        # one does not. A reader comparing two rehearsals has to be able to tell whether the
+        # checkpointed path was in the one they are reading - see `_dev_null_config`.
+        "activation_checkpointing": args.activation_checkpointing,
         # What the phase loop walks, in the record rather than in the caller: `run_phases`
         # reads it from here, so a second artifact's phases and this one's cannot be
         # interleaved by a caller that passed them in a different order.
@@ -656,6 +678,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--device", default="xla", help="xla (a TPU host) or cpu (a dry run)")
     parser.add_argument("--steps", type=int, default=20, help="training steps per arm")
     parser.add_argument("--seed", type=int, default=51, help="dev-fidelity session seed")
+    parser.add_argument(
+        "--checkpoint-activations",
+        action="store_true",
+        # Named for the config field it sets rather than for the option string argparse would
+        # derive (`checkpoint_activations`): the record and the phase configs both read this
+        # name, and one flag spelled two ways is how a field gets turned on in one place and
+        # read as off in another.
+        dest="activation_checkpointing",
+        help="take the declared config's activation-checkpointing field too; see "
+        "_dev_null_config for why a rehearsal of the path wants it",
+    )
     parser.add_argument("--output", type=Path, default=OUTPUT)
     args = parser.parse_args(argv)
 
@@ -663,16 +696,24 @@ def main(argv: list[str] | None = None) -> int:
     work = Path(args.output).parent / f"tpu-session-work-{os.getpid()}"
     work.mkdir(parents=True, exist_ok=True)
 
+    def build(device: str, *, steps: int, seed: int):
+        return _dev_null_config(
+            device,
+            steps=steps,
+            seed=seed,
+            activation_checkpointing=args.activation_checkpointing,
+        )
+
     phases: dict[str, Callable[[], None]] = {
         "environment": lambda: phase_environment(record, work),
         "session": lambda: phase_session(
-            record, work, device=args.device, steps=args.steps, seed=args.seed
+            record, work, device=args.device, steps=args.steps, seed=args.seed, build=build
         ),
         "resume": lambda: phase_resume(
-            record, work, device=args.device, steps=args.steps, seed=args.seed
+            record, work, device=args.device, steps=args.steps, seed=args.seed, build=build
         ),
         "handoff": lambda: phase_handoff(
-            record, work, device=args.device, steps=args.steps, seed=args.seed
+            record, work, device=args.device, steps=args.steps, seed=args.seed, build=build
         ),
     }
     run_phases(record, Path(args.output), phases)
