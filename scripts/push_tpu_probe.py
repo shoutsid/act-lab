@@ -95,6 +95,41 @@ XLA_BOOTSTRAP = '''def ensure_xla() -> str:
     return "unavailable"
 '''
 
+#: The Kaggle dataset client the startup restore and the exit publish call. Kept beside the XLA
+#: bootstrap because it is the same problem in a second dependency: a script kernel gets only its
+#: own text, so a package the runner needs has to be put on the image by this text or not at all.
+#:
+#: Measured 2026-09-30 on the TPU image, from the null queue's first fire: `find_spec("kaggle")`
+#: succeeds while `from kaggle.api.kaggle_api_extended import KaggleApi` raises
+#: `ModuleNotFoundError: No module named 'kaggle.api'`, so the run died at restore before a token
+#: was trained (`errors: ["restore"]`, `seeds_completed: 0`). The probe is therefore the *import*,
+#: not the spec: a broken release and a present one are indistinguishable by name, which is why
+#: the install below upgrades rather than installs - a plain install of an already-present (and
+#: broken) version reports "Requirement already satisfied" and changes nothing.
+KAGGLE_BOOTSTRAP = '''def ensure_kaggle() -> str:
+    """The Kaggle API client's own import, installing it if the image carries a broken one."""
+    import subprocess
+
+    try:
+        from kaggle.api.kaggle_api_extended import KaggleApi  # noqa: F401
+        return "already-present"
+    except ImportError:
+        pass
+    proc = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-q", "-U", "kaggle"],
+        capture_output=True, text=True,
+    )
+    detail = (proc.stdout + proc.stderr)[-1500:]
+    if proc.returncode == 0:
+        try:
+            from kaggle.api.kaggle_api_extended import KaggleApi  # noqa: F401
+            return "installed:kaggle"
+        except ImportError:
+            print("pip installed kaggle but kaggle.api still will not import", flush=True)
+    print(f"pip kaggle failed ({proc.returncode}):\\n{detail}", flush=True)
+    return "unavailable"
+'''
+
 #: The entry file. A script kernel gets only this text, so it must be self-sufficient:
 #: get Torch-XLA onto the image, find the probe inside the mounted repository, run it.
 ENTRY = (

@@ -36,6 +36,14 @@ POLL_SECONDS=${POLL_SECONDS:-120}
 #: 720 polls of 120 s is 24 h: a TPU kernel can sit in the queue for hours, and this one is
 #: minutes of wall clock once the slot is free.
 MAX_POLLS=${MAX_POLLS:-720}
+#: The bound the *fetch* watcher gets, and it is longer than the slot waiter's on purpose.
+#: Measured 2026-10-01: this kernel had sat `QUEUED` for 25 h, past the 24 h this script used to
+#: arm its watcher with, so the watcher gave up on a run that had not started yet and the record
+#: would have had to be noticed by hand. A queue that long is a platform-capacity event, not a
+#: fault to retry - Kaggle's answer to the last capacity crunch was "we appreciate your
+#: patience" - so the wait is outlasted rather than reset: 1920 polls of 180 s is 96 h.
+FETCH_POLL_SECONDS=${FETCH_POLL_SECONDS:-180}
+FETCH_MAX_POLLS=${FETCH_MAX_POLLS:-1920}
 #: Where the fetch watcher it arms writes its own account.
 FETCH_LOG=${FETCH_LOG:-/tmp/tpu-null-watch.log}
 
@@ -57,7 +65,7 @@ for attempt in $(seq 1 "$MAX_POLLS"); do
     KERNEL="$KERNEL" \
     OUT_DIR="$REPO_ROOT/artifacts/tpu-null-queue/output" \
     PUSHER=scripts/push_tpu_null_queue.py \
-    POLL_SECONDS=120 MAX_POLLS=720 \
+    POLL_SECONDS="$FETCH_POLL_SECONDS" MAX_POLLS="$FETCH_MAX_POLLS" \
       setsid nohup bash scripts/fetch_tpu_session_rehearsal_when_done.sh >"$FETCH_LOG" 2>&1 &
     echo "$(stamp) fetch watcher pid $! (its log: $FETCH_LOG)"
     exit 0

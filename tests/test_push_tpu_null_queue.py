@@ -12,6 +12,7 @@ being called rather than a copy of its logic.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -67,6 +68,34 @@ def test_the_entry_bootstraps_torch_xla_the_same_way_the_other_three_do() -> Non
     """One answer to "is torch_xla here?", shared rather than written a fourth time."""
     assert push_tpu_probe.XLA_BOOTSTRAP in pusher.ENTRY
     assert "status = ensure_xla()" in pusher.ENTRY
+
+
+def test_the_entry_installs_a_working_kaggle_client_before_the_runner_asks_for_one() -> None:
+    """The startup restore and the exit publish are dataset API calls, and the image's client is
+    not importable as shipped.
+
+    Measured 2026-09-30: the queue's first fire reached the runner with `find_spec("kaggle")`
+    true, then died at restore (`errors: ["restore"]`, `seeds_completed: 0`) on
+    `ModuleNotFoundError: No module named 'kaggle.api'` - 59 s in, no seed trained. A script
+    kernel is staged from its own text, so the fix has to be in that text, and it has to run
+    before `runpy.run_path`, because the runner imports the client at restore time.
+    """
+    assert push_tpu_probe.KAGGLE_BOOTSTRAP in pusher.ENTRY
+    call = "kaggle_status = ensure_kaggle()"
+    assert call in pusher.ENTRY
+    assert pusher.ENTRY.index(call) < pusher.ENTRY.index("runpy.run_path")
+
+
+def test_the_kaggle_bootstrap_probes_the_import_rather_than_the_name() -> None:
+    """A present-but-broken release and a working one share the name `kaggle`, so the name is not
+    the check - only the import is.
+
+    And it upgrades rather than installs: measured 2026-09-30, `pip install kaggle` on an image
+    that already carries a broken version reports "Requirement already satisfied" and changes
+    nothing, so a plain install would have left this failure exactly where it was.
+    """
+    assert "from kaggle.api.kaggle_api_extended import KaggleApi" in push_tpu_probe.KAGGLE_BOOTSTRAP
+    assert '"-U", "kaggle"' in push_tpu_probe.KAGGLE_BOOTSTRAP
 
 
 def test_stage_substitutes_every_field_the_queued_run_is_read_from(
@@ -176,6 +205,27 @@ def test_the_slot_waiter_pushes_what_was_staged_and_publishes_nothing_itself() -
     # Bounded, and the slot's holder is named in the log rather than left to be guessed.
     assert "MAX_POLLS" in text and "gave up" in text
     assert "BLOCKER" in text and "tpu-session-price" in text
+    # And the fetch watcher is armed with a *longer* bound than the slot waiter's own. Measured
+    # 2026-10-01: the kernel was still `QUEUED` 25 h after its push, past the 24 h the fetch
+    # watcher was armed with, so it gave up on a run that had not started and the fetch would have
+    # had to be noticed by hand. The two bounds wait on different things - a slot that frees
+    # quickly, a queue that is a platform-capacity event - so they are held apart by parsing both
+    # off the shell rather than by pinning either to a number.
+    assert 'POLL_SECONDS="$FETCH_POLL_SECONDS" MAX_POLLS="$FETCH_MAX_POLLS"' in text
+
+    def declared_bound(seconds_name: str, polls_name: str) -> int:
+        """One poll loop's bound in seconds, read off the shell that declares it."""
+
+        def declared(name: str) -> int:
+            found = re.search(rf"{name}=\$\{{{name}:-([0-9]+)\}}", text)
+            assert found is not None, f"{name} is not declared"
+            return int(found.group(1))
+
+        return declared(seconds_name) * declared(polls_name)
+
+    assert declared_bound("POLL_SECONDS", "MAX_POLLS") < declared_bound(
+        "FETCH_POLL_SECONDS", "FETCH_MAX_POLLS"
+    )
 
 
 def test_the_fetch_keeps_the_record_the_log_and_the_queue_s_reading(

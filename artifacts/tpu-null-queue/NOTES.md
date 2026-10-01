@@ -74,3 +74,66 @@ declared shape's only instrumentation.
   slot.
 - **GPU quota:** 1.65 of 30 h, same refresh. The primary block stands at **6 of 12** seeds. The
   driver is relaunched and holding the lock, waiting for the refresh (see the row above).
+
+## What the first fire did, and the fix it forced (2026-09-30)
+
+The kernel sat `QUEUED` from the fetch watcher's first poll, **2026-09-29T19:22Z**, and reached
+`KernelWorkerStatus.RUNNING` by **2026-09-30T04:58:18Z**. It was `ERROR` at the watcher's next
+poll, **05:00:19Z**, and that poll fetched it. The run itself is **59 s**: the runner printed its
+record at `t = 59.06 s` and the kernel wrote `__results__.html` at `t = 81.6 s`. **No seed was
+trained**, so the week cost the boot and nothing else.
+
+| | |
+|---|---|
+| **The record** | `restore.error` = `ModuleNotFoundError: No module named 'kaggle.api'`; `errors: ["restore"]`, `seeds_completed: 0`, `seeds: {}`. Everything else is the registration: `seeds_requested` all twelve, `dtype: fp32`, `fidelity: declared`, `declared_seed: true`, `rebuild_treatment` `{preserve_router_on_rebuild: true, new_expert_initialization: clone}`, `code_revision` `d5fdd7b1b430b81fa09b36536467e13bd2102d53`. |
+| **The site** | `act.ops.kaggle_remote.KaggleApiAdapter.__init__`, whose first act is `from kaggle.api.kaggle_api_extended import KaggleApi` - the restore's first call, so the run stopped where section 5.2 says it must (before a token is trained) and did not train over anything. |
+| **Why nothing earlier caught it** | The three measurement kernels this project has fired (the probe, the rehearsal, the price probe) never touch the dataset API - they train and write a record - so the TPU image's client had never been imported by any of them. This is the **first TPU run with a remote half**, and its startup restore is the first line that asks for it. |
+| **Why the guard missed it** | `KAGGLE_AVAILABLE = importlib.util.find_spec("kaggle") is not None` is **true** on that image: the *name* resolves while `kaggle.api` does not. The adapter's `if not KAGGLE_AVAILABLE` therefore passed, and the failure surfaced as a platform-shaped `ModuleNotFoundError` instead of the module's intended "the kaggle package is required" - a message that names no fix, which is why this took a fetched record to read. |
+| **The fix, in the entry** | `push_tpu_probe.KAGGLE_BOOTSTRAP`, composed into this kernel's entry beside the XLA bootstrap and called **before** `runpy.run_path`. It probes the *import* and, when that fails, runs `pip install -q -U kaggle` - **upgraded**, not installed, because on an image that already carries a broken release a plain install reports "Requirement already satisfied" and changes nothing. The run has internet, which is what makes a bootstrap the right shape here rather than a pin. |
+| **The fix, in the adapter** | `KaggleApiAdapter.__init__` now wraps that import and, on `ImportError`, raises a `RuntimeError` naming the release defect and `pip install -U kaggle`. The check cannot move to `KAGGLE_AVAILABLE` without importing the package, and the module is deliberately import-time lazy (a fresh-interpreter test pins that importing it leaves `kaggle` out of `sys.modules`), so the adapter's own import is the first place the answer is knowable. |
+| **Pinned** | `tests/test_push_tpu_null_queue.py`: the entry carries the bootstrap and calls `ensure_kaggle()` before `runpy.run_path`, and the bootstrap probes the import rather than the name and upgrades rather than installs. `tests/test_kaggle_remote.py`: a present-but-broken `kaggle` is reported as the `RuntimeError` that names the fix, not a bare `ModuleNotFoundError`. |
+
+v1's record and log are under `output/v1/`, because the fetcher writes fixed names into `output/`
+and the re-fire overwrites them - the same split, and for the same reason, as
+`artifacts/tpu-session-price/`. The re-fire pushes the **already-staged** folder, so the entry
+that goes out is the fixed one; the mounted runner (`scripts/tpu_null_queue.py`) is unchanged by
+the fix, so the record's `code_revision` naming a later commit would still name the same runner
+bytes - which is the property this note's first section already rests on.
+
+## The queue, read on 2026-10-01: still `QUEUED` at 25 h, and what that wait is
+
+The re-fire was pushed **2026-09-30T12:28:44Z**. At **2026-10-01T13:46Z** - **25.3 h** later - the
+kernel was still `KernelWorkerStatus.QUEUED`; it had not started. The fetch watcher the re-fire
+armed had polled it 720 times, seen nothing but `QUEUED`, and given up at **12:37:06Z**: its bound
+was **24 h**, an hour short of the wait, so the watcher that exists to collect the record had quit
+before the run it was waiting for had begun.
+
+What was checked, and what each check read:
+
+| what was checked | what it read |
+|---|---|
+| **the queued version** | pulled back with `kaggle kernels pull`: `ensure_kaggle()` at line 56 and `runpy.run_path` at line 71, `enable_tpu: true`, `enable_gpu: false`. The version in the queue is the fixed one, so the wait cannot produce a second `restore` error. |
+| **the account's other kernels** | the probe, the rehearsal and the price probe are all `COMPLETE`; nothing is `RUNNING`. Kaggle allows one TPU session at a time, so a stale session of ours holding the slot would show here - the queue entry is not being blocked by this account's own work. |
+| **the queue itself** | `ApiGetKernelSessionStatusResponse` carries `status` and `failure_message` and nothing else: **there is no queue position to read**, and `kaggle kernels logs` against a queued kernel prints nothing (measured). The wait can be observed and dated, not estimated. |
+| **the platform's record** | a Kaggle community thread of **2026-09-17**, "Extreamly long TPU queues" - "TPU queues started getting way worse", asking whether capacity had gone down - since deleted; and Kaggle's earlier note on the same class of event: "TPU capacity is temporarily reduced: Queue times for save versions are long ... we appreciate your patience". |
+| **this account's own baseline** | the two TPU waits before this one were **~8.7 h** (price probe) and **9.6 h** (null-queue v1: 19:22:23Z -> 04:58:18Z). 25 h is about 2.6x the pool's own recent latency for this account, which is what a worse crunch reads as - not a wedged entry, and not a fault of the push. |
+
+Two things were done about it:
+
+- **The watcher was re-armed, not reset.** `fetch_tpu_session_rehearsal_when_done.sh` was relaunched
+  against the same kernel with `POLL_SECONDS=180 MAX_POLLS=1920` (**96 h**), appended to
+  `/tmp/tpu-null-watch.log` so the 24 h it had already recorded and the wait that follows stay in
+  one file, with a marker line naming the re-arm. Nothing was re-pushed: the entry sits in a
+  capacity-short queue, so a fresh version would trade a 25 h-old place for the back of the line -
+  and the version already queued carries the fix.
+- **The fetch bound is now its own, and longer.** `push_tpu_null_queue_when_free.sh` used to arm the
+  watcher with a hardcoded `POLL_SECONDS=120 MAX_POLLS=720`, the slot waiter's own bound. It is now
+  `FETCH_POLL_SECONDS`/`FETCH_MAX_POLLS`, defaulting to 180/1920 (**96 h**), because the two waits
+  expect opposite things: the slot waiter waits for a slot that frees quickly, the fetch watcher
+  waits on a queue that is a platform-capacity event. `tests/test_push_tpu_null_queue.py` pins the
+  fetch bound as the longer of the two by parsing both off the shell rather than by pinning either
+  to a number.
+
+Still open: the re-fire itself is unobserved. When it starts, the runner needs ~6.19 h at the price
+probe's rate and the week has 16.51 TPU-hours left before the **2026-10-03** refresh, so it fits;
+the watcher fetches on either terminal state.

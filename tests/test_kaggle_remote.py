@@ -670,6 +670,24 @@ def test_default_client_requires_the_kaggle_package(monkeypatch) -> None:
         kaggle_remote.default_client()
 
 
+def test_the_adapter_names_a_kaggle_that_is_present_but_broken(monkeypatch) -> None:
+    """A resolvable name is not an importable API - the failure the TPU image had.
+
+    Measured 2026-09-30, the null queue's first fire: on the TPU image `kaggle` resolves as a
+    name while `kaggle.api` does not, so the run died at restore with `ModuleNotFoundError: No
+    module named 'kaggle.api'` - a message that names no fix. `KAGGLE_AVAILABLE` cannot catch it
+    without importing the package, and this module is deliberately import-time lazy, so the
+    adapter's own import is what reports it - and it says what replaces a broken release.
+    """
+    monkeypatch.setattr(kaggle_remote, "KAGGLE_AVAILABLE", True)
+    # A `kaggle` that is present but is not a package: the shape a broken install has.
+    monkeypatch.setitem(sys.modules, "kaggle", types.ModuleType("kaggle"))
+    monkeypatch.delitem(sys.modules, "kaggle.api", raising=False)
+
+    with pytest.raises(RuntimeError, match=r"pip install -U kaggle"):
+        kaggle_remote.default_client()
+
+
 def test_kaggle_api_adapter_is_lazy() -> None:
     """The adapter module must not import `kaggle` when it is imported.
 

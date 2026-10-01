@@ -28,9 +28,33 @@ def ensure_xla() -> str:
                       flush=True)
         print(f"pip {spec} failed ({proc.returncode}):\n{detail}", flush=True)
     return "unavailable"
+def ensure_kaggle() -> str:
+    """The Kaggle API client's own import, installing it if the image carries a broken one."""
+    import subprocess
+
+    try:
+        from kaggle.api.kaggle_api_extended import KaggleApi  # noqa: F401
+        return "already-present"
+    except ImportError:
+        pass
+    proc = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-q", "-U", "kaggle"],
+        capture_output=True, text=True,
+    )
+    detail = (proc.stdout + proc.stderr)[-1500:]
+    if proc.returncode == 0:
+        try:
+            from kaggle.api.kaggle_api_extended import KaggleApi  # noqa: F401
+            return "installed:kaggle"
+        except ImportError:
+            print("pip installed kaggle but kaggle.api still will not import", flush=True)
+    print(f"pip kaggle failed ({proc.returncode}):\n{detail}", flush=True)
+    return "unavailable"
 def main() -> int:
     status = ensure_xla()
     print(f"torch_xla: {status}", flush=True)
+    kaggle_status = ensure_kaggle()
+    print(f"kaggle: {kaggle_status}", flush=True)
     matches = sorted(
         glob.glob("/kaggle/input/**/scripts/tpu_null_queue.py", recursive=True)
     )

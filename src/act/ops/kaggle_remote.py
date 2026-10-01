@@ -243,7 +243,21 @@ class KaggleApiAdapter:
                 "the kaggle package is required for remote dataset access; "
                 "it is preinstalled on Kaggle images (pip install kaggle elsewhere)"
             )
-        from kaggle.api.kaggle_api_extended import KaggleApi
+        try:
+            from kaggle.api.kaggle_api_extended import KaggleApi
+        except ImportError as error:
+            # The name resolving is not the API being callable. Measured
+            # 2026-09-30 on the TPU image: `find_spec("kaggle")` succeeds while
+            # this import raises `No module named 'kaggle.api'`, so the run died
+            # at restore before a token was trained - the null queue's first
+            # fire, `errors: ["restore"]` - and the message named no fix. The
+            # import is the only check that tells a present package from a
+            # broken one, so it is the check that gets to report.
+            raise RuntimeError(
+                "the kaggle package is installed but its dataset API cannot be "
+                f"imported ({error}); on a Kaggle image this is a broken package "
+                "release, and `pip install -U kaggle` replaces it"
+            ) from error
 
         self._api = KaggleApi()
         self._api.authenticate()

@@ -54,9 +54,11 @@ RECORD_NAME = tpu_null_queue.RECORD_NAME
 WORK = ROOT / "artifacts" / "tpu-null-queue"
 
 #: The entry file. A script kernel gets only this text, so it must be self-sufficient: get
-#: Torch-XLA onto the image (the bootstrap the other three kernels share, imported rather than
-#: copied), find the runner inside the mounted repository, run it at the declared fidelity with
-#: the registered dataset.
+#: Torch-XLA and a working Kaggle API client onto the image (the bootstraps the other kernels
+#: share, imported rather than copied), find the runner inside the mounted repository, run it at
+#: the declared fidelity with the registered dataset. The Kaggle bootstrap is here and not in the
+#: three measurement kernels because this is the only one of the four whose run touches the
+#: dataset API - it restores a published block before training and publishes at exit.
 ENTRY = (
     '''"""Kaggle TPU kernel entry for the null queue (generated, do not edit)."""
 import glob
@@ -66,9 +68,12 @@ import sys
 
 '''
     + push_tpu_probe.XLA_BOOTSTRAP
+    + push_tpu_probe.KAGGLE_BOOTSTRAP
     + '''def main() -> int:
     status = ensure_xla()
     print(f"torch_xla: {status}", flush=True)
+    kaggle_status = ensure_kaggle()
+    print(f"kaggle: {kaggle_status}", flush=True)
     matches = sorted(
         glob.glob("/kaggle/input/**/scripts/tpu_null_queue.py", recursive=True)
     )
