@@ -6,6 +6,8 @@ import sys
 
 def ensure_xla() -> str:
     """Torch-XLA, installing it if the image does not already carry it."""
+    import subprocess
+
     try:
         import torch_xla  # noqa: F401
         return "already-present"

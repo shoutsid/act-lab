@@ -1,31 +1,41 @@
 {
  "completed": [
-  "environment"
+  "environment",
+  "session",
+  "resume",
+  "handoff"
  ],
  "declared_scale": false,
  "declared_seed": false,
  "declared_shape": true,
  "device_requested": "xla",
- "errors": [
-  {
-   "error": "AttributeError: module 'torch' has no attribute 'xla'",
-   "phase": "session"
-  },
-  {
-   "error": "AttributeError: module 'torch' has no attribute 'xla'",
-   "phase": "resume"
-  },
-  {
-   "error": "AttributeError: module 'torch' has no attribute 'xla'",
-   "phase": "handoff"
-  }
- ],
+ "dtype": "fp32",
+ "errors": [],
  "handoff": {
-  "log": []
+  "dataset_root": "/kaggle/working/tpu-price-work-7/dataset",
+  "log": [
+   "[null] resumed from /kaggle/working/tpu-price-work-7/session/seed-15012/arm-null/checkpoint-000240.pt at step 240",
+   "[null] completed after resume from /kaggle/working/tpu-price-work-7/session/seed-15012/arm-null/checkpoint-000240.pt"
+  ],
+  "manifest_code_revision": "ecdde2491c036441203ab6bf495bb15564473d96",
+  "null_arm": {
+   "final_loss": 10.45043134689331,
+   "mutation_count": 0,
+   "search_flops": 0,
+   "validation_loss": 10.45043134689331
+  },
+  "seed_files": [
+   "act-checkpoints/v0-5-1/seed-15012/checkpoints/null/checkpoint-000240.pt",
+   "act-checkpoints/v0-5-1/seed-15012/manifests/manifest.json",
+   "act-checkpoints/v0-5-1/seed-15012/reports/seed-summary.json",
+   "act-checkpoints/v0-5-1/seed-15012/seed-summary.json"
+  ],
+  "summary_status": "complete"
  },
  "kind": "tpu-session-price-probe",
  "not_measured": [
   "a declared seed: this trains the declared *shape* for --steps steps, not the protocol's 24,576,000 tokens, so it prices the queue without producing any of its records",
+  "the amendment's own dtype (bf16): the session's registered dtype accepts fp32 and fp16 only, so a bf16 session is a registration change rather than a flag, and fp16 is the dtype whose autocast and scaler path nothing has run on a TPU. This price is the fp32 session, which tpu_probe v5 put within 6% of bf16 on this shape",
   "the eight-chips-at-once placement: one session ran on one device, and the aggregate below multiplies it by eight rather than measuring eight",
   "mutation and rebuild events: the null arm never fires one, and --steps stays below the declared mutation interval, so the rebuild cost the port probe priced is not in this figure"
  ],
@@ -41,10 +51,37 @@
   "resume",
   "handoff"
  ],
+ "price": {
+  "assumed_chips": 8,
+  "fits_the_week": true,
+  "implied_aggregate_tokens_per_second": 13227.7,
+  "multiple_of_t4_pair": 2.602,
+  "null_queue_hours_at_the_2_0x_bar": 8.058,
+  "null_queue_hours_at_this_rate": 6.193,
+  "null_queue_hours_if_the_chips_do_not_scale": 49.545,
+  "null_queue_seeds": 12,
+  "null_queue_tokens": 294912000,
+  "per_session_tokens_per_second": 1653.5,
+  "per_session_wall_seconds": 594.5341565608978,
+  "pessimistic_because": "the loop's first step compiles the declared graph and that compile is inside the wall this rate divides by; a 6,000-step seed pays it once",
+  "port_threshold_multiple": 2.0,
+  "tpu_week_hours": 20.0
+ },
  "record_type": "session-price-probe",
  "rehearsal": false,
  "resume": {
-  "log": []
+  "checkpoint_files": [
+   "session/seed-15012/arm-null/checkpoint-000120.pt",
+   "session/seed-15012/arm-null/checkpoint-000240.pt"
+  ],
+  "log": [
+   "[null] resumed from /kaggle/working/tpu-price-work-7/session/seed-15012/arm-null/checkpoint-000240.pt at step 240",
+   "[null] completed after resume from /kaggle/working/tpu-price-work-7/session/seed-15012/arm-null/checkpoint-000240.pt"
+  ],
+  "resumed_from_a_checkpoint": true,
+  "same_loss_as_the_first_run": true,
+  "validation_loss": 10.45043134689331,
+  "wall_seconds": 20.2387855052948
  },
  "runtime": {
   "bound_device": "xla:0",
@@ -93,7 +130,41 @@
  "scratch_root": "the handoff publishes into a temporary root under --output's parent, not into any campaign dataset",
  "seed": 15012,
  "session": {
-  "code_revision": "98d5574e8b3f10e34f14da1b243e08a5c4be0fd3",
+  "arms": {
+   "null": {
+    "active_parameter_count": 134341632,
+    "architecture_hash": "86208badc8df3b8a",
+    "checkpoints": [
+     {
+      "bytes": 3424356573,
+      "name": "checkpoint-000120.pt"
+     },
+     {
+      "bytes": 3424356573,
+      "name": "checkpoint-000240.pt"
+     }
+    ],
+    "device": "xla:0",
+    "final_loss": 10.45043134689331,
+    "mode": "null",
+    "mutation_count": 0,
+    "parameter_count": 285336576,
+    "search_flops": 0,
+    "tokens_per_second": 1653.4626129580627,
+    "training_flops": 560994535342080,
+    "validation_loss": 10.45043134689331,
+    "wall_time_seconds": 594.5341565608978
+   }
+  },
+  "checkpoint_files": [
+   "session/seed-15012/arm-null/checkpoint-000120.pt",
+   "session/seed-15012/arm-null/checkpoint-000240.pt"
+  ],
+  "checkpoint_revision": "ecdde2491c036441203ab6bf495bb15564473d96",
+  "checkpoint_tensor_devices": [
+   "cpu"
+  ],
+  "code_revision": "ecdde2491c036441203ab6bf495bb15564473d96",
   "config": {
    "activation_checkpointing": true,
    "active_experts": 2,
@@ -109,7 +180,7 @@
    "declared": true,
    "depth": 12,
    "device": "xla",
-   "dtype": "fp16",
+   "dtype": "fp32",
    "expert_count": 8,
    "expert_width": 1024,
    "gate_margin": 0.0,
@@ -133,40 +204,146 @@
    "validation_batches": 4,
    "vocab_size": 32768
   },
-  "log": []
+  "log": [],
+  "wall_seconds": 671.2297163009644
  },
  "steps": 240,
- "wall_seconds": 28.09059476852417,
+ "wall_seconds": 733.709135055542,
  "watch": {
   "environment": [
    {
     "device_bytes_used": null,
-    "rss_kb": 528852,
+    "rss_kb": 533440,
     "seconds": 0.0
    }
   ],
   "handoff": [
    {
     "device_bytes_used": null,
-    "rss_kb": 8273536,
+    "rss_kb": 28980960,
     "seconds": 0.0
    }
   ],
   "resume": [
    {
     "device_bytes_used": null,
-    "rss_kb": 8048152,
+    "rss_kb": 27960512,
     "seconds": 0.0
    }
   ],
   "session": [
    {
     "device_bytes_used": null,
-    "rss_kb": 7044976,
+    "rss_kb": 7045304,
     "seconds": 0.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 11481600,
+    "seconds": 30.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 13288172,
+    "seconds": 60.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 14196044,
+    "seconds": 90.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 19266628,
+    "seconds": 120.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 21525316,
+    "seconds": 150.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 24427124,
+    "seconds": 180.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 24125528,
+    "seconds": 210.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 22121988,
+    "seconds": 240.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 22122084,
+    "seconds": 270.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 22122132,
+    "seconds": 300.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 22122140,
+    "seconds": 330.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 22122160,
+    "seconds": 360.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 25127120,
+    "seconds": 390.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 25127120,
+    "seconds": 420.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 25127124,
+    "seconds": 450.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 25127124,
+    "seconds": 480.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 25127124,
+    "seconds": 510.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 25127124,
+    "seconds": 540.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 25127132,
+    "seconds": 570.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 27400600,
+    "seconds": 600.0
+   },
+   {
+    "device_bytes_used": null,
+    "rss_kb": 28613172,
+    "seconds": 630.0
    }
   ]
  },
  "watch_seconds": 30.0,
- "what_this_is": "A price: the registered V0 session path, at the declared 285M shape but for 240 steps rather than a seed's 24,576,000 tokens, on the device named in `device_requested`. It reports what one session path sustains there, and what twelve null-queue seeds would therefore cost. It is not a declared seed, not a Gate-4 result, and not evidence about the hypothesis; no queue moves on this record."
+ "what_this_is": "A price: the registered V0 session path, at the declared 285M shape but for 240 steps rather than a seed's 24,576,000 tokens, in the dtype named in `dtype` and on the device named in `device_requested`. It reports what one session path sustains there, and what twelve null-queue seeds would therefore cost. It is not a declared seed, not a Gate-4 result, and not evidence about the hypothesis; no queue moves on this record."
 }
