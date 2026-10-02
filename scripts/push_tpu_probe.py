@@ -103,29 +103,55 @@ XLA_BOOTSTRAP = '''def ensure_xla() -> str:
 #: succeeds while `from kaggle.api.kaggle_api_extended import KaggleApi` raises
 #: `ModuleNotFoundError: No module named 'kaggle.api'`, so the run died at restore before a token
 #: was trained (`errors: ["restore"]`, `seeds_completed: 0`). The probe is therefore the *import*,
-#: not the spec: a broken release and a present one are indistinguishable by name, which is why
-#: the install below upgrades rather than installs - a plain install of an already-present (and
-#: broken) version reports "Requirement already satisfied" and changes nothing.
+#: not the spec: a broken release and a present one are indistinguishable by name.
+#:
+#: Measured 2026-10-01, the second fire - and the reason the first bootstrap (an in-place
+#: `pip install -q -U kaggle`) was not enough: pip exited 0 in twelve seconds with no download in
+#: its output - an image whose metadata already names the current release gets "Requirement
+#: already satisfied", and `-U` replaces nothing - and the import failed again in the same
+#: process (`kaggle: unavailable`, then `errors: ["restore"]` a second time). Two lessons are in
+#: the fragment below: install into a directory this text owns with `--ignore-installed`, so the
+#: answer cannot be "already satisfied" and the copy that lands is the copy that gets imported;
+#: and drop the failed probe's `sys.modules` entries before retrying, because a `kaggle` left
+#: cached there shadows whatever the install writes.
 KAGGLE_BOOTSTRAP = '''def ensure_kaggle() -> str:
-    """The Kaggle API client's own import, installing it if the image carries a broken one."""
+    """The Kaggle API client's import, installed into a copy this text owns and can point at."""
+    import importlib
+    import importlib.util
     import subprocess
 
-    try:
-        from kaggle.api.kaggle_api_extended import KaggleApi  # noqa: F401
+    target = "/tmp/act-kaggle-client"
+
+    def probe() -> bool:
+        # The failed import leaves `kaggle` (the image's broken copy) in sys.modules, and a
+        # cached module wins over anything a later install puts on sys.path.
+        for name in [n for n in sys.modules if n == "kaggle" or n.startswith("kaggle.")]:
+            del sys.modules[name]
+        importlib.invalidate_caches()
+        try:
+            from kaggle.api.kaggle_api_extended import KaggleApi  # noqa: F401
+            return True
+        except ImportError:
+            return False
+
+    if probe():
         return "already-present"
-    except ImportError:
-        pass
+    found = importlib.util.find_spec("kaggle")
+    print(f"kaggle: import failed; the name resolves to {getattr(found, 'origin', None)!r}",
+          flush=True)
     proc = subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-q", "-U", "kaggle"],
+        [sys.executable, "-m", "pip", "install", "-q", "--ignore-installed",
+         "--no-warn-script-location", "--target", target, "kaggle"],
         capture_output=True, text=True,
     )
     detail = (proc.stdout + proc.stderr)[-1500:]
     if proc.returncode == 0:
-        try:
-            from kaggle.api.kaggle_api_extended import KaggleApi  # noqa: F401
-            return "installed:kaggle"
-        except ImportError:
-            print("pip installed kaggle but kaggle.api still will not import", flush=True)
+        # First on sys.path, before the image's own copy: a regular package this text controls
+        # beats a broken one it cannot replace, and the runner imports whatever wins.
+        sys.path.insert(0, target)
+        if probe():
+            return f"installed:{target}"
+        print(f"the target copy still will not import; sys.path[:3] is {sys.path[:3]}", flush=True)
     print(f"pip kaggle failed ({proc.returncode}):\\n{detail}", flush=True)
     return "unavailable"
 '''

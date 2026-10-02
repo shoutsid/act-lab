@@ -1,0 +1,58 @@
+[{"stream_name":"stderr","time":44.481926231,"data":"/usr/local/lib/python3.12/site-packages/torch_xla/experimental/gru.py:113: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":44.481973931,"data":"  * **h_n**: tensor of shape :math:`(D * \\text{num\\_layers}, H_{out})` or\n"}
+,{"stream_name":"stderr","time":56.199324618,"data":"/usr/local/lib/python3.12/site-packages/torch_xla/__init__.py:258: UserWarning: `tensorflow` can conflict with `torch-xla`. Prefer `tensorflow-cpu` when using PyTorch/XLA. To silence this warning, `pip uninstall -y tensorflow \u0026\u0026 pip install tensorflow-cpu`. If you are in a notebook environment such as Colab or Kaggle, restart your notebook runtime afterwards.\n"}
+,{"stream_name":"stderr","time":56.199368887,"data":"  warnings.warn(\n"}
+,{"stream_name":"stdout","time":58.118403989,"data":"torch_xla: already-present\n"}
+,{"stream_name":"stdout","time":58.666722973,"data":"null queue runner: /kaggle/input/act-lab-code/code/scripts/tpu_null_queue.py\n"}
+,{"stream_name":"stdout","time":59.056454624,"data":"{\n"}
+,{"stream_name":"stdout","time":59.056481293,"data":" \"record_type\": \"tpu-null-queue\",\n"}
+,{"stream_name":"stdout","time":59.056488373,"data":" \"kind\": \"tpu-null-queue\",\n"}
+,{"stream_name":"stdout","time":59.056493624,"data":" \"declared_seed\": true,\n"}
+,{"stream_name":"stdout","time":59.056498244,"data":" \"fidelity\": \"declared\",\n"}
+,{"stream_name":"stdout","time":59.056502733,"data":" \"declared_scale\": true,\n"}
+,{"stream_name":"stdout","time":59.056506873,"data":" \"queue\": \"null\",\n"}
+,{"stream_name":"stdout","time":59.056511124,"data":" \"device_requested\": \"xla\",\n"}
+,{"stream_name":"stdout","time":59.056515184,"data":" \"dtype\": \"fp32\",\n"}
+,{"stream_name":"stdout","time":59.056519533,"data":" \"steps\": 6000,\n"}
+,{"stream_name":"stdout","time":59.056523444,"data":" \"workers_requested\": 8,\n"}
+,{"stream_name":"stdout","time":59.056527564,"data":" \"seeds_requested\": [\n"}
+,{"stream_name":"stdout","time":59.056531524,"data":"  15024,\n"}
+,{"stream_name":"stdout","time":59.056535484,"data":"  15025,\n"}
+,{"stream_name":"stdout","time":59.056539573,"data":"  15026,\n"}
+,{"stream_name":"stdout","time":59.056543564,"data":"  15027,\n"}
+,{"stream_name":"stdout","time":59.056547493,"data":"  15028,\n"}
+,{"stream_name":"stdout","time":59.056551273,"data":"  15029,\n"}
+,{"stream_name":"stdout","time":59.056555084,"data":"  15030,\n"}
+,{"stream_name":"stdout","time":59.056558844,"data":"  15031,\n"}
+,{"stream_name":"stdout","time":59.056562673,"data":"  15032,\n"}
+,{"stream_name":"stdout","time":59.056566933,"data":"  15033,\n"}
+,{"stream_name":"stdout","time":59.056571093,"data":"  15034,\n"}
+,{"stream_name":"stdout","time":59.056575673,"data":"  15035\n"}
+,{"stream_name":"stdout","time":59.056579493,"data":" ],\n"}
+,{"stream_name":"stdout","time":59.056583524,"data":" \"dataset_root\": \"act-v0-5-2-null\",\n"}
+,{"stream_name":"stdout","time":59.056588124,"data":" \"tpu_dataset_root_name\": \"act-v0-5-2-null\",\n"}
+,{"stream_name":"stdout","time":59.056592413,"data":" \"dataset\": \"sid123123234/act-v0-5-2-null\",\n"}
+,{"stream_name":"stdout","time":59.056596473,"data":" \"rebuild_treatment\": {\n"}
+,{"stream_name":"stdout","time":59.056600444,"data":"  \"preserve_router_on_rebuild\": true,\n"}
+,{"stream_name":"stdout","time":59.056604413,"data":"  \"new_expert_initialization\": \"clone\"\n"}
+,{"stream_name":"stdout","time":59.056608624,"data":" },\n"}
+,{"stream_name":"stdout","time":59.056612493,"data":" \"code_revision\": \"d5fdd7b1b430b81fa09b36536467e13bd2102d53\",\n"}
+,{"stream_name":"stdout","time":59.056625004,"data":" \"checkpoint_interval\": 500,\n"}
+,{"stream_name":"stdout","time":59.056628204,"data":" \"scratch_root\": \"the seed checkpoints and the dataset root live under --scratch (the container overlay on a kernel), never beside the record: the block is ~38 GiB and the working mount is 20 GB\",\n"}
+,{"stream_name":"stdout","time":59.056638604,"data":" \"clean_working_dir_after_publish\": true,\n"}
+,{"stream_name":"stdout","time":59.056641893,"data":" \"completed\": [],\n"}
+,{"stream_name":"stdout","time":59.056644593,"data":" \"errors\": [\n"}
+,{"stream_name":"stdout","time":59.056647273,"data":"  \"restore\"\n"}
+,{"stream_name":"stdout","time":59.056650024,"data":" ],\n"}
+,{"stream_name":"stdout","time":59.056653004,"data":" \"what_this_is\": \"The registered campaign's null queue (section 5.14), one seed per chip on a TPU, trained with run_v0_session and published with publish_seed - the same path the T4 null queue runs. It differs from that queue in exactly one field, named in `dtype`: the session's registered dtypes are fp32 and fp16, and fp16 on a TPU needs an autocast and scaler path no record here shows working.\",\n"}
+,{"stream_name":"stdout","time":59.056656453,"data":" \"scratch\": \"/tmp/act-lab-null-queue-fa378f39ab\",\n"}
+,{"stream_name":"stdout","time":59.056659264,"data":" \"restore\": {\n"}
+,{"stream_name":"stdout","time":59.056661993,"data":"  \"dataset\": \"sid123123234/act-v0-5-2-null\",\n"}
+,{"stream_name":"stdout","time":59.056664764,"data":"  \"restored\": [],\n"}
+,{"stream_name":"stdout","time":59.056667473,"data":"  \"error\": \"ModuleNotFoundError: No module named 'kaggle.api'\"\n"}
+,{"stream_name":"stdout","time":59.056670684,"data":" },\n"}
+,{"stream_name":"stdout","time":59.056673693,"data":" \"seeds_completed\": 0\n"}
+,{"stream_name":"stdout","time":59.056676804,"data":"}\n"}
+,{"stream_name":"stderr","time":72.26324914,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
+,{"stream_name":"stderr","time":81.564813803,"data":"[NbConvertApp] Writing 281010 bytes to __results__.html\n"}
+]

@@ -86,16 +86,32 @@ def test_the_entry_installs_a_working_kaggle_client_before_the_runner_asks_for_o
     assert pusher.ENTRY.index(call) < pusher.ENTRY.index("runpy.run_path")
 
 
-def test_the_kaggle_bootstrap_probes_the_import_rather_than_the_name() -> None:
-    """A present-but-broken release and a working one share the name `kaggle`, so the name is not
-    the check - only the import is.
+def test_the_kaggle_bootstrap_installs_a_copy_the_import_can_actually_reach() -> None:
+    """The name resolving is not the import working, and an in-place upgrade is not a fix.
 
-    And it upgrades rather than installs: measured 2026-09-30, `pip install kaggle` on an image
-    that already carries a broken version reports "Requirement already satisfied" and changes
-    nothing, so a plain install would have left this failure exactly where it was.
+    Measured 2026-09-30: the image's client does not import (`No module named 'kaggle.api'`)
+    while `find_spec("kaggle")` is true, so the check has to be the import.
+
+    Measured 2026-10-01, the second fire: `pip install -q -U kaggle` exited 0 in twelve seconds
+    with no download in its output - an image whose metadata already names the current release
+    gets "Requirement already satisfied", so `-U` replaced nothing - and the import failed again
+    in the same process. Hence the shape below: a target directory this text owns, installed
+    with `--ignore-installed` so the answer cannot be "already satisfied", put first on
+    `sys.path` so it beats the image's copy, and the failed probe's `sys.modules` entries
+    dropped first because a cached `kaggle` shadows whatever the install writes.
     """
-    assert "from kaggle.api.kaggle_api_extended import KaggleApi" in push_tpu_probe.KAGGLE_BOOTSTRAP
-    assert '"-U", "kaggle"' in push_tpu_probe.KAGGLE_BOOTSTRAP
+    fragment = push_tpu_probe.KAGGLE_BOOTSTRAP
+
+    assert "from kaggle.api.kaggle_api_extended import KaggleApi" in fragment
+    assert '"--ignore-installed"' in fragment
+    assert '"--target", target' in fragment
+    # The install's own directory goes first, and the retry comes after it: the image's copy is
+    # what wins otherwise, which is the copy that does not import.
+    insert = fragment.index("sys.path.insert(0, target)")
+    assert insert < fragment.index("if probe():", insert)
+    # And the retry import cannot land on the copy the failed probe cached.
+    assert "del sys.modules[name]" in fragment
+    assert "invalidate_caches" in fragment
 
 
 def test_stage_substitutes_every_field_the_queued_run_is_read_from(

@@ -137,3 +137,66 @@ Two things were done about it:
 Still open: the re-fire itself is unobserved. When it starts, the runner needs ~6.19 h at the price
 probe's rate and the week has 16.51 TPU-hours left before the **2026-10-03** refresh, so it fits;
 the watcher fetches on either terminal state.
+
+## The second fire (2026-10-01T18:06Z): the fix ran, and `pip` replaced nothing
+
+The re-fire was pushed **2026-09-30T12:28:44Z** and left the queue **~29.5 h** later: the
+re-armed watcher's poll 81 still read `QUEUED` at **17:51:22Z**, and its next poll,
+**18:06:25Z**, found `KernelWorkerStatus.ERROR` and fetched. The run itself is **~85 s**
+(`torch_xla: already-present` at t=55.35 s, the record at t=69.1 s, `__results__.html` at 84.6 s)
+and its record is v1's exactly, down to `errors: ["restore"]`, `seeds_completed: 0`, `seeds: {}` -
+the only difference is `scratch`, `/tmp/act-lab-null-queue-68154a5f47` against v1's
+`fa378f39ab`. The `restore.error` is the same `ModuleNotFoundError: No module named 'kaggle.api'`.
+
+So the entry *did* carry the first fix and the fix ran - and this is what it printed:
+
+    pip installed kaggle but kaggle.api still will not import
+    pip kaggle failed (0):
+    WARNING: Running pip as the 'root' user can result in broken permissions ...
+    [notice] A new release of pip is available: 25.0.1 -> 26.2.1
+    [notice] To update, run: pip install --upgrade pip
+    kaggle: unavailable
+
+`pip` exited **0** after ~12 s having downloaded nothing and printed only its own warnings: on an
+image whose metadata already names the current release, `-U` answers "Requirement already
+satisfied" and replaces no file. Two mechanisms are consistent with that output and both are the
+same fix's business: the in-place upgrade was a no-op, and the failed probe's `kaggle` was left in
+`sys.modules`, where a cached module wins over anything a later install writes.
+
+### The fix, and how it was read before it was fired
+
+`KAGGLE_BOOTSTRAP` no longer upgrades in place. It installs a copy into a directory the entry text
+owns (`/tmp/act-kaggle-client`) with `pip install -q --ignore-installed --target`, puts that
+directory **first** on `sys.path` (a regular package there beats the image's broken copy, which the
+upgrade could not replace), and drops every `kaggle*` entry from `sys.modules` plus
+`importlib.invalidate_caches()` before each probe - including the retry, which would otherwise
+import the copy the failed probe cached. A target copy that still will not import prints
+`sys.path[:3]`, and a failed install prints what the name resolved to, so the next log names the
+site rather than the symptom.
+
+Read locally before firing, with the restaged entry's own `ensure_kaggle` extracted by `ast` and
+run under the project venv (Python 3.11, no `kaggle` installed at all):
+
+| scenario | what the bootstrap returned | what the import then resolved to |
+|---|---|---|
+| a broken `kaggle` package shadowing on `PYTHONPATH`, already imported | `installed:/tmp/act-kaggle-client` | the target's `kaggle/__init__.py` |
+| a namespace `kaggle` (no `__init__.py`) shadowing, already imported | `installed:/tmp/act-kaggle-client` | the target's `kaggle/__init__.py` |
+| a working copy already on `sys.path` | `already-present` (no install) | the working copy |
+
+### The third fire
+
+The entry was restaged (**sha256
+`258d6fe430a62769127ef14810c8aec9bea813b197ca1b5bde32ee2389324e19`**; `kernel-metadata.json`
+unchanged at `d63b5a1d...`) and pushed **2026-10-02T15:18:37Z** by the slot waiter's attempt 1 (the
+price probe is `COMPLETE`), with the fetch watcher armed at the 96 h bound (pid **58331**). At
+**15:18:38Z** the kernel read `QUEUED`; the two waits before this one were ~9.6 h and ~29.5 h, so
+the bound has room, and the ~6.19 h the block needs at the price probe's rate still fits the
+16.49 TPU-hours left before the **2026-10-03** refresh. The first re-arm's watcher (24 h bound,
+which expired about five hours before the second fire started) has its full account preserved at
+`/tmp/tpu-null-watch.log-20261001`.
+
+v2's record and log were fetched into `output/` at **18:06:25Z** on 2026-10-01, so `output/v1/`
+and `output/` are the two fires' evidence, now committed. The adapter half of the 2026-09-30 fix
+(`KaggleApiAdapter.__init__` naming the defect) still needs a code-dataset republish to reach a
+kernel; it is not on this queue's critical path, whose entry now makes the import work before the
+runner asks - and the mounted dataset revision the record names is unchanged (`d5fdd7b`).

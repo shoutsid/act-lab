@@ -1,0 +1,66 @@
+[{"stream_name":"stderr","time":32.163155634,"data":"/usr/local/lib/python3.12/site-packages/torch_xla/experimental/gru.py:113: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":32.163236334,"data":"  * **h_n**: tensor of shape :math:`(D * \\text{num\\_layers}, H_{out})` or\n"}
+,{"stream_name":"stderr","time":48.485083242,"data":"/usr/local/lib/python3.12/site-packages/torch_xla/__init__.py:258: UserWarning: `tensorflow` can conflict with `torch-xla`. Prefer `tensorflow-cpu` when using PyTorch/XLA. To silence this warning, `pip uninstall -y tensorflow \u0026\u0026 pip install tensorflow-cpu`. If you are in a notebook environment such as Colab or Kaggle, restart your notebook runtime afterwards.\n"}
+,{"stream_name":"stderr","time":48.485122322,"data":"  warnings.warn(\n"}
+,{"stream_name":"stdout","time":55.347711316,"data":"torch_xla: already-present\n"}
+,{"stream_name":"stdout","time":67.63454045,"data":"pip installed kaggle but kaggle.api still will not import\n"}
+,{"stream_name":"stdout","time":67.63459653,"data":"pip kaggle failed (0):\n"}
+,{"stream_name":"stdout","time":67.63460268,"data":"WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n"}
+,{"stream_name":"stdout","time":67.63460862,"data":"\n"}
+,{"stream_name":"stdout","time":67.63461327,"data":"[notice] A new release of pip is available: 25.0.1 -\u003e 26.2.1\n"}
+,{"stream_name":"stdout","time":67.6346188,"data":"[notice] To update, run: pip install --upgrade pip\n"}
+,{"stream_name":"stdout","time":67.634623489,"data":"\n"}
+,{"stream_name":"stdout","time":67.63462786,"data":"kaggle: unavailable\n"}
+,{"stream_name":"stdout","time":68.029746534,"data":"null queue runner: /kaggle/input/act-lab-code/code/scripts/tpu_null_queue.py\n"}
+,{"stream_name":"stdout","time":69.100199363,"data":"{\n"}
+,{"stream_name":"stdout","time":69.100237953,"data":" \"record_type\": \"tpu-null-queue\",\n"}
+,{"stream_name":"stdout","time":69.100244033,"data":" \"kind\": \"tpu-null-queue\",\n"}
+,{"stream_name":"stdout","time":69.100248903,"data":" \"declared_seed\": true,\n"}
+,{"stream_name":"stdout","time":69.100253723,"data":" \"fidelity\": \"declared\",\n"}
+,{"stream_name":"stdout","time":69.100258873,"data":" \"declared_scale\": true,\n"}
+,{"stream_name":"stdout","time":69.100263083,"data":" \"queue\": \"null\",\n"}
+,{"stream_name":"stdout","time":69.100267363,"data":" \"device_requested\": \"xla\",\n"}
+,{"stream_name":"stdout","time":69.100271683,"data":" \"dtype\": \"fp32\",\n"}
+,{"stream_name":"stdout","time":69.100276023,"data":" \"steps\": 6000,\n"}
+,{"stream_name":"stdout","time":69.100280273,"data":" \"workers_requested\": 8,\n"}
+,{"stream_name":"stdout","time":69.100291183,"data":" \"seeds_requested\": [\n"}
+,{"stream_name":"stdout","time":69.100295423,"data":"  15024,\n"}
+,{"stream_name":"stdout","time":69.100299673,"data":"  15025,\n"}
+,{"stream_name":"stdout","time":69.100303803,"data":"  15026,\n"}
+,{"stream_name":"stdout","time":69.100307873,"data":"  15027,\n"}
+,{"stream_name":"stdout","time":69.100311943,"data":"  15028,\n"}
+,{"stream_name":"stdout","time":69.100316163,"data":"  15029,\n"}
+,{"stream_name":"stdout","time":69.100320303,"data":"  15030,\n"}
+,{"stream_name":"stdout","time":69.100327713,"data":"  15031,\n"}
+,{"stream_name":"stdout","time":69.100331853,"data":"  15032,\n"}
+,{"stream_name":"stdout","time":69.100352443,"data":"  15033,\n"}
+,{"stream_name":"stdout","time":69.100355573,"data":"  15034,\n"}
+,{"stream_name":"stdout","time":69.100358423,"data":"  15035\n"}
+,{"stream_name":"stdout","time":69.100361273,"data":" ],\n"}
+,{"stream_name":"stdout","time":69.100364263,"data":" \"dataset_root\": \"act-v0-5-2-null\",\n"}
+,{"stream_name":"stdout","time":69.100367343,"data":" \"tpu_dataset_root_name\": \"act-v0-5-2-null\",\n"}
+,{"stream_name":"stdout","time":69.100370333,"data":" \"dataset\": \"sid123123234/act-v0-5-2-null\",\n"}
+,{"stream_name":"stdout","time":69.100373453,"data":" \"rebuild_treatment\": {\n"}
+,{"stream_name":"stdout","time":69.100376403,"data":"  \"preserve_router_on_rebuild\": true,\n"}
+,{"stream_name":"stdout","time":69.100379413,"data":"  \"new_expert_initialization\": \"clone\"\n"}
+,{"stream_name":"stdout","time":69.100382473,"data":" },\n"}
+,{"stream_name":"stdout","time":69.100385363,"data":" \"code_revision\": \"d5fdd7b1b430b81fa09b36536467e13bd2102d53\",\n"}
+,{"stream_name":"stdout","time":69.100388643,"data":" \"checkpoint_interval\": 500,\n"}
+,{"stream_name":"stdout","time":69.100391763,"data":" \"scratch_root\": \"the seed checkpoints and the dataset root live under --scratch (the container overlay on a kernel), never beside the record: the block is ~38 GiB and the working mount is 20 GB\",\n"}
+,{"stream_name":"stdout","time":69.100396503,"data":" \"clean_working_dir_after_publish\": true,\n"}
+,{"stream_name":"stdout","time":69.100399683,"data":" \"completed\": [],\n"}
+,{"stream_name":"stdout","time":69.100402763,"data":" \"errors\": [\n"}
+,{"stream_name":"stdout","time":69.100405703,"data":"  \"restore\"\n"}
+,{"stream_name":"stdout","time":69.100408663,"data":" ],\n"}
+,{"stream_name":"stdout","time":69.100411943,"data":" \"what_this_is\": \"The registered campaign's null queue (section 5.14), one seed per chip on a TPU, trained with run_v0_session and published with publish_seed - the same path the T4 null queue runs. It differs from that queue in exactly one field, named in `dtype`: the session's registered dtypes are fp32 and fp16, and fp16 on a TPU needs an autocast and scaler path no record here shows working.\",\n"}
+,{"stream_name":"stdout","time":69.100415883,"data":" \"scratch\": \"/tmp/act-lab-null-queue-68154a5f47\",\n"}
+,{"stream_name":"stdout","time":69.100419063,"data":" \"restore\": {\n"}
+,{"stream_name":"stdout","time":69.100422183,"data":"  \"dataset\": \"sid123123234/act-v0-5-2-null\",\n"}
+,{"stream_name":"stdout","time":69.100425173,"data":"  \"restored\": [],\n"}
+,{"stream_name":"stdout","time":69.100428153,"data":"  \"error\": \"ModuleNotFoundError: No module named 'kaggle.api'\"\n"}
+,{"stream_name":"stdout","time":69.100431233,"data":" },\n"}
+,{"stream_name":"stdout","time":69.100434093,"data":" \"seeds_completed\": 0\n"}
+,{"stream_name":"stdout","time":69.100437043,"data":"}\n"}
+,{"stream_name":"stderr","time":80.469993642,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
+,{"stream_name":"stderr","time":84.580195583,"data":"[NbConvertApp] Writing 285263 bytes to __results__.html\n"}
+]
