@@ -1,0 +1,50 @@
+{
+ "checkpoint_interval": 500,
+ "clean_working_dir_after_publish": true,
+ "code_revision": "d5fdd7b1b430b81fa09b36536467e13bd2102d53",
+ "completed": [],
+ "dataset": "sid123123234/act-v0-5-2-null",
+ "dataset_root": "act-v0-5-2-null",
+ "declared_scale": true,
+ "declared_seed": true,
+ "device_requested": "xla",
+ "dtype": "fp32",
+ "errors": [
+  "restore"
+ ],
+ "fidelity": "declared",
+ "kind": "tpu-null-queue",
+ "queue": "null",
+ "rebuild_treatment": {
+  "new_expert_initialization": "clone",
+  "preserve_router_on_rebuild": true
+ },
+ "record_type": "tpu-null-queue",
+ "restore": {
+  "dataset": "sid123123234/act-v0-5-2-null",
+  "error": "ModuleNotFoundError: No module named 'kaggle.api'",
+  "restored": []
+ },
+ "scratch": "/tmp/act-lab-null-queue-68154a5f47",
+ "scratch_root": "the seed checkpoints and the dataset root live under --scratch (the container overlay on a kernel), never beside the record: the block is ~38 GiB and the working mount is 20 GB",
+ "seeds": {},
+ "seeds_completed": 0,
+ "seeds_requested": [
+  15024,
+  15025,
+  15026,
+  15027,
+  15028,
+  15029,
+  15030,
+  15031,
+  15032,
+  15033,
+  15034,
+  15035
+ ],
+ "steps": 6000,
+ "tpu_dataset_root_name": "act-v0-5-2-null",
+ "what_this_is": "The registered campaign's null queue (section 5.14), one seed per chip on a TPU, trained with run_v0_session and published with publish_seed - the same path the T4 null queue runs. It differs from that queue in exactly one field, named in `dtype`: the session's registered dtypes are fp32 and fp16, and fp16 on a TPU needs an autocast and scaler path no record here shows working.",
+ "workers_requested": 8
+}

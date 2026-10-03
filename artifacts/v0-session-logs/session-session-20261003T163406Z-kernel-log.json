@@ -1,0 +1,54 @@
+[{"stream_name":"stdout","time":10.68472516,"data":"=== ACT lab: session session ===\n"}
+,{"stream_name":"stdout","time":10.684782195,"data":"dataset=sid123123234/act-v0-5-2 hours=7 seeds=15024-15035\n"}
+,{"stream_name":"stdout","time":11.069730137,"data":"code dataset: /kaggle/input/datasets/sid123123234/act-lab-code/code\n"}
+,{"stream_name":"stdout","time":12.657314162,"data":"torch 2.10.0+cu128 | device Tesla T4\n"}
+,{"stream_name":"stdout","time":12.657357632,"data":"gpu inventory: {'count': 2, 'names': ['Tesla T4', 'Tesla T4']}\n"}
+,{"stream_name":"stdout","time":12.657362892,"data":"disk working: total 19.5 GiB | free 19.5 GiB\n"}
+,{"stream_name":"stdout","time":12.657395394,"data":"disk input: total 19.5 GiB | free 19.5 GiB\n"}
+,{"stream_name":"stdout","time":12.657419993,"data":"disk tmp: total 8156.9 GiB | free 1069.9 GiB\n"}
+,{"stream_name":"stdout","time":12.669934005,"data":"--- df -h ---\n"}
+,{"stream_name":"stdout","time":12.669965872,"data":"Filesystem      Size  Used Avail Use% Mounted on\n"}
+,{"stream_name":"stdout","time":12.669970723,"data":"/dev/loop2       20G  7.2M   20G   1% /kaggle/working\n"}
+,{"stream_name":"stdout","time":12.669974233,"data":"overlay         8.0T  7.0T  1.1T  87% /\n"}
+,{"stream_name":"stdout","time":12.669978033,"data":"overlay         8.0T  7.0T  1.1T  87% /\n"}
+,{"stream_name":"stdout","time":12.670146296,"data":"writable /kaggle/working: yes\n"}
+,{"stream_name":"stdout","time":12.670457852,"data":"writable /kaggle/temp: yes\n"}
+,{"stream_name":"stdout","time":12.670747431,"data":"writable /tmp: yes\n"}
+,{"stream_name":"stdout","time":12.671180596,"data":"--- throughput benchmark (the launch command's input) ---\n"}
+,{"stream_name":"stdout","time":12.671202704,"data":"$ /usr/bin/python3 scripts/v0_throughput_benchmark.py --steps 50\n"}
+,{"stream_name":"stdout","time":227.625508401,"data":"arm placement: 2 arm(s) in 1 wave(s) of slots=2\n"}
+,{"stream_name":"stdout","time":227.626879774,"data":"{\"benchmark\": \"v0-throughput-5.2\", \"declared_active_parameter_count\": 7556160, \"declared_parameter_count\": 14928960, \"device\": \"cuda\", \"device_name\": \"Tesla T4\", \"dtype_decision\": \"fp16\", \"example_deadline_check\": \"remaining 2.00 h does not fit pair 1.44 h + 45 min reserve (rule 1)\", \"fp32_floor_tokens_per_second\": 2500.0, \"gpu_inventory\": {\"count\": 2, \"names\": [\"Tesla T4\", \"Tesla T4\"]}, \"measured_tokens_per_second\": 1453.1012593416674, \"predicted_probe_cost_percent\": {\"cap4_1batch\": 0.0941636252059042, \"cap4_2batch\": 0.1883272504118084}, \"profile\": \"declared-285M\", \"schedule\": {\"arm_slots\": 2, \"arms\": 2, \"checkpoint_interval\": 500, \"declared_session_hours\": 7.0, \"full_pairs_per_session\": 6, \"max_checkpoints\": 2, \"pair_time_hours\": 1.4359311688666672, \"pairs_per_session_rule1\": 4, \"platform_session_cap_hours\": 8.0, \"sessions_for_primary\": 2, \"sessions_for_primary_rule1\": 3, \"sessions_total\": 4, \"three_queue_sessions\": 9, \"three_queue_sessions_null\": 3, \"three_queue_sessions_primary\": 3, \"three_queue_training_hours\": 51.693522079200015, \"working_dir_headroom_gb\": 5.120000000000001, \"working_dir_steady_state_gb\": 14.879999999999999}, \"schedule_dtype\": \"fp16\", \"schedule_tokens_per_second\": 5110.043710154654, \"seed_block\": \"15000-15011 and 15024-15035 (reserved, untouched by this benchmark)\", \"steps\": 50, \"tokens_per_second_by_dtype\": {\"fp16\": 5110.043710154654, \"fp32\": 1453.1012593416674}, \"tolerance_band_primary\": [0.0470818126029521, 0.1883272504118084], \"torch_version\": \"2.10.0+cu128\", \"warmup_steps\": 5}\n"}
+,{"stream_name":"stdout","time":231.343709867,"data":"measured 1453.1 tokens/s | dtype fp16 | pair_time 1.44 h\n"}
+,{"stream_name":"stdout","time":231.344014983,"data":"kept /kaggle/working/v0-benchmark.json\n"}
+,{"stream_name":"stdout","time":231.344111328,"data":"--- session queue (--hours 6.94 h: 3.7 min of the declared 7 h spent on startup) ---\n"}
+,{"stream_name":"stdout","time":231.344512489,"data":"$ /usr/bin/python3 -m act.training.cli --mode pair-session --device cuda --hours 6.93871 --seeds 15024-15035 --probe-candidate-policy spread --preserve-router-on-rebuild --new-expert clone --dataset-root /tmp/act-lab-session-ef05c7ed56/artifacts/datasets --session-dir /tmp/act-lab-session-ef05c7ed56/artifacts/v0-sessions --kaggle-dataset sid123123234/act-v0-5-2\n"}
+,{"stream_name":"stdout","time":234.415424552,"data":"Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.2)\n"}
+,{"stream_name":"stdout","time":234.43970274,"data":"Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.2)\n"}
+,{"stream_name":"stdout","time":234.440518497,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2\n"}
+,{"stream_name":"stdout","time":234.624564931,"data":"the restore of sid123123234/act-v0-5-2 failed (HTTPError: 404 Client Error: Not Found for url: https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset) although the dataset exists; attempt 1/4, retrying in 60 s (published seeds are not re-trained over)\n"}
+,{"stream_name":"stdout","time":294.624966197,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2\n"}
+,{"stream_name":"stdout","time":294.798376178,"data":"the restore of sid123123234/act-v0-5-2 failed (HTTPError: 404 Client Error: Not Found for url: https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset) although the dataset exists; attempt 2/4, retrying in 120 s (published seeds are not re-trained over)\n"}
+,{"stream_name":"stdout","time":414.798849093,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2\n"}
+,{"stream_name":"stdout","time":415.015084764,"data":"the restore of sid123123234/act-v0-5-2 failed (HTTPError: 404 Client Error: Not Found for url: https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset) although the dataset exists; attempt 3/4, retrying in 180 s (published seeds are not re-trained over)\n"}
+,{"stream_name":"stdout","time":595.015544266,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2\n"}
+,{"stream_name":"stdout","time":595.221200076,"data":"cannot restore remote dataset 'sid123123234/act-v0-5-2': RuntimeError: cannot restore sid123123234/act-v0-5-2: the dataset exists but its download failed on all 4 attempt(s) (HTTPError: 404 Client Error: Not Found for url: https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset); training nothing rather than re-training seeds the queue already published; session not started (no training ran, nothing published)\n"}
+,{"stream_name":"stdout","time":595.714673313,"data":"--- last 10 line(s) ---\n"}
+,{"stream_name":"stdout","time":595.714830292,"data":"Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.2)\n"}
+,{"stream_name":"stdout","time":595.714846743,"data":"Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.2)\n"}
+,{"stream_name":"stdout","time":595.714859918,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2\n"}
+,{"stream_name":"stdout","time":595.714865188,"data":"the restore of sid123123234/act-v0-5-2 failed (HTTPError: 404 Client Error: Not Found for url: https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset) although the dataset exists; attempt 1/4, retrying in 60 s (published seeds are not re-trained over)\n"}
+,{"stream_name":"stdout","time":595.714872752,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2\n"}
+,{"stream_name":"stdout","time":595.714889348,"data":"the restore of sid123123234/act-v0-5-2 failed (HTTPError: 404 Client Error: Not Found for url: https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset) although the dataset exists; attempt 2/4, retrying in 120 s (published seeds are not re-trained over)\n"}
+,{"stream_name":"stdout","time":595.714892765,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2\n"}
+,{"stream_name":"stdout","time":595.714895492,"data":"the restore of sid123123234/act-v0-5-2 failed (HTTPError: 404 Client Error: Not Found for url: https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset) although the dataset exists; attempt 3/4, retrying in 180 s (published seeds are not re-trained over)\n"}
+,{"stream_name":"stdout","time":595.714898553,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2\n"}
+,{"stream_name":"stdout","time":595.714901312,"data":"cannot restore remote dataset 'sid123123234/act-v0-5-2': RuntimeError: cannot restore sid123123234/act-v0-5-2: the dataset exists but its download failed on all 4 attempt(s) (HTTPError: 404 Client Error: Not Found for url: https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset); training nothing rather than re-training seeds the queue already published; session not started (no training ran, nothing published)\n"}
+,{"stream_name":"stdout","time":595.714904607,"data":"\n"}
+,{"stream_name":"stderr","time":595.716346452,"data":"command failed with exit 1: ['-m', 'act.training.cli']\n"}
+,{"stream_name":"stderr","time":598.502762399,"data":"/usr/local/lib/python3.12/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":598.50280705,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":598.828479474,"data":"/usr/local/lib/python3.12/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":598.82852485,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":599.551820845,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
+,{"stream_name":"stderr","time":601.088903918,"data":"[NbConvertApp] Writing 486951 bytes to __results__.html\n"}
+]

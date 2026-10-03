@@ -664,6 +664,152 @@ def test_dataset_exists_reads_the_owner_s_own_listing_by_paging() -> None:
     assert adapter.dataset_exists("owner/missing") is False
 
 
+class _ArchiveWillNotServe:
+    """The platform state measured 2026-10-03 on `act-v0-5-2`.
+
+    The whole-archive endpoint answered 404 for the current version (the
+    dataset's listing reported `total_bytes: 0`) while every individual file
+    streamed normally, so the archive *bundle* was broken, not the dataset. A
+    session's restore is the only caller, and without a fallback it cannot
+    start: it stops before training rather than re-training published seeds -
+    which is what every session of that GPU week did.
+    """
+
+    def __init__(self, *, archive_error: Exception | None = None) -> None:
+        self.archive_calls: list[str] = []
+        self.file_calls: list[str] = []
+        self.list_calls: list[tuple[str, str | None, int | None]] = []
+        self.archive_error = archive_error or StubHTTPError(
+            "404 not found", response=StubResponse(404)
+        )
+        # Same basename under two seeds: the collision the per-file scratch dirs exist for.
+        self.files = [
+            "seed-15024/seed-15024/manifests/manifest.json",
+            "seed-15024/seed-15024/reports/seed-summary.json",
+            "seed-15025/seed-15025/manifests/manifest.json",
+        ]
+
+    def dataset_download_files(self, dataset, path=None, unzip=False, quiet=True, **kw):
+        self.archive_calls.append(dataset)
+        raise self.archive_error
+
+    def dataset_list_files(self, dataset, page_token=None, page_size=None):
+        self.list_calls.append((dataset, page_token, page_size))
+        return types.SimpleNamespace(
+            dataset_files=[types.SimpleNamespace(name=name) for name in self.files],
+            next_page_token=None,
+        )
+
+    def dataset_download_file(self, dataset, file_name, path=None, quiet=True, **kw):
+        self.file_calls.append(file_name)
+        # The real API saves under the basename and a fresh scratch dir is the
+        # only thing keeping two seeds' `manifest.json`s apart.
+        target = Path(path) / Path(file_name).name
+        target.write_text(json.dumps({"name": file_name}) + "\n")
+        return True
+
+
+def test_the_adapter_falls_back_to_per_file_downloads_when_the_archive_will_not_serve(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A broken archive bundle must not cost the session its restore.
+
+    Measured 2026-10-03: `act-v0-5-2`'s current version 404s on the archive
+    endpoint (`total_bytes: 0`) while every file is downloadable, so the GPU
+    session died at restore before training - twice in a row, on the week's
+    refresh. The fallback rebuilds the exact tree the archive would have
+    unpacked, at the exact relative paths `published_seed_dirs` searches.
+    """
+    stub_requests(monkeypatch, status_code=404)
+    adapter = kaggle_remote.KaggleApiAdapter.__new__(kaggle_remote.KaggleApiAdapter)
+    api = _ArchiveWillNotServe()
+    adapter._api = api
+    target = tmp_path / "download"
+
+    adapter.download_files("owner/ds", target)
+
+    assert api.archive_calls == ["owner/ds"]
+    assert api.file_calls == api.files
+    # Each file landed at its own dataset-relative path, not flattened.
+    for name in api.files:
+        path = target / name
+        assert path.is_file(), name
+        assert json.loads(path.read_text()) == {"name": name}
+
+
+def test_the_per_file_fallback_pages_the_listing(tmp_path: Path, monkeypatch) -> None:
+    """A block bigger than one page must not be silently truncated.
+
+    Six seeds is 30 files today, but the queue grows by a seed per session; a
+    fallback that stopped on page 1 would restore a prefix of the block and
+    re-train the rest, which is the failure the restore path exists to prevent.
+    """
+    stub_requests(monkeypatch, status_code=404)
+    adapter = kaggle_remote.KaggleApiAdapter.__new__(kaggle_remote.KaggleApiAdapter)
+
+    class Api(_ArchiveWillNotServe):
+        def dataset_list_files(self, dataset, page_token=None, page_size=None):
+            self.list_calls.append((dataset, page_token, page_size))
+            if page_token is None:
+                return types.SimpleNamespace(
+                    dataset_files=[types.SimpleNamespace(name=self.files[0])],
+                    next_page_token="page-2",
+                )
+            return types.SimpleNamespace(
+                dataset_files=[types.SimpleNamespace(name=self.files[1])],
+                next_page_token=None,
+            )
+
+    api = Api()
+    adapter._api = api
+    target = tmp_path / "download"
+
+    adapter.download_files("owner/ds", target)
+
+    assert [call[1] for call in api.list_calls] == [None, "page-2"]
+    assert api.file_calls == api.files[:2]
+
+
+def test_the_per_file_fallback_keeps_the_archive_error_shape(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """When both paths fail, the 404/403 reading has to survive.
+
+    `restore_latest` classifies that status to tell "no such dataset yet" (the
+    normal first-session bootstrap, train from scratch) from "will not serve"
+    (stop before training). A fallback that replaced the archive's error with
+    its own shape would turn a missing dataset into a hard failure, or worse,
+    hide a real one.
+    """
+    stub_requests(monkeypatch, status_code=404)
+    adapter = kaggle_remote.KaggleApiAdapter.__new__(kaggle_remote.KaggleApiAdapter)
+    api = _ArchiveWillNotServe()
+
+    def also_fails(dataset, file_name, path=None, quiet=True, **kw):
+        raise StubHTTPError("404 not found", response=StubResponse(404))
+
+    api.dataset_download_file = also_fails  # type: ignore[method-assign]
+    adapter._api = api
+
+    with pytest.raises(StubHTTPError) as caught:
+        adapter.download_files("owner/ds", tmp_path / "download")
+    assert caught.value.response.status_code == 404
+
+
+def test_the_adapter_does_not_fall_back_on_an_unclassified_error(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Fail-fast for real errors: a 500 is not a reason to ask for 30 files."""
+    adapter = kaggle_remote.KaggleApiAdapter.__new__(kaggle_remote.KaggleApiAdapter)
+    api = _ArchiveWillNotServe(archive_error=RuntimeError("507 insufficient storage"))
+    adapter._api = api
+
+    with pytest.raises(RuntimeError, match="507"):
+        adapter.download_files("owner/ds", tmp_path / "download")
+    assert api.file_calls == []
+    assert api.list_calls == []
+
+
 def test_default_client_requires_the_kaggle_package(monkeypatch) -> None:
     monkeypatch.setattr(kaggle_remote, "KAGGLE_AVAILABLE", False)
     with pytest.raises(RuntimeError, match="kaggle package"):

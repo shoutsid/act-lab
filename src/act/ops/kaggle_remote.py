@@ -79,6 +79,12 @@ RESTORE_RETRY_SECONDS = 60.0
 # exists so a misbehaving listing cannot make a session's startup unbounded.
 DATASET_LIST_PAGES = 5
 
+# How many files the per-file fallback asks for per page. The API accepts 200,
+# and the campaign's own datasets carry tens of files (six seeds is 30), so one
+# page is the normal case; the loop exists so a bigger block cannot be silently
+# truncated.
+DATASET_FILE_PAGE_SIZE = 200
+
 STATUS_PUBLISHED = "published"
 STATUS_FAILED = "failed"
 STATUS_NOTHING = "nothing_to_publish"
@@ -282,7 +288,67 @@ class KaggleApiAdapter:
         return version_notes
 
     def download_files(self, dataset: str, target: Path) -> None:
-        self._api.dataset_download_files(dataset, path=str(target), unzip=True)
+        target = Path(target)
+        try:
+            self._api.dataset_download_files(dataset, path=str(target), unzip=True)
+            return
+        except Exception as error:  # noqa: BLE001 - classified below
+            if not _is_missing_dataset_error(error):
+                raise
+            archive_error = error
+        # The whole-archive endpoint can fail for a version whose files are all
+        # individually downloadable. Measured 2026-10-03 on `act-v0-5-2`: every
+        # archive request answered 404 and the dataset's listing reported
+        # `total_bytes: 0`, while each file streamed normally - so the archive
+        # *bundle* was broken, not the dataset. The session's restore is the only
+        # caller, and without this it cannot start: it stops before training
+        # rather than re-training published seeds, which is what every session of
+        # the 2026-10-03 GPU week did.
+        try:
+            self._download_each_file(dataset, target)
+        except Exception as per_file_error:  # noqa: BLE001 - reported, not swallowed
+            # Keep the archive error's own shape: `restore_latest` classifies a
+            # 403/404 to tell "no such dataset yet" from "will not serve", and
+            # that reading has to survive the fallback failing too.
+            raise archive_error from per_file_error
+
+    def _download_each_file(self, dataset: str, target: Path) -> None:
+        """Fetch a dataset file by file, for a version whose archive will not serve.
+
+        The startup restore needs the same tree the archive would have unpacked,
+        so every file the listing names is fetched and moved to that exact
+        relative path. Each file gets its **own** scratch directory because the
+        API saves a file under its basename and a dataset has many
+        `manifest.json`s: a shared directory would let one seed's file stand in
+        for the next seed's (the second request would read the first file as an
+        already-downloaded one and skip it).
+        """
+        target.mkdir(parents=True, exist_ok=True)
+        names: list[str] = []
+        page_token: str | None = None
+        while True:
+            response = self._api.dataset_list_files(
+                dataset, page_token=page_token, page_size=DATASET_FILE_PAGE_SIZE
+            )
+            names.extend(str(entry.name) for entry in response.dataset_files)
+            page_token = getattr(response, "next_page_token", None) or None
+            if page_token is None:
+                break
+        if not names:
+            raise RuntimeError(f"{dataset} lists no files to download")
+        for name in names:
+            with tempfile.TemporaryDirectory(prefix="act-kaggle-file-") as scratch:
+                self._api.dataset_download_file(
+                    dataset, name, path=scratch, quiet=True
+                )
+                saved = Path(scratch) / Path(name).name
+                if not saved.is_file():
+                    raise RuntimeError(
+                        f"{dataset}: {name} did not arrive under {scratch}"
+                    )
+                destination = target / name
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(saved), str(destination))
 
     def dataset_exists(self, dataset: str) -> bool:
         """Is this dataset one of the account's own? Asked of the owner's listing.

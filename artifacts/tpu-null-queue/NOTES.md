@@ -200,3 +200,44 @@ and `output/` are the two fires' evidence, now committed. The adapter half of th
 (`KaggleApiAdapter.__init__` naming the defect) still needs a code-dataset republish to reach a
 kernel; it is not on this queue's critical path, whose entry now makes the import work before the
 runner asks - and the mounted dataset revision the record names is unchanged (`d5fdd7b`).
+
+## The third fire (2026-10-02T15:18Z): the platform never ran the script
+
+The entry was byte-identical to the fixed staged one (`258d6fe4`, pulled back and diffed), and
+the run left the queue after **~29.5 h**: `QUEUED` at the watcher's poll 181 (**2026-10-03T00:22:48Z**,
+the moment the account's GPU week refreshed), `RUNNING` from poll 206 (**01:38:09Z**), and `ERROR`
+at **04:41:45Z** - **~3.0 h** of wall clock, which is exactly the **3.15 TPU-h** the quota moved
+by (3.51 used on 2026-10-02T15:03Z -> 3.15 used on 2026-10-03, i.e. **-0.36 h**, a refund: the
+refresh zeroed the counter and the run was billed before it).
+
+What it produced: **nothing.** `kaggle kernels output` returned an **empty listing** and the fetch
+kept a **0-byte** log; `kaggle kernels logs` prints nothing; and
+`ApiGetKernelSessionStatusResponse.failure_message` is `''`. A run of this kernel that executes
+even one line writes a record (`tpu_probe._save` runs before the restore) and its stdout carries
+the bootstraps' own prints, so an empty output plus an empty failure message is the platform's
+**provisioning** failure, not the runner's: the container never ran the script. Two earlier
+measurements name the same class - the note in `restore_latest` records "a session ended ERROR
+after 1.32 h with no log and no output" on 2026-09-21, and that is on a GPU kernel.
+
+There is nothing to fix locally for this one. The queued version was verified byte-identical to
+the staged entry, the mounted code dataset still carries the runner at sha256
+`9e744d9c2edce3...`, and a re-fire costs a queue wait rather than a diagnosis. It was re-fired:
+see below. The watcher that fetched it (24 h bound on the *fetch* side was 96 h; it fetched at
+04:41:45Z) has its full account at `/tmp/tpu-null-watch.log-20261003`.
+
+## The fourth fire (2026-10-03T16:27Z)
+
+Pushed by `push_tpu_null_queue_when_free.sh` at **16:27:52Z** (attempt 1; the price probe is
+`COMPLETE`), pushing the **already-staged** folder - the entry that goes out is the same
+`258d6fe4` bytes - with a fresh fetch watcher (pid **384604**, log `/tmp/tpu-null-watch.log-v3`,
+96 h bound). The kernel read `QUEUED` at the first poll.
+
+**The TPU quota at this fire:** **16.85 h remaining** of 20 (the 2026-10-03 refresh has passed;
+the next is 2026-10-10), and the block needs ~6.19 h at the price probe's rate. The two waits
+before the third were ~9.6 h and ~29.5 h; this one is against a week that just refreshed, which
+is the same shape as the second fire's wait.
+
+**The evidence layout:** `output/v1/` is the first fire's record and log, `output/v2/` is the
+second fire's (record + log, recovered from the commit because the third fire's fetch overwrote
+the log with its empty one), and `output/v3/` is the third fire's - an empty log and no record,
+which is its whole content. `output/` itself holds the newest fetch's result.
