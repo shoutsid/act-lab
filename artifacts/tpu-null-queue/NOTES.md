@@ -239,5 +239,37 @@ is the same shape as the second fire's wait.
 
 **The evidence layout:** `output/v1/` is the first fire's record and log, `output/v2/` is the
 second fire's (record + log, recovered from the commit because the third fire's fetch overwrote
-the log with its empty one), and `output/v3/` is the third fire's - an empty log and no record,
-which is its whole content. `output/` itself holds the newest fetch's result.
+the log with its empty one), `output/v3/` is the third fire's and `output/v4/` the fourth's -
+each an empty log and no record, which is their whole content - and `output/` itself holds the
+newest fetch's result.
+
+### What the run left (2026-10-04)
+
+The kernel held `QUEUED` through the watcher's poll 231 (**04:00:30Z**); polls 236 and 241
+(**04:15:34Z**, **04:30:37Z**) were answered with a permission error that recovered on its own
+(the watcher's log carries both); poll 246 (**04:45:40Z**) and every printed poll through 271
+(**06:00:55Z**) read `RUNNING`; the check at **06:12:57Z** read `ERROR` and fetched. That is
+**~13.8 h** in the queue from the push, about **1.5 h** of it `RUNNING`, for a week charged
+**~1.84 TPU-h** and **nothing trained**.
+
+The fetch kept **one file, the 0-byte log**: `kaggle kernels output` listed nothing else,
+`kaggle kernels logs` prints nothing, and the status response's `failure_message` is `''`. A
+run of this kernel writes its record *before* its restore and prints the bootstraps' own lines
+to stdout, so an empty output beside an empty failure message is the third fire's
+**provisioning** signature again - the container never ran the script - not a runner failure.
+The queued version was the staged `258d6fe4` entry, so there was nothing to fix locally either;
+the queue was re-fired, and this run's empty log is archived at `output/v4/` (its watcher's
+full account: `/tmp/tpu-null-watch.log-v3`; push waiter: `/tmp/tpu-null-push-watch.log-v3`).
+
+## The fifth fire (2026-10-04T12:41Z)
+
+Pushed by `push_tpu_null_queue_when_free.sh` at **12:41:44Z** (attempt 1; the price probe is
+`COMPLETE`), pushing the **already-staged** folder - the same `258d6fe4` entry bytes and the
+same `d63b5a1d` metadata - with a fresh fetch watcher (pid **3799423**, log
+`/tmp/tpu-null-watch.log-v4`, 96 h bound). The kernel read `QUEUED` at the first poll
+(12:41:44Z).
+
+**The TPU quota at this fire:** **~15.0 h remaining** of 20 (the 2026-10-03 refresh has passed;
+the next is 2026-10-10), against the ~6.19 h the block needs at the price probe's rate. The
+fourth fire's provisioning failure spent ~1.84 h of that week without training a seed; this
+fire is the same re-fire, and its watcher fetches on either terminal state at the 96 h bound.
