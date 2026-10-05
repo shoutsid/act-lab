@@ -1,0 +1,47 @@
+[{"stream_name":"stderr","time":42.132631422,"data":"/usr/local/lib/python3.12/site-packages/torch_xla/experimental/gru.py:113: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":42.132675362,"data":"  * **h_n**: tensor of shape :math:`(D * \\text{num\\_layers}, H_{out})` or\n"}
+,{"stream_name":"stderr","time":54.636828841,"data":"/usr/local/lib/python3.12/site-packages/torch_xla/__init__.py:258: UserWarning: `tensorflow` can conflict with `torch-xla`. Prefer `tensorflow-cpu` when using PyTorch/XLA. To silence this warning, `pip uninstall -y tensorflow \u0026\u0026 pip install tensorflow-cpu`. If you are in a notebook environment such as Colab or Kaggle, restart your notebook runtime afterwards.\n"}
+,{"stream_name":"stderr","time":54.636873281,"data":"  warnings.warn(\n"}
+,{"stream_name":"stdout","time":60.826280993,"data":"torch_xla: already-present\n"}
+,{"stream_name":"stdout","time":60.828321082,"data":"kaggle: import failed; the name resolves to None\n"}
+,{"stream_name":"stdout","time":82.076463777,"data":"Authentication required to call the Kaggle API.\n"}
+,{"stream_name":"stdout","time":82.076508257,"data":"\n"}
+,{"stream_name":"stdout","time":82.076513648,"data":"First, you will need a Kaggle account. You can sign up at\n"}
+,{"stream_name":"stdout","time":82.076518077,"data":"  https://www.kaggle.com/account/login\n"}
+,{"stream_name":"stdout","time":82.076522277,"data":"\n"}
+,{"stream_name":"stdout","time":82.076526277,"data":"Recommended: log in with OAuth via a web-based authorization flow.\n"}
+,{"stream_name":"stdout","time":82.076530507,"data":"No token to manage; credentials are cached locally for you.\n"}
+,{"stream_name":"stdout","time":82.076534537,"data":"    kaggle auth login\n"}
+,{"stream_name":"stdout","time":82.076539357,"data":"\n"}
+,{"stream_name":"stdout","time":82.076543297,"data":"If you'd rather not use OAuth, generate an API token at\n"}
+,{"stream_name":"stdout","time":82.076547667,"data":"  https://www.kaggle.com/settings/api  (click \"Generate New Token\" under \"API\")\n"}
+,{"stream_name":"stdout","time":82.076551667,"data":"and supply it to the CLI in one of these ways:\n"}
+,{"stream_name":"stdout","time":82.076555237,"data":"\n"}
+,{"stream_name":"stdout","time":82.076558507,"data":"  Option A: Environment variable\n"}
+,{"stream_name":"stdout","time":82.076561887,"data":"    export KAGGLE_API_TOKEN=xxxxxxxxxxxxxx  # token copied from the settings UI\n"}
+,{"stream_name":"stdout","time":82.076565307,"data":"\n"}
+,{"stream_name":"stdout","time":82.076568627,"data":"  Option B: API token file\n"}
+,{"stream_name":"stdout","time":82.076571827,"data":"    Save the token to ~/.kaggle/access_token\n"}
+,{"stream_name":"stdout","time":82.076575057,"data":"kaggle: installed:/tmp/act-kaggle-client\n"}
+,{"stream_name":"stdout","time":83.457486932,"data":"null queue runner: /kaggle/input/act-lab-code/code/scripts/tpu_null_queue.py\n"}
+,{"stream_name":"stdout","time":86.228750561,"data":"Authentication required to call the Kaggle API.\n"}
+,{"stream_name":"stdout","time":86.228784891,"data":"\n"}
+,{"stream_name":"stdout","time":86.228799711,"data":"First, you will need a Kaggle account. You can sign up at\n"}
+,{"stream_name":"stdout","time":86.228804541,"data":"  https://www.kaggle.com/account/login\n"}
+,{"stream_name":"stdout","time":86.228809181,"data":"\n"}
+,{"stream_name":"stdout","time":86.228813561,"data":"Recommended: log in with OAuth via a web-based authorization flow.\n"}
+,{"stream_name":"stdout","time":86.228818471,"data":"No token to manage; credentials are cached locally for you.\n"}
+,{"stream_name":"stdout","time":86.228822751,"data":"    kaggle auth login\n"}
+,{"stream_name":"stdout","time":86.228841081,"data":"\n"}
+,{"stream_name":"stdout","time":86.228844301,"data":"If you'd rather not use OAuth, generate an API token at\n"}
+,{"stream_name":"stdout","time":86.228847381,"data":"  https://www.kaggle.com/settings/api  (click \"Generate New Token\" under \"API\")\n"}
+,{"stream_name":"stdout","time":86.228850871,"data":"and supply it to the CLI in one of these ways:\n"}
+,{"stream_name":"stdout","time":86.228854031,"data":"\n"}
+,{"stream_name":"stdout","time":86.228857131,"data":"  Option A: Environment variable\n"}
+,{"stream_name":"stdout","time":86.228860231,"data":"    export KAGGLE_API_TOKEN=xxxxxxxxxxxxxx  # token copied from the settings UI\n"}
+,{"stream_name":"stdout","time":86.228863381,"data":"\n"}
+,{"stream_name":"stdout","time":86.228866391,"data":"  Option B: API token file\n"}
+,{"stream_name":"stdout","time":86.228869411,"data":"    Save the token to ~/.kaggle/access_token\n"}
+,{"stream_name":"stderr","time":96.488574678,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
+,{"stream_name":"stderr","time":100.294578476,"data":"[NbConvertApp] Writing 288774 bytes to __results__.html\n"}
+]

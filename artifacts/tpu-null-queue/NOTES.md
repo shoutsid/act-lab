@@ -273,3 +273,34 @@ same `d63b5a1d` metadata - with a fresh fetch watcher (pid **3799423**, log
 the next is 2026-10-10), against the ~6.19 h the block needs at the price probe's rate. The
 fourth fire's provisioning failure spent ~1.84 h of that week without training a seed; this
 fire is the same re-fire, and its watcher fetches on either terminal state at the 96 h bound.
+
+### What the run left (2026-10-05)
+
+The watcher (pid 3799423) fetched when the kernel reached `ERROR`, and the harness read the log
+as **no seeds**: `--- null queue / no seeds: the run left no per-seed entry to read`. That is
+neither the third and fourth fires' provisioning signature nor a runner failure: the container
+did run the script and did flush its own stdout in order, and this log is 46 events (40 stdout,
+6 stderr) rather than an empty one. It names where it stopped, and the fix of `f7ee2eb` is
+visible in it:
+
+| | |
+|---|---|
+| `torch_xla: already-present` | 60.8 s |
+| `kaggle: import failed; the name resolves to None` | 60.8 s |
+| `kaggle: installed:/tmp/act-kaggle-client` | 82.1 s |
+| `Authentication required to call the Kaggle API.` (+ the CLI's login / OAuth / `KAGGLE_API_TOKEN` / `~/.kaggle/access_token` help) | 82.1 s |
+| `null queue runner: /kaggle/input/act-lab-code/code/scripts/tpu_null_queue.py` | 83.5 s |
+| `Authentication required to call the Kaggle API.` (the same help text) | 86.2 s |
+| `[NbConvertApp] Converting notebook __script__.ipynb to html` | 96.5 s |
+
+So the install reached the container and its own report names the copy it owns - the import gap
+that made the first two fires die at `restore` is closed - and the failure has moved one step
+along the same path: the client the entry now owns refuses to **authenticate**, asking for a
+credential in `~/.kaggle/access_token`, `KAGGLE_API_TOKEN`, or an interactive `kaggle auth login`,
+none of which this container supplies. `tpu_null_queue.py` stops there rather than entering the
+restore, so it writes no record and the harness can only report that there was nothing to read.
+The next fix is therefore on the credential side - hand the container's own credentials to the
+client it now owns - not another install. The whole run was **86 s** of wall clock and the week's
+TPU line has moved 15.0 -> **14.99 h**; nothing was trained, and the null queue still stands at
+**zero seeds published**. This run's log is what `output/act-tpu-null-queue.log` holds now (the
+newest fetch's place, per the layout above).
