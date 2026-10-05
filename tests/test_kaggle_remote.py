@@ -26,8 +26,10 @@ from act.ops.kaggle_remote import (
     STATUS_FAILED,
     STATUS_NOTHING,
     STATUS_PUBLISHED,
+    STATUS_REUSED,
     dataset_metadata,
     ensure_metadata,
+    publish_handoff,
     publish_on_exit,
     restore_latest,
 )
@@ -379,6 +381,163 @@ def test_publish_on_exit_survives_a_metadata_write_failure(
 
     assert result.status == STATUS_FAILED
     assert "OSError" in result.error and "No space left on device" in result.error
+
+
+def test_publish_handoff_does_not_re_upload_a_state_it_already_pushed(
+    tmp_path: Path,
+) -> None:
+    """A second push of an unchanged handoff must not touch the API at all.
+
+    Measured 2026-10-05: four sessions in a row ended ERROR inside the exit
+    upload of the whole handoff, each losing the three pairs it had trained and
+    leaving no attempt line behind. A session now pushes after every pair, so
+    by the exit call the folder is normally unchanged since the last successful
+    push - and re-uploading ~38 GiB for nothing is exactly the work that was
+    being killed. The fingerprint of the seed versions is what makes the second
+    call free.
+    """
+    dataset_root = _publish_local_seed(tmp_path, 42)
+    first = FakeClient()
+
+    published = publish_handoff(
+        dataset_root,
+        dataset="owner/act-checkpoints-v0-5-1",
+        client=first,
+        version_notes="after seed 42",
+        log=lambda message: None,
+    )
+
+    assert published.status == STATUS_PUBLISHED
+    assert published.fingerprint
+    assert len(first.versions) == 1
+
+    second = FakeClient()
+    messages: list[str] = []
+    reused = publish_on_exit(
+        dataset_root,
+        dataset="owner/act-checkpoints-v0-5-1",
+        client=second,
+        log=messages.append,
+    )
+
+    assert reused.status == STATUS_REUSED
+    assert reused.seeds_published == 1
+    assert reused.fingerprint == published.fingerprint
+    # The version that already holds this state is the one the notes describe.
+    assert reused.version_notes == "after seed 42"
+    assert second.versions == []  # nothing was uploaded
+    assert any("already published" in message for message in messages)
+    # The driver reads this file for the session's outcome, so the last write
+    # has to describe the call that just happened rather than the pair-time
+    # push that made it free - and it still has to carry the seed count.
+    log = json.loads(
+        (dataset_root / kaggle_remote.PUBLISH_LOG_NAME).read_text(encoding="utf-8")
+    )
+    assert log["status"] == STATUS_REUSED
+    assert log["seeds_published"] == 1
+    assert log["fingerprint"] == published.fingerprint
+
+
+def test_a_new_seed_makes_the_handoff_publish_again(tmp_path: Path) -> None:
+    """The fingerprint tracks the seed versions, not the elapsed time.
+
+    A queue exists so that the next pair changes the state: if adding a seed
+    left the fingerprint alone, the session would report itself already
+    published while sitting on a pair the dataset does not have.
+    """
+    dataset_root = _publish_local_seed(tmp_path, 42)
+    publish_handoff(
+        dataset_root,
+        dataset="owner/act-checkpoints-v0-5-1",
+        client=FakeClient(),
+        log=lambda message: None,
+    )
+    # A second pair lands in the same dataset root, the way the pair loop
+    # writes it: same session dir, one more seed directory in the handoff.
+    session_dir = tmp_path / "sessions"
+    second = run_v0_session(_config(tmp_path, 43), checkpoint_dir=session_dir)
+    publish_seed(
+        dataset_root, second, session_dir=session_dir, code_revision="test-rev"
+    )
+
+    client = FakeClient()
+    result = publish_handoff(
+        dataset_root,
+        dataset="owner/act-checkpoints-v0-5-1",
+        client=client,
+        log=lambda message: None,
+    )
+
+    assert result.status == STATUS_PUBLISHED
+    assert result.seeds_published == 2
+    assert len(client.versions) == 1
+
+
+def test_a_failed_push_is_never_reused(tmp_path: Path) -> None:
+    """The failure path writes the same log, so reuse has to check its status.
+
+    If a failed attempt could make the next call skip, a session would end
+    believing in a version that does not exist - the one way this optimisation
+    could turn a recoverable push failure into a silent loss.
+    """
+    dataset_root = _publish_local_seed(tmp_path, 42)
+    failed = publish_handoff(
+        dataset_root,
+        dataset="owner/act-checkpoints-v0-5-1",
+        client=FakeClient(fail=RuntimeError("500 server error")),
+        log=lambda message: None,
+        sleep=lambda seconds: None,
+    )
+    assert failed.status == STATUS_FAILED
+
+    client = FakeClient()
+    retried = publish_handoff(
+        dataset_root,
+        dataset="owner/act-checkpoints-v0-5-1",
+        client=client,
+        log=lambda message: None,
+    )
+
+    assert retried.status == STATUS_PUBLISHED
+    assert retried.seeds_published == 1
+    assert len(client.versions) == 1
+
+
+def test_the_cli_builds_the_hook_the_runner_calls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The two halves of the per-pair publish have to be wired to each other.
+
+    ``run_pair_session`` accepts the callback and ``cli`` builds it, so a real
+    session's per-pair durability rests on that wiring and not on either half
+    alone: the failure mode of a missing hook is a session that trains pairs,
+    publishes only at exit, and loses them all - the one this change fixes.
+    """
+    from act.training import cli
+
+    dataset_root = _publish_local_seed(tmp_path, 42)
+    client = FakeClient()
+    monkeypatch.setattr(kaggle_remote, "default_client", lambda: client)
+    args = types.SimpleNamespace(
+        kaggle_dataset="owner/act-checkpoints-v0-5-1",
+        dataset_root=dataset_root,
+        dtype="fp16",
+    )
+
+    # No --kaggle-dataset, no hook: a workstation run publishes nowhere.
+    args_without = types.SimpleNamespace(**{**vars(args), "kaggle_dataset": None})
+    assert cli._remote_publisher(args_without, tokens_per_second=1000.0) is None
+
+    hook = cli._remote_publisher(args, tokens_per_second=1000.0)
+    assert hook is not None
+    outcome = hook(42)
+
+    assert outcome["status"] == STATUS_PUBLISHED
+    assert outcome["seeds_published"] == 1
+    assert len(client.versions) == 1
+    # The notes name the pair, so the dataset's own history says which push a
+    # version came from rather than only that a session made it.
+    assert client.versions[0][1].endswith("after seed 42")
 
 
 def test_restore_latest_merges_remote_over_local(tmp_path: Path) -> None:

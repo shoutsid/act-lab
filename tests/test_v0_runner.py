@@ -153,6 +153,152 @@ def test_failed_pair_stops_the_queue_without_losing_earlier_seeds(
     assert published_seed_status(tmp_path / "dataset", 9001) != "complete"
 
 
+def test_every_completed_pair_is_mirrored_to_the_dataset(tmp_path: Path) -> None:
+    """Each pair reaches the versioned dataset as it completes, not at exit.
+
+    Measured 2026-10-05: four sessions in a row ended ERROR inside the single
+    exit upload, and each lost the three pairs it had trained. The hook is what
+    makes a pair durable while the session is still running, so it must be
+    called once per completed pair, after that pair's own local publish (pushing
+    earlier would upload a folder without this seed in it), and its outcome must
+    land in the session log beside the seed.
+    """
+    mirrored: list[int] = []
+    published_at: list[str | None] = []
+
+    def mirror(seed: int) -> dict[str, object]:
+        mirrored.append(seed)
+        published_at.append(published_seed_status(tmp_path / "dataset", seed))
+        return {"status": "published", "seeds_published": 1}
+
+    summary = run_pair_session(
+        config=_config(),
+        session_dir=tmp_path / "sessions",
+        dataset_root=tmp_path / "dataset",
+        code_revision="rev",
+        remaining_hours=8.0,
+        measured_tokens_per_second=1e9,
+        seeds=(9000, 9001),
+        output=tmp_path / "summary.json",
+        remote_publish=mirror,
+    )
+
+    assert mirrored == [9000, 9001]
+    assert published_at == ["complete", "complete"]
+    assert [entry["remote_publish"] for entry in summary["pairs"]] == [
+        {"status": "published", "seeds_published": 1},
+        {"status": "published", "seeds_published": 1},
+    ]
+
+    # Re-running the same command is how the queue advances, and every seed is
+    # now skipped - which must not mirror anything: re-pushing an unchanged
+    # handoff is the whole ~38 GiB upload this change exists to avoid.
+    mirrored.clear()
+    rerun = run_pair_session(
+        config=_config(),
+        session_dir=tmp_path / "sessions",
+        dataset_root=tmp_path / "dataset",
+        code_revision="rev",
+        remaining_hours=8.0,
+        measured_tokens_per_second=1e9,
+        seeds=(9000, 9001),
+        output=tmp_path / "summary.json",
+        remote_publish=mirror,
+    )
+    assert [entry["action"] for entry in rerun["pairs"]] == [
+        "skipped_complete",
+        "skipped_complete",
+    ]
+    assert mirrored == []
+
+
+def test_an_interrupted_pair_is_not_mirrored(tmp_path: Path) -> None:
+    """A deadline-stop snapshot is not progress, so it is not published.
+
+    The snapshot exists for crash forensics and is deliberately re-trained from
+    scratch by the next session (pairs are never resumed across sessions), so
+    pushing it would spend an upload on a state the queue does not count and
+    will not keep.
+    """
+    consumed = {"seconds": 0.0}
+
+    def clock() -> float:
+        consumed["seconds"] += 180.0
+        return consumed["seconds"]
+
+    mirrored: list[int] = []
+
+    def mirror(seed: int) -> dict[str, object]:
+        mirrored.append(seed)
+        return {"status": "published", "seeds_published": 1}
+
+    summary = run_pair_session(
+        config=_config(total_steps=24, checkpoint_interval=2),
+        session_dir=tmp_path / "sessions",
+        dataset_root=tmp_path / "dataset",
+        code_revision="rev",
+        remaining_hours=1.0,
+        measured_tokens_per_second=1e9,
+        clock=clock,
+        seeds=(9000,),
+        output=tmp_path / "summary.json",
+        remote_publish=mirror,
+    )
+
+    assert [entry["action"] for entry in summary["pairs"]] == ["interrupted"]
+    assert mirrored == []
+    assert "remote_publish" not in summary["pairs"][0]
+    assert published_seed_status(tmp_path / "dataset", 9000) == "in-progress"
+
+
+def test_a_failing_remote_mirror_is_recorded_and_does_not_stop_the_queue(
+    tmp_path: Path,
+) -> None:
+    """A push that raises, or reports a failure, must not cost the session.
+
+    The exit publish already never raises so a broken push cannot destroy a
+    finished session; the per-pair mirror needs the same guarantee, because it
+    now runs inside the loop, and it must not stop the queue the way a failed
+    *local* publish does - the local handoff is intact, the next pair's push
+    carries the whole folder, and a persistent failure is reported by the exit
+    publish the driver reads.
+    """
+
+    def mirror(seed: int) -> dict[str, object]:
+        if seed == 9000:
+            raise RuntimeError("kaggle api unavailable")
+        return {"status": "failed", "error": "HTTPError: 503"}
+
+    summary = run_pair_session(
+        config=_config(),
+        session_dir=tmp_path / "sessions",
+        dataset_root=tmp_path / "dataset",
+        code_revision="rev",
+        remaining_hours=8.0,
+        measured_tokens_per_second=1e9,
+        seeds=(9000, 9001),
+        output=tmp_path / "summary.json",
+        remote_publish=mirror,
+    )
+
+    assert [entry["action"] for entry in summary["pairs"]] == [
+        "completed",
+        "completed",
+    ]
+    assert summary["pairs_completed"] == 2
+    raised = summary["pairs"][0]["remote_publish"]
+    assert raised["status"] == "raised"
+    assert "kaggle api unavailable" in raised["error"]
+    assert summary["pairs"][1]["remote_publish"] == {
+        "status": "failed",
+        "error": "HTTPError: 503",
+    }
+    # Both seeds stay complete locally: a failed push is the exit publish's
+    # problem, not a reason to throw away trained work.
+    assert published_seed_status(tmp_path / "dataset", 9000) == "complete"
+    assert published_seed_status(tmp_path / "dataset", 9001) == "complete"
+
+
 def test_single_arm_null_session_publishes_one_arm(tmp_path: Path) -> None:
     """The do-nothing control publishes a single-arm seed summary.
 

@@ -24,6 +24,15 @@ Design constraints, pre-committed:
 - **Zero-copy publish.** The pushed folder is the handoff directory itself
   plus a generated ``dataset-metadata.json``; no gigabyte-scale staging
   copies inside the 20 GB Kaggle working directory.
+- **Durable per pair, not only per session.** ``publish_handoff`` runs after
+  every pair the session completes, not only on the exit path, and skips a
+  state it has already pushed. Measured 2026-10-05: four sessions in a row
+  ended ERROR inside the *exit* upload - the live log stopped at ``session
+  done`` in each one, with no attempt, receipt or retry line from the publish
+  path ever flushed - and each one discarded the three pairs it had just
+  trained, because until that exit push finished nothing was durable. A pair
+  that reaches the dataset mid-session is progress the next session skips
+  instead of re-training it.
 - **No hard kaggle dependency.** The package is optional (preinstalled on
   Kaggle images, absent elsewhere); the module imports cleanly without it
   and every testable decision is exercised against an injected fake client.
@@ -35,6 +44,7 @@ the remote snapshot is never rolled back).
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import shutil
@@ -86,6 +96,9 @@ DATASET_LIST_PAGES = 5
 DATASET_FILE_PAGE_SIZE = 200
 
 STATUS_PUBLISHED = "published"
+#: The folder's state is already in the dataset: a previous push of this exact
+#: fingerprint succeeded, so this call uploaded nothing.
+STATUS_REUSED = "already_published"
 STATUS_FAILED = "failed"
 STATUS_NOTHING = "nothing_to_publish"
 
@@ -104,6 +117,29 @@ def _manifest_seeds(folder: Path) -> list[Path]:
         for path in folder.glob("seed-*")
         if (path / "manifests" / "manifest.json").is_file()
     )
+
+
+def handoff_fingerprint(folder: str | Path) -> str:
+    """A digest of the complete seed versions a push of ``folder`` would carry.
+
+    Each seed's manifest is written last, after its payloads, and checksums them
+    (see ``act.training.v0_handoff``: staging, then a manifest baked from the
+    checksums, then an atomic swap). So the *set* of manifests is the published
+    state: a folder whose fingerprint matches the last successful push has
+    nothing new to upload, and re-uploading it is the only thing standing
+    between a finished session and its exit.
+
+    The seed's directory name is hashed alongside its manifest digest so that a
+    seed added, removed or renamed changes the fingerprint even when every
+    manifest that remains is byte-identical.
+    """
+    digest = hashlib.sha256()
+    for seed_dir in _manifest_seeds(Path(folder)):
+        digest.update(seed_dir.name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(_sha256(seed_dir / "manifests" / "manifest.json").encode("utf-8"))
+        digest.update(b"\n")
+    return digest.hexdigest()
 
 
 def _seed_dirname(seed: int) -> str:
@@ -190,7 +226,7 @@ def ensure_metadata(folder: str | Path, dataset: str) -> Path:
 
 @dataclass(frozen=True)
 class RemotePublishResult:
-    """Outcome of one exit-time publish attempt."""
+    """Outcome of one publish attempt."""
 
     dataset: str
     folder: str
@@ -198,6 +234,11 @@ class RemotePublishResult:
     status: str
     version_notes: str
     error: str | None = None
+    #: Digest of the seed versions this push carried (or, for ``reused``, of the
+    #: versions an earlier push carried). What makes a redundant push
+    #: detectable: a later call whose folder fingerprints the same has nothing
+    #: new to upload. Empty for a state with no seeds to describe.
+    fingerprint: str = ""
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -433,7 +474,7 @@ def default_client() -> KaggleDatasetClient:
     return KaggleApiAdapter()
 
 
-def publish_on_exit(
+def publish_handoff(
     dataset_root: str | Path,
     *,
     dataset: str,
@@ -446,8 +487,10 @@ def publish_on_exit(
 ) -> RemotePublishResult:
     """Push the local handoff dataset to Kaggle; never raises.
 
-    Called on the session exit path (normal return or deadline stop) after
-    the local per-seed handoff has run. The pushed folder is
+    Called after every pair the session completes (through
+    ``run_pair_session``'s ``remote_publish`` hook, which is what makes a
+    session's progress durable *during* the session) and again on the exit path
+    (:func:`publish_on_exit`). The pushed folder is
     ``<dataset_root>/<handoff>/`` (zero-copy) with its metadata file
     ensured; the outcome is written beside the dataset root for the
     artifact trail.
@@ -459,6 +502,13 @@ def publish_on_exit(
     a failure - and the metadata write, which writes *into* the handoff folder
     and so can fail on a full disk, is inside the same guard rather than
 excepted from it.
+
+    A state already in the dataset is not uploaded again: when the recorded log
+    shows a successful push of this folder's fingerprint, this returns
+    ``STATUS_REUSED`` without calling the API. That is what stops a session
+    from spending its final ~40 minutes re-uploading ~38 GiB it pushed after
+    the last pair - the window in which four sessions in a row were killed on
+    2026-10-05, losing every pair they had completed.
     """
     logger = log if log is not None else (lambda message: None)
     folder = Path(dataset_root) / _handoff_dirname()
@@ -477,12 +527,42 @@ excepted from it.
         _write_log(log_path, dataset_root, result)
         return result
 
+    fingerprint = handoff_fingerprint(folder)
+    previous = _read_log(log_path, dataset_root)
+    if (
+        previous is not None
+        and previous.get("fingerprint") == fingerprint
+        and previous.get("status") in (STATUS_PUBLISHED, STATUS_REUSED)
+    ):
+        # The last push that succeeded carried exactly these seed versions, so
+        # the dataset already holds this state. Re-uploading it would be the
+        # only work left in the session, and it is the work that has been
+        # getting killed - the log entry below is what the exit path and the
+        # driver read, so it is rewritten for *this* call rather than left as
+        # the pair-time push's.
+        result = RemotePublishResult(
+            dataset=dataset,
+            folder=str(folder),
+            seeds_published=len(seeds),
+            status=STATUS_REUSED,
+            version_notes=str(previous.get("version_notes") or version_notes),
+            fingerprint=fingerprint,
+        )
+        logger(
+            f"remote publish skipped: {len(seeds)} seed version(s) are already "
+            f"published as this state ({fingerprint[:12]}); re-uploading them "
+            "would spend the session's last minutes on a copy that exists"
+        )
+        _write_log(log_path, dataset_root, result)
+        return result
+
     failures: list[str] = []
+    started = time.monotonic()
     for attempt in range(1, max(1, attempts) + 1):
         try:
             ensure_metadata(folder, dataset)
             client.create_version(folder, version_notes)
-        except Exception as error:  # noqa: BLE001 - the exit path never raises
+        except Exception as error:  # noqa: BLE001 - a push must never end the session
             failures.append(f"{type(error).__name__}: {error}")
             logger(
                 f"remote publish attempt {attempt}/{attempts} failed "
@@ -498,10 +578,16 @@ excepted from it.
             seeds_published=len(seeds),
             status=STATUS_PUBLISHED,
             version_notes=version_notes,
+            fingerprint=fingerprint,
         )
+        # The duration is part of the account, not decoration: this push is
+        # unpriced in the session plan and grows with every seed the queue
+        # publishes, so a session that pushes after each pair has to be able to
+        # read what that cost it (the same reason the restore prices itself).
         logger(
             f"remote publish: {dataset} version pushed "
-            f"({len(seeds)} seed version(s))"  # type: ignore[decimal]
+            f"({len(seeds)} seed version(s)) in "  # type: ignore[decimal]
+            f"{(time.monotonic() - started) / 60.0:.1f} min"
             + (f" on attempt {attempt}" if attempt > 1 else "")
         )
         _write_log(log_path, dataset_root, result)
@@ -514,6 +600,7 @@ excepted from it.
         status=STATUS_FAILED,
         version_notes=version_notes,
         error="; ".join(failures),
+        fingerprint=fingerprint,
     )
     logger(
         f"remote publish FAILED after {attempts} attempt(s) (local handoff "
@@ -521,6 +608,40 @@ excepted from it.
     )
     _write_log(log_path, dataset_root, result)
     return result
+
+
+def publish_on_exit(
+    dataset_root: str | Path,
+    *,
+    dataset: str,
+    client: KaggleDatasetClient,
+    version_notes: str | None = None,
+    log: Callable[[str], None] | None = None,
+    log_path: str | Path | None = None,
+    attempts: int = PUBLISH_ATTEMPTS,
+    sleep: Callable[[float], None] = time.sleep,
+) -> RemotePublishResult:
+    """The exit-path entry point for :func:`publish_handoff`.
+
+    Named apart because the exit path is the one the driver reads: it prints
+    this call's recorded outcome as ``exit publish: <status>`` and stops the
+    campaign when that status is ``failed``. The session publishes after every
+    pair first, so by the time this runs the state is usually already in the
+    dataset and the call returns ``already_published`` without uploading
+    anything - which is the point: the exit upload is where four sessions in a
+    row were killed, with no attempt line ever flushed, and there is nothing
+    left to upload once the pairs have published themselves.
+    """
+    return publish_handoff(
+        dataset_root,
+        dataset=dataset,
+        client=client,
+        version_notes=version_notes,
+        log=log,
+        log_path=log_path,
+        attempts=attempts,
+        sleep=sleep,
+    )
 
 
 def _tree_gib(root: Path) -> float:
@@ -535,15 +656,40 @@ def _tree_gib(root: Path) -> float:
     return total / 2**30
 
 
+def _log_target(log_path: str | Path | None, dataset_root: str | Path) -> Path:
+    """Where this session's publish outcome is recorded.
+
+    One place, because the reader (``_read_log``) has to look where the writer
+    put it: a reuse decision that read a different file than the pushes write
+    would either re-upload everything or, worse, skip a state nobody pushed.
+    """
+    if log_path is not None:
+        return Path(log_path)
+    return Path(dataset_root) / PUBLISH_LOG_NAME
+
+
+def _read_log(
+    log_path: str | Path | None, dataset_root: str | Path
+) -> dict[str, object] | None:
+    """The recorded publish outcome, or ``None`` when there is not one.
+
+    A missing, empty or unreadable log is not an error: it is the first push of
+    a container, which has nothing to compare a fingerprint against.
+    """
+    try:
+        loaded = json.loads(_log_target(log_path, dataset_root).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return loaded if isinstance(loaded, dict) else None
+
+
 def _write_log(
     log_path: str | Path | None,
     dataset_root: str | Path,
     result: RemotePublishResult,
 ) -> None:
     """Record the publish outcome beside the dataset root (best-effort)."""
-    target = Path(log_path) if log_path is not None else (
-        Path(dataset_root) / PUBLISH_LOG_NAME
-    )
+    target = _log_target(log_path, dataset_root)
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(result.to_dict(), indent=2, sort_keys=True) + "\n")

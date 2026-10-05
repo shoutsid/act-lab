@@ -35,7 +35,7 @@ import shutil
 import time
 from dataclasses import asdict
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Mapping
 
 from act.training.runtime import resolve_device
 from act.training.session_plan import (
@@ -191,6 +191,7 @@ def run_pair_session(
     log: Callable[[str], None] | None = None,
     clock: Callable[[], float] | None = None,
     summary_extra: dict[str, object] | None = None,
+    remote_publish: Callable[[int], Mapping[str, object]] | None = None,
 ) -> dict:
     """Run the section 5.2 session loop over the seed queue.
 
@@ -201,6 +202,17 @@ def run_pair_session(
     rate the pre-committed dtype rule reads. The dtype rule itself lives with
     the benchmark, not here. ``clock`` optionally supplies wall time for tests;
     production uses ``time.monotonic``.
+
+    ``remote_publish`` is the hook that mirrors each completed pair into the
+    versioned dataset as it finishes, rather than only on the session's exit
+    path; it is given the seed number and returns the outcome to record in the
+    pair's entry (``act.ops.kaggle_remote.publish_handoff``'s dict). It is a
+    callback rather than an import because the runner holds no client, and
+    because its failure must never cost the session the pairs it has already
+    trained: a hook that raises is caught, recorded and logged. Nothing here
+    stops the queue for a failed mirror - the next pair's push carries the same
+    folder, so a transient failure heals at the next pair, and a persistent one
+    is caught by the exit publish the driver reads.
     """
     logger = _make_log(log)
     if measured_tokens_per_second <= 0:
@@ -296,6 +308,7 @@ def run_pair_session(
                 remaining_at_start=remaining,
                 tokens_per_arm=tokens_per_arm,
                 logger=logger,
+                remote_publish=remote_publish,
             )
         except Exception as error:  # noqa: BLE001 - must not discard earlier seeds
             # The same principle the local-publish failure follows: a pair that
@@ -363,6 +376,7 @@ def _run_one_pair(
     remaining_at_start: float,
     tokens_per_arm: int,
     logger: Callable[[str], None],
+    remote_publish: Callable[[int], Mapping[str, object]] | None = None,
 ) -> dict[str, object]:
     """Train, publish, and bookkeep one atomic pair."""
     pair_config = V0SessionConfig(**{**config.__dict__, "seed": seed})
@@ -451,7 +465,7 @@ def _run_one_pair(
     # Single-arm sessions (gated, report section 5.4; null, report section
     # 5.8; heuristic, report section 5.13) publish one arm; the baseline
     # comparison lives in the paired-block summaries, not here.
-    return {
+    entry: dict[str, object] = {
         "seed": seed,
         "action": "completed",
         "random_final_loss": arms.get("random"),
@@ -464,6 +478,60 @@ def _run_one_pair(
         },
         "search_flops_by_arm": {arm.mode: arm.search_flops for arm in result.arms},
     }
+    # Ask for the durable mirror only after the local handoff for this pair is
+    # complete: the push uploads the folder, so pushing before the local
+    # publish would either miss this seed or upload a half-written one.
+    mirror = _mirror_pair_remote(
+        seed=seed, remote_publish=remote_publish, logger=logger
+    )
+    if mirror is not None:
+        entry["remote_publish"] = mirror
+    return entry
+
+
+def _mirror_pair_remote(
+    *,
+    seed: int,
+    remote_publish: Callable[[int], Mapping[str, object]] | None,
+    logger: Callable[[str], None],
+) -> dict[str, object] | None:
+    """Push this pair to the dataset now; ``None`` when no hook was given.
+
+    The exit publish alone made every pair's survival depend on one upload at
+    the very end of the window: measured 2026-10-05, four sessions in a row
+    ended ERROR inside it (their live logs stop at ``session done``, with no
+    attempt line from the publish path ever flushed) and each one lost the
+    three pairs it had trained. A push per pair bounds that loss to the pair in
+    flight, and the driver's next session restores what has already landed
+    instead of re-training it.
+
+    The outcome is recorded in the pair's own entry, because the session log is
+    the durable account of what happened to each seed - but a mirror failure
+    deliberately does **not** stop the queue the way a failed *local* publish
+    does. The local handoff is intact, the next push carries the whole folder
+    (so a transient failure is recovered by the very next pair), and a
+    persistent one is reported by the exit publish, which is the outcome the
+    driver already treats as fatal.
+    """
+    if remote_publish is None:
+        return None
+    try:
+        outcome = remote_publish(seed)
+    except Exception as error:  # noqa: BLE001 - a push must not lose the session
+        logger(
+            f"seed {seed}: remote publish raised ({type(error).__name__}: "
+            f"{error}); the local handoff is intact and the next push carries "
+            "this seed"
+        )
+        return {"status": "raised", "error": f"{type(error).__name__}: {error}"}
+    recorded = dict(outcome)
+    if recorded.get("status") == "failed":
+        logger(
+            f"seed {seed}: remote publish failed ({recorded.get('error')}); "
+            "continuing - the next pair's push carries this one, and the exit "
+            "publish reports it if it is not transient"
+        )
+    return recorded
 
 
 def _publish_snapshot(

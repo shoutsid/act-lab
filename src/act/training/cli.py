@@ -10,6 +10,7 @@ import argparse
 import json
 import subprocess
 import time
+from collections.abc import Callable, Mapping
 from pathlib import Path
 
 import torch
@@ -361,6 +362,10 @@ def _run_pair_session(args: argparse.Namespace) -> None:
     # every seed until the marker fallback above.
     code_revision = _git_revision()
     print(f"code revision: {code_revision}", flush=True)
+    # Each pair is mirrored into the versioned dataset as it finishes, so the
+    # session's progress is durable before its exit publish - which is the step
+    # four sessions in a row were killed inside (see ``_remote_publisher``).
+    publish_each_pair = _remote_publisher(args, tokens_per_second=schedule_rate)
     summary = run_pair_session(
         seeds=seeds,
         config=config,
@@ -371,6 +376,7 @@ def _run_pair_session(args: argparse.Namespace) -> None:
         measured_tokens_per_second=schedule_rate,
         output=args.output,
         log=print,
+        remote_publish=publish_each_pair,
         # Both numbers belong on the trail: the fp32 rate is the pre-committed
         # dtype rule's input, the schedule rate is what set the pair time. They
         # differ by design whenever the session trains fp16, so a log that
@@ -409,6 +415,58 @@ def _run_pair_session(args: argparse.Namespace) -> None:
     )
 
 
+def _remote_publisher(
+    args: argparse.Namespace, *, tokens_per_second: float
+) -> Callable[[int], Mapping[str, object]] | None:
+    """The per-pair half of the remote handoff (``--kaggle-dataset`` only).
+
+    ``run_pair_session`` calls the returned hook after every pair it completes,
+    and the hook pushes the whole handoff folder - so each pair is durable
+    inside the session rather than only at the end of it. Measured 2026-10-05,
+    that end-of-session push is where four sessions in a row were killed: every
+    live log stops at ``session done`` with nothing from the publish path after
+    it, and each session lost the three pairs it had just trained. Publishing
+    per pair bounds the loss to the pair in flight, and what it pushes is the
+    same dataset the next session restores - so the seeds it carries are
+    skipped there instead of being trained a second time.
+
+    The client is built on the first push rather than here: this runs before
+    the session has trained anything, and an unavailable ``kaggle`` package
+    must fail that first push loudly (inside the runner, where it is recorded)
+    rather than end the session before its window is used.
+    """
+    if args.kaggle_dataset is None:
+        return None
+    from act.ops.kaggle_remote import (
+        KaggleDatasetClient,
+        default_client,
+        publish_handoff,
+    )
+
+    client: KaggleDatasetClient | None = None
+
+    def publish_after_pair(seed: int) -> Mapping[str, object]:
+        nonlocal client
+        if client is None:
+            client = default_client()
+        result = publish_handoff(
+            args.dataset_root,
+            dataset=args.kaggle_dataset,
+            client=client,
+            version_notes=(
+                f"v0-5-1 session publish: {tokens_per_second:.0f} tokens/s, "
+                f"{args.dtype or 'measured'} dtype, after seed {seed}"
+            ),
+            log=print,
+        )
+        # The same JSON line the exit publish prints, so the session's stream
+        # carries one account of every push it made, not only the last.
+        print(json.dumps({"remote_publish": result.to_dict()}, sort_keys=True))
+        return result.to_dict()
+
+    return publish_after_pair
+
+
 def _publish_remote(args: argparse.Namespace, *, tokens_per_second: float) -> None:
     """Optional exit-path publish to a versioned Kaggle dataset (--kaggle-dataset).
 
@@ -419,7 +477,14 @@ def _publish_remote(args: argparse.Namespace, *, tokens_per_second: float) -> No
     the only durable copy - the handoff roots live in the container overlay,
     so a later session cannot re-push *this* session's pairs, only start again
     from the last published version. The outcome is recorded in the publish log
-    beside the dataset root.
+    beside the dataset root, and it is the entry the driver reads.
+
+    Since every completed pair publishes itself (``_remote_publisher``), this
+    call is normally already satisfied: the handoff is unchanged since the last
+    pair's push, so ``publish_handoff`` reports ``already_published`` and
+    uploads nothing. That is deliberate - the exit upload is where four
+    sessions in a row were killed, and a session with nothing left to upload
+    has nothing left to lose there.
     """
     if args.kaggle_dataset is None:
         return

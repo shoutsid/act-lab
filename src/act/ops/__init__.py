@@ -15,6 +15,8 @@ from .kaggle_remote import (
     dataset_metadata,
     default_client,
     ensure_metadata,
+    handoff_fingerprint,
+    publish_handoff,
     publish_on_exit,
     restore_latest,
 )
@@ -32,6 +34,8 @@ __all__ = [
     "dataset_metadata",
     "default_client",
     "ensure_metadata",
+    "handoff_fingerprint",
+    "publish_handoff",
     "publish_on_exit",
     "restore_latest",
 ]
