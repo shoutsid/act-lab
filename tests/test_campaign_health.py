@@ -343,6 +343,30 @@ def test_a_live_session_is_running(monkeypatch: pytest.MonkeyPatch) -> None:
     assert campaign_health.VERDICT_EXIT["RUNNING"] == 0
 
 
+def test_the_health_state_names_every_shard_the_queue_reads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A 7-of-12 block now comes from two dataset versions, and the report says so.
+
+    The JSON used to name only the registered id, so a reader could not tell
+    that a continuation exists (or that the counts above it were merged from
+    two listings). The registered id is kept as ``dataset`` for the callers
+    that already read it.
+    """
+    state = _state(
+        monkeypatch,
+        status="COMPLETE",
+        remaining=6.0,
+        complete=list(campaign_health.DECLARED_SEEDS),
+    )
+
+    assert state["dataset"] == "sid123123234/act-v0-5-2"
+    assert state["datasets"] == [
+        "sid123123234/act-v0-5-2",
+        "sid123123234/act-v0-5-2-p2",
+    ]
+
+
 def test_every_declared_seed_published_is_complete(monkeypatch: pytest.MonkeyPatch) -> None:
     state = _state(
         monkeypatch,
