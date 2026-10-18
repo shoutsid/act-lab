@@ -130,3 +130,28 @@ before the next fire so it cannot be read as fitting the boundary to what succee
 
 **What is still not established:** that a 31.5 GiB push lands. That is the next fire's
 measurement, and the falsifier in section 6 is what it would mean if it did not.
+
+## 9. The live probe the code path got (2026-10-18)
+
+Before this landed, the sharded path was exercised against the real service at
+kilobyte scale - a handoff with two fake seeds (9001, 9002), one shard each, published as
+two **new** private datasets:
+
+```
+sid123123234/act-shard-probe      seed 9001 only
+sid123123234/act-shard-probe-p2   seed 9002 only
+```
+
+What it established, on the live API rather than a fake client: the first-version bootstrap
+(`dataset_create_new` after the 403) works for both ids; a `seeds=[...]` push stages and
+uploads **only** that shard - the service listings carry `seed-9001` in one dataset and
+`seed-9002` in the other, not both; a restore of `datasets=[both]` into a fresh root
+returns `[9001, 9002]` with both payloads intact; and after the second shard pushed, a
+repeat of the first returns `already_published` from the per-shard fingerprint, which is
+the property that stops the next session re-uploading forty gigabytes. The publish log
+carried both shards' records with the last push at the top level, as the driver reads it.
+
+What it does not establish is the thing the next fire is for: a **31.5 GiB** push. The
+probe was kilobytes, so it says the shard mechanics are right, not that the 50 GB wall
+has been cleared. Both probe datasets are private and tiny; they are left in place so the
+listing above can be checked rather than trusted.
