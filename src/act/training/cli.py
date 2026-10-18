@@ -342,6 +342,11 @@ def _run_pair_session(args: argparse.Namespace) -> None:
             )
             if set(members) & set(seeds)
         ]
+        if not wanted_shards:
+            # A development queue whose seeds are not in the declared block has
+            # no shard to resolve to; it keeps the single-dataset restore rather
+            # than silently restoring nothing.
+            wanted_shards = [args.kaggle_dataset]
         try:
             restore_latest(
                 args.dataset_root,
