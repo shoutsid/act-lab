@@ -606,6 +606,36 @@ def test_a_sharded_push_uploads_only_its_seeds_and_keeps_the_other_fingerprint(
     assert log["shards"]["owner/ds-p2"]["fingerprint"] == second.fingerprint
 
 
+def test_a_non_seed_directory_under_the_handoff_cannot_break_a_sharded_push(
+    tmp_path: Path,
+) -> None:
+    """A ``seed-*`` name that is not a number is skipped, not parsed.
+
+    The filter runs on the publish path, before the push's own error guard, so
+    a stray directory a cleanup left behind would otherwise turn one bad name
+    into a crash that loses the session - and a non-sharded push never looked
+    at the name at all.
+    """
+    dataset_root = _publish_local_seed(tmp_path, 42)
+    handoff = dataset_root / HANDOFF_DATASET
+    stray = handoff / "seed-scratch" / "manifests"
+    stray.mkdir(parents=True)
+    (stray / "manifest.json").write_text("{}\n")
+    client = FakeClient()
+
+    result = publish_handoff(
+        dataset_root,
+        dataset="owner/ds",
+        client=client,
+        log=lambda message: None,
+        seeds=[42],
+    )
+
+    assert result.status == STATUS_PUBLISHED
+    assert result.seeds_published == 1
+    assert client.seed_filters == [(42,)]
+
+
 def test_a_shard_restore_merges_every_shard_and_stops_at_the_first_missing(
     tmp_path: Path, monkeypatch
 ) -> None:

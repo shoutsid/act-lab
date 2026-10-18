@@ -166,9 +166,17 @@ def _manifest_seeds(folder: Path) -> list[Path]:
     )
 
 
-def _seed_number(path: Path) -> int:
-    """The seed a handoff directory names (``seed-15031`` -> 15031)."""
-    return int(path.name.split("-", 1)[1])
+def _seed_number(path: Path) -> int | None:
+    """The seed a handoff directory names (``seed-15031`` -> 15031).
+
+    ``None`` for a ``seed-*`` directory that is not a seed (a scratch name a
+    handoff cleanup left behind): a shard filter must skip it rather than turn
+    one stray directory into a crash on the publish path.
+    """
+    try:
+        return int(path.name.split("-", 1)[1])
+    except (IndexError, ValueError):
+        return None
 
 
 def shard_dataset(base: str, index: int) -> str:
