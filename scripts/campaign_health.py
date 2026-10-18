@@ -516,7 +516,11 @@ def health(
 
     return {
         "queue": queue_mode,
+        # ``dataset`` is the registered id (shard 0); ``datasets`` is every
+        # version the queue's shards are read from. A reader of the JSON should
+        # not have to know the shard rule to see where the seeds came from.
         "dataset": queue.dataset,
+        "datasets": queue.datasets,
         "kernel": queue.kernel_id,
         "session_status": status,
         "driver_lock": holder,
