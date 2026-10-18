@@ -1,5 +1,48 @@
 # Campaign session logs - the evidence behind the exit-publish numbers
 
+## The two fires that found the size wall (kernel v18, 2026-10-05 20:05Z; v19, 2026-10-06 10:45Z)
+
+These are the first two sessions that publish **after every pair** (commit `e60b3b6`), and
+they narrow the failure that cost the previous four sessions. Version 18 pushed the **7-seed
+state and it landed** - the first per-pair push to land, and the reason the block moved
+6 -> **7 of 12** - then died inside the push that would have made it **8**. Version 19
+re-trained the same eighth seed and died inside the same push. Both kernel logs are empty
+(`[]`, 3 B), so the only account is the driver's live capture, committed here beside them.
+
+| file | what it is | sha256 |
+|---|---|---|
+| `session-session-20261006T001451Z-live.log` | v18's live capture, 122 lines, ending on the kaggle version warning after `seed 15031: pair complete` | `2d45a15278324a70f22ae8a7a0eb7f80359e06b3c9d6d9de7b5761540cfe1fec` |
+| `session-session-20261006T001451Z-kernel-log.json` | v18's platform log: **zero events** | `37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570` |
+| `session-session-20261006T125450Z-live.log` | v19's live capture, 99 lines, same last line | `75466821abf41cbd308d6fd3956ab699061d2542dd97ed7fc301513157d7479a` |
+| `session-session-20261006T125450Z-kernel-log.json` | v19's platform log: **zero events** | `37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570` |
+
+| | v18 | v19 |
+|---|---|---|
+| Window declared | 6.43 h (quota 6.91 h at entry) | **2.84 h** (quota 2.91 h left; the driver fitted the window to it) |
+| Startup | restore **37.85 GiB in 4.8 min**, 6 seeds `[15024-15029]` | restore **44.13 GiB in 9.7 min**, 7 seeds `[15024-15030]` |
+| Benchmark / pair | 1,248.1 tokens/s, pair **1.62 h** | 1,471.6 tokens/s, pair **1.40 h** |
+| Code revision | `e60b3b6` (per-pair publish) | `81be2bf` |
+| Pairs it trained | 15030 (`10.397789` / `10.397594`) and 15031 (`10.398133` / `10.398239`) | 15031 again (`10.398096` / `10.398072`) |
+| What landed | `remote publish: ... version pushed (7 seed version(s)) in 16.9 min`, files created 2026-10-05T22:20:43-22:22:11Z | nothing |
+| How it ended | `ERROR` at **00:14:53Z**; last line the kaggle 2.0.2 warning, i.e. inside the 8-seed push | `ERROR` at **12:54:51Z** after **2.15 h** and **1.99 GPU-h**; same last line |
+
+The two captures are the same shape one seed apart, and that is the finding: **the push
+that lands carries 7 seeds / 44.13 GiB, and the push that kills the container carries 8 /
+~50.4 GiB.** The three earlier sessions (v15-v17) each pushed **9** seeds / ~56.7 GiB at exit
+and died there. No Kaggle document in this tree names a per-version size limit, so what is
+recorded is the bracket, not a cause: **a version at 44.13 GiB lands and one at ~50 GiB does
+not.** Twelve seeds is ~75.6 GiB, so the registered block cannot be published as one dataset
+version at any window length - the wall is structural, which is why the driver was right to
+stop rather than re-fire.
+
+The cost is now seed-specific. **15031 has been trained six times** - 2026-10-03T2236Z,
+2026-10-04T1913Z, 2026-10-05T0351Z, 2026-10-05T1813Z, 2026-10-06T0014Z and
+2026-10-06T1254Z - and every one of the six pairs completed and was discarded, because the
+push that would make it durable is the one that dies. Its two arms sat on the uniform floor
+in all six: random `10.397819`-`10.398514`, adaptive `10.397842`-`10.398252`, which is the
+seeded block's expected scale, not a result. The published block is unchanged at
+15024-15030.
+
 ## The session that finally advanced the queue (kernel v11, 2026-09-27)
 
 The first session in four whose restore *worked*: `act-t4-session` version **11**, declared

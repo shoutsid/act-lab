@@ -438,6 +438,71 @@ def test_publish_handoff_does_not_re_upload_a_state_it_already_pushed(
     assert log["fingerprint"] == published.fingerprint
 
 
+def test_the_push_names_its_size_and_attempt_before_it_uploads(tmp_path: Path) -> None:
+    """The capture has to say what was being pushed when the container dies.
+
+    Measured 2026-10-06: both captures of a session killed during a push stop
+    on the kaggle CLI's version warning - the first line it prints - so a death
+    after sixteen minutes of upload and a death before the first byte are
+    indistinguishable. The runner prints the payload and the attempt *before*
+    the blocking client call, so the next capture brackets the failure.
+    """
+    dataset_root = _publish_local_seed(tmp_path, 42)
+    messages: list[str] = []
+
+    class RecordingClient(FakeClient):
+        def create_version(self, folder: Path, version_notes: str) -> str:
+            seen_at_call.extend(messages)
+            return super().create_version(folder, version_notes)
+
+    seen_at_call: list[str] = []
+    client = RecordingClient()
+    publish_handoff(
+        dataset_root,
+        dataset="owner/act-checkpoints-v0-5-1",
+        client=client,
+        version_notes="after seed 42",
+        log=messages.append,
+    )
+
+    # The lines exist before the upload starts, not only after it returns.
+    assert any("pushing 1 seed version(s)" in message for message in seen_at_call)
+    assert any("attempt 1/3 starting" in message for message in seen_at_call)
+    # And they carry a size, so two pushes of different seed counts differ.
+    started = next(message for message in seen_at_call if "pushing" in message)
+    assert "GiB of handoff" in started
+
+
+def test_a_still_running_push_says_so_in_the_capture() -> None:
+    """A blocking upload that prints nothing leaves no way to place a kill.
+
+    The heartbeat is the only line that distinguishes "killed one minute in"
+    from "killed at the end of a fifty-gigabyte upload", so it is exercised
+    directly rather than through a fifty-gigabyte fake.
+    """
+    import time as _time
+
+    messages: list[str] = []
+    started = _time.monotonic()
+    with kaggle_remote._publish_heartbeat(
+        messages.append,
+        seeds=8,
+        size_gib=49.8,
+        started=started,
+        interval=0.01,
+    ):
+        deadline = _time.monotonic() + 2.0
+        while not messages and _time.monotonic() < deadline:
+            _time.sleep(0.01)
+
+    assert messages, "the heartbeat never fired while the push was running"
+    assert "still pushing 8 seed version(s)" in messages[0]
+    assert "49.8 GiB" in messages[0]
+    count = len(messages)
+    _time.sleep(0.05)
+    assert len(messages) == count, "the heartbeat outlived the push"
+
+
 def test_a_new_seed_makes_the_handoff_publish_again(tmp_path: Path) -> None:
     """The fingerprint tracks the seed versions, not the elapsed time.
 

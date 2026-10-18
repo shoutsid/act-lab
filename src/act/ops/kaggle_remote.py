@@ -51,6 +51,7 @@ import shutil
 import tarfile
 import tempfile
 import time
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable, Protocol
@@ -70,6 +71,52 @@ PUBLISH_LOG_NAME = "remote-publish-log.json"
 # transient API or network error, which is what a failed push usually is.
 PUBLISH_ATTEMPTS = 3
 PUBLISH_RETRY_SECONDS = 5.0
+
+# How often a push that is still uploading says so. Measured 2026-10-06: the
+# two captures of a session killed during a push each stop on the kaggle CLI's
+# version warning - the first line it prints - so the only account of the
+# failure is a start with no size, no attempt and no elapsed time beside it.
+# The push is a single blocking client call that prints nothing while it runs,
+# so without a heartbeat a kill sixteen minutes in and a kill one minute in
+# leave the same record. This is the line that tells them apart.
+PUBLISH_HEARTBEAT_SECONDS = 60.0
+
+
+@contextmanager
+def _publish_heartbeat(
+    logger: Callable[[str], None],
+    *,
+    seeds: int,
+    size_gib: float,
+    started: float,
+    interval: float = PUBLISH_HEARTBEAT_SECONDS,
+):
+    """Log that a push is still running, every ``interval`` seconds.
+
+    A context manager so the beat stops on the way out whether the push
+    returned or raised: a thread left printing after the result is written
+    would put lines in the capture that belong to no attempt.
+    """
+    import threading
+
+    stop = threading.Event()
+
+    def beat() -> None:
+        while not stop.wait(interval):
+            elapsed = (time.monotonic() - started) / 60.0
+            logger(
+                f"remote publish: still pushing {seeds} seed version(s) "
+                f"({size_gib:.1f} GiB) after {elapsed:.1f} min"
+            )
+
+    thread = threading.Thread(target=beat, name="act-publish-heartbeat", daemon=True)
+    thread.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        thread.join(timeout=1.0)
+
 
 # How many times the startup restore re-attempts a download whose failure looks
 # like "no such dataset yet", and the base delay (multiplied by the attempt
@@ -528,6 +575,7 @@ excepted from it.
         return result
 
     fingerprint = handoff_fingerprint(folder)
+    size_gib = _tree_gib(folder)
     previous = _read_log(log_path, dataset_root)
     if (
         previous is not None
@@ -558,10 +606,25 @@ excepted from it.
 
     failures: list[str] = []
     started = time.monotonic()
+    logger(
+        f"remote publish: pushing {len(seeds)} seed version(s), "
+        f"{size_gib:.1f} GiB of handoff"
+    )
     for attempt in range(1, max(1, attempts) + 1):
+        attempt_started = time.monotonic()
+        logger(
+            f"remote publish: attempt {attempt}/{attempts} starting "
+            f"({len(seeds)} seed version(s), {size_gib:.1f} GiB)"
+        )
         try:
             ensure_metadata(folder, dataset)
-            client.create_version(folder, version_notes)
+            with _publish_heartbeat(
+                logger,
+                seeds=len(seeds),
+                size_gib=size_gib,
+                started=attempt_started,
+            ):
+                client.create_version(folder, version_notes)
         except Exception as error:  # noqa: BLE001 - a push must never end the session
             failures.append(f"{type(error).__name__}: {error}")
             logger(

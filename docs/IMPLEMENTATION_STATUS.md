@@ -1,5 +1,29 @@
 # ACT Implementation Status
 
+## The publish is not flaky: it is walled between 44 and 50 GiB, and the block cannot fit (2026-10-18, read from the 2026-10-05/06 fires)
+
+The per-pair publish did what it was written to do, and then found the next wall. Kernel
+**v18** (2026-10-05 20:05Z) pushed the **7-seed state and it landed** - the block moved
+**6 -> 7 of 12**, the first progress since v11 - and then died inside the push that would
+have made it **8**. Kernel **v19** (2026-10-06 10:45Z, a 2.84 h window fitted to the 2.91 h
+of quota left) re-trained that same eighth seed and died inside the same push. Both kernel
+logs are **empty** (`[]`, 3 B) and both live captures stop on the kaggle CLI's version
+warning - the first line it prints - so the account is the driver's capture, committed under
+`artifacts/v0-session-logs/` with its sha256s.
+
+| | |
+|---|---|
+| **What the two captures bracket** | The push that landed carried **7 seeds / 44.13 GiB** (35 files; restore reports the same 44.13 GiB) and took **16.9 min**. The push that killed v18 and v19 would have carried **8 seeds / ~50.4 GiB**. The three sessions before them (v15-v17) entered the exit push of **9 seeds / ~56.7 GiB** and died there. So: a version at 44.13 GiB lands; one at ~50 GiB does not. **No Kaggle document in this tree names that limit**, so the record keeps the bracket and not a cause. |
+| **Why this is structural rather than another bad run** | The registered block is **12 seeds x ~6.3 GiB = ~75.6 GiB**, and the local handoff is pushed as one dataset version. At the measured wall the block can never be published as one version, at any window length - so firing another session cannot move seed 8, which is why the driver's own `a session failed - stopping so the cause can be read` was right. The cost is concentrated in one seed: **15031 has now been trained six times** (2026-10-03T2236Z through 2026-10-06T1254Z), and all six pairs completed and were discarded. |
+| **What v18 did get right** | The per-pair publish bounded the loss in exactly the way `e60b3b6` argued: v15-v17 each lost the three pairs they trained, while v18 made 15030 durable (and 15024-15029 restored rather than re-trained) before the next push killed it. So the change is kept; what it exposed is the payload ceiling. |
+| **The diagnostic gap this cost, now closed** | A push is a single blocking client call that prints nothing while it runs, so a kill at one minute and a kill at sixteen leave the same capture - and the two things that would settle the bracket (how many bytes were in flight, how long the push had been running) were not in it. `publish_handoff` now logs the payload **before** the client call (`remote publish: pushing N seed version(s), X GiB of handoff`), names each attempt with the same size, and beats every 60 s while the upload is in flight (`still pushing ... after M min`). Sizes are counted from the same file walk the restore prices itself with. The next fire therefore leaves a capture that says whether the 50 GiB push dies at the first byte, midway, or after the upload returns. |
+| **What this entry does not establish** | The cause of the kill is **not known**. The two kernel logs are empty, no error line survived, and the observed correlation is size, not a quoted limit. The heartbeat is what makes the next observation falsifiable; it is not evidence for a particular threshold. |
+| **Pinned** | `tests/test_kaggle_remote.py` (**+2**): the size and attempt lines are emitted **before** `create_version` is called and carry the seed count and GiB, and the heartbeat fires while a push is in flight and stops when it returns. The push's own contract is unchanged: a failed attempt is still retried, a failed push still never raises, and the reuse-by-fingerprint path still uploads nothing. |
+| **A pre-registered next step, not taken here** | Shard the handoff so no version approaches the wall - at the measured sizes **six seeds per dataset** (37.9 GiB) leaves headroom, so `act-v0-5-2` keeps 15024-15029 and one continuation dataset carries 15030-15035 - and have the restore merge both before the skip decision. That is a change to the publish/restore path only: no seed, knob, dtype, criterion or queue moves. It is written here before the work so the shard rule is not chosen after seeing which seeds fit. |
+| **The state** | Primary block **7 of 12** (15024-15030) in `sid123123234/act-v0-5-2`; kernel `act-t4-session` v19 `ERROR`; **no driver is running** (it stopped at `2026-10-06T12:54:51Z`), the last kernel run on the account is `2026-10-06T10:45:39Z`, and the GPU week that refreshed **2026-10-10** has not been spent. The campaign is **not** relaunched: another session would re-train 15031 into the same wall. |
+
+---
+
 ## The null queue is fired on the TPU: twelve declared seeds, one per chip (2026-09-29)
 
 **Live update, 2026-09-29 11:55Z:** with the GPU week spent (**1.65 of 30 h**) and the TPU week at
