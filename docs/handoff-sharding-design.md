@@ -6,7 +6,8 @@ another session cannot get past: the block's handoff is pushed as **one** datase
 the measured payload bracket says the whole block does not fit. The rule below was written
 before the change and before the next fire, because the one thing that must not be decided
 after seeing the result is which seeds go where. Section 8 records what was implemented
-against it on 2026-10-18; no push has run the sharded path yet.
+against it on 2026-10-18 and section 9 the live probes that have run since; no **full-size**
+shard has been pushed yet.
 
 ## 1. The gap
 
@@ -29,8 +30,9 @@ pairs were discarded at that push.
 
 1. **Membership is a contiguous slice of the declared queue, in declared order.** For the
    primary queue: **shard 0 = 15024-15030** (the seven seeds already published) and
-   **shard 1 = 15031-15035** (five seeds, ~31.5 GiB at the measured 6.30 GiB/seed). The boundary is set from the state that
-   exists today - shard 0 is exactly the version that landed - not from any future result.
+   **shard 1 = 15031-15035** (five seeds, ~31.5 GiB at the measured 6.30 GiB/seed). The
+   boundary is set from the state that exists today - shard 0 is exactly the version that
+   landed - not from any future result.
    (The first draft of this rule said six seeds; it was corrected before any code shipped,
    for the migration reason in section 4. No data was seen in between.)
 2. **A seed belongs to exactly one shard**, by its index in `DECLARED_SEEDS` and the declared
@@ -103,7 +105,7 @@ either axis.
 - A **health count that double-counts a seed** would mean the shard rule leaked overlap;
   disjointness is asserted rather than trusted.
 
-## 7. Open questions to settle before implementing
+## 7. Open questions at design time, and where they stand
 
 1. Whether the driver and the verdict should enumerate shards by the declared list or by
    listing the owner's datasets for the `<base>-p*` prefix. The declared list is deterministic
@@ -138,9 +140,9 @@ measurement, and the falsifier in section 6 is what it would mean if it did not.
 
 ## 9. The live probe the code path got (2026-10-18)
 
-Before this landed, the sharded path was exercised against the real service at
-kilobyte scale - a handoff with two fake seeds (9001, 9002), one shard each, published as
-two **new** private datasets:
+The implementation was exercised against the real service at kilobyte scale - a handoff
+with two fake seeds (9001, 9002), one shard each, published as two **new** private
+datasets:
 
 ```
 sid123123234/act-shard-probe      seed 9001 only
