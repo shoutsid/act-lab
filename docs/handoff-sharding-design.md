@@ -156,7 +156,26 @@ repeat of the first returns `already_published` from the per-shard fingerprint, 
 the property that stops the next session re-uploading forty gigabytes. The publish log
 carried both shards' records with the last push at the top level, as the driver reads it.
 
+The CLI path was then run end to end against the same service - `--mode pair-session
+--profile --seeds 15024-15025 --kaggle-shard-seeds 7 --kaggle-dataset sid123123234/act-shard-cli-probe`
+- which trained two development-fidelity pairs and: bootstrapped from a dataset that did
+not exist, published **1** then **2** seeds after the two pairs (the shard filter, not the
+whole handoff), then returned `already_published` on the exit publish. The per-pair
+`remote_publish` entries were in the session log, as the driver reads them. That probe
+dataset was **deleted** afterwards (`kaggle datasets delete ... -y`): it carried
+development-fidelity records for the *declared* seeds 15024/15025, and leaving those in the
+account beside the real block would be a provenance hazard. The 9001/9002 datasets carry
+no declared seed and are left in place.
+
 What it does not establish is the thing the next fire is for: a **31.5 GiB** push. The
 probe was kilobytes, so it says the shard mechanics are right, not that the 50 GB wall
-has been cleared. Both probe datasets are private and tiny; they are left in place so the
-listing above can be checked rather than trusted.
+has been cleared.
+
+One untested assumption remains, and it is worth naming rather than discovering: both
+probes created their continuation dataset from the **workstation**, while the kernel's
+first shard-1 push is a `dataset_create_new` from inside a Kaggle kernel. If the platform
+refuses that, the push is caught and recorded like any other failed push (the container is
+not killed), but the session's pairs are not durable and the driver stops at the exit
+publish. The failure would be visible in the pair's `remote_publish` entry; the fix is to
+pre-create the continuation from a workstation and re-fire. This is not pre-done here
+because it would make the first fire test less of the path than it can.
