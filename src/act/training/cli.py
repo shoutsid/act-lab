@@ -325,12 +325,27 @@ def _run_pair_session(args: argparse.Namespace) -> None:
         # (fail-fast - a session that cannot get its requested remote state
         # must stop here, not mid-pair). Skipped seeds with a complete local
         # version stay skipped; remote seeds merge over matching locals.
-        from act.ops.kaggle_remote import default_client, restore_latest
+        from act.ops.kaggle_remote import (
+            default_client,
+            restore_latest,
+            shard_datasets,
+        )
 
+        # Membership is a function of the *registered* queue, not of what this
+        # command asked for: a session that passes a subset must still push and
+        # restore the shard the declared block puts those seeds in, or the same
+        # seed would live in two datasets depending on the invocation.
+        wanted_shards = [
+            name
+            for name, members in shard_datasets(
+                args.kaggle_dataset, DECLARED_SEEDS, args.kaggle_shard_seeds
+            )
+            if set(members) & set(seeds)
+        ]
         try:
             restore_latest(
                 args.dataset_root,
-                dataset=args.kaggle_dataset,
+                datasets=wanted_shards,
                 client=default_client(),
                 log=print,
             )
@@ -387,7 +402,7 @@ def _run_pair_session(args: argparse.Namespace) -> None:
             "schedule_tokens_per_second": schedule_rate,
         },
     )
-    _publish_remote(args, tokens_per_second=schedule_rate)
+    _publish_remote(args, tokens_per_second=schedule_rate, seeds=seeds)
     printed = {
         key: summary[key]
         for key in (
@@ -441,6 +456,7 @@ def _remote_publisher(
         KaggleDatasetClient,
         default_client,
         publish_handoff,
+        shard_for_seed,
     )
 
     client: KaggleDatasetClient | None = None
@@ -449,15 +465,26 @@ def _remote_publisher(
         nonlocal client
         if client is None:
             client = default_client()
+        # One shard per push, resolved from the registered queue: a push that
+        # carried every seed would carry the whole block's payload, which is
+        # the size that gets the container killed (2026-10-05/06).
+        shard_seeds = getattr(args, "kaggle_shard_seeds", 0)
+        sharded = shard_seeds > 0 and seed in DECLARED_SEEDS
+        dataset, members = (
+            shard_for_seed(args.kaggle_dataset, seed, DECLARED_SEEDS, shard_seeds)
+            if sharded
+            else (args.kaggle_dataset, None)
+        )
         result = publish_handoff(
             args.dataset_root,
-            dataset=args.kaggle_dataset,
+            dataset=dataset,
             client=client,
             version_notes=(
                 f"v0-5-1 session publish: {tokens_per_second:.0f} tokens/s, "
                 f"{args.dtype or 'measured'} dtype, after seed {seed}"
             ),
             log=print,
+            seeds=members,
         )
         # The same JSON line the exit publish prints, so the session's stream
         # carries one account of every push it made, not only the last.
@@ -467,7 +494,9 @@ def _remote_publisher(
     return publish_after_pair
 
 
-def _publish_remote(args: argparse.Namespace, *, tokens_per_second: float) -> None:
+def _publish_remote(
+    args: argparse.Namespace, *, tokens_per_second: float, seeds: tuple[int, ...]
+) -> None:
     """Optional exit-path publish to a versioned Kaggle dataset (--kaggle-dataset).
 
     The remote push is the last step of the launch command, after the local
@@ -488,24 +517,52 @@ def _publish_remote(args: argparse.Namespace, *, tokens_per_second: float) -> No
     """
     if args.kaggle_dataset is None:
         return
-    from act.ops.kaggle_remote import default_client, publish_on_exit
+    from act.ops.kaggle_remote import (
+        STATUS_FAILED,
+        default_client,
+        publish_on_exit,
+        shard_datasets,
+    )
 
-    result = publish_on_exit(
-        args.dataset_root,
-        dataset=args.kaggle_dataset,
-        client=default_client(),
-        version_notes=(
-            f"v0-5-1 session publish: {tokens_per_second:.0f} tokens/s, "
-            f"{args.dtype or 'measured'} dtype"
-        ),
-        log=print,
-    )
-    print(
-        json.dumps(
-            {"remote_publish": result.to_dict()},
-            sort_keys=True,
+    client = default_client()
+    shard_seeds = getattr(args, "kaggle_shard_seeds", 0)
+    # One push per shard, normally ``already_published`` for every one of them
+    # because the pair-time pushes already did the work. A failed shard stops
+    # the loop so the *last* entry the driver reads is that failure - the exit
+    # path is the one place a broken push must be visible rather than retried
+    # into a later shard's success. A run whose seeds are not in the declared
+    # block (a development queue) has no shard to resolve to, so it keeps the
+    # single-version behaviour rather than publishing nothing.
+    shards = [
+        (name, members)
+        for name, members in shard_datasets(
+            args.kaggle_dataset, DECLARED_SEEDS, shard_seeds
         )
-    )
+        if set(members) & set(seeds)
+    ]
+    if not shards:
+        shards = [(args.kaggle_dataset, tuple(seeds))]
+        shard_seeds = 0
+    for dataset, members in shards:
+        result = publish_on_exit(
+            args.dataset_root,
+            dataset=dataset,
+            client=client,
+            version_notes=(
+                f"v0-5-1 session publish: {tokens_per_second:.0f} tokens/s, "
+                f"{args.dtype or 'measured'} dtype"
+            ),
+            log=print,
+            seeds=members if shard_seeds > 0 else None,
+        )
+        print(
+            json.dumps(
+                {"remote_publish": result.to_dict()},
+                sort_keys=True,
+            )
+        )
+        if result.status == STATUS_FAILED:
+            break
 
 
 def main() -> None:
@@ -607,6 +664,18 @@ def main() -> None:
     parser.add_argument(
         "--profile", action="store_true",
         help="run a tiny smoke config instead of the declared 285M model",
+    )
+    parser.add_argument(
+        "--kaggle-shard-seeds",
+        type=int,
+        default=0,
+        help=(
+            "split the handoff across dataset versions of this many declared "
+            "seeds (0 = one version). Measured 2026-10-05/06: a 7-seed / "
+            "44.13 GiB version lands and an 8-seed / ~50.4 GiB one does not, "
+            "so the registered block needs two; shard 0 keeps the registered "
+            "dataset id and later shards are '<id>-p2', '<id>-p3', ..."
+        ),
     )
     parser.add_argument(
         "--kaggle-dataset", default=None,

@@ -528,7 +528,8 @@ PYTHONPATH=src python -m act.training.cli --mode pair-session \
   --probe-candidate-policy spread \
   --preserve-router-on-rebuild \
   --new-expert clone \
-  --kaggle-dataset <owner>/<slug>
+  --kaggle-dataset <owner>/<slug> \
+  --kaggle-shard-seeds 7
 ```
 
 - `--hours`: the remaining session clock at entry — the platform's measured
@@ -541,6 +542,14 @@ PYTHONPATH=src python -m act.training.cli --mode pair-session \
   §5.47 amendment). The code defaults are still the historical
   `prefix`/untreated pair, so every flag here is a deliberate restatement of
   the registered configuration rather than a change.
+- `--kaggle-shard-seeds 7`: the handoff is published as one dataset version per
+  seven declared seeds — shard 0 keeps `<owner>/<slug>`, shard 1 is
+  `<owner>/<slug>-p2` — and a session restores both. This is not a protocol
+  change: the seeds, dtype, knobs and criteria are identical. It is the
+  measured payload wall (a 7-seed / 44.13 GiB version landed on 2026-10-05; an
+  8-seed / ~50.4 GiB one killed two containers), recorded in
+  `docs/handoff-sharding-design.md`. The null queue is single-arm and stays one
+  version (`--kaggle-shard-seeds 0`).
 - Everything else defaults correctly: benchmark artifact
   `artifacts/v0-benchmark.json`, `--probe-batch-count 1` (the primary config),
   dataset root `artifacts/datasets`, session dir `artifacts/v0-sessions`.
@@ -627,7 +636,8 @@ PYTHONPATH=src python -m act.training.cli --mode pair-session \
   --new-expert clone \
   --dataset-root artifacts/datasets-control \
   --session-dir artifacts/v0-sessions-control \
-  --kaggle-dataset <owner>/<slug>-control
+  --kaggle-dataset <owner>/<slug>-control \
+  --kaggle-shard-seeds 7
 ```
 
 - `spread` is required here too. The clause isolates the *decision rule*; if
@@ -664,7 +674,8 @@ PYTHONPATH=src python -m act.training.cli --mode pair-session \
   --new-expert clone \
   --dataset-root artifacts/datasets-null \
   --session-dir artifacts/v0-sessions-null \
-  --kaggle-dataset <owner>/<slug>-null
+  --kaggle-dataset <owner>/<slug>-null \
+  --kaggle-shard-seeds 0
 ```
 
 - No probe/policy flags are needed (the null arm is policy-free by

@@ -85,11 +85,15 @@ class FakeClient:
         self.downloads: list[str] = []
         self.snapshots: list[Path] = []  # staged copies, one per version
         self.existence_checks: list[str] = []
+        self.seed_filters: list[tuple[int, ...] | None] = []
 
-    def create_version(self, folder: Path, version_notes: str) -> str:
+    def create_version(
+        self, folder: Path, version_notes: str, *, seeds=None
+    ) -> str:
         if self.fail is not None:
             raise self.fail
         self.versions.append((folder.name, version_notes))
+        self.seed_filters.append(None if seeds is None else tuple(seeds))
         # Stage a snapshot now: the real API stores version contents at push
         # time, so later local edits are invisible to the next download.
         staging = Path(__import__('tempfile').mkdtemp(prefix="fake-version-"))
@@ -331,11 +335,11 @@ def test_publish_on_exit_retries_a_transient_push_failure(tmp_path: Path) -> Non
     attempts = {"count": 0}
     slept: list[float] = []
 
-    def flaky_create_version(folder: Path, version_notes: str) -> str:
+    def flaky_create_version(folder: Path, version_notes: str, *, seeds=None) -> str:
         attempts["count"] += 1
         if attempts["count"] < kaggle_remote.PUBLISH_ATTEMPTS:
             raise RuntimeError("500 server error")
-        return real_create_version(folder, version_notes)
+        return real_create_version(folder, version_notes, seeds=seeds)
 
     client.create_version = flaky_create_version  # type: ignore[method-assign]
     messages: list[str] = []
@@ -451,9 +455,9 @@ def test_the_push_names_its_size_and_attempt_before_it_uploads(tmp_path: Path) -
     messages: list[str] = []
 
     class RecordingClient(FakeClient):
-        def create_version(self, folder: Path, version_notes: str) -> str:
+        def create_version(self, folder: Path, version_notes: str, *, seeds=None) -> str:
             seen_at_call.extend(messages)
-            return super().create_version(folder, version_notes)
+            return super().create_version(folder, version_notes, seeds=seeds)
 
     seen_at_call: list[str] = []
     client = RecordingClient()
@@ -501,6 +505,166 @@ def test_a_still_running_push_says_so_in_the_capture() -> None:
     count = len(messages)
     _time.sleep(0.05)
     assert len(messages) == count, "the heartbeat outlived the push"
+
+
+def test_the_shard_rule_splits_the_declared_queue_without_moving_a_published_seed() -> None:
+    """The boundary is the version that is already published, not a guess.
+
+    Measured 2026-10-05/06: a 7-seed / 44.13 GiB version lands and an 8-seed /
+    ~50.4 GiB one does not. So shard 0 is defined as the seven seeds already in
+    `act-v0-5-2` and the continuation carries 15031-15035 - a rule chosen from
+    the state that exists, before the next fire, so it cannot be read as
+    fitting the boundary to a result.
+    """
+    from act.training.v0_runner import DECLARED_SEEDS
+
+    shards = kaggle_remote.shard_datasets("owner/act-v0-5-2", DECLARED_SEEDS, 7)
+
+    assert [name for name, _ in shards] == [
+        "owner/act-v0-5-2",
+        "owner/act-v0-5-2-p2",
+    ]
+    assert shards[0][1] == tuple(range(15024, 15031))
+    assert shards[1][1] == tuple(range(15031, 15036))
+    # Disjoint and total: every seed lands in exactly one version.
+    assert set(shards[0][1]) | set(shards[1][1]) == set(DECLARED_SEEDS)
+    assert not set(shards[0][1]) & set(shards[1][1])
+    # A seed's push resolves to its own shard and never the whole queue.
+    assert kaggle_remote.shard_for_seed(
+        "owner/act-v0-5-2", 15031, DECLARED_SEEDS, 7
+    ) == ("owner/act-v0-5-2-p2", tuple(range(15031, 15036)))
+    # No sharding is one shard carrying the registered id: the default.
+    assert kaggle_remote.shard_datasets("owner/act-v0-5-2", DECLARED_SEEDS, 0) == [
+        ("owner/act-v0-5-2", DECLARED_SEEDS)
+    ]
+
+
+def test_a_sharded_push_uploads_only_its_seeds_and_keeps_the_other_fingerprint(
+    tmp_path: Path,
+) -> None:
+    """A shard's reuse must not be decided by the other shard's push.
+
+    Two failures are pinned here. The push itself must carry only its own seed
+    directories - a version that carried both would hit the same wall - and the
+    publish log must keep both shards' fingerprints, or the next session reads
+    the last push's single fingerprint as the whole state and re-uploads forty
+    gigabytes that already exist.
+    """
+    _publish_local_seed(tmp_path, 42)
+    dataset_root = _publish_local_seed(tmp_path, 43)
+    messages: list[str] = []
+    client = FakeClient()
+
+    first = publish_handoff(
+        dataset_root,
+        dataset="owner/ds",
+        client=client,
+        version_notes="after seed 42",
+        log=messages.append,
+        seeds=[42],
+    )
+    second = publish_handoff(
+        dataset_root,
+        dataset="owner/ds-p2",
+        client=client,
+        version_notes="after seed 43",
+        log=messages.append,
+        seeds=[43],
+    )
+
+    assert first.seeds_published == 1
+    assert second.seeds_published == 1
+    assert client.seed_filters == [(42,), (43,)]
+    # The shard's fingerprint is over its own manifests, not the whole tree.
+    assert first.fingerprint != kaggle_remote.handoff_fingerprint(
+        dataset_root / HANDOFF_DATASET
+    )
+    log = json.loads(
+        (dataset_root / kaggle_remote.PUBLISH_LOG_NAME).read_text(encoding="utf-8")
+    )
+    assert log["dataset"] == "owner/ds-p2"  # the driver reads the last push
+    assert set(log["shards"]) == {"owner/ds", "owner/ds-p2"}
+    assert log["shards"]["owner/ds"]["fingerprint"] == first.fingerprint
+
+    # A repeat of the first shard is free even though the last push was the
+    # second shard: that is the state this log has to preserve.
+    again = FakeClient()
+    reused = publish_handoff(
+        dataset_root,
+        dataset="owner/ds",
+        client=again,
+        log=messages.append,
+        seeds=[42],
+    )
+    assert reused.status == STATUS_REUSED
+    assert reused.fingerprint == first.fingerprint
+    assert again.versions == []
+    # The second shard's success is still in the log after the rewrite.
+    log = json.loads(
+        (dataset_root / kaggle_remote.PUBLISH_LOG_NAME).read_text(encoding="utf-8")
+    )
+    assert log["shards"]["owner/ds-p2"]["fingerprint"] == second.fingerprint
+
+
+def test_a_shard_restore_merges_every_shard_and_stops_at_the_first_missing(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """The session must see both shards, and must not train over a served one.
+
+    Shards are contiguous, so the first one that does not exist ends the chain:
+    treating a missing continuation as bootstrap is correct, but continuing past
+    a shard that exists and is empty would train over published seeds.
+    """
+    dataset_root = tmp_path / "dataset"
+    staging = tmp_path / "staging"
+    for seed, shard in ((42, "owner/ds"), (43, "owner/ds-p2")):
+        name = f"seed-{seed:04d}"
+        (staging / shard / name / "manifests").mkdir(parents=True)
+        (staging / shard / name / "manifests" / "manifest.json").write_text(
+            json.dumps({"seed": seed, "artifacts": [], "checksums": {}}) + "\n"
+        )
+
+    class ShardedClient:
+        def __init__(self, available: set[str]) -> None:
+            self.available = available
+            self.downloads: list[str] = []
+
+        def download_files(self, dataset: str, target: Path) -> None:
+            self.downloads.append(dataset)
+            if dataset not in self.available:
+                raise KeyError(dataset)
+            shutil.copytree(staging / dataset, target, dirs_exist_ok=True)
+
+        def dataset_exists(self, dataset: str) -> bool:
+            return dataset in self.available
+
+        def create_version(self, folder: Path, version_notes: str, *, seeds=None) -> str:
+            raise AssertionError("a restore must never publish")
+
+    monkeypatch.setattr(
+        kaggle_remote, "_is_missing_dataset_error", lambda error: isinstance(error, KeyError)
+    )
+
+    both = ShardedClient({"owner/ds", "owner/ds-p2"})
+    restored = restore_latest(
+        dataset_root,
+        datasets=["owner/ds", "owner/ds-p2"],
+        client=both,
+        log=lambda message: None,
+    )
+    assert restored == [42, 43]
+    assert both.downloads == ["owner/ds", "owner/ds-p2"]
+
+    first_only = ShardedClient({"owner/ds"})
+    restored = restore_latest(
+        dataset_root,
+        datasets=["owner/ds", "owner/ds-p2"],
+        client=first_only,
+        log=lambda message: None,
+    )
+    assert restored == [42]
+    # It asked about the continuation and stopped when it was not there.
+    assert first_only.downloads == ["owner/ds", "owner/ds-p2"]
 
 
 def test_a_new_seed_makes_the_handoff_publish_again(tmp_path: Path) -> None:
@@ -605,6 +769,36 @@ def test_the_cli_builds_the_hook_the_runner_calls(
     assert client.versions[0][1].endswith("after seed 42")
 
 
+def test_the_cli_hook_pushes_the_declared_shard_the_completed_seed_belongs_to(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A pair's push carries its own shard, not the whole block.
+
+    The push that killed the 2026-10-06 sessions carried eight seeds. With the
+    registered shard size the eighth seed is in the continuation dataset and
+    the push that follows it carries five - so the pin is that the hook reads
+    the *declared* queue, not the subset this session happened to request.
+    """
+    from act.training import cli
+
+    dataset_root = _publish_local_seed(tmp_path, 15031)
+    client = FakeClient()
+    monkeypatch.setattr(kaggle_remote, "default_client", lambda: client)
+    args = types.SimpleNamespace(
+        kaggle_dataset="owner/ds",
+        dataset_root=dataset_root,
+        dtype="fp16",
+        kaggle_shard_seeds=7,
+    )
+
+    outcome = cli._remote_publisher(args, tokens_per_second=1000.0)(15031)
+
+    assert outcome["status"] == STATUS_PUBLISHED
+    assert outcome["dataset"] == "owner/ds-p2"
+    assert outcome["seeds_published"] == 1
+    assert client.seed_filters == [(15031, 15032, 15033, 15034, 15035)]
+
+
 def test_restore_latest_merges_remote_over_local(tmp_path: Path) -> None:
     dataset_root = _publish_local_seed(tmp_path, 42)
     handoff = dataset_root / HANDOFF_DATASET
@@ -670,7 +864,7 @@ def test_restore_finds_every_seed_at_the_depth_the_service_actually_returns(
         def download_files(self, dataset: str, target: Path) -> None:
             shutil.copytree(staging, target, dirs_exist_ok=True)
 
-        def create_version(self, folder: Path, version_notes: str) -> str:
+        def create_version(self, folder: Path, version_notes: str, *, seeds=None) -> str:
             raise AssertionError("a restore must never publish")
 
     restored = restore_latest(

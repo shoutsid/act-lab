@@ -1050,7 +1050,7 @@ def _fake_remote(monkeypatch, calls: dict, *, fail: bool = False) -> None:
     import act.ops.kaggle_remote as remote
 
     class StubClient:
-        def create_version(self, folder, version_notes):
+        def create_version(self, folder, version_notes, *, seeds=None):
             if fail:
                 raise RuntimeError("409 conflict")
             calls["versions"] = calls.get("versions", 0) + 1

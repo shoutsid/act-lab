@@ -48,7 +48,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Mapping
+from typing import Mapping, Sequence
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -169,14 +169,41 @@ def dataset_listing(
     return "\n".join(pages)
 
 
-def published_seeds(dataset_id: str, *, timeout: float = 180.0) -> dict[int, dict]:
-    """Every seed in the published dataset, with the arms and steps it has.
+def published_seeds(
+    dataset_id: str | Sequence[str], *, timeout: float = 180.0
+) -> dict[int, dict]:
+    """Every seed the published dataset(s) carry, with the arms and steps.
 
     Read from the dataset listing rather than downloaded: the session dataset is ~24 GB and
     the listing is a few kilobytes of exactly the information needed to tell a finished seed
     from one whose snapshot stopped part-way.
+
+    A queue whose handoff is sharded (see `docs/handoff-sharding-design.md`) passes its
+    datasets in order. The first must be readable - if it is not, the report cannot say
+    whether the queue started. A later shard that does not exist yet is not an error: it is
+    the state before the first seed of that shard is published, and reading it as anything
+    else would make the report fail at the moment it is most needed. Reading it as empty
+    under-reports at worst, and an under-reported block can never reach the COMPLETE verdict
+    the report exists to protect.
     """
-    return parse_seed_listing(dataset_listing(dataset_id, timeout=timeout))
+    names = [dataset_id] if isinstance(dataset_id, str) else list(dataset_id)
+    merged: dict[int, dict] = {}
+    for index, name in enumerate(names):
+        try:
+            listing = dataset_listing(name, timeout=timeout)
+        except RuntimeError:
+            if index == 0:
+                raise
+            continue
+        for seed, entry in parse_seed_listing(listing).items():
+            if seed in merged:
+                raise RuntimeError(
+                    f"seed {seed} is published in more than one shard "
+                    f"({names[index - 1]!r} and {name!r}); the shard rule forbids "
+                    "overlap, so this dataset layout cannot be read"
+                )
+            merged[seed] = entry
+    return merged
 
 
 def stepped_seeds(seeds: dict[int, dict]) -> list[int]:
@@ -264,7 +291,7 @@ def fetch_seed_status(dataset_id: str, seed: int, *, timeout: float = 180.0) -> 
 
 
 def seed_statuses(
-    dataset_id: str, seeds, *, timeout: float = 180.0
+    dataset_id: str | Mapping[int, str], seeds, *, timeout: float = 180.0
 ) -> dict[int, str | None]:
     """Each candidate seed's published status: one small download per candidate.
 
@@ -277,7 +304,9 @@ def seed_statuses(
     return {seed: fetch_seed_status(dataset_id, seed, timeout=timeout) for seed in seeds}
 
 
-def fetch_seed_summary(dataset_id: str, seed: int, *, timeout: float = 180.0) -> dict | None:
+def fetch_seed_summary(
+    dataset_id: str | Mapping[int, str], seed: int, *, timeout: float = 180.0
+) -> dict | None:
     """One published seed's summary: a kilobyte carrying both arms' final losses.
 
     Fetched as a **single file**, not by downloading the session dataset - that is ~24 GB
@@ -291,6 +320,12 @@ def fetch_seed_summary(dataset_id: str, seed: int, *, timeout: float = 180.0) ->
     The remote path carries the doubled first component the upload created, because a seed
     is pushed as ``seed-N.tar`` whose members already begin ``seed-N/``.
     """
+    if not isinstance(dataset_id, str):
+        # Sharded: the seed's record lives in the shard that carries it.
+        try:
+            dataset_id = dataset_id[seed]
+        except KeyError:
+            return None
     name = f"seed-{seed}/seed-{seed}/reports/seed-summary.json"
     with tempfile.TemporaryDirectory(prefix=f"act-seed-{seed}-") as directory:
         try:
@@ -314,7 +349,9 @@ def fetch_seed_summary(dataset_id: str, seed: int, *, timeout: float = 180.0) ->
             return None
 
 
-def seed_readout(dataset_id: str, seeds, *, timeout: float = 180.0) -> dict:
+def seed_readout(
+    dataset_id: str | Mapping[int, str], seeds, *, timeout: float = 180.0
+) -> dict:
     """What the published seeds *show* - which is not the verdict.
 
     The queue is incomplete for most of the campaign's life and the registered verdict
@@ -443,12 +480,16 @@ def health(
     quota = kaggle_queue.active_quota() or {}
     remaining = quota.get("remaining_hours")
     declared_window = float(window if window is not None else kaggle_t4.DEFAULT_HOURS)
+    owner: dict[int, str] = {}
     try:
-        seeds = published_seeds(queue.dataset)
+        shards = queue.shards
+        seeds = published_seeds([name for name, _ in shards])
+        # Which shard owns a seed, for the per-seed summary fetches below.
+        owner = {seed: name for name, members in shards for seed in members}
         # Candidates are confirmed against their own published record before any of them is
         # called complete, because the listing cannot tell a finished seed from one whose
         # window closed just after its last checkpoint (see ``stepped_seeds``).
-        statuses = seed_statuses(queue.dataset, stepped_seeds(seeds))
+        statuses = seed_statuses(owner, stepped_seeds(seeds))
         progress = seed_progress(seeds, statuses=statuses)
         seeds_error = None
     except RuntimeError as error:
@@ -501,7 +542,7 @@ def health(
             "declared": len(DECLARED_SEEDS),
         },
         "readout": (
-            seed_readout(queue.dataset, progress["complete"])
+            seed_readout(owner, progress["complete"])
             if readout and progress.get("complete")
             else None
         ),

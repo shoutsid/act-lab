@@ -94,6 +94,46 @@ def test_published_seeds_reads_the_paginated_listing(
     assert sorted(seeds) == [15000, 15002]
 
 
+def test_published_seeds_reads_every_shard_and_forgives_a_missing_continuation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A shard that does not exist yet is the state before its first seed.
+
+    The block now publishes across two datasets (7 seeds / 44.13 GiB landed;
+    8 / ~50.4 GiB killed two containers). The first shard must be readable -
+    if it is not, the report cannot say whether the queue started - while the
+    continuation legitimately has no version until its first push. Reading
+    that as an error would make the report fail at the moment it is most
+    needed, and reading the shards as one merged set is what keeps the counts
+    and the COMPLETE verdict honest.
+    """
+
+    def fake_listing(dataset_id: str, **kwargs) -> str:
+        if dataset_id == "o/ds":
+            return LISTING  # seeds 15000 and 15002
+        if dataset_id == "o/ds-p2":
+            return (
+                "name  size  creationDate\n"
+                "seed-15031/seed-15031/checkpoints/adaptive/checkpoint-006000.pt  1  2026-10-05\n"
+            )
+        raise RuntimeError(f"Dataset not found: {dataset_id}")
+
+    monkeypatch.setattr(campaign_health, "dataset_listing", fake_listing)
+
+    merged = campaign_health.published_seeds(["o/ds", "o/ds-p2", "o/ds-p3"])
+    assert sorted(merged) == [15000, 15002, 15031]
+
+    # A seed present in two shards means the rule leaked overlap, and the
+    # report refuses to invent a priority between two published versions.
+    monkeypatch.setattr(
+        campaign_health,
+        "dataset_listing",
+        lambda dataset_id, **kwargs: LISTING,
+    )
+    with pytest.raises(RuntimeError, match="more than one shard"):
+        campaign_health.published_seeds(["o/ds", "o/ds-p2"])
+
+
 def test_a_repeated_page_token_raises_instead_of_spinning(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

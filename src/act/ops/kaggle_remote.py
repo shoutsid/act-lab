@@ -54,7 +54,7 @@ import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable, Protocol
+from typing import Callable, Protocol, Sequence
 
 from .kaggle import _sha256  # shared checksum helper (same contract)
 
@@ -166,7 +166,68 @@ def _manifest_seeds(folder: Path) -> list[Path]:
     )
 
 
-def handoff_fingerprint(folder: str | Path) -> str:
+def _seed_number(path: Path) -> int:
+    """The seed a handoff directory names (``seed-15031`` -> 15031)."""
+    return int(path.name.split("-", 1)[1])
+
+
+def shard_dataset(base: str, index: int) -> str:
+    """The dataset id that carries shard ``index`` of a queue's handoff.
+
+    Shard 0 keeps the registered id, so the version already published stays
+    exactly where the record names it. Later shards are derived from it rather
+    than chosen per run: a reader can compute every name from the queue.
+    """
+    return base if index == 0 else f"{base}-p{index + 1}"
+
+
+def shard_index(seed: int, seeds: Sequence[int], shard_seeds: int) -> int:
+    """Which shard a seed belongs to, by its place in the declared queue.
+
+    Membership is positional and declared, not measured: a rule that grouped
+    seeds by their actual checkpoint sizes would make a dataset's contents
+    depend on the run that produced them, and a seed could move between
+    shards after the fact. ``shard_seeds <= 0`` means no sharding.
+    """
+    if shard_seeds <= 0:
+        return 0
+    return seeds.index(seed) // shard_seeds
+
+
+def shard_members(
+    seeds: Sequence[int], shard_seeds: int
+) -> list[tuple[int, tuple[int, ...]]]:
+    """``(index, seed set)`` for every shard of a declared queue, in order."""
+    if shard_seeds <= 0 or shard_seeds >= len(seeds):
+        return [(0, tuple(seeds))]
+    return [
+        (index, tuple(seeds[start : start + shard_seeds]))
+        for index, start in enumerate(range(0, len(seeds), shard_seeds))
+    ]
+
+
+def shard_datasets(
+    base: str, seeds: Sequence[int], shard_seeds: int
+) -> list[tuple[str, tuple[int, ...]]]:
+    """Every ``(dataset id, its seeds)`` for a queue, in shard order."""
+    return [
+        (shard_dataset(base, index), members)
+        for index, members in shard_members(seeds, shard_seeds)
+    ]
+
+
+def shard_for_seed(
+    base: str, seed: int, seeds: Sequence[int], shard_seeds: int
+) -> tuple[str, tuple[int, ...]]:
+    """The ``(dataset id, seed set)`` a seed's push belongs to."""
+    index = shard_index(seed, seeds, shard_seeds)
+    members = shard_members(seeds, shard_seeds)[index][1]
+    return shard_dataset(base, index), members
+
+
+def handoff_fingerprint(
+    folder: str | Path, *, seeds: set[int] | None = None
+) -> str:
     """A digest of the complete seed versions a push of ``folder`` would carry.
 
     Each seed's manifest is written last, after its payloads, and checksums them
@@ -182,6 +243,8 @@ def handoff_fingerprint(folder: str | Path) -> str:
     """
     digest = hashlib.sha256()
     for seed_dir in _manifest_seeds(Path(folder)):
+        if seeds is not None and _seed_number(seed_dir) not in seeds:
+            continue
         digest.update(seed_dir.name.encode("utf-8"))
         digest.update(b"\0")
         digest.update(_sha256(seed_dir / "manifests" / "manifest.json").encode("utf-8"))
@@ -294,8 +357,19 @@ class RemotePublishResult:
 class KaggleDatasetClient(Protocol):
     """The slice of the Kaggle API this wrapper needs; injectable for tests."""
 
-    def create_version(self, folder: Path, version_notes: str) -> str:
-        """Push ``folder`` as a new dataset version; return a version ref."""
+    def create_version(
+        self,
+        folder: Path,
+        version_notes: str,
+        *,
+        seeds: Sequence[int] | None = None,
+    ) -> str:
+        """Push ``folder`` as a new dataset version; return a version ref.
+
+        ``seeds`` restricts the upload to one handoff shard. ``None`` pushes
+        the whole folder, which is the single-dataset behaviour every caller
+        had before sharding existed.
+        """
         ...
 
     def download_files(self, dataset: str, target: Path) -> None:
@@ -356,12 +430,18 @@ class KaggleApiAdapter:
         self._api = KaggleApi()
         self._api.authenticate()
 
-    def create_version(self, folder: Path, version_notes: str) -> str:
+    def create_version(
+        self,
+        folder: Path,
+        version_notes: str,
+        *,
+        seeds: Sequence[int] | None = None,
+    ) -> str:
         folder = Path(folder)
         with tempfile.TemporaryDirectory(prefix="act-kaggle-push-") as scratch:
             staging = Path(scratch) / "push"
             staging.mkdir()
-            stage_push(folder, staging)
+            stage_push(folder, staging, seeds=seeds)
             try:
                 self._api.dataset_create_version(
                     str(staging), version_notes, dir_mode="skip", quiet=True
@@ -464,7 +544,12 @@ class KaggleApiAdapter:
         return False
 
 
-def stage_push(folder: str | Path, staging: str | Path) -> None:
+def stage_push(
+    folder: str | Path,
+    staging: str | Path,
+    *,
+    seeds: Sequence[int] | None = None,
+) -> None:
     """Stage the pushed folder: one tar per seed dir, plain files copied flat.
 
     This is the upload layout the live probes established (see the adapter's
@@ -478,9 +563,14 @@ def stage_push(folder: str | Path, staging: str | Path) -> None:
     source = Path(folder)
     target = Path(staging)
     target.mkdir(parents=True, exist_ok=True)
+    wanted = None if seeds is None else {_seed_dirname(seed) for seed in seeds}
     for entry in sorted(source.iterdir()):
         if entry.name == METADATA_NAME:
             continue  # re-copied last, from its canonical source
+        if wanted is not None and entry.is_dir() and entry.name not in wanted:
+            # A shard's version must carry only its own seeds: the point of the
+            # split is that no version approaches the measured payload wall.
+            continue
         if entry.is_dir():
             archive = target / f"{entry.name}.tar"
             with tarfile.open(archive, "w") as tar:
@@ -531,6 +621,7 @@ def publish_handoff(
     log_path: str | Path | None = None,
     attempts: int = PUBLISH_ATTEMPTS,
     sleep: Callable[[float], None] = time.sleep,
+    seeds: Sequence[int] | None = None,
 ) -> RemotePublishResult:
     """Push the local handoff dataset to Kaggle; never raises.
 
@@ -556,13 +647,24 @@ excepted from it.
     from spending its final ~40 minutes re-uploading ~38 GiB it pushed after
     the last pair - the window in which four sessions in a row were killed on
     2026-10-05, losing every pair they had completed.
+
+    ``seeds`` restricts the push to one declared shard of the handoff, which is
+    how a queue publishes without ever approaching the measured per-version
+    payload wall (a 7-seed / 44.13 GiB version landed 2026-10-05; an 8-seed /
+    ~50.4 GiB one killed two containers). ``None`` pushes the whole folder,
+    including its fingerprint and log format, exactly as before sharding.
     """
     logger = log if log is not None else (lambda message: None)
     folder = Path(dataset_root) / _handoff_dirname()
-    seeds = _manifest_seeds(folder) if folder.is_dir() else []
+    wanted = None if seeds is None else set(seeds)
+    seed_dirs = [
+        path
+        for path in (_manifest_seeds(folder) if folder.is_dir() else [])
+        if wanted is None or _seed_number(path) in wanted
+    ]
     if version_notes is None:
-        version_notes = f"session publish: {len(seeds)} seed version(s)"
-    if not seeds:
+        version_notes = f"session publish: {len(seed_dirs)} seed version(s)"
+    if not seed_dirs:
         result = RemotePublishResult(
             dataset=dataset,
             folder=str(folder),
@@ -571,12 +673,13 @@ excepted from it.
             version_notes=version_notes,
         )
         logger(f"remote publish skipped: no complete seed versions under {folder}")
-        _write_log(log_path, dataset_root, result)
+        _write_log(log_path, dataset_root, result, sharded=wanted is not None)
         return result
 
-    fingerprint = handoff_fingerprint(folder)
-    size_gib = _tree_gib(folder)
-    previous = _read_log(log_path, dataset_root)
+    fingerprint = handoff_fingerprint(folder, seeds=wanted)
+    size_gib = sum(_tree_gib(path) for path in seed_dirs)
+    previous_all = _read_log(log_path, dataset_root)
+    previous = _shard_record(previous_all, dataset, sharded=wanted is not None)
     if (
         previous is not None
         and previous.get("fingerprint") == fingerprint
@@ -591,40 +694,40 @@ excepted from it.
         result = RemotePublishResult(
             dataset=dataset,
             folder=str(folder),
-            seeds_published=len(seeds),
+            seeds_published=len(seed_dirs),
             status=STATUS_REUSED,
             version_notes=str(previous.get("version_notes") or version_notes),
             fingerprint=fingerprint,
         )
         logger(
-            f"remote publish skipped: {len(seeds)} seed version(s) are already "
+            f"remote publish skipped: {len(seed_dirs)} seed version(s) are already "
             f"published as this state ({fingerprint[:12]}); re-uploading them "
             "would spend the session's last minutes on a copy that exists"
         )
-        _write_log(log_path, dataset_root, result)
+        _write_log(log_path, dataset_root, result, sharded=wanted is not None)
         return result
 
     failures: list[str] = []
     started = time.monotonic()
     logger(
-        f"remote publish: pushing {len(seeds)} seed version(s), "
+        f"remote publish: pushing {len(seed_dirs)} seed version(s), "
         f"{size_gib:.1f} GiB of handoff"
     )
     for attempt in range(1, max(1, attempts) + 1):
         attempt_started = time.monotonic()
         logger(
             f"remote publish: attempt {attempt}/{attempts} starting "
-            f"({len(seeds)} seed version(s), {size_gib:.1f} GiB)"
+            f"({len(seed_dirs)} seed version(s), {size_gib:.1f} GiB)"
         )
         try:
             ensure_metadata(folder, dataset)
             with _publish_heartbeat(
                 logger,
-                seeds=len(seeds),
+                seeds=len(seed_dirs),
                 size_gib=size_gib,
                 started=attempt_started,
             ):
-                client.create_version(folder, version_notes)
+                client.create_version(folder, version_notes, seeds=seeds)
         except Exception as error:  # noqa: BLE001 - a push must never end the session
             failures.append(f"{type(error).__name__}: {error}")
             logger(
@@ -638,7 +741,7 @@ excepted from it.
         result = RemotePublishResult(
             dataset=dataset,
             folder=str(folder),
-            seeds_published=len(seeds),
+            seeds_published=len(seed_dirs),
             status=STATUS_PUBLISHED,
             version_notes=version_notes,
             fingerprint=fingerprint,
@@ -649,17 +752,17 @@ excepted from it.
         # read what that cost it (the same reason the restore prices itself).
         logger(
             f"remote publish: {dataset} version pushed "
-            f"({len(seeds)} seed version(s)) in "  # type: ignore[decimal]
+            f"({len(seed_dirs)} seed version(s)) in "  # type: ignore[decimal]
             f"{(time.monotonic() - started) / 60.0:.1f} min"
             + (f" on attempt {attempt}" if attempt > 1 else "")
         )
-        _write_log(log_path, dataset_root, result)
+        _write_log(log_path, dataset_root, result, sharded=wanted is not None)
         return result
 
     result = RemotePublishResult(
         dataset=dataset,
         folder=str(folder),
-        seeds_published=len(seeds),
+        seeds_published=len(seed_dirs),
         status=STATUS_FAILED,
         version_notes=version_notes,
         error="; ".join(failures),
@@ -669,7 +772,7 @@ excepted from it.
         f"remote publish FAILED after {attempts} attempt(s) (local handoff "
         f"intact, but this container ends with the session): {result.error}"
     )
-    _write_log(log_path, dataset_root, result)
+    _write_log(log_path, dataset_root, result, sharded=wanted is not None)
     return result
 
 
@@ -683,6 +786,7 @@ def publish_on_exit(
     log_path: str | Path | None = None,
     attempts: int = PUBLISH_ATTEMPTS,
     sleep: Callable[[float], None] = time.sleep,
+    seeds: Sequence[int] | None = None,
 ) -> RemotePublishResult:
     """The exit-path entry point for :func:`publish_handoff`.
 
@@ -704,6 +808,7 @@ def publish_on_exit(
         log_path=log_path,
         attempts=attempts,
         sleep=sleep,
+        seeds=seeds,
     )
 
 
@@ -746,16 +851,58 @@ def _read_log(
     return loaded if isinstance(loaded, dict) else None
 
 
+def _shard_record(
+    previous: dict | None, dataset: str, *, sharded: bool
+) -> dict | None:
+    """The part of a publish log that describes ``dataset``'s last push.
+
+    A sharded push must not treat another shard's success as its own: the
+    top-level entry is whatever pushed last, and only the ``shards`` map says
+    which dataset that was. A log written before sharding existed has no map;
+    its top level describes the single dataset it names, which is shard 0.
+    """
+    if previous is None:
+        return None
+    if not sharded:
+        return previous
+    entries = previous.get("shards")
+    if isinstance(entries, dict) and isinstance(entries.get(dataset), dict):
+        return entries[dataset]
+    if previous.get("dataset") == dataset:
+        return previous
+    return None
+
+
 def _write_log(
     log_path: str | Path | None,
     dataset_root: str | Path,
     result: RemotePublishResult,
+    *,
+    sharded: bool = False,
 ) -> None:
-    """Record the publish outcome beside the dataset root (best-effort)."""
+    """Record the publish outcome beside the dataset root (best-effort).
+
+    The top level is always the push that just happened, because that is what
+    the driver reads. When the push was one shard of a queue's handoff, the
+    other shards' last outcomes are carried forward under ``shards`` so a
+    second shard's success does not erase the first's fingerprint - which is
+    what would make the next session re-upload a forty-gigabyte version.
+    """
     target = _log_target(log_path, dataset_root)
+    payload = result.to_dict()
+    if sharded:
+        existing = _read_log(log_path, dataset_root)
+        entries = dict((existing or {}).get("shards") or {})
+        if existing and "shards" not in existing and existing.get("dataset"):
+            # The pre-shard log describes shard 0; keep it as shard 0's record
+            # rather than dropping it when the first sharded push rewrites
+            # the file.
+            entries.setdefault(str(existing["dataset"]), dict(existing))
+        entries[result.dataset] = dict(payload)
+        payload = {**payload, "shards": entries}
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(result.to_dict(), indent=2, sort_keys=True) + "\n")
+        target.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
     except OSError:
         pass  # logging must never break the exit path
 
@@ -763,13 +910,62 @@ def _write_log(
 def restore_latest(
     dataset_root: str | Path,
     *,
-    dataset: str,
+    dataset: str | None = None,
+    datasets: Sequence[str] | None = None,
     client: KaggleDatasetClient,
     log: Callable[[str], None] | None = None,
     attempts: int = RESTORE_ATTEMPTS,
     sleep: Callable[[float], None] = time.sleep,
 ) -> list[int]:
-    """Restore the newest remote version's seeds into the local handoff tree.
+    """Restore one dataset, or a queue's shards, into the local handoff tree.
+
+    ``datasets`` is the sharded form: each shard is downloaded into the same
+    root in the order given, and the merge is the same one a single dataset
+    has always used (disjoint membership, so order is not load-bearing). The
+    chain stops at the first shard that does not exist: a queue's shards are
+    contiguous, so a missing shard means there is nothing after it either, and
+    a session that treated a *served-but-empty* shard as bootstrap would train
+    over seeds the previous shard already published.
+    """
+    logger = log if log is not None else (lambda message: None)
+    if datasets is None:
+        if dataset is None:
+            raise ValueError("restore_latest needs dataset= or datasets=")
+        names = [dataset]
+    else:
+        if dataset is not None:
+            raise ValueError("pass dataset= or datasets=, not both")
+        names = list(datasets)
+    restored: set[int] = set()
+    for name in names:
+        seeds = _restore_one(
+            dataset_root,
+            dataset=name,
+            client=client,
+            log=logger,
+            attempts=attempts,
+            sleep=sleep,
+        )
+        if seeds is None:
+            break
+        restored.update(seeds)
+    return sorted(restored)
+
+
+def _restore_one(
+    dataset_root: str | Path,
+    *,
+    dataset: str,
+    client: KaggleDatasetClient,
+    log: Callable[[str], None] | None = None,
+    attempts: int = RESTORE_ATTEMPTS,
+    sleep: Callable[[float], None] = time.sleep,
+) -> list[int] | None:
+    """Restore one dataset's newest version; ``None`` when it does not exist.
+
+    The missing/no-version state is distinguished from the restored-but-empty
+    one because a shard chain has to stop on the first, while the second is a
+    dataset that exists and carries nothing a session may train over.
 
     Downloads the dataset, keeps every extracted seed directory that carries
     a complete manifest (a manifest-less directory is a partial version and
@@ -826,7 +1022,7 @@ def restore_latest(
                         f"no remote version of {dataset} available yet; "
                         "training from scratch (atomic pairs make this safe)"
                     )
-                    return []
+                    return None
                 if attempt < attempts:
                     logger(
                         f"the restore of {dataset} failed ({type(error).__name__}: "

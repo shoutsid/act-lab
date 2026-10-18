@@ -188,7 +188,38 @@ def test_primary_launch_command_is_the_registered_one() -> None:
         "artifacts/v0-sessions",
         "--kaggle-dataset",
         "sid123123234/act-v0-5-2",
+        # The payload wall: shard 0 is the seven seeds that version already
+        # carries (44.13 GiB landed), shard 1 is the rest. See
+        # docs/handoff-sharding-design.md.
+        "--kaggle-shard-seeds",
+        "7",
     ]
+
+
+def test_the_paired_queues_publish_two_disjoint_shards_and_the_null_queue_one() -> None:
+    """The shard rule is declared per queue, and no seed may appear in two.
+
+    Shard 0 is the seven seeds `act-v0-5-2` already carries - the version that
+    landed at 44.13 GiB - and the continuation is derived from the same id.
+    The null queue's seeds are single-arm (~half the payload), so it keeps one
+    version and its registered dataset name.
+    """
+    session = kaggle_t4.QUEUES["session"]
+    assert session.datasets == [
+        "sid123123234/act-v0-5-2",
+        "sid123123234/act-v0-5-2-p2",
+    ]
+    shards = session.shards
+    assert shards[0][1] == tuple(range(15024, 15031))
+    assert shards[1][1] == tuple(range(15031, 15036))
+    assert not set(shards[0][1]) & set(shards[1][1])
+
+    control = kaggle_t4.QUEUES["control"]
+    assert control.datasets == [
+        "sid123123234/act-v0-5-2-control",
+        "sid123123234/act-v0-5-2-control-p2",
+    ]
+    assert kaggle_t4.QUEUES["null"].datasets == ["sid123123234/act-v0-5-2-null"]
 
 
 def _runbook_launch_commands() -> list[list[str]]:
@@ -237,7 +268,8 @@ def test_the_runbook_and_the_launch_builder_carry_the_same_rebuild_flags() -> No
 
 def test_control_queue_isolates_the_decision_rule() -> None:
     argv = kaggle_t4.session_argv(kaggle_t4.QUEUES["control"])
-    assert argv[-1] == "sid123123234/act-v0-5-2-control"
+    assert argv[argv.index("--kaggle-dataset") + 1] == "sid123123234/act-v0-5-2-control"
+    assert argv[argv.index("--kaggle-shard-seeds") + 1] == "7"
     # Same candidate pool as the primary, so the only difference is the rule.
     assert argv[argv.index("--probe-candidate-policy") + 1] == "spread"
     assert argv[argv.index("--probe-selection") + 1] == "random"
@@ -252,7 +284,9 @@ def test_null_queue_is_policy_free_and_never_shares_roots() -> None:
     assert "--probe-candidate-policy" not in argv
     assert "--probe-selection" not in argv
     assert argv[argv.index("--dataset-root") + 1] == "artifacts/datasets-null"
-    assert argv[-1] == "sid123123234/act-v0-5-2-null"
+    assert argv[argv.index("--kaggle-dataset") + 1] == "sid123123234/act-v0-5-2-null"
+    # Single-arm seeds are ~half the payload, so the null queue is one version.
+    assert argv[argv.index("--kaggle-shard-seeds") + 1] == "0"
 
 
 def test_handoff_roots_are_repo_relative_outside_a_kernel() -> None:

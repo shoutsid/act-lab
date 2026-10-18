@@ -209,6 +209,11 @@ class Queue:
     mode: str
     title: str
     suffix: str = ""
+    #: Declared seeds per published dataset version; 0 is one version for the
+    #: whole queue. The paired queues carry two arms per seed (~6.3 GiB), and a
+    #: 7-seed version is the largest that has landed; the null queue is
+    #: single-arm (~half the payload) and fits in one version.
+    shard_seeds: int = 0
 
     @property
     def owner(self) -> str:
@@ -233,10 +238,31 @@ class Queue:
         root = workspace_root(self.mode)
         return str(root / "artifacts" / f"v0-sessions{self.suffix}")
 
+    @property
+    def shards(self) -> list[tuple[str, tuple[int, ...]]]:
+        """The queue's ``(dataset id, seeds)``, from the one declared rule.
+
+        Imported lazily: this script runs on a workstation where ``src/`` is on
+        the path and in a kernel where the bootstrap puts it there, but the
+        module itself is imported by tooling that does not need ``act``.
+        """
+        from act.ops.kaggle_remote import shard_datasets
+        from act.training.v0_runner import DECLARED_SEEDS
+
+        return list(shard_datasets(self.dataset, DECLARED_SEEDS, self.shard_seeds))
+
+    @property
+    def datasets(self) -> list[str]:
+        """Every dataset version this queue's handoff is published across."""
+        return [name for name, _ in self.shards]
+
 
 QUEUES: dict[str, Queue] = {
-    "session": Queue("session", "act-t4-session", ""),
-    "control": Queue("control", "act-t4-control", "-control"),
+    #: The paired queues are sharded at the seven seeds `act-v0-5-2` already
+    #: carries: that version landed at 44.13 GiB and the eighth seed's push
+    #: (~50.4 GiB) killed two containers. See `docs/handoff-sharding-design.md`.
+    "session": Queue("session", "act-t4-session", "", shard_seeds=7),
+    "control": Queue("control", "act-t4-control", "-control", shard_seeds=7),
     "null": Queue("null", "act-t4-null", "-null"),
 }
 
@@ -300,6 +326,8 @@ def session_argv(queue: Queue, hours: float = DEFAULT_HOURS) -> list[str]:
         queue.session_dir,
         "--kaggle-dataset",
         queue.dataset,
+        "--kaggle-shard-seeds",
+        str(queue.shard_seeds),
     ]
     return argv
 
@@ -907,7 +935,7 @@ def mode_restoreprobe() -> None:
     free_before = _free_gib(root.parent)
     started = time.time()
     restored = restore_latest(
-        root, dataset=queue.dataset, client=default_client(), log=_log
+        root, datasets=queue.datasets, client=default_client(), log=_log
     )
     minutes = (time.time() - started) / 60.0
     free_after = _free_gib(root)
@@ -1364,7 +1392,7 @@ def mode_verdict() -> None:
     client = default_client()
     for queue in QUEUES.values():
         restored = restore_latest(
-            queue.dataset_root, dataset=queue.dataset, client=client, log=_log
+            queue.dataset_root, datasets=queue.datasets, client=client, log=_log
         )
         _log(f"{queue.mode}: {len(restored)} seed version(s) restored")
 
