@@ -89,6 +89,11 @@ before the next fire so it cannot be read as fitting the boundary to what succee
 - Restore grows by one download of at most 31.5 GiB in a session that starts from shard 1;
   the restore is already priced by the session clock and logged with its duration.
 
+Shard 1 is below the **only** push that has landed in both readings the bracket permits:
+44.13 GiB / 16.9 min. So the rule does not have to bet on whether the killer is payload
+size or elapsed upload time - 31.5 GiB / ~12 min is smaller than the known-good push on
+either axis.
+
 ## 6. What would falsify this
 
 - A **31.5 GiB push that dies** would falsify the size reading: the wall would not be size, and

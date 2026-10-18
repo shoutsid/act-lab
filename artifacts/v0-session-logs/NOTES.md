@@ -26,9 +26,12 @@ re-trained the same eighth seed and died inside the same push. Both kernel logs 
 | What landed | `remote publish: ... version pushed (7 seed version(s)) in 16.9 min`, files created 2026-10-05T22:20:43-22:22:11Z | nothing |
 | How it ended | `ERROR` at **00:14:53Z**; last line the kaggle 2.0.2 warning, i.e. inside the 8-seed push | `ERROR` at **12:54:51Z** after **2.15 h** and **1.99 GPU-h**; same last line |
 
-The two captures are the same shape one seed apart, and that is the finding: **the push
-that lands carries 7 seeds / 44.13 GiB, and the push that kills the container carries 8 /
-~50.4 GiB.** The three earlier sessions (v15-v17) each pushed **9** seeds / ~56.7 GiB at exit
+The two captures are the same shape one seed apart, and that is the finding. The dataset's
+last version is still the 7-seed one (`lastUpdated` **2026-10-05T22:17:32Z**, files minted
+22:20-22:22Z); nothing from either 2026-10-06 fire exists as a version. So the kill happened
+**before the upload reached finalize**, not after a version was created - which is why the
+service itself has no failure record to read either. **The push that lands carries 7 seeds /
+44.13 GiB, and the push that kills the container carries 8 / ~50.4 GiB.** The three earlier sessions (v15-v17) each pushed **9** seeds / ~56.7 GiB at exit
 and died there. No Kaggle document in this tree names a per-version size limit, so what is
 recorded is the bracket, not a cause: **a version at 44.13 GiB lands and one at ~50 GiB does
 not.** Twelve seeds is ~75.6 GiB, so the registered block cannot be published as one dataset
