@@ -1,5 +1,16 @@
 # ACT Implementation Status
 
+## The exit push re-uploaded a restored 44 GiB shard and killed the session; fixed (2026-10-19)
+
+The 2026-10-19 04:10Z session worked: it restored 15024-15030, trained **15031-15033**, and published them to the shard-1 dataset `act-v0-5-2-p2` (19.1 GiB, 10.0 min, `status: published`), which is the first live run of the sharded path at a real size. It then died inside the **exit** push of **7 seeds / 44.1 GiB** into shard 0, whose 15024-15030 it had only restored.
+
+| | |
+|---|---|
+| **Cause** | `cli._publish_remote` was given every requested seed, and selected each shard that overlapped them. Restored seeds count as requested, so shard 0 was pushed again. The fingerprint reuse that should have skipped it reads the publish log, which lives in the container overlay and is empty in a fresh session. |
+| **Fix** | The exit path pushes only seeds this session trained (`completed` or `publish_failed` pairs). When none were trained it skips the push and says so. Commit `6401c0d`. |
+| **Pinned** | `tests/test_v0_runner.py::test_cli_exit_publish_skips_seeds_restored_as_complete` (new). Two existing CLI-exit fixtures now report their simulated pair as `completed`, which is what the runner emits. 112 tests pass across runner, kaggle_remote and campaign_health. |
+| **State at this entry** | `campaign_health`: **10 of 12** (15024-15033). Quota **23.95 / 30 h**, refresh 2026-10-24. Driver launched on the session queue (`--max-sessions 2`, log `artifacts/session-queue-20261019.log`) against kernel v21, code at `3f59fe6`, to train 15034-15035. |
+
 ## The publish is not flaky: it is walled between 44 and 50 GiB, and the block cannot fit (2026-10-18, read from the 2026-10-05/06 fires)
 
 The per-pair publish did what it was written to do, and then found the next wall. Kernel
