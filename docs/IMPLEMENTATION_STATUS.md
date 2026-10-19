@@ -1,5 +1,17 @@
 # ACT Implementation Status
 
+## Next-step recommendations from the findings, not from outside literature (2026-10-19)
+
+A web search on learned MoE topology returned only introductory material, nothing that bears on the open questions here, so these recommendations rest on the project's own record. None of them is a measurement.
+
+| Recommendation | Why, from the record | What it would cost |
+|---|---|---|
+| **Search width and depth jointly, not one at a time** | The depth penalty depends on width (interaction +0.0827 nats, six-seed replication). A one-axis search can misattribute depth as width or the reverse. | The width-control gate in `docs/width-control-design.md`, already pre-registered. |
+| **Treat head count as a joint gene with width** | Head count is worth nothing at narrow width (+0.0084, p=0.37) and -0.0553 nats at hidden 896 (12/12 pairs). | A head-by-width arm; reuses the existing head-paired design. |
+| **Screen at 400 steps before confirming at 1,200** | A 400-step screen costs ~1.1 GPU-h against 3.2 for the same answer (R^2 0.927 vs 0.953, same lever significant at both). | Nothing new to build; the plan is in the zoo tooling already. |
+| **Keep shards at or below ~45 GiB per version** | 44.13 GiB landed; ~50.4 GiB and up killed containers. The 2026-10-19 exit-push bug was the same ceiling hit by a re-upload. | Already enforced by the shard rule; the exit fix stops the re-upload. |
+| **Do not start the control or null queues on this week's quota** | 23.8 of 30 GPU-h remain and the session queue still needs ~3.5 h for seeds 15034-15035. Control and null are large and their verdict depends on the sharded path first working end to end. | A decision for the operator, not a scheduling knob. |
+
 ## The exit push re-uploaded a restored 44 GiB shard and killed the session; fixed (2026-10-19)
 
 The 2026-10-19 04:10Z session worked: it restored 15024-15030, trained **15031-15033**, and published them to the shard-1 dataset `act-v0-5-2-p2` (19.1 GiB, 10.0 min, `status: published`), which is the first live run of the sharded path at a real size. It then died inside the **exit** push of **7 seeds / 44.1 GiB** into shard 0, whose 15024-15030 it had only restored.
