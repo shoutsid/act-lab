@@ -1165,7 +1165,7 @@ def test_cli_publishes_on_exit_with_kaggle_flag(tmp_path: Path, monkeypatch) -> 
             "pair_time_hours": 0.1,
             "pairs_completed": 1,
             "latest_published_seed": 9000,
-            "pairs": [],
+            "pairs": [{"seed": 9000, "action": "completed"}],
         }
 
     monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
@@ -1184,6 +1184,48 @@ def test_cli_publishes_on_exit_with_kaggle_flag(tmp_path: Path, monkeypatch) -> 
     cli.main()
     assert calls.get("downloads") == 1  # session-start restore
     assert calls.get("versions") == 1  # exit-path publish
+
+
+def test_cli_exit_publish_skips_seeds_restored_as_complete(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A seed the restore found complete is not re-pushed at exit (2026-10-19)."""
+    import sys
+
+    from act.training import cli
+
+    calls: dict = {}
+    _fake_remote(monkeypatch, calls)
+
+    def fake_run_pair_session(**kwargs):
+        return {
+            "protocol": "v0-compute-efficiency-5.2",
+            "seeds_requested": [9000],
+            "declared_seed_queue": [9000],
+            "remaining_hours_at_entry": 8.0,
+            "measured_tokens_per_second": 50000.0,
+            "pair_time_hours": 0.1,
+            "pairs_completed": 0,
+            "latest_published_seed": 9000,
+            "pairs": [{"seed": 9000, "action": "skipped_complete"}],
+        }
+
+    monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)
+    monkeypatch.setattr(
+        sys, "argv",
+        _cli_argv(
+            [
+                "--tokens-per-second", "50000",
+                "--session-dir", str(tmp_path / "sessions"),
+                "--dataset-root", str(tmp_path / "dataset"),
+                "--output", str(tmp_path / "log.json"),
+                "--kaggle-dataset", "owner/act-checkpoints-v0-5-1",
+            ]
+        ),
+    )
+    cli.main()
+    assert calls.get("downloads") == 1
+    assert calls.get("versions") is None  # nothing trained: no exit push
 
 
 def test_cli_exit_publish_failure_does_not_crash_the_session(
@@ -1219,7 +1261,7 @@ def test_cli_exit_publish_failure_does_not_crash_the_session(
             "pair_time_hours": 0.1,
             "pairs_completed": 1,
             "latest_published_seed": 9000,
-            "pairs": [],
+            "pairs": [{"seed": 9000, "action": "completed"}],
         }
 
     monkeypatch.setattr(cli, "run_pair_session", fake_run_pair_session)

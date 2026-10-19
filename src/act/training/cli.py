@@ -407,7 +407,15 @@ def _run_pair_session(args: argparse.Namespace) -> None:
             "schedule_tokens_per_second": schedule_rate,
         },
     )
-    _publish_remote(args, tokens_per_second=schedule_rate, seeds=seeds)
+    # Only seeds this session trained are pushed at exit. A seed the restore found
+    # complete is already in its shard's published version; pushing that shard again
+    # re-uploads ~44 GiB and was the exit push that killed 2026-10-19.
+    trained = tuple(
+        int(entry["seed"])
+        for entry in summary.get("pairs", [])
+        if entry.get("action") in ("completed", "publish_failed")
+    )
+    _publish_remote(args, tokens_per_second=schedule_rate, seeds=trained)
     printed = {
         key: summary[key]
         for key in (
@@ -521,6 +529,11 @@ def _publish_remote(
     has nothing left to lose there.
     """
     if args.kaggle_dataset is None:
+        return
+    if not seeds:
+        # Nothing this session trained is unpublished; the pair-time pushes did the
+        # work. Pushing with no seeds would fall through to the whole folder.
+        print("remote publish skipped at exit: no seed trained this session", flush=True)
         return
     from act.ops.kaggle_remote import (
         STATUS_FAILED,
