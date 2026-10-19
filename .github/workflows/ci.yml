@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Installs the pinned dependencies, including the CUDA wheel of PyTorch. The CI
+      # runner has no GPU; the suite is CPU work and is run on CPU.
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Compile
+        run: PYTHONPATH=src uv run python -m compileall -q src/act tests
+
+      - name: Verify documented claims against their ledgers
+        run: PYTHONPATH=src uv run python scripts/verify_record.py
+
+      - name: Test suite
+        run: PYTHONPATH=src uv run python -m pytest -q
+
+      - name: Committed records regenerate from their documented commands
+        run: PYTHONPATH=src uv run python scripts/check_record_freshness.py --strict-rank

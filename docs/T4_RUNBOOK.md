@@ -1185,7 +1185,8 @@ PYTHONPATH=src .venv/bin/python scripts/push_tpu_null_queue.py --fetch \
 ```bash
 # the same path on XLA:CPU first, which is what a local dry run is for (development fidelity only:
 # the declared shape needs 33 GB of host memory and dies mid-phase)
-LIB=$(/tmp/xla-local/bin/python -c "import sys, os; print(os.path.join(sys.base_prefix, 'lib'))")
+# /tmp/xla-local is created by the setup commands above (torch 2.8.0 / torch_xla 2.8.0).
+LIB=$(/tmp/xla-local/bin/python -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))")
 env LD_LIBRARY_PATH=$LIB PJRT_DEVICE=CPU PYTHONPATH=src /tmp/xla-local/bin/python \
   scripts/tpu_null_queue.py --device xla --fidelity development \
   --seeds 15024-15025 --workers 1 --steps 20 \

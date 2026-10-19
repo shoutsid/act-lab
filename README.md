@@ -32,7 +32,7 @@ Every number above is recomputed from the committed ledgers by `scripts/verify_r
 ## Status
 
 - **Research direction:** the architecture-search phase is the active line. Further scaling is gated on the width-control design in `docs/width-control-design.md`.
-- **Gate 4 (Kaggle T4×2 campaign):** execution is in progress. The primary block has 10 of 12 seeds published; the remaining two are in a running session. Operational state is tracked in `docs/IMPLEMENTATION_STATUS.md`.
+- **Gate 4 (Kaggle T4×2 campaign):** execution is in progress. The live state is recorded, with dates, in the newest entries of `docs/IMPLEMENTATION_STATUS.md`, which is the authoritative source for it. This README does not track live numbers.
 - **Code-model distillation:** an experiment comparing distillation against plain cross-entropy for a small code model is scripted (`scripts/run_code_lm_campaign.sh`). Its headline table is written only when the campaign completes.
 
 ## Architecture
@@ -162,6 +162,8 @@ Per-arm material lives beside each experiment under `artifacts/`:
 - `artifacts/*/analysis.md`, `artifacts/*/FINDINGS.md`, `artifacts/*/PERFORMANCE_NOTES.md` and `artifacts/*/SCREENING_AUDIT.md` are per-arm and per-benchmark notes. They are not machine-checked.
 
 The index above is itself checked by `tests/test_doc_index.py`.
+
+**Where to start.** Read `docs/RESEARCH_REPORT.md` for the findings, then the newest entries of `docs/IMPLEMENTATION_STATUS.md` for the current state. The plan in `docs/complete_implementation_plan.md` is the reference for what was intended, not what was built.
 
 ## Limitations
 
