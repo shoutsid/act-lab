@@ -7,7 +7,7 @@ name = "adaptive-computational-topology"
 version = "0.1.0"
 description = "Adaptive Computational Topology (ACT) - Dynamic architecture evolution during LLM pretraining"
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = { text = "All rights reserved" }
 authors = [{ name = "ACT Research Group" }]
 requires-python = ">=3.10"
 dependencies = [
