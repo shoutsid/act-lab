@@ -1185,7 +1185,7 @@ PYTHONPATH=src .venv/bin/python scripts/push_tpu_null_queue.py --fetch \
 ```bash
 # the same path on XLA:CPU first, which is what a local dry run is for (development fidelity only:
 # the declared shape needs 33 GB of host memory and dies mid-phase)
-LIB=/home/shoutsid/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib
+LIB=$(/tmp/xla-local/bin/python -c "import sys, os; print(os.path.join(sys.base_prefix, 'lib'))")
 env LD_LIBRARY_PATH=$LIB PJRT_DEVICE=CPU PYTHONPATH=src /tmp/xla-local/bin/python \
   scripts/tpu_null_queue.py --device xla --fidelity development \
   --seeds 15024-15025 --workers 1 --steps 20 \

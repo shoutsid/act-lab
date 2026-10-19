@@ -172,4 +172,4 @@ The index above is itself checked by `tests/test_doc_index.py`.
 
 ## License
 
-Copyright (c) 2026 ACT Research Group. All rights reserved. No part of this repository may be used, copied, modified, distributed or sold without prior written permission from the copyright holder. See `LICENSE`.
+Copyright (c) 2026 James Summerill. All rights reserved. No part of this repository may be used, copied, modified, distributed or sold without prior written permission from the copyright holder. See `LICENSE`.

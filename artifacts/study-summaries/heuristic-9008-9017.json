@@ -34,7 +34,7 @@
   "checkpoint_interval": 150,
   "checkpoint_max_bytes": null,
   "context_size": 512,
-  "data_path": "/home/shoutsid/code/act-lab/artifacts/real-lm/tokens.npy",
+  "data_path": "./artifacts/real-lm/tokens.npy",
   "declared": false,
   "depth": 8,
   "device": "auto",
@@ -56,7 +56,7 @@
   "probe_selection": "argmin",
   "seed": 9008,
   "total_steps": 600,
-  "val_data_path": "/home/shoutsid/code/act-lab/artifacts/real-lm/val-tokens.npy",
+  "val_data_path": "./artifacts/real-lm/val-tokens.npy",
   "validation_batches": 4,
   "vocab_size": 8192
  },
