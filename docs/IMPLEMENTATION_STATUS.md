@@ -17,8 +17,21 @@ previous fire restored 44.13 + 19.09 GiB and then lost its writable layer at a 9
 | **Cost** | **4.79 GPU-h**; quota **16.71 / 30 h**, refresh 2026-10-24. |
 | **Evidence** | The platform log survived and carries the child's stdout (21,905 B) - a clean exit, unlike every killed session's empty `[]`. Live capture, kernel log and session record are committed under `artifacts/v0-session-logs/` with their sha256s in its `NOTES.md`. |
 | **Next, registered order** | The control queue (§2b) was fired as `--queue control --seeds 15024-15030`: **shard 0 only**, because a session spanning the shard boundary would have to restore shard 0 *and* stage both shards (44 + 32 GiB) - the footprint that has killed every container. Shard 1 (`--seeds 15031-15035`) follows under its own drive, then the null queue (§2c). The remaining ~16.7 h this week covers roughly two 7 h control sessions, so the block completes across the 2026-10-24 refresh. |
+| **Verdict path** | `scripts/verdict_rehearsal.py --check` passes (exit 0) on the same tree that will apply the verdict, so the decision machinery is intact before the control and null spend. |
 
-## The wall is the container's disk, not the dataset version: the 2026-10-19 fire died on EROFS (2026-10-20)
+**The completed block's own readout, which is not the verdict.** `campaign_health --queue
+session --readout` reads all twelve published summaries: **adaptive won 6 of 12**, mean
+`adaptive - random` **+0.000063 nats**, and every arm sits within **0.001982 nats** of
+`ln(32768) = 10.3972`, the loss a signal-free model reaches on this block's synthetic stream.
+That is the floor, and it is the same reading the §5.40/§5.66 dev-fidelity studies gave
+(null ahead, no adaptive edge). The pre-registered interpretation of 2026-09-20 anticipated
+exactly this asymmetry: the harm guard fires only if the adaptive arm loses on 10 of 12 seeds,
+and **6 of 12** is nowhere near it - so this block cannot withhold Gate 4 on the harm clause,
+and equally cannot support a value claim. A cleared clause is "the clause did not fire", not
+evidence of a win; the registered cost/band/control rules carry whatever the verdict says, and
+the control and null queues are what make those readings interpretable.
+
+## The wall is the container's disk, not the dataset version: the 2026-10-19 fire died on EROFS (2026-10-19/20)
 
 Kernel **v21** restored both shards, skipped all ten published seeds, trained **15034**, and lost it. The pair-time push of **4 seeds / 25.5 GiB** into `act-v0-5-2-p2` ran for five minutes and then failed with `OSError: [Errno 30] Read-only file system` on the staging directory, three times, and the container was killed. Unlike every earlier fire this one flushed its own stream log, which `kaggle kernels output` still served: the cause is the child's `EROFS`, not a silent kill. Both the stream log and 15034's summary are committed in `artifacts/v0-session-logs/` (see its `NOTES.md`); the 6.4 GiB of checkpoints are gone, so the seed is trained again.
 
