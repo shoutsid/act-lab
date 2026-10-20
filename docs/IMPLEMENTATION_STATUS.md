@@ -1,5 +1,23 @@
 # ACT Implementation Status
 
+## The primary block is complete 12/12, and the scoping fix is verified in production (2026-10-20)
+
+The session that finished the block declared only the seeds it still had to train (`--seeds
+15034-15035`), so its startup restore resolved to **shard 1 alone**. That is the 2026-10-19
+findings' fix doing the work it was written for: it restored **19.09 GiB in 19.2 min** where the
+previous fire restored 44.13 + 19.09 GiB and then lost its writable layer at a 95 GiB footprint.
+
+| | |
+|---|---|
+| **Block state** | `campaign_health --queue session`: **12 of 12** complete (15024-15035), session kernel `COMPLETE`, driver lock free. `latest_published_seed` **15035**, code revision **d12c3ca**. |
+| **Restore** | shard 1 only, `19.09 GiB` in **19.2 min**, three versions `[15031, 15032, 15033]`; shard 0 was not in the declared block and was not downloaded. |
+| **Pairs** | 15034 `random 10.397485` / `adaptive 10.397881` (**+3.95e-4**); 15035 `adaptive 10.397495` / `random 10.397844` (**-3.50e-4**). |
+| **Publishes** | 4 seeds / **25.5 GiB** in 24.1 min, then 5 seeds / **31.8 GiB** in 30.3 min, both into `act-v0-5-2-p2`; the exit publish reused fingerprint `46069823f084` and uploaded nothing. |
+| **Peak footprint** | ~**64 GiB** (19.09 restored + 2 x 6.4 trained + 31.8 staged) against the 95.0 GiB that went EROFS on 2026-10-19 - the number the fix was chosen for, now measured. |
+| **Cost** | **4.79 GPU-h**; quota **16.71 / 30 h**, refresh 2026-10-24. |
+| **Evidence** | The platform log survived and carries the child's stdout (21,905 B) - a clean exit, unlike every killed session's empty `[]`. Live capture, kernel log and session record are committed under `artifacts/v0-session-logs/` with their sha256s in its `NOTES.md`. |
+| **Next, registered order** | The control queue (§2b) was fired as `--queue control --seeds 15024-15030`: **shard 0 only**, because a session spanning the shard boundary would have to restore shard 0 *and* stage both shards (44 + 32 GiB) - the footprint that has killed every container. Shard 1 (`--seeds 15031-15035`) follows under its own drive, then the null queue (§2c). The remaining ~16.7 h this week covers roughly two 7 h control sessions, so the block completes across the 2026-10-24 refresh. |
+
 ## The wall is the container's disk, not the dataset version: the 2026-10-19 fire died on EROFS (2026-10-20)
 
 Kernel **v21** restored both shards, skipped all ten published seeds, trained **15034**, and lost it. The pair-time push of **4 seeds / 25.5 GiB** into `act-v0-5-2-p2` ran for five minutes and then failed with `OSError: [Errno 30] Read-only file system` on the staging directory, three times, and the container was killed. Unlike every earlier fire this one flushed its own stream log, which `kaggle kernels output` still served: the cause is the child's `EROFS`, not a silent kill. Both the stream log and 15034's summary are committed in `artifacts/v0-session-logs/` (see its `NOTES.md`); the 6.4 GiB of checkpoints are gone, so the seed is trained again.

@@ -1,0 +1,83 @@
+{
+  "declared_seed_queue": [
+    15024,
+    15025,
+    15026,
+    15027,
+    15028,
+    15029,
+    15030,
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ],
+  "dtype": "fp16",
+  "dtype_rule_tokens_per_second": 1269.4366817715895,
+  "latest_published_seed": 15035,
+  "measured_tokens_per_second": 4207.697644593663,
+  "pair_time_hours": 1.7224232925666685,
+  "pairs": [
+    {
+      "action": "completed",
+      "adaptive_final_loss": 10.397880554199219,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": null,
+      "random_final_loss": 10.397485256195068,
+      "remote_publish": {
+        "dataset": "sid123123234/act-v0-5-2-p2",
+        "error": null,
+        "fingerprint": "e42ab174a93b621e99aa08a7f1b4ab0807e3357fb9c1fe949d6188e0585f5784",
+        "folder": "/tmp/act-lab-session-3039de6699/artifacts/datasets/act-checkpoints/v0-5-1",
+        "seeds_published": 4,
+        "status": "published",
+        "version_notes": "v0-5-1 session publish: 4208 tokens/s, measured dtype, after seed 15034"
+      },
+      "search_flops_by_arm": {
+        "adaptive": 13209542488064,
+        "random": 3440824320
+      },
+      "seed": 15034,
+      "training_flops_by_arm": {
+        "adaptive": 13921733836800000,
+        "random": 14076428156928000
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 10.397494792938232,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": null,
+      "random_final_loss": 10.397844076156616,
+      "remote_publish": {
+        "dataset": "sid123123234/act-v0-5-2-p2",
+        "error": null,
+        "fingerprint": "46069823f084fb1f5be6e6243edd7bf9675b0b2644f424732b77959c4c6cd7d9",
+        "folder": "/tmp/act-lab-session-3039de6699/artifacts/datasets/act-checkpoints/v0-5-1",
+        "seeds_published": 5,
+        "status": "published",
+        "version_notes": "v0-5-1 session publish: 4208 tokens/s, measured dtype, after seed 15035"
+      },
+      "search_flops_by_arm": {
+        "adaptive": 13209508925440,
+        "random": 3424038912
+      },
+      "seed": 15035,
+      "training_flops_by_arm": {
+        "adaptive": 13870169063424000,
+        "random": 14024863383552000
+      }
+    }
+  ],
+  "pairs_completed": 2,
+  "protocol": "v0-compute-efficiency-5.2",
+  "remaining_hours_at_entry": 6.527805529770277,
+  "schedule_tokens_per_second": 4207.697644593663,
+  "seeds_requested": [
+    15034,
+    15035
+  ]
+}

@@ -1,5 +1,34 @@
 # Campaign session logs - the evidence behind the exit-publish numbers
 
+## The fire that finished the block: the narrowed declaration held (2026-10-20)
+
+The primary queue is **12 of 12** and the kernel is `COMPLETE`. The finishing session declared
+`--seeds 15034-15035`, i.e. exactly the block still missing, and that declaration is what scoped
+the startup restore: **shard 1 only** (`act-v0-5-2-p2`, 19.09 GiB in 19.2 min, three versions
+`[15031, 15032, 15033]`), with the 44.13 GiB shard 0 never requested. The 2026-10-19 entry
+below predicted a ~64 GiB peak for this shape against the 95.0 GiB that died; the session
+survived both pair-time pushes and its own exit.
+
+| file | what it is | sha256 |
+|---|---|---|
+| `session-session-20261020T150118Z-live.log` | the driver's live capture, 187 lines, including both pair-time pushes and the skipped exit publish | `2b1aa3346cbf2ac781736a510f1af97b633bc9eca07b84c4cab5cf1a992af52b` |
+| `session-session-20261020T150118Z-kernel-log.json` | the child's full streamed output (`stdout` events): **21,905 bytes of real log**, where every killed session's was empty (`[]`, 3 B) | `cce495be598bf603303f59ded619d70f5608c7105444562fc050675f6096e994` |
+| `session-session-20261020T150118Z-session-log.json` | the session record: 2 pairs, `latest_published_seed: 15035`, code revision `d12c3ca` | `f9429ad25d12f0804e55232a883210771a3062498bb0d0c8b35c7543ba778a43` |
+
+| | |
+|---|---|
+| Window / startup | 6.89 h of training after 21.9 min of startup; the session ended after **4.79 h**, 2.21 h inside its clock |
+| Restore | **shard 1 only**: `19.09 GiB on disk` in 19.2 min. No shard-0 download at all - the difference between this fire and the one that died (which restored 44.13 + 19.09) |
+| Pairs | 15034 `random 10.397485` / `adaptive 10.397881` (**+3.95e-4**); 15035 `adaptive 10.397495` / `random 10.397844` (**-3.50e-4**) - both arms on the uniform floor, as at this fidelity |
+| Pair-time push 1 | 4 seeds / **25.5 GiB** into `act-v0-5-2-p2` in 24.1 min, `status: published` |
+| Pair-time push 2 | 5 seeds / **31.8 GiB** in 30.3 min, `status: published` (fingerprint `46069823f084`) |
+| Exit publish | **skipped** - `already_published` at the same fingerprint, so the 44 GiB shard-0 re-upload that killed the 2026-10-19 04:10Z fire could not happen twice |
+| Peak local bytes | 19.09 (restore) + 2 x 6.4 (both seeds, incl. finals) + 31.8 (staging) ~= **64 GiB**, the predicted shape, against the 95.0 GiB that went read-only |
+| Cost | **4.79 GPU-h** of the week; quota after it **16.71 of 30 h** (refresh 2026-10-24) |
+
+The clean exit is itself a check: the platform log exists and carries the child's stdout. A kill
+does not flush it, which is why every earlier entry in this file is a driver capture plus silence.
+
 ## The fire that did not hit a size wall: the container's disk went read-only (2026-10-19 15:28Z)
 
 Kernel **v21**, the first session driven after the exit-publish fix (`6401c0d`), restored
