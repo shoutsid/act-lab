@@ -196,6 +196,26 @@ def test_primary_launch_command_is_the_registered_one() -> None:
     ]
 
 
+def test_a_narrower_seed_block_scopes_the_restore(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``ACT_T4_SEEDS`` narrows the declared block without changing it.
+
+    The restore is scoped to the shards a run's seeds resolve to, so a session
+    that declares only the seeds still to train does not download shard 0
+    (44.13 GiB) it can no longer write - the footprint that was being staged on
+    top of when the 2026-10-19 container lost its writable layer. The default
+    stays the declared block, so the registered command is unchanged.
+    """
+    queue = kaggle_t4.QUEUES["session"]
+    assert kaggle_t4.session_seeds() == "15024-15035"
+    monkeypatch.setenv(kaggle_t4.SEEDS_ENV, "15034-15035")
+    assert kaggle_t4.session_seeds() == "15034-15035"
+    argv = kaggle_t4.session_argv(queue)
+    assert argv[argv.index("--seeds") + 1] == "15034-15035"
+    # The declared block itself is what decides shard membership, not the
+    # subset: the seed stays in the shard the queue puts it in.
+    assert queue.shards[1][1] == tuple(range(15031, 15036))
+
+
 def test_the_paired_queues_publish_two_disjoint_shards_and_the_null_queue_one() -> None:
     """The shard rule is declared per queue, and no seed may appear in two.
 

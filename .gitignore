@@ -127,6 +127,11 @@ artifacts/v0-session-logs/*
 !artifacts/v0-session-logs/session-15024-26-publish.json
 !artifacts/v0-session-logs/session-15024-26-benchmark.json
 !artifacts/v0-session-logs/session-15024-26-child-stream.log
+# The 2026-10-19 fire: the child's own tee is the only account of the EROFS that
+# killed it (the platform log is empty), and the kernel output still carried the
+# summary for the seed whose checkpoints did not survive.
+!artifacts/v0-session-logs/session-*-stream.log
+!artifacts/v0-session-logs/session-*-seed-*-summary.json
 !artifacts/v0-session-logs/session-15024-summary.json
 !artifacts/v0-session-logs/session-15025-summary.json
 !artifacts/v0-session-logs/session-15026-summary.json

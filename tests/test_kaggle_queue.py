@@ -269,6 +269,31 @@ def test_staged_kernel_pins_the_dataset_it_will_publish_to(tmp_path: Path, monke
     assert metadata["dataset_sources"] == ["someone-else/act-lab-code"]
 
 
+def test_staged_kernel_pins_a_narrowed_seed_block(tmp_path: Path) -> None:
+    """A seed subset must be pinned, or the kernel restores every shard.
+
+    The subset scopes the startup restore as well as the training loop, and the
+    kernel resolves it from its own environment - so a value set only on the
+    pushing side would silently fall back to the whole declared block and pay
+    the 44 GiB shard the session cannot write.
+    """
+    folder = kaggle_queue.stage(tmp_path / "push", "session", 7.0, "15034-15035")
+    metadata = json.loads((folder / "kernel-metadata.json").read_text())
+    source = (folder / metadata["code_file"]).read_text()
+
+    assert "os.environ.setdefault(SEEDS_ENV, '15034-15035')" in source
+    assert "raise SystemExit(main())" in source
+    compile(source, str(folder / metadata["code_file"]), "exec")
+
+
+def test_staged_kernel_without_a_seed_override_keeps_the_declared_block(
+    tmp_path: Path,
+) -> None:
+    folder = kaggle_queue.stage(tmp_path / "push", "session")
+    metadata = json.loads((folder / "kernel-metadata.json").read_text())
+    assert "setdefault(SEEDS_ENV" not in (folder / metadata["code_file"]).read_text()
+
+
 def test_staged_kernel_without_a_window_keeps_the_kernel_default(tmp_path: Path) -> None:
     folder = kaggle_queue.stage(tmp_path / "push", "session")
     metadata = json.loads((folder / "kernel-metadata.json").read_text())
@@ -866,7 +891,7 @@ def test_drive_re_stages_when_the_code_dataset_moves_between_sessions(
     # push is the one that finds the dataset has moved.
     revisions = iter(["aaaa", "aaaa", "bbbb"])
 
-    def fake_stage(directory, queue_mode, hours=None):
+    def fake_stage(directory, queue_mode, hours=None, seeds=None):
         staged.append(str(directory))
         folder = Path(directory)
         folder.mkdir(parents=True, exist_ok=True)

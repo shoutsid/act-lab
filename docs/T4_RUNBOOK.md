@@ -137,6 +137,16 @@ python scripts/kaggle_queue.py --queue selfcheck        # session battery + arm 
 python scripts/kaggle_queue.py --queue archzoo          # architecture-search horizon arm (one push)
 ```
 
+`--seeds` narrows the block each session declares, and it is a **disk budget**
+as well as a training scope: the session's startup restore follows the seeds
+(`cli._run_pair_session` restores only the shards they resolve to), so a run
+that has no seed left in shard 0 neither downloads its 44.13 GiB nor carries
+it while staging the shard it does push. Use it when the remaining seeds all
+live in one shard - 2026-10-20, the last two seeds are in shard 1 and the
+declared 12-seed block was staging 25.5 GiB on top of a 95 GiB container
+footprint (see `docs/IMPLEMENTATION_STATUS.md`). The default is unchanged: the
+whole declared block.
+
 `--wait-for-quota` is for the whole campaign rather than one queue: the three
 queues need ~55 GPU-hours against a 30 GPU-hour week, so no single week can
 finish them. Passed to a queue, a week too short to cover another session

@@ -1,0 +1,80 @@
+$ /usr/bin/python3 -m act.training.cli --mode pair-session --device cuda --hours 6.93417 --seeds 15024-15035 --probe-candidate-policy spread --preserve-router-on-rebuild --new-expert clone --dataset-root /tmp/act-lab-session-194c47969f/artifacts/datasets --session-dir /tmp/act-lab-session-194c47969f/artifacts/v0-sessions --kaggle-dataset sid123123234/act-v0-5-2 --kaggle-shard-seeds 7
+Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.2)
+Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.2)
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2
+remote restore: sid123123234/act-v0-5-2 downloaded in 16.5 min (44.13 GiB on disk)
+restored 7 seed version(s) from sid123123234/act-v0-5-2: [15024, 15025, 15026, 15027, 15028, 15029, 15030]
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-p2
+remote restore: sid123123234/act-v0-5-2-p2 downloaded in 6.8 min (19.09 GiB on disk)
+restored 3 seed version(s) from sid123123234/act-v0-5-2-p2: [15031, 15032, 15033]
+session clock: 6.39 h of the declared 6.93417 h remain after 32.5 min of startup
+code revision: 3f59fe64bc417b5b14030905e7b67e4285f6cebd
+pair time 1.55 h (2 arm(s) in 1 wave(s) of 24576000 tokens at 4720 tokens/s + 0.1 h event overhead)
+seed 15024: complete version exists, skipping
+seed 15025: complete version exists, skipping
+seed 15026: complete version exists, skipping
+seed 15027: complete version exists, skipping
+seed 15028: complete version exists, skipping
+seed 15029: complete version exists, skipping
+seed 15030: complete version exists, skipping
+seed 15031: complete version exists, skipping
+seed 15032: complete version exists, skipping
+seed 15033: complete version exists, skipping
+block treatment matches the published seed(s): preserve_router_on_rebuild=True, new_expert_initialization='clone'
+seed 15034: starting pair (remaining 6.39 h fits pair 1.55 h + 45 min reserve (rule 1))
+arms in parallel (random -> cuda:0, adaptive -> cuda:1)
+seed 15034: pair complete ({'random': 10.39768099784851, 'adaptive': 10.397773265838623})
+Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.2)
+remote publish: pushing 4 seed version(s), 25.5 GiB of handoff
+remote publish: attempt 1/3 starting (4 seed version(s), 25.5 GiB)
+remote publish: still pushing 4 seed version(s) (25.5 GiB) after 1.0 min
+remote publish: still pushing 4 seed version(s) (25.5 GiB) after 2.0 min
+remote publish: still pushing 4 seed version(s) (25.5 GiB) after 3.0 min
+remote publish: still pushing 4 seed version(s) (25.5 GiB) after 4.0 min
+remote publish: still pushing 4 seed version(s) (25.5 GiB) after 5.0 min
+remote publish attempt 1/3 failed (OSError: [Errno 30] Read-only file system: '/tmp/act-kaggle-push-kamew6zs/push')
+  retrying: a failed push here loses the session's pairs
+remote publish: attempt 2/3 starting (4 seed version(s), 25.5 GiB)
+remote publish attempt 2/3 failed (OSError: [Errno 30] Read-only file system: '/tmp/act-kaggle-push-i2pextih')
+  retrying: a failed push here loses the session's pairs
+remote publish: attempt 3/3 starting (4 seed version(s), 25.5 GiB)
+remote publish attempt 3/3 failed (OSError: [Errno 30] Read-only file system: '/tmp/act-kaggle-push-6hijff_0')
+remote publish FAILED after 3 attempt(s) (local handoff intact, but this container ends with the session): OSError: [Errno 30] Read-only file system: '/tmp/act-kaggle-push-kamew6zs/push'; OSError: [Errno 30] Read-only file system: '/tmp/act-kaggle-push-i2pextih'; OSError: [Errno 30] Read-only file system: '/tmp/act-kaggle-push-6hijff_0'
+{"remote_publish": {"dataset": "sid123123234/act-v0-5-2-p2", "error": "OSError: [Errno 30] Read-only file system: '/tmp/act-kaggle-push-kamew6zs/push'; OSError: [Errno 30] Read-only file system: '/tmp/act-kaggle-push-i2pextih'; OSError: [Errno 30] Read-only file system: '/tmp/act-kaggle-push-6hijff_0'", "fingerprint": "add66f113242425cdb82371fa378f07c02c8e1802669a4d0325844231cac911a", "folder": "/tmp/act-lab-session-194c47969f/artifacts/datasets/act-checkpoints/v0-5-1", "seeds_published": 4, "status": "failed", "version_notes": "v0-5-1 session publish: 4720 tokens/s, measured dtype, after seed 15034"}}
+seed 15034: remote publish failed (OSError: [Errno 30] Read-only file system: '/tmp/act-kaggle-push-kamew6zs/push'; OSError: [Errno 30] Read-only file system: '/tmp/act-kaggle-push-i2pextih'; OSError: [Errno 30] Read-only file system: '/tmp/act-kaggle-push-6hijff_0'); continuing - the next pair's push carries this one, and the exit publish reports it if it is not transient
+seed 15035: starting pair (remaining 4.56 h fits pair 1.55 h + 45 min reserve (rule 1))
+seed 15035: pair FAILED (OSError: [Errno 30] Read-only file system: '/tmp/act-lab-session-194c47969f/artifacts/v0-sessions/seed-15035'); stopping the queue so the session can exit-publish completed seeds
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/kaggle/working/act-lab/src/act/training/cli.py", line 724, in <module>
+    main()
+  File "/kaggle/working/act-lab/src/act/training/cli.py", line 716, in main
+    _run_pair_session(args)
+  File "/kaggle/working/act-lab/src/act/training/cli.py", line 389, in _run_pair_session
+    summary = run_pair_session(
+              ^^^^^^^^^^^^^^^^^
+  File "/kaggle/working/act-lab/src/act/training/v0_runner.py", line 360, in run_pair_session
+    output_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+  File "/usr/lib/python3.12/pathlib.py", line 1047, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 30] Read-only file system: '/tmp/act-lab-session-194c47969f/artifacts/v0-sessions/session-log.json'

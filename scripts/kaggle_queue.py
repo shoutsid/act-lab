@@ -575,7 +575,9 @@ def ensure_code_dataset(repo: str | Path, *, log=print) -> str:
 PINNED_ENV_NAMES = ("MODE_ENV", "OWNER_ENV", "SLUG_ENV")
 
 
-def pinned_environment(queue_mode: str, hours: float | None) -> list[str]:
+def pinned_environment(
+    queue_mode: str, hours: float | None, seeds: str | None = None
+) -> list[str]:
     """The ``__main__`` lines that make the pushed kernel self-contained."""
     values = {
         "MODE_ENV": queue_mode,
@@ -590,11 +592,19 @@ def pinned_environment(queue_mode: str, hours: float | None) -> list[str]:
         # The quota gate compares this same number, so a silent fallback to the
         # kernel's default would make the gate unsound.
         lines.append(f"    os.environ.setdefault(HOURS_ENV, {str(hours)!r})")
+    if seeds is not None:
+        # The seed block scopes the startup restore as well as the training
+        # loop, and a fallback to the declared block would restore every shard
+        # (see `kaggle_t4.session_seeds`).
+        lines.append(f"    os.environ.setdefault(SEEDS_ENV, {str(seeds)!r})")
     return lines
 
 
 def stage(
-    directory: str | Path, queue_mode: str, hours: float | None = None
+    directory: str | Path,
+    queue_mode: str,
+    hours: float | None = None,
+    seeds: str | None = None,
 ) -> Path:
     """Write a push folder whose kernel body is self-contained.
 
@@ -618,13 +628,16 @@ def stage(
             "kaggle_t4.py's __main__ guard drifted; kaggle_queue.stage cannot "
             "pin the queue mode into the pushed kernel body"
         )
-    for name in (*PINNED_ENV_NAMES, "HOURS_ENV"):
+    for name in (*PINNED_ENV_NAMES, "HOURS_ENV", "SEEDS_ENV"):
         if f"\n{name} = " not in body:
             raise SystemExit(
                 f"kaggle_t4.py no longer defines {name}; staging cannot pin it "
                 "into the pushed kernel body"
             )
-    pinned_lines = ['if __name__ == "__main__":', *pinned_environment(queue_mode, hours)]
+    pinned_lines = [
+        'if __name__ == "__main__":',
+        *pinned_environment(queue_mode, hours, seeds),
+    ]
     pinned_lines.append("    raise SystemExit(main())")
     pinned = "\n".join(pinned_lines) + "\n"
     entry = folder / f"run-{queue_mode}.py"
@@ -1378,17 +1391,24 @@ def drive(
     poll: float,
     timeout: float,
     max_sessions: int,
+    seeds: str | None = None,
 ) -> int:
     """Push the queue's kernel until its declared block is complete."""
     queue = kaggle_t4.QUEUES[queue_mode]
     declared_hours = float(hours) if hours is not None else kaggle_t4.DEFAULT_HOURS
     print(f"=== driving queue {queue_mode!r}: {queue.dataset} ===", flush=True)
+    if seeds is not None:
+        print(
+            f"  seeds declared for each session: {seeds} (declared block "
+            f"{kaggle_t4.SEED_BLOCK}); the restore follows them",
+            flush=True,
+        )
     # The kernel runs the mounted code, so what it executes has to be the
     # committed tree - checked before any quota is spent, not after.
     repo = REPO_ROOT
     staged_revision = ensure_code_dataset(repo)
     work = Path(tempfile.mkdtemp(prefix=f"act-queue-{queue_mode}-"))
-    push_dir = stage(work / "push", queue_mode, declared_hours)
+    push_dir = stage(work / "push", queue_mode, declared_hours, seeds)
     output_dir = work / "output"
     done = declared = 0
 
@@ -1423,7 +1443,9 @@ def drive(
                     "re-staging the kernel body from the same tree",
                     flush=True,
                 )
-                push_dir = stage(work / f"push-{session}", queue_mode, declared_hours)
+                push_dir = stage(
+                    work / f"push-{session}", queue_mode, declared_hours, seeds
+                )
                 staged_revision = current
             push = _run(["kaggle", "kernels", "push", "-p", str(push_dir)])
             print(push.stdout.strip() or push.stderr.strip(), flush=True)
@@ -1782,6 +1804,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-sessions", type=int, default=8,
                         help="push at most this many sessions (default 8)")
     parser.add_argument(
+        "--seeds",
+        default=None,
+        help="the seed block each session declares, pinned into the pushed "
+             "kernel (default: the declared block). A subset is how a session "
+             "that can no longer write an earlier shard avoids restoring it: "
+             "the restore follows --seeds, so the subset is both a training "
+             "scope and a disk budget (2026-10-19)",
+    )
+    parser.add_argument(
         "--wait-for-quota",
         action="store_true",
         help="when the week is short, sleep to the quota's refresh and re-run "
@@ -1802,6 +1833,7 @@ def main(argv: list[str] | None = None) -> int:
             poll=args.poll,
             timeout=args.timeout,
             max_sessions=args.max_sessions,
+            seeds=args.seeds,
         )
 
     def campaign() -> int:

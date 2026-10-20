@@ -1,5 +1,19 @@
 # ACT Implementation Status
 
+## The wall is the container's disk, not the dataset version: the 2026-10-19 fire died on EROFS (2026-10-20)
+
+Kernel **v21** restored both shards, skipped all ten published seeds, trained **15034**, and lost it. The pair-time push of **4 seeds / 25.5 GiB** into `act-v0-5-2-p2` ran for five minutes and then failed with `OSError: [Errno 30] Read-only file system` on the staging directory, three times, and the container was killed. Unlike every earlier fire this one flushed its own stream log, which `kaggle kernels output` still served: the cause is the child's `EROFS`, not a silent kill. Both the stream log and 15034's summary are committed in `artifacts/v0-session-logs/` (see its `NOTES.md`); the 6.4 GiB of checkpoints are gone, so the seed is trained again.
+
+| | |
+|---|---|
+| **What died** | The **pair-time** push, not the exit push the 2026-10-19 fix addressed. It staged 25.5 GiB - the whole of shard 1 (3 restored seeds + 15034), because a dataset version replaces its content and the shard's older seeds must travel with the new one. |
+| **Local bytes at that moment** | 44.13 (shard 0) + 19.09 (shard 1) + 6.4 (15034) + 25.5 (staging) = **95.0 GiB**. The restore itself peaked near 82 GiB (download plus copy) and survived. |
+| **Why this is not the 44 -> 50 GiB version wall** | The payload that killed this container, 25.5 GiB, is **smaller** than the 44.13 GiB version that landed on 2026-10-05. What is common to every death is the *total* footprint: v18's landing push had ~44 GiB of handoff + 44.13 GiB of staging (88 GiB), its fatal 8-seed push needed ~101 GiB, the 04:10Z fire's fatal exit push needed ~107 GiB, and this one died at 95 GiB. The bracket recorded on 2026-10-18 was a real observation with the wrong cause; the writable layer is the variable that fits every fire. |
+| **The waste that made it certain** | Shard 0 is 44.13 GiB this session could only read: its seven seeds were complete and the exit fix already guaranteed they would not be re-pushed. It was restored because the run declared `--seeds 15024-15035`. The CLI has always scoped the restore to the shards the declared seeds resolve to, so a narrower declaration restores 19.1 GiB instead of 63.2. |
+| **Fix** | `kaggle_queue.py --seeds` (pinned into the pushed kernel as `ACT_T4_SEEDS`, read by `kaggle_t4.session_seeds()`); the default is still the declared block. It is a **training scope and a disk budget**: with 15034-15035 declared, only shard 1 is restored, and the peak is ~64 GiB even with both seeds trained and the 31.9 GiB shard staged. |
+| **Pinned** | `tests/test_kaggle_t4.py::test_a_narrower_seed_block_scopes_the_restore`, `tests/test_kaggle_queue.py::test_staged_kernel_pins_a_narrowed_seed_block`, `::test_staged_kernel_without_a_seed_override_keeps_the_declared_block`. |
+| **State at this entry** | `campaign_health`: **10 of 12** (15024-15033), session kernel `ERROR`, no driver live, quota **21.5 / 30 h** (refresh 2026-10-24). A session for 15034-15035 is fired with the narrowed block; the previous entry's "keep shards <= ~45 GiB" advice stands as a shard rule but is not what the ceiling is. |
+
 ## Next-step recommendations from the findings, not from outside literature (2026-10-19)
 
 A web search on learned MoE topology returned only introductory material, nothing that bears on the open questions here, so these recommendations rest on the project's own record. None of them is a measurement.

@@ -1,5 +1,56 @@
 # Campaign session logs - the evidence behind the exit-publish numbers
 
+## The fire that did not hit a size wall: the container's disk went read-only (2026-10-19 15:28Z)
+
+Kernel **v21**, the first session driven after the exit-publish fix (`6401c0d`), restored
+both shards, skipped all ten published seeds, trained **15034**, and then failed its
+**pair-time** push to `act-v0-5-2-p2` with
+`OSError: [Errno 30] Read-only file system` - three times, inside the staging directory -
+and was killed. The kernel log is empty (`[]`, 3 B, the same hash as every killed
+session), so the driver's live capture was again the only near-real-time account. This
+time the session itself survived long enough to flush: `kaggle kernels output` still
+answered and carried its **own** stream log and the summary for seed 15034, so the cause
+is in the child's words rather than in an inference from silence.
+
+| file | what it is | sha256 |
+|---|---|---|
+| `session-session-20261019T180432Z-live.log` | the driver's live capture, 96 lines, ending 4 min into the pair-time push | `b311d7834502bde9708ee0d67fd257f1444336de2829f48ac174ad98af6fb0bd` |
+| `session-session-20261019T180432Z-stream.log` | the child's own tee (`session-stream.log`), 80 lines, ending on the traceback: **this is the account the live capture does not have** | `027c85ace6d1f77f38de895ca3f2cb11a8adb22dfa3a47a94eb65ea4b36b4269` |
+| `session-session-20261019T180432Z-kernel-log.json` | the platform log: **zero events** (the kill did not flush the wrapper's stdout either) | `37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570` |
+| `session-session-20261019T180432Z-seed-15034-summary.json` | 15034's own record, recovered from the kernel output: both arms, both final losses, the three mutations, the treatment. What did **not** survive is the 6.4 GiB of checkpoints - so the seed has to be trained again | `7438db6d1829c7a8f5cb1fa6f7c59020d62a30e86364b206a1453d99e74c157e` |
+
+| | |
+|---|---|
+| Window / startup | 6.93 h declared; **16.5 min** to restore shard 0 (44.13 GiB) and **6.8 min** for shard 1 (19.09 GiB), 32.5 min of startup in total |
+| What it trained | seed **15034** only (`random 10.397681`, `adaptive 10.397773`, a 9.2e-05 difference on the uniform floor); 15035 then failed before its first step |
+| What it pushed | nothing to p2; the pair-time push of **4 seeds / 25.5 GiB** began at ~17:35Z and the container died inside it |
+| Quota | **2.45 GPU-h** spent, 21.5 of 30 remaining (refresh 2026-10-24); the driver reported the session ERROR after 2.62 h |
+| Local bytes at the push | **95.0 GiB**: 44.13 (shard 0) + 19.09 (shard 1) + 6.4 (15034) + 25.5 (the staging tar the upload writes) |
+
+The failing calls are `mkdir` on the staging dirs (`/tmp/act-kaggle-push-*/push`), not the
+upload itself - `tmpfs`-style **ENOSPC does not appear anywhere; the filesystem was
+remounted read-only** after the write failed, and the next action (`seed 15035: starting
+pair`) failed writing `artifacts/v0-sessions/seed-15035`, then the session log. So the
+container lost its writable layer, and the push was the write that took it there.
+
+**This is not the 44 -> 50 GiB dataset-version wall** the 2026-10-05/06 fires were read
+as. The payload that killed this container (25.5 GiB) is smaller than the one that landed
+there (44.13 GiB), and the difference is the *local* footprint, which those fires also had:
+v18's 7-seed push staged 44.13 GiB on top of ~44 GiB of handoff (88 GiB) and landed; its
+8-seed push needed ~101 GiB and died here. Every death to date is consistent with a
+container writable layer that gives out somewhere around **90-100 GiB**, and none of them
+requires a per-version upload limit. The bracket is recorded as the observation it is;
+the *cause* is now the child's `EROFS`, not silence.
+
+**The cost that made this certain.** Shard 0 is 44.13 GiB that this session could only ever
+read: all seven of its seeds were complete, and the exit fix (`6401c0d`) had already made
+sure they would never be re-pushed. It was restored anyway, because the run declared
+`--seeds 15024-15035` and the restore is scoped to the shards those seeds resolve to. The
+CLI already supports a narrower block - `wanted_shards` intersects the requested seeds with
+the shard map, and the treatment check reads whatever published summaries are present - so
+the resuming session declares only the seeds it can still write and restores **19.1 GiB**
+instead of 63.2, putting its peak at ~64 GiB with both remaining seeds trained.
+
 ## The two fires that found the size wall (kernel v18, 2026-10-05 20:05Z; v19, 2026-10-06 10:45Z)
 
 These are the first two sessions that publish **after every pair** (commit `e60b3b6`), and

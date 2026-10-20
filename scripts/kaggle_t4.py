@@ -78,6 +78,7 @@ if TYPE_CHECKING:  # annotations only: the kernel imports these lazily
 MODE_ENV = "ACT_T4_MODE"
 QUEUE_ENV = "ACT_T4_QUEUE"
 HOURS_ENV = "ACT_T4_HOURS"
+SEEDS_ENV = "ACT_T4_SEEDS"
 OWNER_ENV = "ACT_T4_OWNER"
 SLUG_ENV = "ACT_T4_SLUG"
 
@@ -106,6 +107,23 @@ BENCHMARK_STEPS = 50
 # section 5.65; see ``DECLARED_SEEDS`` in ``act.training.v0_runner`` for why.
 SEED_BLOCK = "15024-15035"
 PRIMARY_POLICY = "spread"
+
+
+def session_seeds() -> str:
+    """The block this session trains: the declared one unless pinned narrower.
+
+    A session may declare a subset of the block - the runner supports it on
+    purpose ("a narrower ``--seeds`` appends to the same block") - and that
+    subset is what scopes the startup restore: ``cli._run_pair_session``
+    restores only the shards those seeds resolve to. On 2026-10-19 a run that
+    could no longer write shard 0 (all seven seeds published) still declared
+    the whole block, so it restored 44.13 GiB it could only read, and was
+    killed when the pair-time push staged another 25.5 GiB on top of a 95 GiB
+    container footprint. Declaring the seeds still to train is the difference
+    between a 63 GiB restore and a 19 GiB one. Pinned into the kernel body by
+    ``kaggle_queue.stage``.
+    """
+    return os.environ.get(SEEDS_ENV, SEED_BLOCK)
 #: The section 5.47 amendment: the declared run carries the section 5.28 rebuild
 #: treatment on **every** arm, so all three queues launch with this pair. It lives in
 #: one place because the runbook's section 2/2b/2c commands and this builder are one
@@ -309,7 +327,7 @@ def session_argv(queue: Queue, hours: float = DEFAULT_HOURS) -> list[str]:
         "--hours",
         f"{hours:g}",
         "--seeds",
-        SEED_BLOCK,
+        session_seeds(),
     ]
     if queue.mode in ("session", "control"):
         argv += ["--probe-candidate-policy", PRIMARY_POLICY]
@@ -978,7 +996,7 @@ def mode_session(queue: Queue) -> None:
     hours = float(os.environ.get(HOURS_ENV, str(DEFAULT_HOURS)))
     started = time.time()
     _log(f"=== ACT lab: {queue.mode} session ===")
-    _log(f"dataset={queue.dataset} hours={hours:g} seeds={SEED_BLOCK}")
+    _log(f"dataset={queue.dataset} hours={hours:g} seeds={session_seeds()}")
     work, env = _bootstrap()
 
     from act.training.runtime import gpu_inventory
