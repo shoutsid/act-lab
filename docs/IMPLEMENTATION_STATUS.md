@@ -1,5 +1,21 @@
 # ACT Implementation Status
 
+## The control queue is 6/12, and its last week-hours went to the empty shard (2026-10-21)
+
+Two control (§2b) sessions ran the declared `15024-15030` block, which is the whole seven-seed
+shard `act-v0-5-2-control`. Both restored that shard (**18.99 GiB in 2.3 min**) and trained three
+pairs; every publish landed and both exits were skipped as `already_published`. Peak local
+footprint stayed near 19 GiB restored plus ~19 GiB staged - nowhere near the 2026-10-19 shape.
+
+| | |
+|---|---|
+| **Block state** | `campaign_health --queue control`: **6 of 12** (15024-15029), quota **23.36 / 30 h**, refresh 2026-10-24. The remaining seeds split across two shards: **15030** in the seven-seed `act-v0-5-2-control` and **15031-15035** in `act-v0-5-2-p2-control`, which has **no version**. |
+| **Readout (not a verdict)** | adaptive won **3 of 6**, mean `adaptive - random` **+0.000006 nats**, every arm within **0.001281 nats** of `ln(32768) = 10.3972`. Same uniform floor as the primary block's 12; the queue is incomplete, so the registered rule still withholds itself. |
+| **Cost** | quota **16.71 -> 23.36 h** across the two sessions (~3.3 GPU-h each). |
+| **What the driver then did** | It stopped at exit 3 rather than pushing a session the week cannot finish: **6.64 h** remained against the declared 7 h, and unused quota expires at the refresh. `campaign_health` called that state `STALLED` (no session live, quota available, lock unheld) - the state both 2026-09 losses sat in. |
+| **The scheduling choice** | `15024-15030` would restore the ~38 GiB shard to train one seed and re-upload it as a **~44 GiB** version, with the same size in staging. `15031-15035` resolves to the **empty** `act-v0-5-2-p2-control`: **0 GiB restore**, and the publish writes a new small shard. Fired as kernel **v3**, `--hours 6.5 --seeds 15031-15035 --wait-for-quota` - the window is a scheduling knob (precedent 2026-09-27), the declaration is a disk budget, and the wait spends the 2026-10-24 refresh without an operator. `RUNNING` on a T4 as of 12:35Z. |
+| **The seed that stays expensive** | **15030** is the seventh seed of its shard, so publishing it means restoring the six-seed shard and re-uploading all seven - the one remaining control seed that costs a full-shard push, at the 44 GiB size that has landed before. |
+
 ## The primary block is complete 12/12, and the scoping fix is verified in production (2026-10-20)
 
 The session that finished the block declared only the seeds it still had to train (`--seeds

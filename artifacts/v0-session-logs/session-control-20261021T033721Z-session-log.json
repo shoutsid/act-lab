@@ -1,0 +1,126 @@
+{
+  "declared_seed_queue": [
+    15024,
+    15025,
+    15026,
+    15027,
+    15028,
+    15029,
+    15030,
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ],
+  "dtype": "fp16",
+  "dtype_rule_tokens_per_second": 1540.1413577287713,
+  "latest_published_seed": 15029,
+  "measured_tokens_per_second": 5368.114517513316,
+  "pair_time_hours": 1.3717066009666647,
+  "pairs": [
+    {
+      "action": "skipped_complete",
+      "seed": 15024
+    },
+    {
+      "action": "skipped_complete",
+      "seed": 15025
+    },
+    {
+      "action": "skipped_complete",
+      "seed": 15026
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 10.398195266723633,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": null,
+      "random_final_loss": 10.398488521575928,
+      "remote_publish": {
+        "dataset": "sid123123234/act-v0-5-2-control",
+        "error": null,
+        "fingerprint": "14afbbc4a93d54e49f6a2975b5e579c50bbccf0cae991937130abe957a436a55",
+        "folder": "/tmp/act-lab-control-2d722d4e57/artifacts/datasets-control/act-checkpoints/v0-5-1",
+        "seeds_published": 4,
+        "status": "published",
+        "version_notes": "v0-5-1 session publish: 5368 tokens/s, measured dtype, after seed 15027"
+      },
+      "search_flops_by_arm": {
+        "adaptive": 13209492148224,
+        "random": 3457609728
+      },
+      "seed": 15027,
+      "training_flops_by_arm": {
+        "adaptive": 13870169063424000,
+        "random": 14127992930304000
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 10.398422718048096,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": null,
+      "random_final_loss": 10.398118495941162,
+      "remote_publish": {
+        "dataset": "sid123123234/act-v0-5-2-control",
+        "error": null,
+        "fingerprint": "be411d9b5ac427c9f6d3711ee546c287a7d220349b6b674651fc0ba0ddfcee14",
+        "folder": "/tmp/act-lab-control-2d722d4e57/artifacts/datasets-control/act-checkpoints/v0-5-1",
+        "seeds_published": 5,
+        "status": "published",
+        "version_notes": "v0-5-1 session publish: 5368 tokens/s, measured dtype, after seed 15028"
+      },
+      "search_flops_by_arm": {
+        "adaptive": 13209508925440,
+        "random": 3424038912
+      },
+      "seed": 15028,
+      "training_flops_by_arm": {
+        "adaptive": 13870169063424000,
+        "random": 14024863383552000
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 10.397494792938232,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": null,
+      "random_final_loss": 10.397810459136963,
+      "remote_publish": {
+        "dataset": "sid123123234/act-v0-5-2-control",
+        "error": null,
+        "fingerprint": "91b27589786106cde05a7787ef8909e31dd0e7ece3c069fab7bd9f4ad8ab8ec8",
+        "folder": "/tmp/act-lab-control-2d722d4e57/artifacts/datasets-control/act-checkpoints/v0-5-1",
+        "seeds_published": 6,
+        "status": "published",
+        "version_notes": "v0-5-1 session publish: 5368 tokens/s, measured dtype, after seed 15029"
+      },
+      "search_flops_by_arm": {
+        "adaptive": 13209542479872,
+        "random": 3407253504
+      },
+      "seed": 15029,
+      "training_flops_by_arm": {
+        "adaptive": 13870169063424000,
+        "random": 13973298610176000
+      }
+    }
+  ],
+  "pairs_completed": 3,
+  "protocol": "v0-compute-efficiency-5.2",
+  "remaining_hours_at_entry": 6.8537441806477775,
+  "schedule_tokens_per_second": 5368.114517513316,
+  "seeds_requested": [
+    15024,
+    15025,
+    15026,
+    15027,
+    15028,
+    15029,
+    15030
+  ]
+}

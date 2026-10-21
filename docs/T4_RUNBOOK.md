@@ -220,6 +220,22 @@ the launch artifact carries it (`schedule.three_queue_*`). An unreadable quota
 line never blocks (it can only ever spend less), and a session that is already
 live is adopted instead of gated.
 
+When the week cannot fit the declared window, fit the window *and* declare the
+seeds whose shard is cheapest to restore - the two knobs are independent and
+both are pre-registered behaviour, not amendments. Measured 2026-10-21 on the
+control queue at **6.64 h** left: `--seeds 15024-15030` resolves to the
+seven-seed shard (18.99 GiB restored at six published seeds, and a ~44 GiB
+re-upload for one new seed), while `--seeds 15031-15035` resolves to
+`act-v0-5-2-p2-control`, which has no version at all - **0 GiB restore**, and a
+new small shard to publish into. So the fire is
+`--queue control --hours 6.5 --seeds 15031-15035 --wait-for-quota`: a 6.5 h
+window completes fewer whole pairs and stops by its own deadline, the narrowed
+declaration leaves the expensive seed (15030, the last of its shard) as a
+single-seed session of its own, and `--wait-for-quota` spends the refresh
+instead of leaving the operator to re-run. Do not read a fitted window as a
+protocol change: the pair schedule, seeds, knobs and criteria are untouched,
+and the session records the window it was given.
+
 A script kernel receives **only** `code_file`: the CLI sends that file's text
 and nothing else from the push folder, and the metadata has no field for
 environment variables. The staged entry script is therefore generated with **every** knob the kernel

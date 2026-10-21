@@ -1,5 +1,47 @@
 # Campaign session logs - the evidence behind the exit-publish numbers
 
+## The control queue's first two sessions, and the shard-scoped fire that spends the last hours (2026-10-20/21)
+
+The control queue (§2b) is at **6 of 12** after two sessions of the declared block
+`15024-15030`, which is the whole of `act-v0-5-2-control` - the seven-seed shard. Both sessions
+restored that shard (**18.99 GiB in 2.3 min**, three seed versions and then six) and trained
+three pairs each; every pair-time and exit publish landed, and both exits were skipped as
+`already_published` because the per-pair publish had already carried the state. Peak local bytes
+never approached the 2026-10-19 shape: ~19 GiB restored, ~19 GiB staged.
+
+| file | what it is | sha256 |
+|---|---|---|
+| `session-control-20261020T223031Z-live.log` | session 1's live capture, 3 pairs `15024-15026`, `pair_time_hours: 1.52`, `4802 tokens/s` | `f22e3a340057d3f0195c154bf6f7833cca3aca660f5ae317ed2c3dcdfe40abba` |
+| `session-control-20261020T223031Z-kernel-log.json` | session 1's platform log (the child's streamed stdout) | `8ee612a7de968ebce60373bd0e49683785fbb4725f31176e7ca3be0a39fff4e2` |
+| `session-control-20261020T223031Z-session-log.json` | session 1's record: 3 pairs, `latest_published_seed: 15026` | `8084a01a88121ac0e430edaf2f65aeabd5107632bd5bf2f3d0dc59ea4e8e42f2` |
+| `session-control-20261021T033721Z-live.log` | session 2's live capture: three `skipped_complete` lines, then `15027-15029`; publishes at 4, 5 and 6 seeds, exit `already_published` | `ab1b78b20f7841828e73301796e01aa9a011c442d18f4409fec4b4bd79a2c0a3` |
+| `session-control-20261021T033721Z-kernel-log.json` | session 2's platform log | `db20d17b1133008c4705e42dfb7787161e9776aaa1888a5c1b38e86dcb6f666e` |
+| `session-control-20261021T033721Z-session-log.json` | session 2's record: 3 pairs, `latest_published_seed: 15029`, `5368 tokens/s` | `c785945222257e05089529ba2c58f30689be39b603ae610b6affb3e82d3ba45c` |
+
+| | |
+|---|---|
+| Published | **6 of 12**: 15024-15029, all in `act-v0-5-2-control`; 15030 in the same shard is still missing, and 15031-15035 live in `act-v0-5-2-p2-control`, which has **no version** |
+| Readout | adaptive won **3 of 6**, mean adaptive-random **+6e-6 nats**, both arms within **0.001281 nats** of `ln(32768)`, the uniform floor - the same picture as the primary block's 12 |
+| Cost | quota **16.71 -> 23.36 of 30 h** across the two sessions (refresh 2026-10-24); ~3.3 GPU-h each |
+
+**Why the next fire declares five seeds and not seven.** `campaign_health --queue control`
+reported `STALLED` with **6.64 h** left and no lock: the week cannot fit the registered 7 h
+window, and hours left at the refresh are lost. Two schedulings fit the window:
+
+- `15024-15030` (what the two sessions above declared) restores the seven-seed shard (**~38 GiB
+  at six published seeds**), trains 15030, and its push re-uploads the whole shard as a
+  **~44 GiB** version - the largest that has landed, and the shape that has already gone
+  read-only when combined with staging of the same size.
+- `15031-15035` resolves to the *empty* `act-v0-5-2-p2-control`, so the startup restore is
+  **0 GiB**, and the publish writes a new, small shard. It is the cheapest session the queue
+  can run, and it leaves 15030 as a single-seed session of its own later.
+
+So kernel **v3** went out as `--hours 6.5 --seeds 15031-15035` (fitted window, precedent
+2026-09-27; `--wait-for-quota` so the 2026-10-24 refresh is spent without an operator). It is
+`RUNNING` on a T4 as of 2026-10-21 12:35Z, with the restore line still to come in its log.
+15030 remains the queue's one expensive seed: it can only be published by restoring the
+seven-seed shard and re-uploading it whole.
+
 ## The fire that finished the block: the narrowed declaration held (2026-10-20)
 
 The primary queue is **12 of 12** and the kernel is `COMPLETE`. The finishing session declared
