@@ -1,0 +1,96 @@
+[{"stream_name":"stdout","time":9.81606889,"data":"=== ACT lab: control session ===\n"}
+,{"stream_name":"stdout","time":9.816135624,"data":"dataset=sid123123234/act-v0-5-2-control hours=6.5 seeds=15031-15035\n"}
+,{"stream_name":"stdout","time":10.930006913,"data":"code dataset: /kaggle/input/datasets/sid123123234/act-lab-code/code\n"}
+,{"stream_name":"stdout","time":34.429807011,"data":"torch 2.11.0+cu128 | device Tesla T4\n"}
+,{"stream_name":"stdout","time":34.429847219,"data":"gpu inventory: {'count': 2, 'names': ['Tesla T4', 'Tesla T4']}\n"}
+,{"stream_name":"stdout","time":34.429851746,"data":"disk working: total 19.5 GiB | free 19.5 GiB\n"}
+,{"stream_name":"stdout","time":34.429855561,"data":"disk input: total 19.5 GiB | free 19.5 GiB\n"}
+,{"stream_name":"stdout","time":34.430095818,"data":"disk tmp: total 8156.9 GiB | free 1067.3 GiB\n"}
+,{"stream_name":"stdout","time":34.441627468,"data":"--- df -h ---\n"}
+,{"stream_name":"stdout","time":34.441653829,"data":"Filesystem      Size  Used Avail Use% Mounted on\n"}
+,{"stream_name":"stdout","time":34.441658468,"data":"/dev/loop2       20G  7.3M   20G   1% /kaggle/working\n"}
+,{"stream_name":"stdout","time":34.441662515,"data":"overlay         8.0T  7.0T  1.1T  87% /\n"}
+,{"stream_name":"stdout","time":34.441667725,"data":"overlay         8.0T  7.0T  1.1T  87% /\n"}
+,{"stream_name":"stdout","time":34.441828299,"data":"writable /kaggle/working: yes\n"}
+,{"stream_name":"stdout","time":34.442138513,"data":"writable /kaggle/temp: yes\n"}
+,{"stream_name":"stdout","time":34.442386212,"data":"writable /tmp: yes\n"}
+,{"stream_name":"stdout","time":34.443615155,"data":"--- throughput benchmark (the launch command's input) ---\n"}
+,{"stream_name":"stdout","time":34.443631268,"data":"$ /usr/bin/python3 scripts/v0_throughput_benchmark.py --steps 50\n"}
+,{"stream_name":"stdout","time":262.405512748,"data":"arm placement: 2 arm(s) in 1 wave(s) of slots=2\n"}
+,{"stream_name":"stdout","time":262.40658494,"data":"{\"benchmark\": \"v0-throughput-5.2\", \"declared_active_parameter_count\": 7556160, \"declared_parameter_count\": 14928960, \"device\": \"cuda\", \"device_name\": \"Tesla T4\", \"dtype_decision\": \"fp16\", \"example_deadline_check\": \"remaining 2.00 h does not fit pair 1.53 h + 45 min reserve (rule 1)\", \"fp32_floor_tokens_per_second\": 2500.0, \"gpu_inventory\": {\"count\": 2, \"names\": [\"Tesla T4\", \"Tesla T4\"]}, \"measured_tokens_per_second\": 1363.222014792025, \"predicted_probe_cost_percent\": {\"cap4_1batch\": 0.0941636252059042, \"cap4_2batch\": 0.1883272504118084}, \"profile\": \"declared-285M\", \"schedule\": {\"arm_slots\": 2, \"arms\": 2, \"checkpoint_interval\": 500, \"declared_session_hours\": 7.0, \"full_pairs_per_session\": 5, \"max_checkpoints\": 2, \"pair_time_hours\": 1.5292583290000001, \"pairs_per_session_rule1\": 4, \"platform_session_cap_hours\": 8.0, \"sessions_for_primary\": 3, \"sessions_for_primary_rule1\": 3, \"sessions_total\": 6, \"three_queue_sessions\": 9, \"three_queue_sessions_null\": 3, \"three_queue_sessions_primary\": 3, \"three_queue_training_hours\": 55.05329984400001, \"working_dir_headroom_gb\": 5.120000000000001, \"working_dir_steady_state_gb\": 14.879999999999999}, \"schedule_dtype\": \"fp16\", \"schedule_tokens_per_second\": 4776.370043225871, \"seed_block\": \"15000-15011 and 15024-15035 (reserved, untouched by this benchmark)\", \"steps\": 50, \"tokens_per_second_by_dtype\": {\"fp16\": 4776.370043225871, \"fp32\": 1363.222014792025}, \"tolerance_band_primary\": [0.0470818126029521, 0.1883272504118084], \"torch_version\": \"2.11.0+cu128\", \"warmup_steps\": 5}\n"}
+,{"stream_name":"stdout","time":266.068495467,"data":"measured 1363.2 tokens/s | dtype fp16 | pair_time 1.53 h\n"}
+,{"stream_name":"stdout","time":266.069451391,"data":"kept /kaggle/working/v0-benchmark.json\n"}
+,{"stream_name":"stdout","time":266.069499032,"data":"--- control queue (--hours 6.43 h: 4.3 min of the declared 6.5 h spent on startup) ---\n"}
+,{"stream_name":"stdout","time":266.069506054,"data":"$ /usr/bin/python3 -m act.training.cli --mode pair-session --device cuda --hours 6.42882 --seeds 15031-15035 --probe-candidate-policy spread --probe-selection random --preserve-router-on-rebuild --new-expert clone --dataset-root /tmp/act-lab-control-bf4dfe8922/artifacts/datasets-control --session-dir /tmp/act-lab-control-bf4dfe8922/artifacts/v0-sessions-control --kaggle-dataset sid123123234/act-v0-5-2-control --kaggle-shard-seeds 7\n"}
+,{"stream_name":"stdout","time":269.103363403,"data":"Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.2)\n"}
+,{"stream_name":"stdout","time":269.176155267,"data":"Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.2)\n"}
+,{"stream_name":"stdout","time":269.177519272,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control-p2\n"}
+,{"stream_name":"stdout","time":269.500040847,"data":"no remote version of sid123123234/act-v0-5-2-control-p2 available yet; training from scratch (atomic pairs make this safe)\n"}
+,{"stream_name":"stdout","time":269.500648802,"data":"session clock: 6.43 h of the declared 6.42882 h remain after 0.0 min of startup\n"}
+,{"stream_name":"stdout","time":269.537028487,"data":"code revision: 2b4a6474eb04c8abfe46c30b9fe649e4a1430872\n"}
+,{"stream_name":"stdout","time":269.563137158,"data":"pair time 1.53 h (2 arm(s) in 1 wave(s) of 24576000 tokens at 4776 tokens/s + 0.1 h event overhead)\n"}
+,{"stream_name":"stdout","time":269.563424712,"data":"no published seed records a rebuild treatment yet; this session sets it: preserve_router_on_rebuild=True, new_expert_initialization='clone'\n"}
+,{"stream_name":"stdout","time":269.563442109,"data":"seed 15031: starting pair (remaining 6.43 h fits pair 1.53 h + 45 min reserve (rule 1))\n"}
+,{"stream_name":"stdout","time":269.564051851,"data":"arms in parallel (random -\u003e cuda:0, adaptive -\u003e cuda:1)\n"}
+,{"stream_name":"stdout","time":5996.434372307,"data":"seed 15031: pair complete ({'random': 10.398030281066895, 'adaptive': 10.397951364517212})\n"}
+,{"stream_name":"stdout","time":6000.061651973,"data":"Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.2)\n"}
+,{"stream_name":"stdout","time":6000.064282785,"data":"remote publish: pushing 1 seed version(s), 6.4 GiB of handoff\n"}
+,{"stream_name":"stdout","time":6000.064318946,"data":"remote publish: attempt 1/3 starting (1 seed version(s), 6.4 GiB)\n"}
+,{"stream_name":"stdout","time":6060.065971998,"data":"remote publish: still pushing 1 seed version(s) (6.4 GiB) after 1.0 min\n"}
+,{"stream_name":"stdout","time":6120.066115691,"data":"remote publish: still pushing 1 seed version(s) (6.4 GiB) after 2.0 min\n"}
+,{"stream_name":"stdout","time":6122.698625028,"data":"Error while trying to load upload info: KaggleObject.from_dict() got an unexpected keyword argument 'token'\n"}
+,{"stream_name":"stdout","time":6180.066236421,"data":"remote publish: still pushing 1 seed version(s) (6.4 GiB) after 3.0 min\n"}
+,{"stream_name":"stdout","time":6223.803918777,"data":"remote publish: sid123123234/act-v0-5-2-control-p2 version pushed (1 seed version(s)) in 3.7 min\n"}
+,{"stream_name":"stdout","time":6223.804489133,"data":"{\"remote_publish\": {\"dataset\": \"sid123123234/act-v0-5-2-control-p2\", \"error\": null, \"fingerprint\": \"92c4f5603398b2b0fc612410bed59e6a180ae3c22afdbfa0e27f3f912be3c782\", \"folder\": \"/tmp/act-lab-control-bf4dfe8922/artifacts/datasets-control/act-checkpoints/v0-5-1\", \"seeds_published\": 1, \"status\": \"published\", \"version_notes\": \"v0-5-1 session publish: 4776 tokens/s, measured dtype, after seed 15031\"}}\n"}
+,{"stream_name":"stdout","time":6223.804790652,"data":"seed 15032: starting pair (remaining 4.77 h fits pair 1.53 h + 45 min reserve (rule 1))\n"}
+,{"stream_name":"stdout","time":6223.806015767,"data":"arms in parallel (random -\u003e cuda:0, adaptive -\u003e cuda:1)\n"}
+,{"stream_name":"stdout","time":11917.015898459,"data":"seed 15032: pair complete ({'random': 10.397685289382935, 'adaptive': 10.39820384979248})\n"}
+,{"stream_name":"stdout","time":11917.028015788,"data":"remote publish: pushing 2 seed version(s), 12.7 GiB of handoff\n"}
+,{"stream_name":"stdout","time":11917.028075954,"data":"remote publish: attempt 1/3 starting (2 seed version(s), 12.7 GiB)\n"}
+,{"stream_name":"stdout","time":11977.032337622,"data":"remote publish: still pushing 2 seed version(s) (12.7 GiB) after 1.0 min\n"}
+,{"stream_name":"stdout","time":12037.032417139,"data":"remote publish: still pushing 2 seed version(s) (12.7 GiB) after 2.0 min\n"}
+,{"stream_name":"stdout","time":12097.032688112,"data":"remote publish: still pushing 2 seed version(s) (12.7 GiB) after 3.0 min\n"}
+,{"stream_name":"stdout","time":12152.998986325,"data":"remote publish: sid123123234/act-v0-5-2-control-p2 version pushed (2 seed version(s)) in 3.9 min\n"}
+,{"stream_name":"stdout","time":12153.000825372,"data":"{\"remote_publish\": {\"dataset\": \"sid123123234/act-v0-5-2-control-p2\", \"error\": null, \"fingerprint\": \"1e89295b8bd184719698d0dd2c180ea7ca3706f48238550525ad56d555045baf\", \"folder\": \"/tmp/act-lab-control-bf4dfe8922/artifacts/datasets-control/act-checkpoints/v0-5-1\", \"seeds_published\": 2, \"status\": \"published\", \"version_notes\": \"v0-5-1 session publish: 4776 tokens/s, measured dtype, after seed 15032\"}}\n"}
+,{"stream_name":"stdout","time":12153.000922556,"data":"seed 15033: starting pair (remaining 3.13 h fits pair 1.53 h + 45 min reserve (rule 1))\n"}
+,{"stream_name":"stdout","time":12153.05149647,"data":"arms in parallel (random -\u003e cuda:0, adaptive -\u003e cuda:1)\n"}
+,{"stream_name":"stdout","time":17884.082942277,"data":"seed 15033: pair complete ({'random': 10.398005485534668, 'adaptive': 10.397709369659424})\n"}
+,{"stream_name":"stdout","time":17884.091114416,"data":"remote publish: pushing 3 seed version(s), 19.0 GiB of handoff\n"}
+,{"stream_name":"stdout","time":17884.091155733,"data":"remote publish: attempt 1/3 starting (3 seed version(s), 19.0 GiB)\n"}
+,{"stream_name":"stdout","time":17944.092711961,"data":"remote publish: still pushing 3 seed version(s) (19.0 GiB) after 1.0 min\n"}
+,{"stream_name":"stdout","time":18004.093023369,"data":"remote publish: still pushing 3 seed version(s) (19.0 GiB) after 2.0 min\n"}
+,{"stream_name":"stdout","time":18064.093229813,"data":"remote publish: still pushing 3 seed version(s) (19.0 GiB) after 3.0 min\n"}
+,{"stream_name":"stdout","time":18124.09352249,"data":"remote publish: still pushing 3 seed version(s) (19.0 GiB) after 4.0 min\n"}
+,{"stream_name":"stdout","time":18184.09369078,"data":"remote publish: still pushing 3 seed version(s) (19.0 GiB) after 5.0 min\n"}
+,{"stream_name":"stdout","time":18234.31085707,"data":"remote publish: sid123123234/act-v0-5-2-control-p2 version pushed (3 seed version(s)) in 5.8 min\n"}
+,{"stream_name":"stdout","time":18234.312912112,"data":"{\"remote_publish\": {\"dataset\": \"sid123123234/act-v0-5-2-control-p2\", \"error\": null, \"fingerprint\": \"bca4b35a3e5aba350e4a128b4092f153593654ebb48ad8e4fd49598e869647fd\", \"folder\": \"/tmp/act-lab-control-bf4dfe8922/artifacts/datasets-control/act-checkpoints/v0-5-1\", \"seeds_published\": 3, \"status\": \"published\", \"version_notes\": \"v0-5-1 session publish: 4776 tokens/s, measured dtype, after seed 15033\"}}\n"}
+,{"stream_name":"stdout","time":18234.314848583,"data":"seed 15034: remaining 1.44 h does not fit pair 1.53 h + 45 min reserve (rule 1)\n"}
+,{"stream_name":"stdout","time":18234.316586015,"data":"session done: 3 pair(s) completed, 1.44 h remaining\n"}
+,{"stream_name":"stdout","time":18234.367893496,"data":"Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.2)\n"}
+,{"stream_name":"stdout","time":18234.372355664,"data":"remote publish skipped: 3 seed version(s) are already published as this state (bca4b35a3e5a); re-uploading them would spend the session's last minutes on a copy that exists\n"}
+,{"stream_name":"stdout","time":18234.372793517,"data":"{\"remote_publish\": {\"dataset\": \"sid123123234/act-v0-5-2-control-p2\", \"error\": null, \"fingerprint\": \"bca4b35a3e5aba350e4a128b4092f153593654ebb48ad8e4fd49598e869647fd\", \"folder\": \"/tmp/act-lab-control-bf4dfe8922/artifacts/datasets-control/act-checkpoints/v0-5-1\", \"seeds_published\": 3, \"status\": \"already_published\", \"version_notes\": \"v0-5-1 session publish: 4776 tokens/s, measured dtype, after seed 15033\"}}\n"}
+,{"stream_name":"stdout","time":18234.372815648,"data":"{\"declared_seed_queue\": [15024, 15025, 15026, 15027, 15028, 15029, 15030, 15031, 15032, 15033, 15034, 15035], \"dtype\": \"fp16\", \"dtype_rule_tokens_per_second\": 1363.222014792025, \"latest_published_seed\": 15033, \"measured_tokens_per_second\": 4776.370043225871, \"pair_time_hours\": 1.5292583290000001, \"pairs_completed\": 3, \"protocol\": \"v0-compute-efficiency-5.2\", \"remaining_hours_at_entry\": 6.4283420451058335, \"schedule_tokens_per_second\": 4776.370043225871, \"seeds_requested\": [15031, 15032, 15033, 15034, 15035]}\n"}
+,{"stream_name":"stdout","time":18234.896099631,"data":"kept /kaggle/working/session-log.json\n"}
+,{"stream_name":"stdout","time":18234.896362109,"data":"kept /kaggle/working/remote-publish-log.json\n"}
+,{"stream_name":"stdout","time":18234.898748008,"data":"kept 3 seed summaries in the kernel output (publish insurance)\n"}
+,{"stream_name":"stdout","time":18234.898881244,"data":"disk working: total 19.5 GiB | free 19.5 GiB\n"}
+,{"stream_name":"stdout","time":18234.898893835,"data":"disk input: total 19.5 GiB | free 19.5 GiB\n"}
+,{"stream_name":"stdout","time":18234.898912239,"data":"disk tmp: total 8156.9 GiB | free 1048.2 GiB\n"}
+,{"stream_name":"stdout","time":18234.911435071,"data":"--- df -h ---\n"}
+,{"stream_name":"stdout","time":18234.911466884,"data":"Filesystem      Size  Used Avail Use% Mounted on\n"}
+,{"stream_name":"stdout","time":18234.911472464,"data":"/dev/loop2       20G  7.4M   20G   1% /kaggle/working\n"}
+,{"stream_name":"stdout","time":18234.911476238,"data":"overlay         8.0T  7.0T  1.1T  88% /\n"}
+,{"stream_name":"stdout","time":18234.911479866,"data":"overlay         8.0T  7.0T  1.1T  88% /\n"}
+,{"stream_name":"stdout","time":18234.911483342,"data":"overlay         8.0T  7.0T  1.1T  88% /\n"}
+,{"stream_name":"stdout","time":18234.911636143,"data":"writable /kaggle/working: yes\n"}
+,{"stream_name":"stdout","time":18234.911987784,"data":"writable /kaggle/temp: yes\n"}
+,{"stream_name":"stdout","time":18234.91222918,"data":"writable /tmp: yes\n"}
+,{"stream_name":"stdout","time":18234.913641115,"data":"handoff root /tmp/act-lab-control-bf4dfe8922/artifacts/datasets-control: 19.04 GiB\n"}
+,{"stream_name":"stdout","time":18234.913914146,"data":"=== control session finished after 5.06 h ===\n"}
+,{"stream_name":"stderr","time":18238.864469475,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":18238.864498418,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":18239.444178278,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":18239.444229758,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":18240.37162413,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
+,{"stream_name":"stderr","time":18241.569978406,"data":"[NbConvertApp] Writing 487366 bytes to __results__.html\n"}
+]

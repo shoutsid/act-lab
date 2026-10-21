@@ -1,5 +1,59 @@
 # Campaign session logs - the evidence behind the exit-publish numbers
 
+## The empty shard paid off: zero restore, three seeds, every publish landed (2026-10-21 17:35Z)
+
+Kernel **v3** ran the control queue's third session on `--seeds 15031-15035`, i.e. into
+`act-v0-5-2-p2-control`, which had **no version**. The startup restore therefore downloaded
+nothing (`no remote version of sid123123234/act-v0-5-2-control-p2 available yet; training from
+scratch`), against the **18.99 GiB in 2.3 min** the same declaration would have paid to reach
+15030 through the seven-seed shard. It trained **15031-15033** and published each pair; the
+first version this shard has ever carried was written by this session.
+
+| file | what it is | sha256 |
+|---|---|---|
+| `session-control-20261021T173548Z-live.log` | the driver's capture: the restore line, the three pairs, all three pair-time pushes, the rule-1 stop with 1.44 h left, and the `already_published` exit | `da9c018030a40265edaef3ed3de044efffcf0e25fe47c209a31834291ad58e39` |
+| `session-control-20261021T173548Z-kernel-log.json` | the platform log (15,889 B of `stdout` events) - a clean exit, so the session's own account survived | `dd3d7d15d89b187b0d97f8f22e24937c0795b840925b63ba69c6e9a91d88db1c` |
+| `session-control-20261021T173548Z-session-log.json` | the record: 3 pairs, `latest_published_seed: 15033`, `4776 tokens/s`, code revision `2b4a647` | `a7c9a937d55711a6cc239610e93e8ea96ed10ba23625cd339bc6ad99b10a7f8e` |
+
+| | |
+|---|---|
+| Window / startup | declared 6.5 h, **4.3 min** of startup, run **5.06 h**; stopped by rule 1 with **1.44 h** left (a fourth pair needs 1.53 h + 45 min reserve) |
+| Restore | **none** - the shard had no version; the whole session's handoff stayed at the 19.04 GiB it built, not 19 GiB restored plus 19 GiB built |
+| Pairs | 15031 `random 10.398030` / `adaptive 10.397951` (**-7.9e-5**); 15032 `random 10.397685` / `adaptive 10.398204` (**+5.19e-4**); 15033 `random 10.398005` / `adaptive 10.397709` (**-2.96e-4**) |
+| Pair-time pushes | 1 seed / **6.4 GiB** in 3.7 min; 2 / **12.7 GiB** in 3.9 min; 3 / **19.0 GiB** in 5.8 min - all `status: published` |
+| Exit publish | **skipped** as `already_published` at fingerprint `bca4b35a3e5a`; the 19.04 GiB that was staged is the shard, and it was already up |
+| Cost | **5.06 GPU-h**: quota **23.36 -> 1.57 of 30 h** (refresh 2026-10-24) |
+
+**What this measures, and what it does not.** The scheduling claim the 2026-10-21 fire was made on
+holds: a declaration that resolves to an empty shard restores nothing, publishes into a new small
+shard, and never approaches the 95 GiB footprint that went read-only on 2026-10-19. What it does
+*not* do is finish the queue: the 6.5 h window fits three whole pairs, so 15034-15035 were never
+started (`seed 15034: remaining 1.44 h does not fit pair 1.53 h + 45 min reserve (rule 1)`), and
+**15030** - the seventh seed of the other shard - was not in this declaration at all.
+
+**The queue is now 9 of 12**: 15024-15029 in `act-v0-5-2-control`, 15031-15033 in
+`act-v0-5-2-p2-control`. `campaign_health --queue control --readout`: adaptive won **5 of 9**,
+mean `adaptive - random` **+0.000020 nats**, every arm within **0.001281 nats** of
+`ln(32768) = 10.3972` - still the uniform floor, still not a verdict.
+
+**Next, in the order the registration puts it.**
+
+1. **15034-15035**, which the waiting driver (pid 147498, `--queue control --hours 6.5 --seeds
+   15031-15035 --wait-for-quota`) fires at the 2026-10-24 refresh. Its declaration now resolves to
+   shard 1 *with a version*, so that session restores ~19.0 GiB, skips the three this one
+   published, and trains two pairs (~3.1 h) before pushing five seeds (~31.8 GiB).
+2. **15030**, which needs `--seeds 15024-15030` of its own: it is the seventh seed of shard 0, so
+   publishing it restores the six-seed shard (**~38 GiB**) and re-uploads all seven (**~44 GiB**).
+   With the seed it trains (~6.4 GiB) that session's local footprint is ~**88 GiB**, close to the
+   95 GiB that went EROFS - the one remaining control seed that carries the wall's shape.
+3. The **null queue** (§2c), 0 of 12 and never fired on the GPU.
+
+**One waste this state names before it happens.** Once 15034-15035 land, every seed in the
+waiting driver's declaration is complete, so the session after that can only skip: it restores
+~19.0 GiB and produces nothing, and the driver reports the no-progress exit rather than looping.
+That is the exit code doing its job; the next fire is the narrowed `--seeds 15024-15030` above,
+not another push of the same command.
+
 ## The control queue's first two sessions, and the shard-scoped fire that spends the last hours (2026-10-20/21)
 
 The control queue (§2b) is at **6 of 12** after two sessions of the declared block
@@ -37,8 +91,8 @@ window, and hours left at the refresh are lost. Two schedulings fit the window:
   can run, and it leaves 15030 as a single-seed session of its own later.
 
 So kernel **v3** went out as `--hours 6.5 --seeds 15031-15035` (fitted window, precedent
-2026-09-27; `--wait-for-quota` so the 2026-10-24 refresh is spent without an operator). It is
-`RUNNING` on a T4 as of 2026-10-21 12:35Z, with the restore line still to come in its log.
+2026-09-27; `--wait-for-quota` so the 2026-10-24 refresh is spent without an operator). It ran
+5.06 h and returned **COMPLETE** with three pairs - see the leading section for what it measured.
 15030 remains the queue's one expensive seed: it can only be published by restoring the
 seven-seed shard and re-uploading it whole.
 

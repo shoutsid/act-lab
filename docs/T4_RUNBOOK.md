@@ -236,6 +236,19 @@ instead of leaving the operator to re-run. Do not read a fitted window as a
 protocol change: the pair schedule, seeds, knobs and criteria are untouched,
 and the session records the window it was given.
 
+**Measured the same day, and its own limit.** That fire returned `COMPLETE` in
+**5.06 h** with three pairs (`15031-15033`) and `0 GiB` of restore - the
+shard's first version is the one it pushed (6.4 -> 12.7 -> 19.0 GiB, 3.7 / 3.9 /
+5.8 min), and the exit publish reused fingerprint `bca4b35a3e5a`. Two numbers
+to carry forward: a **6.5 h** window fits exactly **three** 1.53 h pairs (the
+fourth needs 1.53 h + 45 min reserve, so it stopped with 1.44 h unused), and a
+declaration of five seeds is a *scope*, not a promise that five train. When
+every seed in the declaration is already published, the next session can only
+skip: it still pays the restore (~19.0 GiB, once shard 1 has a version) and
+reports the driver's **no-progress** exit, which is the guard working. The next
+fire in that state is a narrower declaration for the seeds actually missing
+(`--seeds 15024-15030` for 15030 alone), not the same command again.
+
 A script kernel receives **only** `code_file`: the CLI sends that file's text
 and nothing else from the push folder, and the metadata has no field for
 environment variables. The staged entry script is therefore generated with **every** knob the kernel

@@ -1,5 +1,45 @@
 # ACT Implementation Status
 
+## The control queue is 9/12: the empty shard trained three seeds and restored nothing (2026-10-21 17:35Z)
+
+Kernel **v3** finished after **5.06 h** with three pairs, all published into
+`sid123123234/act-v0-5-2-control-p2` - a shard that had **no version** when the session started,
+which is exactly why it was chosen. The startup restore downloaded nothing; the same declaration
+against the seven-seed shard would have paid **18.99 GiB in 2.3 min** to reach one seed.
+
+| | |
+|---|---|
+| **Block state** | `campaign_health --queue control`: **9 of 12** (15024-15029, 15031-15033), kernel `COMPLETE`, driver lock held by pid 147498 (waiting). Quota **1.57 / 30 h**, refresh 2026-10-24. |
+| **Window** | declared 6.5 h, **4.3 min** of startup, ended at **5.06 h** with **1.44 h** unused - `seed 15034: remaining 1.44 h does not fit pair 1.53 h + 45 min reserve (rule 1)`. A 6.5 h window fits three whole pairs at 1.53 h, so five declared seeds could never all train in it. |
+| **Restore** | **none** - `no remote version of sid123123234/act-v0-5-2-control-p2 available yet; training from scratch (atomic pairs make this safe)`. The prediction that an empty shard costs 0 GiB is now a measurement. |
+| **Pairs** | 15031 `random 10.398030` / `adaptive 10.397951` (**-7.9e-5**); 15032 `random 10.397685` / `adaptive 10.398204` (**+5.19e-4**); 15033 `random 10.398005` / `adaptive 10.397709` (**-2.96e-4**). |
+| **Publishes** | 1 seed / **6.4 GiB** in 3.7 min; 2 / **12.7 GiB** in 3.9 min; 3 / **19.0 GiB** in 5.8 min, all `published`; exit **`already_published`** at fingerprint `bca4b35a3e5a`. Handoff at exit **19.04 GiB**. |
+| **Peak footprint** | ~19 GiB staged and no restore at all, against the **95.0 GiB** that went EROFS on 2026-10-19. The wall was never in reach. |
+| **Cost** | **5.06 GPU-h**; quota **23.36 -> 1.57 / 30 h** (refresh 2026-10-24). Nothing can be fired until then. |
+| **Evidence** | Live capture, kernel log (**15,889 B** of `stdout`, a clean exit) and session record are committed under `artifacts/v0-session-logs/` with their sha256s in its `NOTES.md`. Code revision **`2b4a647`**. |
+
+**The readout, which is still not the verdict.** `campaign_health --queue control --readout` now
+reads nine: adaptive won **5 of 9**, mean `adaptive - random` **+0.000020 nats**, every arm within
+**0.001281 nats** of `ln(32768) = 10.3972`, the signal-free floor. Adding three seeds moved the
+mean by 1.4e-5 - the same picture as the primary block's twelve, and the registered rule still
+withholds itself on an incomplete queue.
+
+**What is left, and what each costs.**
+
+| Seed(s) | Shard | Session shape |
+|---|---|---|
+| **15034-15035** | 1 (`act-v0-5-2-p2-control`, now 3 seeds / **19.04 GiB**) | The waiting driver's declaration (`--seeds 15031-15035`) resolves here at the 2026-10-24 refresh: restore **~19.0 GiB**, skip the three published, train two pairs (~3.1 h), push five seeds (~31.8 GiB). |
+| **15030** | 0 (`act-v0-5-2-control`, 6 seeds) | Needs its own fire, `--seeds 15024-15030`: restore the six-seed shard (**~38 GiB**), train one pair, re-upload all seven (**~44 GiB**). With the 6.4 GiB it trains that is a **~88 GiB** local footprint - the closest any remaining session comes to the 95 GiB that died, because a version replaces its content and the six restored seeds must travel with the new one. |
+| **Null queue** (§2c) | - | **0 of 12**, never fired on the GPU; it is the third queue in the registered order and the last input the verdict needs. |
+
+**A no-op session the driver will report, and should.** After 15034-15035 land, every seed in the
+waiting declaration is complete, so the session the driver pushes next can only skip all five: it
+restores ~19.0 GiB and trains nothing, and the driver stops on its no-progress exit (4) rather
+than looping. That exit is the guard working, not a failure; the next fire is the narrowed
+`--seeds 15024-15030` above. Nothing was changed to avoid it: a driver edit that pre-checks
+published seeds is a change with its own tests, and one skipped startup is cheaper than an
+unverified one.
+
 ## The control queue is 6/12, and its last week-hours went to the empty shard (2026-10-21)
 
 Two control (§2b) sessions ran the declared `15024-15030` block, which is the whole seven-seed
@@ -13,7 +53,7 @@ footprint stayed near 19 GiB restored plus ~19 GiB staged - nowhere near the 202
 | **Readout (not a verdict)** | adaptive won **3 of 6**, mean `adaptive - random` **+0.000006 nats**, every arm within **0.001281 nats** of `ln(32768) = 10.3972`. Same uniform floor as the primary block's 12; the queue is incomplete, so the registered rule still withholds itself. |
 | **Cost** | quota **16.71 -> 23.36 h** across the two sessions (~3.3 GPU-h each). |
 | **What the driver then did** | It stopped at exit 3 rather than pushing a session the week cannot finish: **6.64 h** remained against the declared 7 h, and unused quota expires at the refresh. `campaign_health` called that state `STALLED` (no session live, quota available, lock unheld) - the state both 2026-09 losses sat in. |
-| **The scheduling choice** | `15024-15030` would restore the ~38 GiB shard to train one seed and re-upload it as a **~44 GiB** version, with the same size in staging. `15031-15035` resolves to the **empty** `act-v0-5-2-p2-control`: **0 GiB restore**, and the publish writes a new small shard. Fired as kernel **v3**, `--hours 6.5 --seeds 15031-15035 --wait-for-quota` - the window is a scheduling knob (precedent 2026-09-27), the declaration is a disk budget, and the wait spends the 2026-10-24 refresh without an operator. `RUNNING` on a T4 as of 12:35Z. |
+| **The scheduling choice** | `15024-15030` would restore the ~38 GiB shard to train one seed and re-upload it as a **~44 GiB** version, with the same size in staging. `15031-15035` resolves to the **empty** `act-v0-5-2-p2-control`: **0 GiB restore**, and the publish writes a new small shard. Fired as kernel **v3**, `--hours 6.5 --seeds 15031-15035 --wait-for-quota` - the window is a scheduling knob (precedent 2026-09-27), the declaration is a disk budget, and the wait spends the 2026-10-24 refresh without an operator. `RUNNING` on a T4 as of 12:35Z, and back `COMPLETE` at 17:35Z - see the leading entry. |
 | **The seed that stays expensive** | **15030** is the seventh seed of its shard, so publishing it means restoring the six-seed shard and re-uploading all seven - the one remaining control seed that costs a full-shard push, at the 44 GiB size that has landed before. |
 
 ## The primary block is complete 12/12, and the scoping fix is verified in production (2026-10-20)
