@@ -1,5 +1,33 @@
 # ACT Implementation Status
 
+## One session cannot declare two shards: the control tail is two fires, and the launcher now sequences them (2026-10-22)
+
+The three control seeds still missing do not share a shard - **15030** is the seventh seed of
+`act-v0-5-2-control`, **15034-15035** are in `act-v0-5-2-control-p2` - so the declaration the
+runbook printed and the launcher used (`--queue control`, i.e. the whole declared block) resolves
+to **both** shards, and that is the 2026-10-19 shape rather than a session: the restore downloads
+both versions and the pair-time push stages the whole of the shard the trained seed belongs to.
+No quota was spent on it. Nothing was live when this was written: the control waiter (pid 147498)
+was sleeping to the refresh holding the lock, with **1.57 / 30 h** left until **2026-10-24**.
+
+| | |
+|---|---|
+| **The shape that was reachable** | Restore **37.85 GiB** (shard 0, six seeds) + **19.09 GiB** (shard 1, three seeds) = **56.94 GiB**, then 15030's pair (**+6.4**), then the pair-time push stages all seven of shard 0 (**+44.13**) = **~104 GiB** at the push - above the **95.0 GiB** that went EROFS on 2026-10-19, and the same mechanism (a version replaces its content, so the restored seeds travel with the new one). Training 15034-15035 first does not help: shard 1's push is 31.8 GiB on top of the same 56.94 restored. |
+| **The rule, applied where the declaration is chosen** | `scripts/kaggle_queue.py` now refuses (exit **7**, `EXIT_DECLARATION_SPANS_SHARDS`) a declaration that resolves to more than one shard **before** the lock, the code dataset, the staging or any quota gate, and prints each shard's own narrowed declaration. The membership is the declared positional rule (`act.ops.kaggle_remote.shard_members`), so the check cannot disagree with the publish path; an unsharded queue (`null`, `shard_seeds = 0`) is unaffected, as is any single-shard declaration. |
+| **The launcher is the sequenced path** | `scripts/run_gate4_campaign.sh` carries a **step list per queue** (`SESSION_STEPS`, `CONTROL_STEPS = 15031-15035, 15024-15030`, `NULL_STEPS`) and fires **one session per step** (`--max-sessions 1`). A step whose seeds are all published is **skipped** from `campaign_health --json`, so the no-op session the 2026-10-21 entry anticipated (restore ~19 GiB, train nothing, exit 4) is not pushed at all; a step that spans two shards is refused with the same rule (exit 7) and names the split. `DRY_RUN=1` prints the plan and pushes nothing, and the health block is no longer asked for a `verdict` queue it does not have. |
+| **Pinned** | `tests/test_kaggle_queue.py`: +3 (a two-shard declaration is refused before any push and names both narrowed declarations; a single-shard declaration is driven; the null queue declares its whole block), and three existing `main()` tests now pass `--seeds 15024-15030`, which is what a paired queue requires. **93 pass** in that file; the full suite is **2154 passed, 1 failed** - `test_training_distributed.py::test_benchmark_artifact_carries_the_gpu_inventory`, a throughput benchmark that reads 108 h/pair under the parallel suite's load, passes alone and on `58591d6` (verified in a worktree), and is unrelated to this change. |
+| **Verified live, without spending quota** | `kaggle_queue.py --queue control` (and `session`) now prints the two shards and their narrowed declarations, exit **7**; `DRY_RUN=1 bash scripts/run_gate4_campaign.sh` plans control step 1 (`--seeds 15031-15035`), control step 2 (`--seeds 15024-15030`), the null block, then the verdict, and **skips both session steps** as already published; a temporary copy with `CONTROL_STEPS=("15024-15035")` refused with exit 7 before any push. |
+| **The week's plan, from measured numbers** | control shard 1: restore 19.09 GiB, train two pairs (~3.1 h), push **31.8 GiB** - the shape that landed on 2026-10-20. control shard 0: restore **37.85 GiB**, train **15030** (~1.5 h), push **44.13 GiB** - the near-wall fire, **~88-104 GiB** peak depending on whether the restore is still on disk when the staging tar is written. null queue: 12 single-arm seeds in one version (`~3.2 GiB`/seed, `~38 GiB` final push); **unmeasured on the GPU** - by the measured 1.53 h per two-arm pair it is ~9-10 h of training plus the cumulative pushes, so two sessions. verdict: CPU, free. |
+| **What was relaunched** | The idle waiter (pid **147498**, `--seeds 15031-15035 --hours 6.5`, parked in `hrtimer_nanosleep` since 2026-10-21T13:28Z with no session live) was stopped and the sequenced launcher started detached, appending to `artifacts/gate4-campaign.log` - one process for the whole remaining campaign, because a second driver on the same queue is refused (exit 6) and the launcher's step list is now the only thing that fires the second shard. |
+
+**What this does not establish.** That 15030's fire survives: **~88 GiB** is the projection if the staging tar
+is written after the restore's scratch is released, and the 2026-10-19 death says the writable layer gives
+out somewhere around **90-100 GiB** (82 survived, 95 died). The falsifier is the session's own publish
+heartbeat: if it dies inside the 44.13 GiB push, the wall is lower than the landed 44.13 GiB payload and
+the shard rule needs the streaming answer; if it lands, the block's last seed is published at the only
+shape the record has shown to land. The null queue has never run on the GPU at all - its first session
+is a test of that path, not a formality.
+
 ## The control queue is 9/12: the empty shard trained three seeds and restored nothing (2026-10-21 17:35Z)
 
 Kernel **v3** finished after **5.06 h** with three pairs, all published into

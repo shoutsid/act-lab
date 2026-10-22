@@ -141,8 +141,12 @@ see §3; the registered first pass is 6 pairs per session, which would be two),
 with slack for a session that advances less than a full block:
 
 ```bash
-python scripts/kaggle_queue.py --queue session
-python scripts/kaggle_queue.py --queue control --max-sessions 8
+# A paired queue is driven one handoff shard per session (the paragraph below);
+# each command names the shard that session may still write.
+python scripts/kaggle_queue.py --queue session  --seeds 15024-15030
+python scripts/kaggle_queue.py --queue session  --seeds 15031-15035
+python scripts/kaggle_queue.py --queue control  --seeds 15031-15035 --max-sessions 8
+python scripts/kaggle_queue.py --queue control  --seeds 15024-15030 --max-sessions 8
 python scripts/kaggle_queue.py --queue null --max-sessions 8    # §2c do-nothing baseline
 python scripts/kaggle_queue.py --queue verdict          # after the three queues
 python scripts/kaggle_queue.py --queue preflight        # one-shot diagnostics
@@ -158,8 +162,21 @@ that has no seed left in shard 0 neither downloads its 44.13 GiB nor carries
 it while staging the shard it does push. Use it when the remaining seeds all
 live in one shard - 2026-10-20, the last two seeds are in shard 1 and the
 declared 12-seed block was staging 25.5 GiB on top of a 95 GiB container
-footprint (see `docs/IMPLEMENTATION_STATUS.md`). The default is unchanged: the
-whole declared block.
+footprint (see `docs/IMPLEMENTATION_STATUS.md`).
+
+**One session declares one shard, and the driver enforces it** (2026-10-22).
+The declaration is a disk budget on both ends of a session: the restore
+downloads every shard it resolves to, and the pair-time push stages the *whole*
+of the shard the trained seed belongs to. A declaration spanning two shards
+therefore holds one shard's restored bytes while it stages the other's -
+`37.85 + 19.09` GiB restored plus 6.4 GiB trained plus a 44 GiB staging tar,
+the footprint that went read-only on 2026-10-19. So a sharded queue
+(`shard_seeds > 0`) **refuses** such a declaration with exit **7** before
+staging, the code dataset or the quota, printing each shard's own narrowed
+declaration. The default (whole declared block) is still what an *unsharded*
+queue declares, and the null queue is one version by declaration
+(`shard_seeds = 0`). Fire one session per shard, in shard order;
+`scripts/run_gate4_campaign.sh` sequences them (see section 3).
 
 `--wait-for-quota` is for the whole campaign rather than one queue: the three
 queues need ~55 GPU-hours against a 30 GPU-hour week, so no single week can
@@ -248,6 +265,31 @@ skip: it still pays the restore (~19.0 GiB, once shard 1 has a version) and
 reports the driver's **no-progress** exit, which is the guard working. The next
 fire in that state is a narrower declaration for the seeds actually missing
 (`--seeds 15024-15030` for 15030 alone), not the same command again.
+
+**The launcher sequences shards now, and refuses the declaration it cannot
+carry (2026-10-22).** The control queue's remaining three seeds sit in *both*
+shards - 15030 is the seventh seed of `act-v0-5-2-control`, 15034-15035 are in
+`-p2` - so neither a plain `--queue control` nor the launcher's previous
+single declaration can spend them: both resolve to two shards, which the driver
+now refuses (exit **7**) for the reason in the `--seeds` paragraph above.
+`scripts/run_gate4_campaign.sh` therefore carries a **step list per queue**
+(`SESSION_STEPS`, `CONTROL_STEPS`, `NULL_STEPS`), each step one shard in the
+order its shard must be spent, and:
+
+- fires **one session per step** (`--max-sessions 1`), so a step that finishes
+  cannot be followed by the no-op session described above;
+- **skips a step whose seeds are all published**, read from
+  `campaign_health --json` rather than assumed - an unreadable listing runs the
+  step instead of skipping work;
+- **refuses a step that spans two shards** before any session is staged (exit
+  7), printing each shard's own declaration - the same rule as the driver, held
+  in the place that picks the declarations;
+- prints the whole plan and pushes nothing under `DRY_RUN=1`.
+
+The 2026-10-22 relaunch replaced the idle `--seeds 15031-15035` waiter with
+this sequence, so the 2026-10-24 refresh spends control shard 1 (15034-15035),
+then shard 0 (15030), then the null queue, then the verdict - the first time
+the remaining campaign needs no operator between those fires.
 
 A script kernel receives **only** `code_file`: the CLI sends that file's text
 and nothing else from the push folder, and the metadata has no field for

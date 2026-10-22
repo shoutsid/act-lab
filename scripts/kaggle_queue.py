@@ -23,7 +23,9 @@ Exit codes: 0 = queue complete, 1 = the session failed, 2 = the session budget
 ran out with seeds still missing (re-run it, or raise ``--max-sessions``), 3 =
 the weekly quota cannot cover another session (re-run after the refresh), 4 =
 the last session completed without advancing the queue (fix the cause, then
-re-run - another push would repeat it).
+re-run - another push would repeat it), 6 = another driver holds the queue's
+lock, 7 = the seed declaration spans two handoff shards (declare one shard per
+session; the footprint that went read-only on 2026-10-19).
 
 Usage:
 
@@ -102,6 +104,14 @@ EXIT_NO_PROGRESS = 4
 # pushed, and the second push replaced the running kernel's version - which the
 # platform reports as an ERROR with no log and no output at all.
 EXIT_ALREADY_RUNNING = 6
+# A seed declaration that spans two handoff shards. The declaration is a disk budget as
+# well as a training scope: the startup restore downloads every shard it resolves to, and
+# the pair-time push stages the whole of the shard it belongs to, so a two-shard session
+# holds one shard's bytes while it stages the other's - 44.13 GiB restored + 19.09 GiB
+# restored + 6.4 GiB trained + 25.5 GiB staged = the 95.0 GiB footprint that went EROFS on
+# 2026-10-19. Refused before staging, the code dataset or the quota, because the fix is a
+# narrower declaration and a fired session cannot recover from it.
+EXIT_DECLARATION_SPANS_SHARDS = 7
 # scripts/v0_verdict.py's distinct code for "no verdict was produced". It is
 # deliberately not 1, which means a real cost FAIL, so an operator error can
 # never be recorded as the hypothesis being false.
@@ -1384,6 +1394,90 @@ def queue_lock(kernel_id: str):
         os.close(handle)
 
 
+def declared_seed_numbers(spec: str) -> tuple[int, ...]:
+    """The seeds of a ``--seeds`` declaration: ``A-B`` or a comma list.
+
+    The two forms ``act.training.cli`` accepts. A malformed spec returns empty
+    rather than raising: the session's own parser reports it, and this check
+    only has to answer "which shards does this touch" when it can.
+    """
+    spec = spec.strip()
+    if "-" in spec and "," not in spec:
+        start, end = spec.split("-", 1)
+        if not (start.strip().isdigit() and end.strip().isdigit()):
+            return ()
+        return tuple(range(int(start), int(end) + 1))
+    numbers: list[int] = []
+    for value in spec.split(","):
+        value = value.strip()
+        if not value:
+            continue
+        if not value.isdigit():
+            return ()
+        numbers.append(int(value))
+    return tuple(numbers)
+
+
+def declaration_shards(
+    queue_mode: str, seeds: str | None
+) -> list[tuple[str, tuple[int, ...]]]:
+    """The handoff shards one session's declaration resolves to, in shard order.
+
+    One shard is what a session can afford: it restores every shard it declares
+    and then stages the whole of the shard it pushes. The shard membership is the
+    declared positional rule (``act.ops.kaggle_remote.shard_members``), not a
+    measurement, so this answers the same question the publish path does.
+    """
+    queue = kaggle_t4.QUEUES[queue_mode]
+    if queue.shard_seeds <= 0:
+        return []
+    from act.ops.kaggle_remote import shard_dataset, shard_index
+    from act.training.v0_runner import DECLARED_SEEDS
+
+    declared = (
+        tuple(DECLARED_SEEDS) if seeds is None else declared_seed_numbers(seeds)
+    )
+    chosen: dict[int, list[int]] = {}
+    for seed in declared:
+        if seed not in DECLARED_SEEDS:
+            continue
+        index = shard_index(int(seed), DECLARED_SEEDS, queue.shard_seeds)
+        chosen.setdefault(index, []).append(int(seed))
+    return [
+        (shard_dataset(queue.dataset, index), tuple(chosen[index]))
+        for index in sorted(chosen)
+    ]
+
+
+def declaration_refusal(queue_mode: str, seeds: str | None) -> str | None:
+    """Why this declaration must not be fired, or ``None`` when it fits one shard."""
+    shards = declaration_shards(queue_mode, seeds)
+    if len(shards) < 2:
+        return None
+    lines = [
+        f"the {queue_mode} seeds declared here resolve to {len(shards)} handoff "
+        "shards, and one session holds every shard it restores while it stages "
+        "the whole of the shard it pushes - the 95.0 GiB footprint that went "
+        "read-only on 2026-10-19 "
+        "(docs/IMPLEMENTATION_STATUS.md; docs/handoff-sharding-design.md):",
+    ]
+    for dataset, members in shards:
+        lines.append(
+            f"  {dataset}: {len(members)} seed(s) {members[0]}-{members[-1]}"
+            f" -> declare --seeds "
+            + (
+                f"{members[0]}-{members[-1]}"
+                if tuple(members) == tuple(range(members[0], members[-1] + 1))
+                else ",".join(str(seed) for seed in members)
+            )
+        )
+    lines.append(
+        "fire one session per shard, in shard order (scripts/run_gate4_campaign.sh "
+        "sequences them); refusing before any quota is spent"
+    )
+    return "\n".join(lines)
+
+
 def drive(
     queue_mode: str,
     *,
@@ -1854,6 +1948,15 @@ def main(argv: list[str] | None = None) -> int:
     # waiter that released its lock would be exactly the second driver this
     # prevents. One-shot jobs take the lock too, so two of them cannot race each
     # other's push.
+    # A declaration spanning two handoff shards is refused here - before the lock,
+    # the code dataset and any staging - because the footprint it would build is
+    # the one that killed the container, and no session can recover from it.
+    if args.queue in kaggle_t4.QUEUES:
+        refusal = declaration_refusal(args.queue, args.seeds)
+        if refusal is not None:
+            print(refusal, flush=True)
+            return EXIT_DECLARATION_SPANS_SHARDS
+
     kernel = str(kaggle_t4.metadata_for(args.queue)["id"])
     try:
         with queue_lock(kernel):

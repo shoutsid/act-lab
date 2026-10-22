@@ -358,6 +358,67 @@ QUOTA_PAYLOAD = json.dumps(
 )
 
 
+def test_a_declaration_spanning_two_shards_is_refused_before_any_push(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The 2026-10-19 footprint is a *declaration*, so it is refused as one.
+
+    The control queue's remaining seeds sit in both shards, so the declared block
+    resolves to two: the session restores the 7-seed version (37.85 GiB) and the
+    5-seed one (19.09 GiB), trains a pair, and then stages 44 GiB of shard 0 on
+    top - the ~100 GiB shape that went EROFS. Nothing is pushed or staged, so the
+    cost is a refusal with the two per-shard declarations printed, not a session.
+    """
+    monkeypatch.setenv("ACT_QUEUE_LOCK_DIR", str(tmp_path / "locks"))
+    monkeypatch.setattr(
+        kaggle_queue, "drive", lambda *a, **k: pytest.fail("pushed a two-shard session")
+    )
+
+    code = kaggle_queue.main(["--queue", "control", "--seeds", "15024-15035"])
+
+    assert code == kaggle_queue.EXIT_DECLARATION_SPANS_SHARDS
+    printed = capsys.readouterr().out
+    assert "act-v0-5-2-control-p2" in printed
+    assert "--seeds 15024-15030" in printed
+    assert "--seeds 15031-15035" in printed
+
+
+def test_a_declaration_that_fits_one_shard_is_driven(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The narrowed declaration is the one the sharded path can carry."""
+    monkeypatch.setenv("ACT_QUEUE_LOCK_DIR", str(tmp_path / "locks"))
+    seen: dict[str, object] = {}
+
+    def fake_drive(*args, **kwargs):
+        seen.update(kwargs)
+        return kaggle_queue.EXIT_COMPLETE
+
+    monkeypatch.setattr(kaggle_queue, "drive", fake_drive)
+
+    assert kaggle_queue.main(["--queue", "control", "--seeds", "15031-15035"]) == 0
+    assert seen["seeds"] == "15031-15035"
+
+
+def test_the_null_queue_is_one_shard_and_declares_its_whole_block(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`shard_seeds=0` is one version, so the block needs no narrowing."""
+    monkeypatch.setenv("ACT_QUEUE_LOCK_DIR", str(tmp_path / "locks"))
+    seen: dict[str, object] = {}
+
+    def fake_drive(*args, **kwargs):
+        seen.update(kwargs)
+        return kaggle_queue.EXIT_COMPLETE
+
+    monkeypatch.setattr(kaggle_queue, "drive", fake_drive)
+
+    assert kaggle_queue.main(["--queue", "null"]) == 0
+    assert seen["seeds"] is None
+
+
 def test_parse_quota_reads_the_resource_line() -> None:
     quota = kaggle_queue.parse_quota(QUOTA_PAYLOAD)
 
@@ -517,7 +578,14 @@ def test_wait_for_quota_sleeps_and_retries_instead_of_exiting(monkeypatch) -> No
     quota = {"remaining_hours": 1.0, "refresh_at": "2026-09-26T00:00:00"}
     monkeypatch.setattr(kaggle_queue, "active_quota", lambda *a, **k: quota)
 
-    assert kaggle_queue.main(["--queue", "session", "--wait-for-quota"]) == 0
+    # One shard per session: the declared block spans two handoff shards, and a
+    # declaration that spans them is refused (EXIT_DECLARATION_SPANS_SHARDS).
+    assert (
+        kaggle_queue.main(
+            ["--queue", "session", "--seeds", "15024-15030", "--wait-for-quota"]
+        )
+        == 0
+    )
     assert waits == [quota]
 
 
@@ -532,7 +600,7 @@ def test_without_the_flag_a_short_week_still_exits_three(monkeypatch) -> None:
         lambda *a, **k: pytest.fail("waited without --wait-for-quota"),
     )
     assert (
-        kaggle_queue.main(["--queue", "session"])
+        kaggle_queue.main(["--queue", "session", "--seeds", "15024-15030"])
         == kaggle_queue.EXIT_QUOTA_INSUFFICIENT
     )
 
@@ -550,7 +618,15 @@ def test_the_wait_is_bounded_by_max_waits(monkeypatch) -> None:
     monkeypatch.setattr(kaggle_queue, "wait_for_refresh", lambda *a, **k: waits.append(1.0) or True)
 
     code = kaggle_queue.main(
-        ["--queue", "session", "--wait-for-quota", "--max-waits", "1"]
+        [
+            "--queue",
+            "session",
+            "--seeds",
+            "15024-15030",
+            "--wait-for-quota",
+            "--max-waits",
+            "1",
+        ]
     )
     assert code == kaggle_queue.EXIT_QUOTA_INSUFFICIENT
     assert attempts["count"] == 2  # one attempt, one wait, one more attempt
@@ -1617,10 +1693,16 @@ def test_a_second_driver_is_refused_rather_than_racing(
     kernel = str(kaggle_t4.metadata_for("session")["id"])
 
     with kaggle_queue.queue_lock(kernel):
-        assert kaggle_queue.main(["--queue", "session"]) == kaggle_queue.EXIT_ALREADY_RUNNING
+        assert (
+            kaggle_queue.main(["--queue", "session", "--seeds", "15024-15030"])
+            == kaggle_queue.EXIT_ALREADY_RUNNING
+        )
 
     # Released: the next driver runs rather than being locked out for good.
-    assert kaggle_queue.main(["--queue", "session"]) == kaggle_queue.EXIT_COMPLETE
+    assert (
+        kaggle_queue.main(["--queue", "session", "--seeds", "15024-15030"])
+        == kaggle_queue.EXIT_COMPLETE
+    )
 
 
 def test_the_lock_says_who_holds_it(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
