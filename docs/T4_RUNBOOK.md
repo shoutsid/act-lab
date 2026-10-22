@@ -169,8 +169,9 @@ The declaration is a disk budget on both ends of a session: the restore
 downloads every shard it resolves to, and the pair-time push stages the *whole*
 of the shard the trained seed belongs to. A declaration spanning two shards
 therefore holds one shard's restored bytes while it stages the other's -
-`37.85 + 19.09` GiB restored plus 6.4 GiB trained plus a 44 GiB staging tar,
-the footprint that went read-only on 2026-10-19. So a sharded queue
+`37.85 + 19.09` GiB restored plus 6.4 GiB trained plus a 44 GiB staging tar -
+the mechanism of the 2026-10-19 loss, at a larger size (that fire held 95.0 GiB
+with a 25.5 GiB tar). So a sharded queue
 (`shard_seeds > 0`) **refuses** such a declaration with exit **7** before
 staging, the code dataset or the quota, printing each shard's own narrowed
 declaration. The default (whole declared block) is still what an *unsharded*
