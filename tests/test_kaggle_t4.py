@@ -1094,3 +1094,103 @@ def test_a_partly_served_length_counts_as_missing(tmp_path: Path) -> None:
         {}, seeds=(42,), requested=[1200], expected=0
     ) == ["seed 42 at 1200 steps"]
     assert kaggle_t4._expected_candidates(tmp_path / "no-arm") == 0
+
+
+# --- the verdict's input: summaries, not checkpoints -----------------------
+
+
+class _FakeSummaryClient:
+    """The two client calls the verdict root needs, over a fixed listing."""
+
+    def __init__(self, listings: dict[str, list[str]]) -> None:
+        self.listings = listings
+        self.fetched: list[tuple[str, str]] = []
+
+    def list_files(self, dataset: str) -> list[str]:
+        return list(self.listings.get(dataset, []))
+
+    def download_file(self, dataset: str, file_name: str, target: Path) -> Path:
+        self.fetched.append((dataset, file_name))
+        path = Path(target) / file_name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"status": "complete"}), encoding="utf-8")
+        return path
+
+
+def test_the_summary_listing_reads_both_upload_layouts() -> None:
+    """Both layouts are live, and reading one is how a finished block reads as empty.
+
+    The push stages one ``seed-N.tar`` per seed with members rooted at ``seed-N/``,
+    so extraction yields ``seed-N/seed-N/reports/...``; the older flat layout is
+    ``seed-N/reports/...``. Measured 2026-10-24, a flat-only reader called all
+    twelve complete control seeds unreadable.
+    """
+    names = [
+        "seed-15024/seed-15024/reports/seed-summary.json",
+        "seed-15024/seed-15024/checkpoints/random/checkpoint-006000.pt",
+        "seed-15025/reports/seed-summary.json",
+        "seed-15026/seed-15026/manifests/manifest.json",
+        "other/seed-15027/reports/seed-summary.json",
+    ]
+
+    assert kaggle_t4.summary_names(names) == {
+        15024: "seed-15024/seed-15024/reports/seed-summary.json",
+        15025: "seed-15025/reports/seed-summary.json",
+    }
+
+
+def test_the_verdict_root_is_built_from_summaries_and_searches_every_shard(
+    tmp_path: Path,
+) -> None:
+    """The verdict reads ~5 KB per seed; the queues publish ~6.3 GiB per paired seed.
+
+    Restoring all three queues for the verdict is ~190 GiB, and the container's
+    writable layer died at a 95.0 GiB footprint on 2026-10-19 - so the old
+    ``mode_verdict`` could not have finished. This pins the alternative: locate each
+    declared seed's summary across the queue's shards, write it at the one path
+    ``v0_verdict._load_seed`` reads, and write no checkpoint anywhere.
+    """
+    queue = kaggle_t4.QUEUES["session"]
+    first, second = queue.datasets
+    shards = dict(queue.shards)
+    names = {}
+    for dataset in (first, second):
+        listed = []
+        for seed in shards[dataset]:
+            listed.append(f"seed-{seed}/seed-{seed}/reports/seed-summary.json")
+            listed.append(
+                f"seed-{seed}/seed-{seed}/checkpoints/adaptive/checkpoint-006000.pt"
+            )
+        names[dataset] = listed
+    disappeared = max(shards[second])
+    names[second] = [
+        name for name in names[second] if not name.startswith(f"seed-{disappeared}/")
+    ]
+    client = _FakeSummaryClient(names)
+
+    written, missing = kaggle_t4.restore_verdict_root(client, queue, tmp_path)
+
+    declared = [seed for _, members in queue.shards for seed in members]
+    assert missing == [disappeared]
+    assert len(written) == len(declared) - 1
+    for seed in written:
+        path = (
+            tmp_path
+            / "act-checkpoints"
+            / "v0-5-1"
+            / f"seed-{seed}"
+            / "reports"
+            / "seed-summary.json"
+        )
+        assert path.is_file(), seed
+        assert json.loads(path.read_text())["status"] == "complete"
+    # Nothing but summaries, and only one download per seed.
+    assert list(tmp_path.rglob("*.pt")) == []
+    assert len(client.fetched) == len(written)
+
+
+def test_the_verdict_artifact_name_matches_the_driver() -> None:
+    """The kernel writes the artifact; the driver looks for it by name in the output."""
+    import kaggle_queue
+
+    assert kaggle_t4.VERDICT_NAME == kaggle_queue.VERDICT_NAME

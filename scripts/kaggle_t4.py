@@ -64,6 +64,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from collections import deque
 from dataclasses import dataclass
@@ -138,6 +139,11 @@ def session_seeds() -> str:
 REBUILD_TREATMENT_FLAGS = ("--preserve-router-on-rebuild", "--new-expert", "clone")
 # v0_verdict.py exit codes are the pre-registered verdict, not failures.
 VERDICT_EXIT_CODES = {0: "PASS", 1: "FAIL", 2: "PASS with qualification"}
+
+#: The one file the Gate-4 verdict opens per seed, under each seed directory.
+SUMMARY_TAIL = ("reports", "seed-summary.json")
+#: The verdict artifact the section 4 command writes beside the primary root.
+VERDICT_NAME = "v0-5-1-verdict.json"
 
 INPUT_ROOT = Path("/kaggle/input")
 WORK_ROOT = Path("/kaggle/working/act-lab")
@@ -1407,28 +1413,122 @@ def mode_dtypeprobe() -> None:
     _log("=== DTYPE PROBE COMPLETE ===")
 
 
+def summary_names(names: list[str]) -> dict[int, str]:
+    """Map seed -> its published summary path, in either upload layout.
+
+    Two layouts are live. The push stages one ``seed-N.tar`` per seed whose members
+    are rooted at ``seed-N/``, and the service keeps the archive's internal paths, so
+    the published name is ``seed-N/seed-N/reports/seed-summary.json``. The older flat
+    shape is ``seed-N/reports/seed-summary.json``. Reading only one of them is not
+    cosmetic: measured 2026-10-24, a flat-only reader called all twelve complete
+    control seeds unreadable.
+    """
+    found: dict[int, str] = {}
+    for name in names:
+        parts = name.split("/")
+        if len(parts) == 4 and parts[0] == parts[1] and tuple(parts[2:]) == SUMMARY_TAIL:
+            seed_part = parts[0]
+        elif len(parts) == 3 and tuple(parts[1:]) == SUMMARY_TAIL:
+            seed_part = parts[0]
+        else:
+            continue
+        number = seed_part.removeprefix("seed-")
+        if not number.isdigit():
+            continue
+        found.setdefault(int(number), name)
+    return found
+
+
+def restore_verdict_root(
+    client, queue: Queue, destination: Path, *, log=None
+) -> tuple[list[int], list[int]]:
+    """Write each declared seed's summary into a verdict root - no checkpoints.
+
+    The verdict opens exactly one file per seed, ``reports/seed-summary.json`` (~5 KB
+    measured on the live datasets), and never a checkpoint. The published queues carry
+    the checkpoints too: at ~6.3 GiB per paired seed and ~3.2 GiB per null seed, the
+    three queues' newest versions are ~76 GiB (primary) + ~76 GiB (control) + ~38 GiB
+    (null). ``ACT_T4_MODE=verdict`` used to restore all three, i.e. ~190 GiB, against a
+    container writable layer that went EROFS at a 95.0 GiB footprint on 2026-10-19 - the
+    step could not have finished. The block's thirty-six summaries are ~131 KiB, and
+    ``v0_verdict.py`` reads a tree built this way and produces its verdict (probed
+    2026-10-24 on the live datasets, with the null queue still partial).
+
+    Returns the seeds written and the seeds whose summary could not be fetched. A seed
+    that cannot be fetched is left out rather than faked: the verdict then reports it
+    missing, which is an answer a reader can act on, while an abort would discard the
+    other thirty-five.
+    """
+    from act.training.v0_handoff import HANDOFF_DATASET
+
+    logger = log if log is not None else _log
+    destination = Path(destination)
+    declared = [seed for _, members in queue.shards for seed in members]
+    located: dict[int, tuple[str, str]] = {}
+    for dataset, members in queue.shards:
+        listed = summary_names(client.list_files(dataset))
+        for seed in members:
+            if seed not in located and seed in listed:
+                located[seed] = (dataset, listed[seed])
+
+    written: list[int] = []
+    missing: list[int] = []
+    for seed in declared:
+        if seed not in located:
+            missing.append(seed)
+            continue
+        dataset, name = located[seed]
+        target = (
+            destination
+            / HANDOFF_DATASET
+            / f"seed-{seed}"
+            / "reports"
+            / "seed-summary.json"
+        )
+        try:
+            with tempfile.TemporaryDirectory(prefix=f"act-summary-{seed}-") as scratch:
+                saved = client.download_file(dataset, name, Path(scratch))
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(saved, target)
+        except Exception as error:  # noqa: BLE001 - reported, then named in the artifact
+            logger(f"{queue.mode}: seed {seed} summary unavailable ({error})")
+            missing.append(seed)
+            continue
+        written.append(seed)
+    return written, missing
+
+
 def mode_verdict() -> None:
-    """Runbook 4: restore all three queues from Kaggle and compute the verdict."""
+    """Runbook 4: reconstruct each queue's verdict input, then compute the verdict.
+
+    This restores **only** each declared seed's ``reports/seed-summary.json``, not
+    the published datasets: see ``restore_verdict_root`` for why restoring them
+    is not merely expensive but impossible here.
+    """
     work, env = _bootstrap()
-    from act.ops.kaggle_remote import default_client, restore_latest
+    from act.ops.kaggle_remote import default_client
 
     client = default_client()
-    for queue in QUEUES.values():
-        restored = restore_latest(
-            queue.dataset_root, datasets=queue.datasets, client=client, log=_log
+    roots: dict[str, Path] = {}
+    for mode, queue in QUEUES.items():
+        root = workspace_root() / "verdict-inputs" / mode
+        written, missing = restore_verdict_root(client, queue, root)
+        roots[mode] = root
+        _log(
+            f"{mode}: {len(written)} seed summary(ies) fetched, {len(missing)} "
+            f"missing{(' ' + str(missing)) if missing else ''} -> {root}"
         )
-        _log(f"{queue.mode}: {len(restored)} seed version(s) restored")
 
     argv = verdict_argv(
         sys.executable,
-        primary=QUEUES["session"].dataset_root,
-        control=QUEUES["control"].dataset_root,
-        null=QUEUES["null"].dataset_root,
+        primary=str(roots["session"]),
+        control=str(roots["control"]),
+        null=str(roots["null"]),
     )
     code = _run(argv, env, allowed=tuple(VERDICT_EXIT_CODES))
     _log(f"verdict exit code {code}: {VERDICT_EXIT_CODES[code]}")
 
-    verdict_path = work / QUEUES["session"].dataset_root / "v0-5-1-verdict.json"
+    verdict_path = roots["session"] / VERDICT_NAME
     _keep(verdict_path)
     if verdict_path.is_file():
         _log(json.dumps(json.loads(verdict_path.read_text()), indent=2, sort_keys=True))

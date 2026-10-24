@@ -852,12 +852,28 @@ PYTHONPATH=src python scripts/v0_verdict.py \
 After a Kaggle run these three roots are **empty locally**: the queues live in
 the published datasets, and no local session ever held more than one session's
 pairs. Each session publishes the whole handoff directory, so the newest
-published version of each queue is cumulative - restores it and the queue is
-reconstructed. `ACT_T4_MODE=verdict` does exactly that (restore all three,
-then the command above, with the verdict JSON and its inputs kept in the kernel
-output); it is a CPU kernel and needs no accelerator, so it never queues behind
-a GPU. Running the command by hand locally is only correct if the roots were
-actually populated (e.g. after a local proof run).
+published version of each queue is cumulative. `ACT_T4_MODE=verdict` rebuilds
+exactly what the command reads - each declared seed's `reports/seed-summary.json`
+- and nothing else, then runs the command above and keeps the verdict JSON in
+the kernel output.
+
+Rebuilding only the summaries is load-bearing rather than an optimisation. The
+verdict opens one ~5 KB file per seed and never a checkpoint, while each
+published version carries every checkpoint its queue has trained. Measured
+2026-10-24, the three newest versions are **~76 GiB (primary) + ~76 GiB
+(control) + ~38 GiB (null) ≈ 190 GiB** (derived from the restores this record
+measured: 31.75 GiB for five paired seeds, 44.23 GiB for seven, 12.76 GiB for
+four null seeds), against a container writable layer that went EROFS at a
+**95.0 GiB** footprint on 2026-10-19. The restore-all-three form of this step
+could not have finished. The block's thirty-six summaries are **131 KiB fetched
+in 25 s**, and a root built that way produced the same verdict as one built from
+the downloaded datasets, compared field by field on the live queues
+(2026-10-24).
+
+It is a CPU kernel and needs no accelerator, so it never queues behind a GPU.
+Running the command by hand locally is only correct if the roots were populated:
+either let `ACT_T4_MODE=verdict` build them, or fetch each seed's summary into
+`<root>/act-checkpoints/v0-5-1/seed-<n>/reports/seed-summary.json`.
 
 Exit codes and meanings (the two control rows are the adopted §5.5 clause;
 the two null rows are the pre-registered §5.14 clause):

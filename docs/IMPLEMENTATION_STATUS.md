@@ -1,5 +1,23 @@
 # ACT Implementation Status
 
+## The verdict step restored 190 GiB for 131 KiB of input (2026-10-24)
+
+The campaign's last step is the free CPU verdict, and reading it while the null queue
+trains found that `ACT_T4_MODE=verdict` could not have run: it restored all three
+published queues into the container, and the verdict reads one small file per seed. Both
+sizes are now measured, and the step rebuilds only what is read.
+
+| | |
+|---|---|
+| **What the verdict reads** | `<root>/act-checkpoints/v0-5-1/seed-<n>/reports/seed-summary.json`, ~5 KB per seed. `_load_seed` is the only per-seed reader in `scripts/v0_verdict.py` - no checkpoint and no `manifest.json` is opened. |
+| **What the step restored** | every published version: ~76 GiB primary (12 paired seeds at ~6.3 GiB) + ~76 GiB control + ~38 GiB null (~3.2 GiB/seed) = **~190 GiB**. Derived from the restores this record measured: 31.75 GiB for five paired seeds, 44.23 GiB for seven, 12.76 GiB for four null seeds. |
+| **Why that is fatal** | ~190 GiB is twice the **95.0 GiB** footprint that went EROFS on 2026-10-19, and this is the *last* step - it would have failed after the campaign's GPU spend, with 12/12 published and nothing left to spend it on. |
+| **The replacement** | `restore_verdict_root` lists each shard, locates the declared seeds' summaries in either upload layout, and fetches only those into the root the verdict reads. Measured on the live datasets: **36 summaries, 131 KiB, 25 s**, no checkpoint written. |
+| **That it is the same input** | `v0_verdict.py` on summary-only roots and on CLI-downloaded roots produced the same verdict **field for field** - every top-level key identical, `per_seed` identical, `pool_matched_control`/`null_control` identical apart from the root path they record - on the live queues with null at 4/12. |
+| **A second defect the probe found** | On that block the artifact carried `exit_code: 2` while the process exited **0**: section 5.44 added `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE` to the artifact but not to a label-to-code map restated in `main`. The Kaggle path reads the artifact's `exit_code` and was unaffected, so only a caller of the runbook's own command would have read a withheld verdict as a PASS. `main` now returns the artifact's `exit_code`, one source of truth. |
+| **Pinned** | `tests/test_kaggle_t4.py`: both summary layouts are read; the builder walks both shards, writes the canonical tree, and writes no checkpoint. `tests/test_v0_verdict.py`: the process exit code equals the artifact's on the withheld label. **+3**, and each fails on the old code. |
+| **What this does not establish** | The verdict itself. Null is 4/12, so the do-nothing clause reads `evaluated: false` and today's label is the withholding `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE` - `kaggle_queue.report_verdict` refuses a provisional verdict on an incomplete block. The ~190 GiB is derived from per-seed restore measurements rather than one listing sum, because the datasets' file listings paginate. |
+
 ## Control is 12/12, the 44 GiB push landed, and the null queue is on the GPU (2026-10-24)
 
 The 2026-10-24 refresh was spent in the registered order and cleared the control queue. Four
@@ -20,7 +38,7 @@ four seeds, and a second session is `RUNNING` from seed 15028. No verdict exists
 | **Cost** | control **6.09 h** + null **5.97 h** = **12.06 h**; quota **30.0 -> 17.84 / 30 h**, refresh **2026-10-31**. |
 | **Evidence** | The four control captures and the null session's three files are committed under `artifacts/v0-session-logs/` with their sha256s in its 2026-10-24 `NOTES.md` entry. The sessions ran code dataset revision **`0ce92eb9abd6`**; the fixes above are local analysis code and were not in the pushed dataset. |
 | **An observation** | Seeds 15033 and 15035 publish the same adaptive final loss to the last bit (`10.397709369659424`) with different random arms. Each summary's own `config.seed` matches its seed, so this is convergence at the floor, not a mislabeled record. |
-| **What is left** | null **15028-15035**: at the measured 1.38 h/pair, two more 7 h sessions (v2 running, then v3); 17.84 h at 12:41Z covers them with ~5 h spare. Then the verdict - CPU, free - after restoring the three queues (`--queue verdict`, or `scripts/v0_verdict.py` on the three roots). |
+| **What is left** | null **15028-15035**: at the measured 1.38 h/pair, two more 7 h sessions (v2 running, then v3); 17.84 h at 12:41Z covers them with ~5 h spare. Then the verdict - CPU, free - via `--queue verdict`, which now rebuilds each queue's summaries instead of its checkpoints (see the 2026-10-24 entry above; the restore-all-three form was ~190 GiB and could not have run). |
 | **Operational gap, recorded not fixed** | The workstation's OAuth token expired at **12:10Z**; `kaggle` answered "Authentication required" and the null kernel's status read `unknown`. `_wait_for_terminal` cannot distinguish that from "not pushed yet", so it kept polling toward its 13 h timeout. The session itself was unaffected and finished 4/12 at 12:41Z; the operator re-authenticated at ~12:40Z and the waiting driver immediately saw `COMPLETE` and pushed v2. A token expiry longer than the timeout would park the campaign with no alert. |
 
 **What this does not establish.** That the null clause will clear: four seeds is a third of it,

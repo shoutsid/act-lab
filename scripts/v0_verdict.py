@@ -786,15 +786,13 @@ def main() -> int:
             f"{null['win_limit']}); the adaptive edge does not demonstrate "
             f"value over doing nothing and Gate 4 is withheld"
         )
-    return {
-        "FAIL": 1,
-        "PASS_WITH_QUALIFICATION": 2,
-        "PASS_COST_ONLY_HARM_GUARD_REJECTS": 2,
-        "PASS_COST_ONLY_POOL_MATCHED_CONTROL_PASSES": 2,
-        "PASS_COST_ONLY_NULL_REJECTS": 2,
-        "PASS_COST_ONLY_CONTROL_MISSING": 2,
-        "PASS_COST_ONLY_NULL_MISSING": 2,
-    }.get(verdict["verdict"], 0)
+    # The artifact already carries the registered code, so it is the one source of
+    # truth. The map that used to be restated here drifted: section 5.44 added
+    # `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE` with `exit_code: 2` in the artifact but
+    # not to the copy, so the documented command exited 0 - a PASS - while printing
+    # that Gate 4 was withheld (measured 2026-10-24 on the live datasets). The kernel
+    # path never saw it, because it reads `exit_code` from the artifact.
+    return verdict["exit_code"]
 
 
 if __name__ == "__main__":

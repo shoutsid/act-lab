@@ -384,6 +384,23 @@ class KaggleDatasetClient(Protocol):
         """Download and extract the dataset's latest version into ``target``."""
         ...
 
+    def list_files(self, dataset: str) -> list[str]:
+        """Every file name in the dataset's latest version, as the upload named it."""
+        ...
+
+    def download_file(self, dataset: str, file_name: str, target: Path) -> Path:
+        """Download one named file into ``target``, keeping its remote path.
+
+        Returns the path written. This exists because a caller can need
+        kilobytes out of a dataset that is tens of gigabytes: the Gate-4
+        verdict reads one ~5 KB ``reports/seed-summary.json`` per seed and never
+        opens a checkpoint, while each queue's published version carries every
+        checkpoint the queue has ever trained (measured 2026-10-24: ~190 GiB
+        across the three queues, against a container writable layer that died at
+        95.0 GiB on 2026-10-19).
+        """
+        ...
+
     def dataset_exists(self, dataset: str) -> bool:
         """Whether the authenticated account owns a dataset with this id."""
         ...
@@ -488,18 +505,8 @@ class KaggleApiAdapter:
             # that reading has to survive the fallback failing too.
             raise archive_error from per_file_error
 
-    def _download_each_file(self, dataset: str, target: Path) -> None:
-        """Fetch a dataset file by file, for a version whose archive will not serve.
-
-        The startup restore needs the same tree the archive would have unpacked,
-        so every file the listing names is fetched and moved to that exact
-        relative path. Each file gets its **own** scratch directory because the
-        API saves a file under its basename and a dataset has many
-        `manifest.json`s: a shared directory would let one seed's file stand in
-        for the next seed's (the second request would read the first file as an
-        already-downloaded one and skip it).
-        """
-        target.mkdir(parents=True, exist_ok=True)
+    def list_files(self, dataset: str) -> list[str]:
+        """Every file name in the dataset's latest version, following page tokens."""
         names: list[str] = []
         page_token: str | None = None
         while True:
@@ -509,22 +516,49 @@ class KaggleApiAdapter:
             names.extend(str(entry.name) for entry in response.dataset_files)
             page_token = getattr(response, "next_page_token", None) or None
             if page_token is None:
-                break
+                return names
+
+    def download_file(self, dataset: str, file_name: str, target: Path) -> Path:
+        """Download one named file under ``target``, preserving its remote path.
+
+        Each file gets its **own** scratch directory because the API saves it
+        under its basename and a dataset has many ``seed-summary.json`` /
+        ``manifest.json`` files: a shared directory would let one seed's file
+        stand in for the next seed's (the second request would read the first
+        file as an already-downloaded one and skip it).
+        """
+        destination = Path(target) / file_name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="act-kaggle-file-") as scratch:
+            self._api.dataset_download_file(
+                dataset, file_name, path=scratch, quiet=True
+            )
+            # Where it lands depends on the client version, both measured here:
+            # 2.2.5 preserves the remote path (`<scratch>/seed-N/.../summary.json`),
+            # while 2.0.2 - what the kernels run - writes the basename.
+            saved = Path(scratch) / file_name
+            if not saved.is_file():
+                saved = Path(scratch) / Path(file_name).name
+            if not saved.is_file():
+                raise RuntimeError(
+                    f"{dataset}: {file_name} did not arrive under {scratch}"
+                )
+            shutil.move(str(saved), str(destination))
+        return destination
+
+    def _download_each_file(self, dataset: str, target: Path) -> None:
+        """Fetch a dataset file by file, for a version whose archive will not serve.
+
+        The startup restore needs the same tree the archive would have unpacked,
+        so every file the listing names is fetched and moved to that exact
+        relative path.
+        """
+        target.mkdir(parents=True, exist_ok=True)
+        names = self.list_files(dataset)
         if not names:
             raise RuntimeError(f"{dataset} lists no files to download")
         for name in names:
-            with tempfile.TemporaryDirectory(prefix="act-kaggle-file-") as scratch:
-                self._api.dataset_download_file(
-                    dataset, name, path=scratch, quiet=True
-                )
-                saved = Path(scratch) / Path(name).name
-                if not saved.is_file():
-                    raise RuntimeError(
-                        f"{dataset}: {name} did not arrive under {scratch}"
-                    )
-                destination = target / name
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(saved), str(destination))
+            self.download_file(dataset, name, target)
 
     def dataset_exists(self, dataset: str) -> bool:
         """Is this dataset one of the account's own? Asked of the owner's listing.

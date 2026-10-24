@@ -1415,3 +1415,35 @@ def test_null_root_pointed_at_the_primary_dataset_aborts(tmp_path: Path) -> None
             control_root=control,
             null_root=tmp_path,  # the primary root: pair arms live here
         )
+
+
+def test_the_process_exit_code_is_the_artifact_exit_code(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The documented command's exit code *is* the decision, so it cannot drift.
+
+    Measured 2026-10-24 on the live datasets: the verdict produced
+    ``PASS_COST_ONLY_NO_DEMONSTRATED_EDGE`` with ``exit_code: 2`` in the artifact, and
+    ``main`` returned 0, because section 5.44 added the label to the artifact but not to
+    a restated label->code map. The Kaggle path reads the artifact's ``exit_code`` and was
+    unaffected; anything scripting the runbook's own command would have read a withheld
+    verdict as a PASS. The fix is one source of truth, and this pins it.
+    """
+    control = tmp_path / "control"
+    null = tmp_path / "null"
+    _populate(
+        tmp_path,
+        search_flops=_in_band_search_flops(),
+        adaptive_wins=9,  # below the bar, and so is the loss-blind arm
+        control_wins=3,
+        control_root=control,
+        null_root=null,
+    )
+
+    exit_code = _run_main(monkeypatch, tmp_path, control_root=control, null_root=null)
+
+    verdict = json.loads((tmp_path / "v0-5-1-verdict.json").read_text())
+    assert verdict["verdict"] == "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE"
+    assert verdict["gate_4_authorized"] is False
+    assert verdict["exit_code"] == 2
+    assert exit_code == verdict["exit_code"]
