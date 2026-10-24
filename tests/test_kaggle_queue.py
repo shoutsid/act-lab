@@ -2008,3 +2008,40 @@ def test_the_capture_tails_while_the_session_runs_and_stops_afterwards(
     with REAL_CAPTURE_LIVE_LOG("o/k", tmp_path / "live.log"):
         assert started.wait(5.0), "the capture never started"
     assert stopped.wait(5.0), "the capture outlived the session"
+
+
+def test_an_auth_failure_stops_the_wait_instead_of_polling_to_the_timeout() -> None:
+    """An expired token and a kernel that was never pushed look identical to the parser.
+
+    Measured 2026-10-24: the OAuth token expired at 12:10Z, `kaggle kernels status`
+    answered "Authentication required" and exited non-zero, and `parse_status` read that
+    as "" - so the wait kept polling toward its 13 h timeout while a session trained
+    unwatched. The operator noticed after 30 min. The fix is to stop at the first such
+    answer and name the fix, because no later poll can say anything different.
+    """
+    polls = 0
+
+    def fake_run(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        nonlocal polls
+        polls += 1
+        return subprocess.CompletedProcess(argv, 1, "", "Authentication required")
+
+    original = kaggle_queue._run
+    kaggle_queue._run = fake_run
+    try:
+        with pytest.raises(SystemExit) as raised:
+            kaggle_queue._wait_for_terminal_detailed("o/k", poll=0.0, timeout=3600.0)
+    finally:
+        kaggle_queue._run = original
+
+    assert polls == 1
+    assert "re-authenticate" in str(raised.value)
+
+
+def test_a_missing_kernel_is_not_read_as_an_auth_failure() -> None:
+    """The marker is narrow: a 404 must still fall through to the "not pushed" path."""
+    assert kaggle_queue.looks_unauthenticated("Authentication required")
+    assert kaggle_queue.looks_unauthenticated("401 - Unauthorized")
+    assert not kaggle_queue.looks_unauthenticated(
+        "404 Client Error: Not Found for url: https://www.kaggle.com/api/v1/kernels/push"
+    )

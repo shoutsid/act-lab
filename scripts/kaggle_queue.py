@@ -154,6 +154,27 @@ def parse_status(text: str) -> str:
     return match.group(1) if match else ""
 
 
+#: What the CLI says when it cannot authenticate at all. Measured 2026-10-24: the
+#: workstation's OAuth token expired at 12:10Z, `kaggle kernels status` answered
+#: "Authentication required" and exited non-zero, and `parse_status` read that as ""
+#: - the same answer as a kernel that was never pushed. The wait below could not
+#: tell them apart and kept polling toward its 13 h timeout while the session
+#: trained unwatched; the operator happened to notice. The marker is matched only
+#: when no status was parsed, so a live kernel's answer is never overridden.
+AUTH_FAILURE_MARKERS = (
+    "authentication required",
+    "invalid api credentials",
+    "401 - unauthorized",
+    "unauthorized",
+)
+
+
+def looks_unauthenticated(text: str) -> bool:
+    """Whether a status poll failed for want of credentials rather than answered."""
+    lowered = text.lower()
+    return any(marker in lowered for marker in AUTH_FAILURE_MARKERS)
+
+
 def is_terminal(status: str) -> bool:
     return status in TERMINAL_STATUSES
 
@@ -981,7 +1002,19 @@ def _wait_for_terminal_detailed(
     running_since: float | None = None
     while True:
         result = _run(["kaggle", "kernels", "status", kernel])
-        status = parse_status(result.stdout + result.stderr)
+        text = result.stdout + result.stderr
+        status = parse_status(text)
+        if not status and looks_unauthenticated(text):
+            # Not "not pushed yet": the CLI cannot authenticate, so every later poll
+            # will answer the same way. Stopping names the fix (measured 2026-10-24,
+            # an expired token bought 30 min of blind polling before an operator
+            # noticed, and a longer expiry would have parked the campaign silently).
+            reason = (text.strip().splitlines() or ["no output"])[-1][:200]
+            raise SystemExit(
+                f"kaggle cannot authenticate while waiting for {kernel} ({reason}); "
+                "re-authenticate and re-run - waiting would spin toward the "
+                f"{timeout / 3600:.1f} h timeout while the session runs unwatched"
+            )
         if status != last:
             print(f"  status: {status or 'unknown'}", flush=True)
             last = status
