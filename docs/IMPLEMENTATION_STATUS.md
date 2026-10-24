@@ -1,5 +1,35 @@
 # ACT Implementation Status
 
+## Control is 12/12, the 44 GiB push landed, and the null queue is on the GPU (2026-10-24)
+
+The 2026-10-24 refresh was spent in the registered order and cleared the control queue. Four
+sessions ran: shard 1 trained **15034-15035** and shard 0 trained **15030**, and two no-op
+sessions followed (one per shard) that restored their shard and trained nothing. **Control is
+12 of 12 by its own published records.** The null queue then made its first GPU run, published
+four seeds, and a second session is `RUNNING` from seed 15028. No verdict exists.
+
+| | |
+|---|---|
+| **Block state** | primary **12/12** (2026-10-20), control **12/12** (today), null **4/12**; null kernel `RUNNING` (v2, pushed 12:41Z); quota **17.84 / 30 h**, refresh **2026-10-31**. |
+| **The near-wall fire** | 15030's session restored **37.94 GiB** in 8.0 min, trained the pair, and pushed **7 seeds / 44.2 GiB in 14.8 min** - it landed. Local peak **~88.6 GiB** (37.94 restored + 6.4 trained + 44.23 staged), **6.4 GiB below** the 95.0 GiB that went EROFS on 2026-10-19. The 2026-10-22 entry's falsifier resolved in favour of the shard rule. This is a measurement, not a threshold: the bracket is now (88.6 survived, 95.0 died). |
+| **Control's four sessions** | shard 1: restore 19.04 GiB, train 15034/15035, **3.61 h**. shard 1 no-op: restore 31.75 GiB, train nothing, **0.20 h**. shard 0: restore 37.94 GiB, train 15030, **2.01 h**. shard 0 no-op: restore 44.23 GiB, train nothing, **0.27 h**. The no-ops are the conservative pre-fire check: it could not yet see the seeds the previous session had just published, and its rule is that an unreadable check must not skip work. **0.47 GPU-h**, no lost pairs. |
+| **Control readout** | 12 summaries read: adaptive won **7 of 12**, mean `adaptive - random` **-0.000092 nats**, largest gap from `ln(32768) = 10.3972` **0.001281**. The 9-seed readout was +0.000020; the last three seeds moved it down 1.1e-4. Same floor, still not a verdict. |
+| **Null, first GPU session** | **5.97 h**, **4/12**; no restore (the dataset had no version); 15024-15027 at `10.398030` / `10.398226` / `10.398335` / `10.398767`; `search_flops 0` on every pair; per-pair publishes 3.2 / 6.4 / 9.6 / 12.8 GiB, all `published`; exit `already_published`; handoff 12.76 GiB; measured **5326 tokens/s**, pair 1.38 h. |
+| **Three defects found while reading the record** | (1) `fetch_seed_summary` read only the flat file layout the 2026-09-21 CLI wrote. CLI **2.2.4** (measured today) preserves the remote path under `-p`, so all twelve complete control seeds read as "record unreadable" - a finished block reported as not advanced. Both layouts are now accepted. (2) `campaign_health` read every queue against the paired `adaptive`/`random` arms, so the **single-arm null queue could never be complete** (4 published, 0 complete, all `partial`). Arms are now declared on `kaggle_t4.Queue` (`null` carries `("null",)`) and read from there, in completeness and in the readout. This was not only cosmetic: the launcher's pre-fire `step_is_complete` reads `seeds.complete`, so a finished null block could never be skipped and the queue would have paid one more restore-only session - the no-op pattern control paid 0.47 h for in two halves today. (3) With null able to read `COMPLETE`, the report's action line would have said *drive the next queue* - there is none; null is the last training queue and the next step is the free CPU verdict. The action now says so. None of the three touched any trained result; all three touched the ability to see one. |
+| **Pinned** | `tests/test_campaign_health.py`: **+4** (the nested layout is read; null completeness uses one arm; the null readout goes through `health` so the arm wiring is the thing under test; a complete single-arm queue points at the verdict) - **34 pass**. |
+| **Cost** | control **6.09 h** + null **5.97 h** = **12.06 h**; quota **30.0 -> 17.84 / 30 h**, refresh **2026-10-31**. |
+| **Evidence** | The four control captures and the null session's three files are committed under `artifacts/v0-session-logs/` with their sha256s in its 2026-10-24 `NOTES.md` entry. The sessions ran code dataset revision **`0ce92eb9abd6`**; the fixes above are local analysis code and were not in the pushed dataset. |
+| **An observation** | Seeds 15033 and 15035 publish the same adaptive final loss to the last bit (`10.397709369659424`) with different random arms. Each summary's own `config.seed` matches its seed, so this is convergence at the floor, not a mislabeled record. |
+| **What is left** | null **15028-15035**: at the measured 1.38 h/pair, two more 7 h sessions (v2 running, then v3); 17.84 h at 12:41Z covers them with ~5 h spare. Then the verdict - CPU, free - after restoring the three queues (`--queue verdict`, or `scripts/v0_verdict.py` on the three roots). |
+| **Operational gap, recorded not fixed** | The workstation's OAuth token expired at **12:10Z**; `kaggle` answered "Authentication required" and the null kernel's status read `unknown`. `_wait_for_terminal` cannot distinguish that from "not pushed yet", so it kept polling toward its 13 h timeout. The session itself was unaffected and finished 4/12 at 12:41Z; the operator re-authenticated at ~12:40Z and the waiting driver immediately saw `COMPLETE` and pushed v2. A token expiry longer than the timeout would park the campaign with no alert. |
+
+**What this does not establish.** That the null clause will clear: four seeds is a third of it,
+and the four losses so far (`10.3980`-`10.3988`) sit on the same floor as the paired arms.
+That the control readout is a result: 7 of 12 with a mean of **-9e-5** is the same picture as
+the primary block's 6 of 12, and the registered rules still withhold themselves on an
+incomplete three-queue block. And that the disk ceiling is known: one fire at 88.6 GiB
+landing does not locate the wall between 88.6 and 95.0.
+
 ## One session cannot declare two shards: the control tail is two fires, and the launcher now sequences them (2026-10-22)
 
 The three control seeds still missing do not share a shard - **15030** is the seventh seed of

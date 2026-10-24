@@ -1,0 +1,86 @@
+{
+  "declared_seed_queue": [
+    15024,
+    15025,
+    15026,
+    15027,
+    15028,
+    15029,
+    15030,
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ],
+  "dtype": "fp16",
+  "dtype_rule_tokens_per_second": 1509.189122301615,
+  "latest_published_seed": 15030,
+  "measured_tokens_per_second": 5349.041908585143,
+  "pair_time_hours": 1.3762410134999983,
+  "pairs": [
+    {
+      "action": "skipped_complete",
+      "seed": 15024
+    },
+    {
+      "action": "skipped_complete",
+      "seed": 15025
+    },
+    {
+      "action": "skipped_complete",
+      "seed": 15026
+    },
+    {
+      "action": "skipped_complete",
+      "seed": 15027
+    },
+    {
+      "action": "skipped_complete",
+      "seed": 15028
+    },
+    {
+      "action": "skipped_complete",
+      "seed": 15029
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 10.397172689437866,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": null,
+      "random_final_loss": 10.398272037506104,
+      "remote_publish": {
+        "dataset": "sid123123234/act-v0-5-2-control",
+        "error": null,
+        "fingerprint": "4c150636b84c39bb8c5a45034e6f03c9a1a8c2aba3ba594e28ceb7bb7965a6ef",
+        "folder": "/tmp/act-lab-control-3cbb62390c/artifacts/datasets-control/act-checkpoints/v0-5-1",
+        "seeds_published": 7,
+        "status": "published",
+        "version_notes": "v0-5-1 session publish: 5349 tokens/s, measured dtype, after seed 15030"
+      },
+      "search_flops_by_arm": {
+        "adaptive": 13209542479872,
+        "random": 3390468096
+      },
+      "seed": 15030,
+      "training_flops_by_arm": {
+        "adaptive": 13870169063424000,
+        "random": 13921733836800000
+      }
+    }
+  ],
+  "pairs_completed": 1,
+  "protocol": "v0-compute-efficiency-5.2",
+  "remaining_hours_at_entry": 6.7092075745080555,
+  "schedule_tokens_per_second": 5349.041908585143,
+  "seeds_requested": [
+    15024,
+    15025,
+    15026,
+    15027,
+    15028,
+    15029,
+    15030
+  ]
+}

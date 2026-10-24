@@ -1,0 +1,137 @@
+{
+  "declared_seed_queue": [
+    15024,
+    15025,
+    15026,
+    15027,
+    15028,
+    15029,
+    15030,
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ],
+  "dtype": "fp16",
+  "dtype_rule_tokens_per_second": 1530.0020476310262,
+  "latest_published_seed": 15027,
+  "measured_tokens_per_second": 5326.470284427062,
+  "pair_time_hours": 1.3816492540333343,
+  "pairs": [
+    {
+      "action": "completed",
+      "adaptive_final_loss": null,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": 10.398030281066895,
+      "random_final_loss": null,
+      "remote_publish": {
+        "dataset": "sid123123234/act-v0-5-2-null",
+        "error": null,
+        "fingerprint": "b4323bf2e95caacd6ef326e923bdb92bda00a88c360cdc3cc0ff6991151ea8fe",
+        "folder": "/tmp/act-lab-null-5a36e049ea/artifacts/datasets-null/act-checkpoints/v0-5-1",
+        "seeds_published": 1,
+        "status": "published",
+        "version_notes": "v0-5-1 session publish: 5326 tokens/s, measured dtype, after seed 15024"
+      },
+      "search_flops_by_arm": {
+        "null": 0
+      },
+      "seed": 15024,
+      "training_flops_by_arm": {
+        "null": 14024863383552000
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": null,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": 10.398226022720337,
+      "random_final_loss": null,
+      "remote_publish": {
+        "dataset": "sid123123234/act-v0-5-2-null",
+        "error": null,
+        "fingerprint": "51ef5e6982033742fa62508905303f71297510aa144e762b3ce84727fa2fec6b",
+        "folder": "/tmp/act-lab-null-5a36e049ea/artifacts/datasets-null/act-checkpoints/v0-5-1",
+        "seeds_published": 2,
+        "status": "published",
+        "version_notes": "v0-5-1 session publish: 5326 tokens/s, measured dtype, after seed 15025"
+      },
+      "search_flops_by_arm": {
+        "null": 0
+      },
+      "seed": 15025,
+      "training_flops_by_arm": {
+        "null": 14024863383552000
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": null,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": 10.398334503173828,
+      "random_final_loss": null,
+      "remote_publish": {
+        "dataset": "sid123123234/act-v0-5-2-null",
+        "error": null,
+        "fingerprint": "30d01343082837343ae971aa43f59df25a1a44a5ccfda01c13cc7018cc1ee466",
+        "folder": "/tmp/act-lab-null-5a36e049ea/artifacts/datasets-null/act-checkpoints/v0-5-1",
+        "seeds_published": 3,
+        "status": "published",
+        "version_notes": "v0-5-1 session publish: 5326 tokens/s, measured dtype, after seed 15026"
+      },
+      "search_flops_by_arm": {
+        "null": 0
+      },
+      "seed": 15026,
+      "training_flops_by_arm": {
+        "null": 14024863383552000
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": null,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": 10.39876651763916,
+      "random_final_loss": null,
+      "remote_publish": {
+        "dataset": "sid123123234/act-v0-5-2-null",
+        "error": null,
+        "fingerprint": "3fc4b6a88778be5d303b23c3c650cc58a12bebeaf4a010ea53a566a8db65d62b",
+        "folder": "/tmp/act-lab-null-5a36e049ea/artifacts/datasets-null/act-checkpoints/v0-5-1",
+        "seeds_published": 4,
+        "status": "published",
+        "version_notes": "v0-5-1 session publish: 5326 tokens/s, measured dtype, after seed 15027"
+      },
+      "search_flops_by_arm": {
+        "null": 0
+      },
+      "seed": 15027,
+      "training_flops_by_arm": {
+        "null": 14024863383552000
+      }
+    }
+  ],
+  "pairs_completed": 4,
+  "protocol": "v0-compute-efficiency-5.2",
+  "remaining_hours_at_entry": 6.9329773215933335,
+  "schedule_tokens_per_second": 5326.470284427062,
+  "seeds_requested": [
+    15024,
+    15025,
+    15026,
+    15027,
+    15028,
+    15029,
+    15030,
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ]
+}

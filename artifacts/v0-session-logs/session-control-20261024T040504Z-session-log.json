@@ -1,0 +1,54 @@
+{
+  "declared_seed_queue": [
+    15024,
+    15025,
+    15026,
+    15027,
+    15028,
+    15029,
+    15030,
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ],
+  "dtype": "fp16",
+  "dtype_rule_tokens_per_second": 1494.3050739939847,
+  "latest_published_seed": 15035,
+  "measured_tokens_per_second": 5274.155874765118,
+  "pair_time_hours": 1.3943619469666677,
+  "pairs": [
+    {
+      "action": "skipped_complete",
+      "seed": 15031
+    },
+    {
+      "action": "skipped_complete",
+      "seed": 15032
+    },
+    {
+      "action": "skipped_complete",
+      "seed": 15033
+    },
+    {
+      "action": "skipped_complete",
+      "seed": 15034
+    },
+    {
+      "action": "skipped_complete",
+      "seed": 15035
+    }
+  ],
+  "pairs_completed": 0,
+  "protocol": "v0-compute-efficiency-5.2",
+  "remaining_hours_at_entry": 6.801399316276944,
+  "schedule_tokens_per_second": 5274.155874765118,
+  "seeds_requested": [
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ]
+}

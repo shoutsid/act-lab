@@ -301,9 +301,12 @@ def _state(
     window: float = 7.0,
     statuses: dict[int, str | None] | None = None,
     driver: dict | None = None,
+    queue: str = "session",
+    arms: tuple[str, ...] = ("random", "adaptive"),
+    readout: bool = False,
 ) -> dict:
     seeds = {
-        seed: {"arms": {"random": 6000, "adaptive": 6000}, "max_step": 6000}
+        seed: {"arms": {arm: 6000 for arm in arms}, "max_step": 6000}
         for seed in (complete or [])
     }
     # Every candidate's *published record* has to be read before a seed can be called
@@ -334,7 +337,7 @@ def _state(
     monkeypatch.setattr(
         campaign_health, "lock_holder", lambda kernel: driver
     )
-    return campaign_health.health("session", window=window)
+    return campaign_health.health(queue, window=window, readout=readout)
 
 
 def test_a_live_session_is_running(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -375,6 +378,34 @@ def test_every_declared_seed_published_is_complete(monkeypatch: pytest.MonkeyPat
         complete=list(campaign_health.DECLARED_SEEDS),
     )
     assert state["verdict"] == "COMPLETE"
+
+
+def test_the_null_queue_is_complete_against_its_own_single_arm(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The null queue is single-arm by construction, so a paired read is a false stall.
+
+    Measured 2026-10-24: the null queue's first GPU session published four seeds, each with
+    one ``null`` checkpoint at the declared step, and this report called all four ``partial``
+    because it required ``adaptive`` and ``random``. The session's own log said ``4/12``.
+    Two consequences follow from that disagreement: the launcher's ``step_is_complete`` can
+    never skip a finished null queue (it would spend a restore-only session at the end), and
+    the report an operator reads says the do-nothing clause has not started when it has.
+    """
+    block = list(campaign_health.DECLARED_SEEDS)
+    state = _state(
+        monkeypatch,
+        status="COMPLETE",
+        remaining=6.0,
+        complete=block,
+        queue="null",
+        arms=("null",),
+    )
+
+    assert state["seeds"]["complete"] == block
+    assert state["seeds"]["partial"] == []
+    assert state["verdict"] == "COMPLETE"
+    assert f"{len(block)} of {len(block)} complete" in campaign_health.report(state)
 
 
 def test_a_stepped_but_unfinished_seed_keeps_the_complete_verdict_away(
@@ -616,6 +647,35 @@ def test_the_readout_fetches_the_path_the_upload_created(
     assert read["mean_adaptive_minus_random"] == -0.5
 
 
+def test_the_readout_reads_the_nested_layout_the_current_cli_writes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CLI 2.2.4 preserves the remote path under ``-p``; 2.0.2 wrote the basename.
+
+    Measured 2026-10-24: the workstation's CLI wrote
+    ``<dir>/seed-15024/seed-15024/reports/seed-summary.json``, the flat-only reader looked
+    for ``<dir>/seed-summary.json``, and all twelve complete control seeds read as "record
+    unreadable" - a report that says a finished block has not advanced. Both layouts are
+    live in this project (the sessions run 2.0.2), so both are read.
+    """
+    def fake_run(argv, **kwargs):
+        directory = Path(argv[argv.index("-p") + 1])
+        name = argv[argv.index("-f") + 1]
+        path = directory / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(_summary(random=1.0, adaptive=0.5)), encoding="utf-8"
+        )
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(campaign_health.subprocess, "run", fake_run)
+    read = campaign_health.seed_readout("o/d", [15000])
+
+    assert read["seeds_read"] == [15000]
+    assert read["seeds_unread"] == []
+    assert read["mean_adaptive_minus_random"] == -0.5
+
+
 def test_the_readout_reports_inputs_and_says_it_is_not_a_verdict(
     monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -640,6 +700,63 @@ def test_the_readout_reports_inputs_and_says_it_is_not_a_verdict(
     assert "no threshold is applied here" in lines
     assert "adaptive won 1 of 2" in lines
     assert "10.3977" in lines
+
+
+def test_the_null_readout_reports_its_single_arm(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The do-nothing queue has no adaptive-minus-random difference to report.
+
+    This goes through ``health`` rather than calling ``seed_readout`` directly, because the
+    wiring is the part that broke: ``health`` has to pass the queue's own arms down. Read as
+    a pair, every published null seed comes back unreadable - the same false stall that made
+    the queue's completeness wrong.
+    """
+    summaries = {15000: {"arms": {"null": {"final_loss": 10.3980}}}}
+    monkeypatch.setattr(
+        campaign_health, "fetch_seed_summary", lambda *a, **k: summaries.get(a[1])
+    )
+    state = _state(
+        monkeypatch,
+        status="COMPLETE",
+        remaining=6.0,
+        complete=[15000],
+        queue="null",
+        arms=("null",),
+        readout=True,
+    )
+    lines = campaign_health.report(state)
+
+    assert state["readout"]["arms"] == ["null"]
+    assert state["readout"]["adaptive_wins"] is None
+    assert state["readout"]["mean_adaptive_minus_random"] is None
+    assert "published null seed(s)" in lines
+    assert "null 10.3980" in lines
+    assert "not a verdict" in lines
+
+
+def test_a_complete_single_arm_queue_points_at_the_verdict(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """'Drive the next queue' is wrong once the null block is finished.
+
+    The null queue is the last training queue, so the instruction after it is the free CPU
+    verdict over all three. Firing another session would spend GPU hours on nothing.
+    """
+    block = list(campaign_health.DECLARED_SEEDS)
+    state = _state(
+        monkeypatch,
+        status="COMPLETE",
+        remaining=6.0,
+        complete=block,
+        queue="null",
+        arms=("null",),
+    )
+    lines = campaign_health.report(state)
+
+    assert state["verdict"] == "COMPLETE"
+    assert "last training queue" in lines
+    assert "drive the next queue" not in lines
 
 
 def test_the_floor_is_the_registered_vocabulary() -> None:

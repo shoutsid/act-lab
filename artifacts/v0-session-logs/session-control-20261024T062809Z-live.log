@@ -1,0 +1,99 @@
+=== ACT lab: control session ===
+dataset=sid123123234/act-v0-5-2-control hours=7 seeds=15024-15030
+code dataset: /kaggle/input/datasets/sid123123234/act-lab-code/code
+torch 2.11.0+cu128 | device Tesla T4
+gpu inventory: {'count': 2, 'names': ['Tesla T4', 'Tesla T4']}
+disk working: total 19.5 GiB | free 19.5 GiB
+disk input: total 19.5 GiB | free 19.5 GiB
+disk tmp: total 8156.9 GiB | free 1048.8 GiB
+--- df -h ---
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/loop2       20G  7.3M   20G   1% /kaggle/working
+overlay         8.0T  7.0T  1.1T  88% /
+overlay         8.0T  7.0T  1.1T  88% /
+writable /kaggle/working: yes
+writable /kaggle/temp: yes
+writable /tmp: yes
+--- throughput benchmark (the launch command's input) ---
+$ /usr/bin/python3 scripts/v0_throughput_benchmark.py --steps 50
+arm placement: 2 arm(s) in 1 wave(s) of slots=2
+{"benchmark": "v0-throughput-5.2", "declared_active_parameter_count": 7556160, "declared_parameter_count": 14928960, "device": "cuda", "device_name": "Tesla T4", "dtype_decision": "fp16", "example_deadline_check": "remaining 2.00 h does not fit pair 1.63 h + 45 min reserve (rule 1)", "fp32_floor_tokens_per_second": 2500.0, "gpu_inventory": {"count": 2, "names": ["Tesla T4", "Tesla T4"]}, "measured_tokens_per_second": 1246.4515434556135, "predicted_probe_cost_percent": {"cap4_1batch": 0.0941636252059042, "cap4_2batch": 0.1883272504118084}, "profile": "declared-285M", "schedule": {"arm_slots": 2, "arms": 2, "checkpoint_interval": 500, "declared_session_hours": 7.0, "full_pairs_per_session": 5, "max_checkpoints": 2, "pair_time_hours": 1.627715585500001, "pairs_per_session_rule1": 3, "platform_session_cap_hours": 8.0, "sessions_for_primary": 3, "sessions_for_primary_rule1": 4, "sessions_total": 6, "three_queue_sessions": 12, "three_queue_sessions_null": 4, "three_queue_sessions_primary": 4, "three_queue_training_hours": 58.59776107800003, "working_dir_headroom_gb": 5.120000000000001, "working_dir_steady_state_gb": 14.879999999999999}, "schedule_dtype": "fp16", "schedule_tokens_per_second": 4468.545540453061, "seed_block": "15000-15011 and 15024-15035 (reserved, untouched by this benchmark)", "steps": 50, "tokens_per_second_by_dtype": {"fp16": 4468.545540453061, "fp32": 1246.4515434556135}, "tolerance_band_primary": [0.0470818126029521, 0.1883272504118084], "torch_version": "2.11.0+cu128", "warmup_steps": 5}
+measured 1246.5 tokens/s | dtype fp16 | pair_time 1.63 h
+kept /kaggle/working/v0-benchmark.json
+--- control queue (--hours 6.93 h: 4.4 min of the declared 7 h spent on startup) ---
+$ /usr/bin/python3 -m act.training.cli --mode pair-session --device cuda --hours 6.92633 --seeds 15024-15030 --probe-candidate-policy spread --probe-selection random --preserve-router-on-rebuild --new-expert clone --dataset-root /tmp/act-lab-control-978956dd5c/artifacts/datasets-control --session-dir /tmp/act-lab-control-978956dd5c/artifacts/v0-sessions-control --kaggle-dataset sid123123234/act-v0-5-2-control --kaggle-shard-seeds 7
+Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.5)
+Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.5)
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-control
+remote restore: sid123123234/act-v0-5-2-control downloaded in 5.1 min (44.23 GiB on disk)
+restored 7 seed version(s) from sid123123234/act-v0-5-2-control: [15024, 15025, 15026, 15027, 15028, 15029, 15030]
+session clock: 6.73 h of the declared 6.92633 h remain after 11.6 min of startup
+code revision: 0ce92eb9abd6866185d1ddc1c90991bf99a3beb2
+pair time 1.63 h (2 arm(s) in 1 wave(s) of 24576000 tokens at 4469 tokens/s + 0.1 h event overhead)
+seed 15024: complete version exists, skipping
+seed 15025: complete version exists, skipping
+seed 15026: complete version exists, skipping
+seed 15027: complete version exists, skipping
+seed 15028: complete version exists, skipping
+seed 15029: complete version exists, skipping
+seed 15030: complete version exists, skipping
+session done: 0 pair(s) completed, 6.73 h remaining
+remote publish skipped at exit: no seed trained this session
+{"declared_seed_queue": [15024, 15025, 15026, 15027, 15028, 15029, 15030, 15031, 15032, 15033, 15034, 15035], "dtype": "fp16", "dtype_rule_tokens_per_second": 1246.4515434556135, "latest_published_seed": 15030, "measured_tokens_per_second": 4468.545540453061, "pair_time_hours": 1.627715585500001, "pairs_completed": 0, "protocol": "v0-compute-efficiency-5.2", "remaining_hours_at_entry": 6.732529047971389, "schedule_tokens_per_second": 4468.545540453061, "seeds_requested": [15024, 15025, 15026, 15027, 15028, 15029, 15030]}
+kept /kaggle/working/session-log.json
+kept 7 seed summaries in the kernel output (publish insurance)
+disk working: total 19.5 GiB | free 19.5 GiB
+disk input: total 19.5 GiB | free 19.5 GiB
+disk tmp: total 8156.9 GiB | free 1004.6 GiB
+--- df -h ---
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/loop2       20G  7.4M   20G   1% /kaggle/working
+overlay         8.0T  7.0T 1005G  88% /
+overlay         8.0T  7.0T 1005G  88% /
+overlay         8.0T  7.0T 1005G  88% /
+writable /kaggle/working: yes
+writable /kaggle/temp: yes
+writable /tmp: yes
+handoff root /tmp/act-lab-control-978956dd5c/artifacts/datasets-control: 44.23 GiB
+=== control session finished after 0.27 h ===
+/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\|'
+  cells[i][c] = re.sub('\\\\\|', '|', cell)
+/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\_'
+  text = re.sub(r'_', '\_', text) # Escape underscores in display text
+[NbConvertApp] Converting notebook __script__.ipynb to html
+[NbConvertApp] Writing 487366 bytes to __results__.html

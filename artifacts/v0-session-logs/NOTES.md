@@ -1,5 +1,56 @@
 # Campaign session logs - the evidence behind the exit-publish numbers
 
+## Control finishes 12/12 at the wall's edge, and the null queue runs on the GPU (2026-10-24)
+
+The 2026-10-24 refresh opened with both control shards incomplete and finished them by
+06:08Z: shard 1 trained **15034-15035**, shard 0 trained **15030**. Two sessions that found
+nothing to train followed (one per shard), each restoring its shard and exiting
+`already_published`. The control queue is now **12 of 12** by its own published records
+(`campaign_health --queue control`: 12 complete, `COMPLETE`). The null queue's first GPU
+session then published four seeds, and a second was pushed from seed 15028 at 12:41Z.
+
+| file | what it is | sha256 |
+|---|---|---|
+| `session-control-20261024T034940Z-live.log` | shard 1: restore 19.04 GiB, two pairs, the 25.4 and 31.8 GiB pushes, the `already_published` exit | `967835871ccc3e0ec3879222ef7cb2555c3859e475091cd2871b6f9be5e5f9a2` |
+| `session-control-20261024T034940Z-kernel-log.json` | shard 1's platform log (10,320 B of `stdout`) - a clean exit, `finished after 3.61 h` | `e3e0ff392ee9a7f1d7c869fc4b2883c45a06f99610b78adb89b64f196ebfab8d` |
+| `session-control-20261024T034940Z-session-log.json` | shard 1's record: 2 pairs, `latest_published_seed: 15035`, 4837 tokens/s, pair_time 1.51 h | `3b69bb123f557fe714f1a9f3b698790148f0cfb0933b6922b2cea9674e73e337` |
+| `session-control-20261024T040504Z-live.log` | shard 1 no-op: restore 31.75 GiB, all five `skipped_complete`, exit reused | `473bf3563547b6a7c240c9ef4861a4a022d4fc087bc406343799c9cb31293820` |
+| `session-control-20261024T040504Z-kernel-log.json` | shard 1 no-op's platform log, `finished after 0.20 h` | `2804c6a7d5d44ca80fe812bda4b4ab7a12c7c20dd7f920e5d2bca7e46c9258e2` |
+| `session-control-20261024T040504Z-session-log.json` | shard 1 no-op's record: 0 pairs, all five `skipped_complete` | `4780e752a1295486023db45edbd544c2de62d7c66e5608bf3535563778956067` |
+| `session-control-20261024T060857Z-live.log` | shard 0: restore 37.94 GiB, 15030's pair, the **44.2 GiB** push, the `already_published` exit | `d325fa4800e217029c505500dbb409719681c1c20d62da882d67bbee06fe0b34` |
+| `session-control-20261024T060857Z-kernel-log.json` | shard 0's platform log (10,515 B of `stdout`), `finished after 2.01 h` | `42c76871a10b590a74b25e1f635a6e11565b4c3aa0961def88be66504a874101` |
+| `session-control-20261024T060857Z-session-log.json` | shard 0's record: 1 pair (15030), `latest_published_seed: 15030`, 5349 tokens/s | `f69428e8b8621f0945f7a02498bf22a21a84c2ab181b457cf96dd505f8484c72` |
+| `session-control-20261024T062809Z-live.log` | shard 0 no-op: restore 44.23 GiB, all seven `skipped_complete`, exit reused | `549399d08c7dbef0a504e80103d99ea6230b20aeddd4506157914fa411d00c7b` |
+| `session-control-20261024T062809Z-kernel-log.json` | shard 0 no-op's platform log, `finished after 0.27 h` | `c9907d606908200649157ba08badd4b95eb7c5287a60f829b1d8962785e2d583` |
+| `session-control-20261024T062809Z-session-log.json` | shard 0 no-op's record: 0 pairs, all seven `skipped_complete` | `0085af0df4ac1f4af3e6ff516b43e4a015bde881bbb5332341ee3c46db200ced` |
+| `session-null-20261024T124102Z-live.log` | the null queue's first GPU session: four pairs, four growing publishes, the `already_published` exit | `b7fc3549843fc2e69987b6d27941531d1571367200f9f90f070700aeabde5044` |
+| `session-null-20261024T124102Z-kernel-log.json` | the null session's platform log (9,650 B of `stdout`), `finished after 5.97 h` | `c0fe6abbd96a6d4769bd3ad2a81c73154c0d9edab69bfe6eb8810e85d98818b1` |
+| `session-null-20261024T124102Z-session-log.json` | the null session's record: 4 pairs (15024-15027), `latest_published_seed: 15027`, `search_flops 0` on every pair | `3e5db2ce930ddaa9af5631948711f3dc0e857d4108b65e9a55dd9c40cbcf8a01` |
+
+| | |
+|---|---|
+| **Shard 1 (03:49Z)** | restore **19.04 GiB** in 3.9 min; skipped 15031-15033; trained **15034** (`random 10.397990` / `adaptive 10.398016`, **+2.6e-5**) and **15035** (`random 10.397920` / `adaptive 10.397709`, **-2.1e-4**); pushes 4 seeds / **25.4 GiB** then 5 / **31.8 GiB** in 9.4 min; exit `already_published`; handoff 31.75 GiB; **3.61 h** |
+| **Shard 0 (06:08Z)** | restore **37.94 GiB** in 8.0 min; skipped 15024-15029; trained **15030** (`random 10.398272` / `adaptive 10.397173`, **-1.099e-3**); push **7 seeds / 44.2 GiB in 14.8 min**, `published`; exit `already_published`; handoff 44.23 GiB; **2.01 h** |
+| **The near-wall fire** | **37.94 restored + 6.4 trained + 44.23 staged = ~88.6 GiB**, against the **95.0 GiB** that went EROFS on 2026-10-19 - it landed, 6.4 GiB below the death. The 44.2 GiB version is the largest payload this record has published. This is the falsifier the 2026-10-22 entry named, resolved in favour of the shard rule; it is a measurement, not a threshold. |
+| **The two no-ops** | 0.20 h and 0.27 h; each restored its shard (31.75 / 44.23 GiB) and trained nothing. The launcher's pre-fire completeness check could not yet see the seeds its previous session had just published, and its rule is that an unreadable check must not skip work - so it fired a session that found everything complete. 0.47 GPU-h, no lost pairs. |
+| **Control readout** | 12 summaries read: adaptive won **7 of 12**, mean `adaptive - random` **-0.000092 nats**, largest gap from `ln(32768) = 10.3972` **0.001281**. The 9-seed readout was +0.000020; the last three moved it down 1.1e-4. Same floor, still not a verdict. |
+| **Null, first GPU session** | 5.97 h, **4/12**: 15024-15027 at `10.398030` / `10.398226` / `10.398335` / `10.398767`; no restore (`no remote version ... training from scratch`); publishes 1 / **3.2 GiB**, 2 / **6.4**, 3 / **9.6**, 4 / **12.8** (4.0 min), all `published`; exit `already_published`; handoff 12.76 GiB; measured **5326 tokens/s**, pair 1.38 h, `search_flops 0` on every pair. |
+| **Cost** | control **6.09 h** + null **5.97 h** = **12.06 h**; quota **17.84 / 30 h** at 12:41Z, refresh 2026-10-31. |
+
+**What this says about the wall.** The 2026-10-19 death was at 95.0 GiB and the projection
+for 15030's fire was ~88 GiB if the restore's scratch is released before staging. It was, and
+the push landed. That does not establish where the ceiling is - the bracket is still
+(88.6 survived, 95.0 died) - but it removes the reading that the 44.2 GiB payload is itself
+fatal: the 2026-10-19 session died staging **25.5 GiB** into p2 at a **95.0 GiB** total,
+while this one staged **44.23 GiB** at **~88.6 GiB** and landed. Total footprint, not payload
+size, is what the two observations have in common.
+
+**One observation worth carrying to the verdict.** Seeds 15033 and 15035 publish the same
+adaptive final loss to the last bit (`10.397709369659424`) while their random arms differ.
+Each summary's own `config.seed` matches its seed, so this is convergence at the floor, not
+a mislabeled record - but it is the kind of coincidence the readout should name rather than
+smooth over.
+
 ## The empty shard paid off: zero restore, three seeds, every publish landed (2026-10-21 17:35Z)
 
 Kernel **v3** ran the control queue's third session on `--seeds 15031-15035`, i.e. into

@@ -1,0 +1,98 @@
+{
+  "declared_seed_queue": [
+    15024,
+    15025,
+    15026,
+    15027,
+    15028,
+    15029,
+    15030,
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ],
+  "dtype": "fp16",
+  "dtype_rule_tokens_per_second": 1390.156314857153,
+  "latest_published_seed": 15035,
+  "measured_tokens_per_second": 4836.555548345853,
+  "pair_time_hours": 1.511472813333334,
+  "pairs": [
+    {
+      "action": "skipped_complete",
+      "seed": 15031
+    },
+    {
+      "action": "skipped_complete",
+      "seed": 15032
+    },
+    {
+      "action": "skipped_complete",
+      "seed": 15033
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 10.398016214370728,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": null,
+      "random_final_loss": 10.397990465164185,
+      "remote_publish": {
+        "dataset": "sid123123234/act-v0-5-2-control-p2",
+        "error": null,
+        "fingerprint": "529b2788d48d2c8b7b347730f7ce734b174b80ed7ad9985494c192e5ff45be76",
+        "folder": "/tmp/act-lab-control-9a419fcf23/artifacts/datasets-control/act-checkpoints/v0-5-1",
+        "seeds_published": 4,
+        "status": "published",
+        "version_notes": "v0-5-1 session publish: 4837 tokens/s, measured dtype, after seed 15034"
+      },
+      "search_flops_by_arm": {
+        "adaptive": 13209542488064,
+        "random": 3440824320
+      },
+      "seed": 15034,
+      "training_flops_by_arm": {
+        "adaptive": 13921733836800000,
+        "random": 14076428156928000
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": 10.397709369659424,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": null,
+      "random_final_loss": 10.39792013168335,
+      "remote_publish": {
+        "dataset": "sid123123234/act-v0-5-2-control-p2",
+        "error": null,
+        "fingerprint": "572369b513159337a280df4021a9a746168bae1848d585b32461f3af4dc1bc1d",
+        "folder": "/tmp/act-lab-control-9a419fcf23/artifacts/datasets-control/act-checkpoints/v0-5-1",
+        "seeds_published": 5,
+        "status": "published",
+        "version_notes": "v0-5-1 session publish: 4837 tokens/s, measured dtype, after seed 15035"
+      },
+      "search_flops_by_arm": {
+        "adaptive": 13209508925440,
+        "random": 3424038912
+      },
+      "seed": 15035,
+      "training_flops_by_arm": {
+        "adaptive": 13870169063424000,
+        "random": 14024863383552000
+      }
+    }
+  ],
+  "pairs_completed": 2,
+  "protocol": "v0-compute-efficiency-5.2",
+  "remaining_hours_at_entry": 6.815105472449723,
+  "schedule_tokens_per_second": 4836.555548345853,
+  "seeds_requested": [
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ]
+}

@@ -206,7 +206,9 @@ def published_seeds(
     return merged
 
 
-def stepped_seeds(seeds: dict[int, dict]) -> list[int]:
+def stepped_seeds(
+    seeds: dict[int, dict], *, arms: tuple[str, ...] = DECLARED_ARMS
+) -> list[int]:
     """The seeds the *listing* says reached the declared step on every declared arm.
 
     That is a candidate, not a finished seed. Measured on the live block, 2026-09-27: seed
@@ -216,16 +218,24 @@ def stepped_seeds(seeds: dict[int, dict]) -> list[int]:
     because the evaluation that follows training never ran before the window ended. So the
     listing cannot tell a finished seed from one whose window closed after its last
     checkpoint; only the seed's own record can, which is why ``seed_progress`` asks it.
+
+    ``arms`` is the queue's own arm set. The null queue is single-arm by construction
+    (section 5.14), so reading it against the paired queue's ``adaptive``/``random`` can
+    never find a candidate: every null seed has one ``null`` checkpoint and would read as
+    partial forever, which is what happened on 2026-10-24 (4 published, 0 complete).
     """
     return [
         seed
         for seed in sorted(seeds)
-        if all(seeds[seed]["arms"].get(arm, 0) >= DECLARED_STEPS for arm in DECLARED_ARMS)
+        if all(seeds[seed]["arms"].get(arm, 0) >= DECLARED_STEPS for arm in arms)
     ]
 
 
 def seed_progress(
-    seeds: dict[int, dict], *, statuses: Mapping[int, str | None]
+    seeds: dict[int, dict],
+    *,
+    statuses: Mapping[int, str | None],
+    arms: tuple[str, ...] = DECLARED_ARMS,
 ) -> dict:
     """Split the published seeds into complete, partial and stepped-but-unfinished.
 
@@ -253,7 +263,7 @@ def seed_progress(
     complete, partial, unconfirmed = [], [], []
     for seed in sorted(seeds):
         if not all(
-            seeds[seed]["arms"].get(arm, 0) >= DECLARED_STEPS for arm in DECLARED_ARMS
+            seeds[seed]["arms"].get(arm, 0) >= DECLARED_STEPS for arm in arms
         ):
             partial.append(seed)
         elif statuses.get(seed) == COMPLETE_STATUS:
@@ -310,15 +320,22 @@ def fetch_seed_summary(
     """One published seed's summary: a kilobyte carrying both arms' final losses.
 
     Fetched as a **single file**, not by downloading the session dataset - that is ~24 GB
-    and this needs five kilobytes per seed. Two things about the CLI are load-bearing here
-    and both were measured on 2026-09-21: ``-f`` serves one path out of a dataset, and the
-    CLI writes the file under its own basename, so seeds fetched into *one* directory leave
-    **one** file (the last one) - which would read as the others being unreadable rather
+    and this needs five kilobytes per seed. ``-f`` serves one path out of a dataset, and the
+    CLI used to write that file under its own basename, so seeds fetched into *one* directory
+    left **one** file (the last one) - which would read as the others being unreadable rather
     than as a fetch that overwrote them. This function therefore owns a directory per call
     and the seed is in its name, so a download that fails names the seed it was for.
 
     The remote path carries the doubled first component the upload created, because a seed
     is pushed as ``seed-N.tar`` whose members already begin ``seed-N/``.
+
+    **Both local layouts are accepted.** Measured 2026-10-24 on the workstation's CLI
+    (2.2.4): ``-f seed-N/...`` now preserves the remote directories under ``-p``, so the
+    file lands at ``<dir>/seed-N/seed-N/reports/seed-summary.json``. The older flat layout
+    is what the 2026-09-21 measurement saw, and the sessions' own CLI is 2.0.2. Reading
+    only one layout is not cosmetic: on 2026-10-24 the flat-only read turned all twelve
+    published control seeds into "record unreadable" - a report that says the block has not
+    advanced when it is complete.
     """
     if not isinstance(dataset_id, str):
         # Sharded: the seed's record lives in the shard that carries it.
@@ -340,7 +357,9 @@ def fetch_seed_summary(
             )
         except (OSError, subprocess.TimeoutExpired):
             return None
-        path = Path(directory) / "seed-summary.json"
+        path = Path(directory) / name
+        if not path.is_file():
+            path = Path(directory) / "seed-summary.json"
         if not path.is_file():
             return None
         try:
@@ -350,50 +369,64 @@ def fetch_seed_summary(
 
 
 def seed_readout(
-    dataset_id: str | Mapping[int, str], seeds, *, timeout: float = 180.0
+    dataset_id: str | Mapping[int, str],
+    seeds,
+    *,
+    arms: tuple[str, ...] = DECLARED_ARMS,
+    timeout: float = 180.0,
 ) -> dict:
     """What the published seeds *show* - which is not the verdict.
 
     The queue is incomplete for most of the campaign's life and the registered verdict
     withholds itself until every declared seed is published, so this reports the inputs
-    only: each seed's two arm losses, the adaptive-minus-random difference, and how many
-    seeds the adaptive arm won. **No threshold is applied and no verdict is implied** - a
-    provisional verdict is exactly what a pre-registered rule exists to prevent.
+    only: each seed's arm losses, the adaptive-minus-random difference for a paired queue,
+    and how many seeds the adaptive arm won. **No threshold is applied and no verdict is
+    implied** - a provisional verdict is exactly what a pre-registered rule exists to
+    prevent.
 
     It also places the arms against ``ln(vocab_size)``, the loss a signal-free model must
     reach on the declared block's synthetic stream, because an arm sitting on that floor
     turns a 1e-4 difference from a result into a reading.
+
+    ``arms`` is the queue's own set: the null queue has one ``null`` arm, so asking it for
+    an adaptive-minus-random difference would mark every published seed unreadable. For a
+    single-arm queue the paired fields are ``None`` and the rows carry the arm's loss.
     """
+    paired = set(arms) >= set(DECLARED_ARMS)
     rows: list[dict] = []
     unread: list[int] = []
     for seed in sorted(seeds):
         summary = fetch_seed_summary(dataset_id, seed, timeout=timeout)
-        arms = (summary or {}).get("arms") or {}
+        published = (summary or {}).get("arms") or {}
         losses = {
-            arm: (arms.get(arm) or {}).get("final_loss") for arm in DECLARED_ARMS
+            arm: (published.get(arm) or {}).get("final_loss") for arm in arms
         }
         if any(value is None for value in losses.values()):
             unread.append(seed)
             continue
-        delta = losses["adaptive"] - losses["random"]
-        rows.append(
-            {
-                "seed": seed,
-                "losses": losses,
-                "adaptive_minus_random": round(delta, 6),
-                "adaptive_wins": delta < 0,
-            }
-        )
-    wins = sum(1 for row in rows if row["adaptive_wins"])
+        if paired:
+            delta = losses["adaptive"] - losses["random"]
+            rows.append(
+                {
+                    "seed": seed,
+                    "losses": losses,
+                    "adaptive_minus_random": round(delta, 6),
+                    "adaptive_wins": delta < 0,
+                }
+            )
+        else:
+            rows.append({"seed": seed, "losses": losses})
+    wins = sum(1 for row in rows if row.get("adaptive_wins"))
     return {
+        "arms": list(arms),
         "seeds_read": [row["seed"] for row in rows],
         "seeds_unread": unread,
         "rows": rows,
-        "adaptive_wins": wins,
-        "adaptive_losses": len(rows) - wins,
+        "adaptive_wins": wins if paired else None,
+        "adaptive_losses": (len(rows) - wins) if paired else None,
         "mean_adaptive_minus_random": (
             round(sum(row["adaptive_minus_random"] for row in rows) / len(rows), 6)
-            if rows
+            if paired and rows
             else None
         ),
         "uniform_prior_nats": round(UNIFORM_PRIOR_NATS, 4),
@@ -476,6 +509,11 @@ def health(
     different question from whether it is running.
     """
     queue = kaggle_t4.QUEUES[queue_mode]
+    # Completeness is read against the queue's own declared arms: the registered block is
+    # paired, and the null queue is single-arm (section 5.14). Reading null against the
+    # pair made every finished null seed look partial (measured 2026-10-24: 4 published,
+    # 0 complete), which also means the launcher could never skip a finished null queue.
+    arms = queue.arms
     status = kaggle_queue.active_status(queue.kernel_id)
     quota = kaggle_queue.active_quota() or {}
     remaining = quota.get("remaining_hours")
@@ -489,8 +527,8 @@ def health(
         # Candidates are confirmed against their own published record before any of them is
         # called complete, because the listing cannot tell a finished seed from one whose
         # window closed just after its last checkpoint (see ``stepped_seeds``).
-        statuses = seed_statuses(owner, stepped_seeds(seeds))
-        progress = seed_progress(seeds, statuses=statuses)
+        statuses = seed_statuses(owner, stepped_seeds(seeds, arms=arms))
+        progress = seed_progress(seeds, statuses=statuses, arms=arms)
         seeds_error = None
     except RuntimeError as error:
         # "Cannot tell" and "zero" are different states and the report has to say which
@@ -521,6 +559,7 @@ def health(
         # not have to know the shard rule to see where the seeds came from.
         "dataset": queue.dataset,
         "datasets": queue.datasets,
+        "arms": list(arms),
         "kernel": queue.kernel_id,
         "session_status": status,
         "driver_lock": holder,
@@ -546,7 +585,7 @@ def health(
             "declared": len(DECLARED_SEEDS),
         },
         "readout": (
-            seed_readout(owner, progress["complete"])
+            seed_readout(owner, progress["complete"], arms=arms)
             if readout and progress.get("complete")
             else None
         ),
@@ -611,6 +650,13 @@ def report(state: dict) -> str:
         remaining=quota["remaining_hours"],
         driver=driver_note(holder),
     )
+    if state["verdict"] == "COMPLETE" and len(state["arms"]) == 1:
+        # "Drive the next queue" is wrong for a single-arm queue: the null block is the
+        # last training queue, and the next step is the free CPU verdict over all three.
+        action = (
+            "every declared seed is published *complete* (its own record says so); this "
+            "is the last training queue - the campaign's next step is the verdict"
+        )
     lines.append(f"  verdict         : {state['verdict']} - {action}")
     lines.extend(_readout_lines(state.get("readout")))
     return "\n".join(lines)
@@ -630,6 +676,22 @@ def _readout_lines(read: dict | None) -> list[str]:
             f"  seed readout    : {len(read['seeds_unread'])} published seed(s) could not be "
             "read; no verdict is computed here regardless"
         ]
+    if len(read.get("arms", [])) == 1:
+        # A single-arm queue has no difference to report, and the reading that matters is
+        # where its losses sit against the signal-free floor.
+        arm = read["arms"][0]
+        lines = [
+            f"  seed readout    : {len(read['rows'])} published {arm} seed(s) read. This "
+            "is a single-arm queue's input, not a verdict; no threshold is applied here."
+        ]
+        for row in read["rows"]:
+            lines.append(f"    seed {row['seed']}      : {arm} {row['losses'][arm]:.4f}")
+        lines.append(
+            f"    {arm} arm sits within {read['largest_gap_from_uniform']:.6f} nats of "
+            f"ln({DECLARED_VOCAB}) = {read['uniform_prior_nats']}, the loss a signal-free "
+            "model reaches on this block's synthetic stream"
+        )
+        return lines
     lines = [
         f"  seed readout    : {len(read['rows'])} published seed(s) read. These are the "
         "verdict's inputs, not a verdict - the queue is incomplete and the registered "

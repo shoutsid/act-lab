@@ -232,6 +232,11 @@ class Queue:
     #: 7-seed version is the largest that has landed; the null queue is
     #: single-arm (~half the payload) and fits in one version.
     shard_seeds: int = 0
+    #: The arms one published seed carries. The registered block is the paired
+    #: ``random``/``adaptive`` pair; the null queue is single-arm by construction
+    #: (section 5.14), and a reader of its published seeds has to ask for that one
+    #: arm or it will call every finished null seed partial.
+    arms: tuple[str, ...] = ("random", "adaptive")
 
     @property
     def owner(self) -> str:
@@ -281,7 +286,7 @@ QUEUES: dict[str, Queue] = {
     #: (~50.4 GiB) killed two containers. See `docs/handoff-sharding-design.md`.
     "session": Queue("session", "act-t4-session", "", shard_seeds=7),
     "control": Queue("control", "act-t4-control", "-control", shard_seeds=7),
-    "null": Queue("null", "act-t4-null", "-null"),
+    "null": Queue("null", "act-t4-null", "-null", arms=("null",)),
 }
 
 
