@@ -1,5 +1,45 @@
 # Campaign session logs - the evidence behind the exit-publish numbers
 
+## The null queue reaches 7/12, then the 200 GiB quota rejects three publishes (2026-10-24/25)
+
+The 2026-10-24 refresh added six null seeds in two sessions and then lost three pairs to a
+wall that was in no session log: the account's **200 GiB private-dataset quota**. The
+17:38Z session published **15028-15030** and took null to **7/12**; the 00:13Z session
+trained **15031-15033** and every `CreateDatasetVersion` answered **`400`**, nine uploads
+in all. The latest versions summed to **199.73 GiB** before the second session, and the
+next null seed is **3.19 GiB**: the 7-seed version landed at the wall, the 8-seed one would
+have been **202.9 GiB**.
+
+| file | what it is | sha256 |
+|---|---|---|
+| `session-null-20261024T173856Z-live.log` | 17:38Z: restore 12.76 GiB, three pairs, three publishes (5/6/7 seeds), `already_published` exit | `b5e016fda44983a41504a49cc554a1f35a8967afc96c1e12c23ec46a084955c0` |
+| `session-null-20261024T173856Z-kernel-log.json` | its platform log, `finished after 4.92 h` | `1e179d099da545e583da610b8403504633b2e02c135b116e0462b7c50c01a168` |
+| `session-null-20261024T173856Z-session-log.json` | its record: 3 pairs (15028-15030), 4974 tokens/s, pair 1.47 h, handoff 22.32 GiB | `c77b75f5adb8d12ae971806af08482d361ab3f9a34fdeed2ad6053ea5eed54e7` |
+| `session-null-20261025T001322Z-live.log` | 00:13Z: restore 22.32 GiB, three pairs, nine failed uploads, failed exit publish | `0d2967c4952eef73a4aec897e84abc6c53e31f629e92d95bba2a66c3a7b66cb4` |
+| `session-null-20261025T001322Z-kernel-log.json` | its platform log, `finished after 6.52 h` | `2467499a1bf9478fef0aac5a8f16497b16b6fa07ed228026a4bdb4b1d880c8c2` |
+| `session-null-20261025T001322Z-session-log.json` | its record: 3 pairs (15031-15033), 4856 tokens/s, pair 1.51 h, handoff 31.89 GiB | `051d21aea1b878cfc3ce47c58ae49ab2d84769bfdd485f3fd0eb6390a064b54e` |
+
+| | |
+|---|---|
+| **17:38Z (4.92 h)** | restore **12.76 GiB in 1.3 min**; skipped 15024-15027; trained **15028** `10.398210`, **15029** `10.398393`, **15030** `10.397880`; publishes **5 seeds in 4.8 min**, **6 in 5.3**, **7 in 6.3**, all `published`; exit `already_published`; handoff 22.32 GiB. |
+| **00:13Z (6.52 h)** | restore **22.32 GiB in 2.7 min**; skipped 15024-15030; trained **15031** `10.398338`, **15032** `10.398277`, **15033** `10.398332`, `search_flops 0` on every pair; every publish **`400`**: 8 seeds / **25.5 GiB**, 9 / **28.7**, 10 / **31.9**, each retried 3 times (~7-9 min per upload), **nine uploads**; exit publish failed; handoff 31.89 GiB. |
+| **The wall** | The ten latest versions summed to **199.73 GiB** (44.13 + 31.80 + 44.23 + 31.75 + 25.42 + 22.32 + 0.08), and the documented private-dataset limit is **200 GB**. The 7-seed version was the last size that fit; the next seed is 3.19 GiB. |
+| **Why the log has no reason** | `create_version` let `requests` raise, so the record carries the status line but not the server's body. The retry loop then treated the 400 as transient: three re-uploads per pair, ~45 min of the session, and the body was still discarded. |
+| **What was freed, and how** | `act-v0-5-1`'s latest version now holds **13 files / 43,582 B** - the four 15000-15003 manifests, reports and top-level summaries plus a README - and no checkpoints. Private storage fell to **174.31 GiB**, **25.69 GiB** of headroom; the four summaries still download. |
+
+**What this says about the wall.** It is account-wide, not per dataset: the null dataset
+was 22.32 GiB and its own next version was 25.5 GiB, yet the publish was refused because
+of what the *other* datasets held. It is also not a version-history limit: if archived
+versions counted, the account would have crossed 200 GiB long before, so the fit is latest
+versions. The 17:38Z push landing at 199.73 GiB and the 00:13Z push failing at +3.19 GiB
+is one observation at the boundary, not a measured threshold with two sides.
+
+**What this does not say.** That the refusal *was* the quota, because the body was
+discarded; the size sum and the documented limit are an inference. That the four discarded
+checkpoint pairs were unneeded; the README beside the summaries says what was removed, and
+an analysis that needs the weights would have to retrain them. That null is complete: it
+is 7/12, and the verdict still withholds.
+
 ## Control finishes 12/12 at the wall's edge, and the null queue runs on the GPU (2026-10-24)
 
 The 2026-10-24 refresh opened with both control shards incomplete and finished them by

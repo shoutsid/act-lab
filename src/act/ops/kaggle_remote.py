@@ -72,6 +72,14 @@ PUBLISH_LOG_NAME = "remote-publish-log.json"
 PUBLISH_ATTEMPTS = 3
 PUBLISH_RETRY_SECONDS = 5.0
 
+#: HTTP statuses worth another upload. A 4xx that is not in this set is a
+#: refusal of the request itself - a rejected version, a quota, a bad payload -
+#: and re-uploading the same gigabytes cannot change it. Measured 2026-10-25:
+#: three 25-32 GiB retries per pair (nine uploads, ~45 min) were spent against
+#: a 400 that was the account's private-dataset quota, and the session lost all
+#: three pairs anyway.
+PUBLISH_RETRY_STATUSES = frozenset({408, 409, 425, 429})
+
 # How often a push that is still uploading says so. Measured 2026-10-06: the
 # two captures of a session killed during a push each stop on the kaggle CLI's
 # version warning - the first line it prints - so the only account of the
@@ -473,6 +481,13 @@ class KaggleApiAdapter:
                 )
             except Exception as error:  # noqa: BLE001 - API error types vary
                 if not _is_missing_dataset_error(error):
+                    detail = _response_detail(error)
+                    if detail and detail not in str(error):
+                        # Keep the type and the response: ``restore_latest`` and
+                        # the publish retry both classify on them.
+                        error.args = (
+                            f"{error} - response body: {detail}",
+                        )
                     raise
                 # First publish: the dataset does not exist yet.
                 self._api.dataset_create_new(
@@ -629,6 +644,44 @@ def stage_push(
         shutil.copy2(metadata, target / METADATA_NAME)
 
 
+def _response_detail(error: Exception, *, limit: int = 500) -> str | None:
+    """The API's own explanation of a rejected request, when it carried one.
+
+    ``requests.HTTPError`` knows only the status line; the body is what names
+    the reason. The 2026-10-25 publish failure was a bare ``400 Bad Request``
+    recorded nine times while the server's answer - the private-dataset quota -
+    was discarded, so the wall had to be inferred from a file-size sum instead
+    of read. Truncated because a proxy's error page can be large.
+    """
+    response = getattr(error, "response", None)
+    text = getattr(response, "text", None)
+    if not text:
+        return None
+    compact = " ".join(str(text).split())
+    if not compact:
+        return None
+    if len(compact) > limit:
+        compact = compact[: limit - 1] + "\u2026"
+    return compact
+
+
+def _is_retryable_publish_error(error: Exception) -> bool:
+    """Whether re-uploading could plausibly succeed.
+
+    No status at all means a network/transport error and is retried, as before.
+    A status outside :data:`PUBLISH_RETRY_STATUSES` below 500 is a refusal of
+    the request, so the next attempt would upload the same bytes to the same
+    answer.
+    """
+    response = getattr(error, "response", None)
+    status = getattr(response, "status_code", None)
+    if not isinstance(status, int):
+        return True
+    if status >= 500:
+        return True
+    return status in PUBLISH_RETRY_STATUSES
+
+
 def _is_missing_dataset_error(error: Exception) -> bool:
     """True when a request failed because no remote version exists.
 
@@ -776,6 +829,13 @@ excepted from it.
                 f"remote publish attempt {attempt}/{attempts} failed "
                 f"({failures[-1]})"
             )
+            if not _is_retryable_publish_error(error):
+                logger(
+                    "  not retrying: the API refused this version rather than "
+                    "failing transiently; re-uploading the same bytes cannot "
+                    "change the answer. Read the response beside the error."
+                )
+                break
             if attempt < attempts:
                 logger("  retrying: a failed push here loses the session's pairs")
                 sleep(PUBLISH_RETRY_SECONDS * attempt)

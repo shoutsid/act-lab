@@ -40,8 +40,9 @@ from act.training.v0_handoff import HANDOFF_DATASET, publish_seed, restore_seed
 
 
 class StubResponse:
-    def __init__(self, status_code: int) -> None:
+    def __init__(self, status_code: int, text: str = "") -> None:
         self.status_code = status_code
+        self.text = text
 
 
 class StubHTTPError(Exception):
@@ -319,6 +320,82 @@ def test_publish_on_exit_swallows_client_errors(tmp_path: Path) -> None:
     # The error text says how many attempts were spent, so a deterministic
     # failure is distinguishable from a flaky one.
     assert result.error.count("409 version conflict") == kaggle_remote.PUBLISH_ATTEMPTS
+
+
+def test_publish_on_exit_does_not_re_upload_a_version_the_api_rejected(
+    tmp_path: Path,
+) -> None:
+    """A 4xx refusal is not a flaky upload: retrying it pays twice for the answer.
+
+    Measured 2026-10-25: three seeds were trained and every publish answered
+    ``400``. Each pair was retried three times, re-uploading 25-32 GiB for
+    ~45 min, and all three pairs were lost anyway. The server's body - the
+    account's private-dataset quota - would have named the wall on the first
+    attempt.
+    """
+    dataset_root = _publish_local_seed(tmp_path, 42)
+    client = FakeClient()
+    attempts = {"count": 0}
+
+    def rejected_create_version(folder: Path, version_notes: str, *, seeds=None) -> str:
+        attempts["count"] += 1
+        raise StubHTTPError(
+            "400 Client Error: Bad Request",
+            response=StubResponse(
+                400, text="private dataset storage quota exceeded (200 GB)"
+            ),
+        )
+
+    client.create_version = rejected_create_version  # type: ignore[method-assign]
+    slept: list[float] = []
+    messages: list[str] = []
+
+    result = publish_on_exit(
+        dataset_root,
+        dataset="owner/act-checkpoints-v0-5-1",
+        client=client,
+        log=messages.append,
+        sleep=slept.append,
+    )
+
+    assert result.status == STATUS_FAILED
+    assert attempts["count"] == 1
+    assert slept == []
+    assert any("not retrying" in message for message in messages)
+    assert "400" in (result.error or "")
+
+
+def test_a_rejected_version_keeps_the_api_response_body(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The body is the only place the server says *why* it refused the version.
+
+    A ``requests.HTTPError`` carries the status line and nothing else, so the
+    adapter used to raise a bare ``400 Bad Request`` while the body naming the
+    quota was dropped.
+    """
+    stub_requests(monkeypatch, status_code=400)
+    adapter = kaggle_remote.KaggleApiAdapter.__new__(kaggle_remote.KaggleApiAdapter)
+    folder = tmp_path / "push"
+    folder.mkdir()
+    (folder / "dataset-metadata.json").write_text("{}\n")
+
+    class Api:
+        def dataset_create_version(self, path, notes, dir_mode=None, quiet=None):
+            raise StubHTTPError(
+                "400 Client Error: Bad Request",
+                response=StubResponse(
+                    400, text="You have exceeded the 200GB private dataset limit"
+                ),
+            )
+
+    adapter._api = Api()
+
+    with pytest.raises(StubHTTPError) as caught:
+        adapter.create_version(folder, "notes")
+
+    assert "200GB private dataset limit" in str(caught.value)
+    assert caught.value.response.status_code == 400
 
 
 def test_publish_on_exit_retries_a_transient_push_failure(tmp_path: Path) -> None:

@@ -1,0 +1,246 @@
+[{"stream_name":"stdout","time":6.630833829,"data":"=== ACT lab: null session ===\n"}
+,{"stream_name":"stdout","time":6.630903964,"data":"dataset=sid123123234/act-v0-5-2-null hours=7 seeds=15024-15035\n"}
+,{"stream_name":"stdout","time":8.608144708,"data":"code dataset: /kaggle/input/datasets/sid123123234/act-lab-code/code\n"}
+,{"stream_name":"stdout","time":24.543994564,"data":"torch 2.11.0+cu128 | device Tesla T4\n"}
+,{"stream_name":"stdout","time":24.544034577,"data":"gpu inventory: {'count': 2, 'names': ['Tesla T4', 'Tesla T4']}\n"}
+,{"stream_name":"stdout","time":24.544041822,"data":"disk working: total 19.5 GiB | free 19.5 GiB\n"}
+,{"stream_name":"stdout","time":24.544107647,"data":"disk input: total 19.5 GiB | free 19.5 GiB\n"}
+,{"stream_name":"stdout","time":24.544124549,"data":"disk tmp: total 8156.9 GiB | free 1048.8 GiB\n"}
+,{"stream_name":"stdout","time":24.55406053,"data":"--- df -h ---\n"}
+,{"stream_name":"stdout","time":24.554087402,"data":"Filesystem      Size  Used Avail Use% Mounted on\n"}
+,{"stream_name":"stdout","time":24.554092329,"data":"/dev/loop2       20G  7.4M   20G   1% /kaggle/working\n"}
+,{"stream_name":"stdout","time":24.554096664,"data":"overlay         8.0T  7.0T  1.1T  88% /\n"}
+,{"stream_name":"stdout","time":24.554100487,"data":"overlay         8.0T  7.0T  1.1T  88% /\n"}
+,{"stream_name":"stdout","time":24.554272884,"data":"writable /kaggle/working: yes\n"}
+,{"stream_name":"stdout","time":24.554576226000002,"data":"writable /kaggle/temp: yes\n"}
+,{"stream_name":"stdout","time":24.554822944,"data":"writable /tmp: yes\n"}
+,{"stream_name":"stdout","time":24.555800732,"data":"--- throughput benchmark (the launch command's input) ---\n"}
+,{"stream_name":"stdout","time":24.555823107,"data":"$ /usr/bin/python3 scripts/v0_throughput_benchmark.py --steps 50\n"}
+,{"stream_name":"stdout","time":246.69138888,"data":"arm placement: 2 arm(s) in 1 wave(s) of slots=2\n"}
+,{"stream_name":"stdout","time":246.692591704,"data":"{\"benchmark\": \"v0-throughput-5.2\", \"declared_active_parameter_count\": 7556160, \"declared_parameter_count\": 14928960, \"device\": \"cuda\", \"device_name\": \"Tesla T4\", \"dtype_decision\": \"fp16\", \"example_deadline_check\": \"remaining 2.00 h does not fit pair 1.51 h + 45 min reserve (rule 1)\", \"fp32_floor_tokens_per_second\": 2500.0, \"gpu_inventory\": {\"count\": 2, \"names\": [\"Tesla T4\", \"Tesla T4\"]}, \"measured_tokens_per_second\": 1396.431037345117, \"predicted_probe_cost_percent\": {\"cap4_1batch\": 0.0941636252059042, \"cap4_2batch\": 0.1883272504118084}, \"profile\": \"declared-285M\", \"schedule\": {\"arm_slots\": 2, \"arms\": 2, \"checkpoint_interval\": 500, \"declared_session_hours\": 7.0, \"full_pairs_per_session\": 5, \"max_checkpoints\": 2, \"pair_time_hours\": 1.5058467286666657, \"pairs_per_session_rule1\": 4, \"platform_session_cap_hours\": 8.0, \"sessions_for_primary\": 3, \"sessions_for_primary_rule1\": 3, \"sessions_total\": 6, \"three_queue_sessions\": 9, \"three_queue_sessions_null\": 3, \"three_queue_sessions_primary\": 3, \"three_queue_training_hours\": 54.21048223199996, \"working_dir_headroom_gb\": 5.120000000000001, \"working_dir_steady_state_gb\": 14.879999999999999}, \"schedule_dtype\": \"fp16\", \"schedule_tokens_per_second\": 4855.911051655838, \"seed_block\": \"15000-15011 and 15024-15035 (reserved, untouched by this benchmark)\", \"steps\": 50, \"tokens_per_second_by_dtype\": {\"fp16\": 4855.911051655838, \"fp32\": 1396.431037345117}, \"tolerance_band_primary\": [0.0470818126029521, 0.1883272504118084], \"torch_version\": \"2.11.0+cu128\", \"warmup_steps\": 5}\n"}
+,{"stream_name":"stdout","time":249.216646382,"data":"measured 1396.4 tokens/s | dtype fp16 | pair_time 1.51 h\n"}
+,{"stream_name":"stdout","time":249.216984197,"data":"kept /kaggle/working/v0-benchmark.json\n"}
+,{"stream_name":"stdout","time":249.217021699,"data":"--- null queue (--hours 6.93 h: 4.0 min of the declared 7 h spent on startup) ---\n"}
+,{"stream_name":"stdout","time":249.217278048,"data":"$ /usr/bin/python3 -m act.training.cli --mode pair-session --device cuda --hours 6.93261 --seeds 15024-15035 --session-arms null --preserve-router-on-rebuild --new-expert clone --dataset-root /tmp/act-lab-null-1fc4d98fb7/artifacts/datasets-null --session-dir /tmp/act-lab-null-1fc4d98fb7/artifacts/v0-sessions-null --kaggle-dataset sid123123234/act-v0-5-2-null --kaggle-shard-seeds 0\n"}
+,{"stream_name":"stdout","time":252.13162997,"data":"Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.5)\n"}
+,{"stream_name":"stdout","time":252.195623959,"data":"Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.5)\n"}
+,{"stream_name":"stdout","time":252.197085306,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":252.448422457,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":268.959484511,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":269.282160027,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":269.621153378,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":269.995048385,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":288.300218041,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":288.641889916,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":288.991463865,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":289.283045798,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":317.953390626,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":318.271024004,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":318.584990159,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":318.90018234,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":341.474423758,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":345.594433934,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":345.985108179,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":346.315623728,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":368.927607105,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":369.25388053,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":369.569481267,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":369.934954905,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":388.118332347,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":388.412114883,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":388.728570966,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":389.455380671,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":410.962021525,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":411.210818487,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":411.534116545,"data":"Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null\n"}
+,{"stream_name":"stdout","time":411.906593488,"data":"remote restore: sid123123234/act-v0-5-2-null downloaded in 2.7 min (22.32 GiB on disk)\n"}
+,{"stream_name":"stdout","time":609.229840163,"data":"restored 7 seed version(s) from sid123123234/act-v0-5-2-null: [15024, 15025, 15026, 15027, 15028, 15029, 15030]\n"}
+,{"stream_name":"stdout","time":609.230347091,"data":"session clock: 6.83 h of the declared 6.93261 h remain after 6.0 min of startup\n"}
+,{"stream_name":"stdout","time":609.281490419,"data":"code revision: 28ef389ef8e5019f38aa171536ca70950a5adb47\n"}
+,{"stream_name":"stdout","time":609.302262819,"data":"pair time 1.51 h (1 arm(s) in 1 wave(s) of 24576000 tokens at 4856 tokens/s + 0.1 h event overhead)\n"}
+,{"stream_name":"stdout","time":609.303677899,"data":"seed 15024: complete version exists, skipping\n"}
+,{"stream_name":"stdout","time":609.304276968,"data":"seed 15025: complete version exists, skipping\n"}
+,{"stream_name":"stdout","time":609.30464215,"data":"seed 15026: complete version exists, skipping\n"}
+,{"stream_name":"stdout","time":609.308082094,"data":"seed 15027: complete version exists, skipping\n"}
+,{"stream_name":"stdout","time":609.310977718,"data":"seed 15028: complete version exists, skipping\n"}
+,{"stream_name":"stdout","time":609.31170845,"data":"seed 15029: complete version exists, skipping\n"}
+,{"stream_name":"stdout","time":609.312010134,"data":"seed 15030: complete version exists, skipping\n"}
+,{"stream_name":"stdout","time":609.313519967,"data":"block treatment matches the published seed(s): preserve_router_on_rebuild=True, new_expert_initialization='clone'\n"}
+,{"stream_name":"stdout","time":609.313535481,"data":"seed 15031: starting pair (remaining 6.83 h fits pair 1.51 h + 45 min reserve (rule 1))\n"}
+,{"stream_name":"stdout","time":6161.160055711,"data":"seed 15031: pair complete ({'null': 10.398338317871094})\n"}
+,{"stream_name":"stdout","time":6161.250992454,"data":"Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.5)\n"}
+,{"stream_name":"stdout","time":6161.40053945,"data":"remote publish: pushing 8 seed version(s), 25.5 GiB of handoff\n"}
+,{"stream_name":"stdout","time":6161.400583908,"data":"remote publish: attempt 1/3 starting (8 seed version(s), 25.5 GiB)\n"}
+,{"stream_name":"stdout","time":6221.401696261,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 1.0 min\n"}
+,{"stream_name":"stdout","time":6281.401913807,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 2.0 min\n"}
+,{"stream_name":"stdout","time":6341.402035082,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 3.0 min\n"}
+,{"stream_name":"stdout","time":6401.402215862,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 4.0 min\n"}
+,{"stream_name":"stdout","time":6461.402345592,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 5.0 min\n"}
+,{"stream_name":"stdout","time":6521.403580666,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 6.0 min\n"}
+,{"stream_name":"stdout","time":6581.403818142,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 7.0 min\n"}
+,{"stream_name":"stdout","time":6630.149441629,"data":"remote publish attempt 1/3 failed (HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion)\n"}
+,{"stream_name":"stdout","time":6630.149544303,"data":"  retrying: a failed push here loses the session's pairs\n"}
+,{"stream_name":"stdout","time":6635.151049374,"data":"remote publish: attempt 2/3 starting (8 seed version(s), 25.5 GiB)\n"}
+,{"stream_name":"stdout","time":6695.15308199,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 1.0 min\n"}
+,{"stream_name":"stdout","time":6755.153271688,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 2.0 min\n"}
+,{"stream_name":"stdout","time":6815.153502318,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 3.0 min\n"}
+,{"stream_name":"stdout","time":6875.153693612,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 4.0 min\n"}
+,{"stream_name":"stdout","time":6935.153810468,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 5.0 min\n"}
+,{"stream_name":"stdout","time":6995.154228054,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 6.0 min\n"}
+,{"stream_name":"stdout","time":7055.154474786,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 7.0 min\n"}
+,{"stream_name":"stdout","time":7077.73768191,"data":"remote publish attempt 2/3 failed (HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion)\n"}
+,{"stream_name":"stdout","time":7077.737708124,"data":"  retrying: a failed push here loses the session's pairs\n"}
+,{"stream_name":"stdout","time":7087.739248431,"data":"remote publish: attempt 3/3 starting (8 seed version(s), 25.5 GiB)\n"}
+,{"stream_name":"stdout","time":7147.741770835,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 1.0 min\n"}
+,{"stream_name":"stdout","time":7207.741885776,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 2.0 min\n"}
+,{"stream_name":"stdout","time":7267.742062626,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 3.0 min\n"}
+,{"stream_name":"stdout","time":7327.742183694,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 4.0 min\n"}
+,{"stream_name":"stdout","time":7387.742456909,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 5.0 min\n"}
+,{"stream_name":"stdout","time":7447.7426183,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 6.0 min\n"}
+,{"stream_name":"stdout","time":7507.742850298,"data":"remote publish: still pushing 8 seed version(s) (25.5 GiB) after 7.0 min\n"}
+,{"stream_name":"stdout","time":7530.20377422,"data":"remote publish attempt 3/3 failed (HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion)\n"}
+,{"stream_name":"stdout","time":7530.205430711,"data":"remote publish FAILED after 3 attempt(s) (local handoff intact, but this container ends with the session): HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion\n"}
+,{"stream_name":"stdout","time":7530.206486081,"data":"{\"remote_publish\": {\"dataset\": \"sid123123234/act-v0-5-2-null\", \"error\": \"HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion\", \"fingerprint\": \"18de5929939022edfb834de5b3b9609be601612a4e72fc366995e364291ae6b0\", \"folder\": \"/tmp/act-lab-null-1fc4d98fb7/artifacts/datasets-null/act-checkpoints/v0-5-1\", \"seeds_published\": 8, \"status\": \"failed\", \"version_notes\": \"v0-5-1 session publish: 4856 tokens/s, measured dtype, after seed 15031\"}}\n"}
+,{"stream_name":"stdout","time":7530.206511528,"data":"seed 15031: remote publish failed (HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion); continuing - the next pair's push carries this one, and the exit publish reports it if it is not transient\n"}
+,{"stream_name":"stdout","time":7530.206680887,"data":"seed 15032: starting pair (remaining 4.91 h fits pair 1.51 h + 45 min reserve (rule 1))\n"}
+,{"stream_name":"stdout","time":13066.13847154,"data":"seed 15032: pair complete ({'null': 10.398277282714844})\n"}
+,{"stream_name":"stdout","time":13066.793203733,"data":"remote publish: pushing 9 seed version(s), 28.7 GiB of handoff\n"}
+,{"stream_name":"stdout","time":13066.793249646,"data":"remote publish: attempt 1/3 starting (9 seed version(s), 28.7 GiB)\n"}
+,{"stream_name":"stdout","time":13126.800640253,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 1.0 min\n"}
+,{"stream_name":"stdout","time":13186.800894476,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 2.0 min\n"}
+,{"stream_name":"stdout","time":13246.801199692,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 3.0 min\n"}
+,{"stream_name":"stdout","time":13306.801442289,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 4.0 min\n"}
+,{"stream_name":"stdout","time":13366.801469172,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 5.0 min\n"}
+,{"stream_name":"stdout","time":13426.801704174,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 6.0 min\n"}
+,{"stream_name":"stdout","time":13486.801898739,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 7.0 min\n"}
+,{"stream_name":"stdout","time":13541.236396496,"data":"remote publish attempt 1/3 failed (HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion)\n"}
+,{"stream_name":"stdout","time":13541.236424832,"data":"  retrying: a failed push here loses the session's pairs\n"}
+,{"stream_name":"stdout","time":13546.238033866,"data":"remote publish: attempt 2/3 starting (9 seed version(s), 28.7 GiB)\n"}
+,{"stream_name":"stdout","time":13606.240313261,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 1.0 min\n"}
+,{"stream_name":"stdout","time":13666.24043574,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 2.0 min\n"}
+,{"stream_name":"stdout","time":13726.240778613,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 3.0 min\n"}
+,{"stream_name":"stdout","time":13786.240936386,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 4.0 min\n"}
+,{"stream_name":"stdout","time":13846.241187645,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 5.0 min\n"}
+,{"stream_name":"stdout","time":13906.241544266,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 6.0 min\n"}
+,{"stream_name":"stdout","time":13966.241665476,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 7.0 min\n"}
+,{"stream_name":"stdout","time":14026.241894637,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 8.0 min\n"}
+,{"stream_name":"stdout","time":14030.918185562,"data":"remote publish attempt 2/3 failed (HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion)\n"}
+,{"stream_name":"stdout","time":14030.918224198,"data":"  retrying: a failed push here loses the session's pairs\n"}
+,{"stream_name":"stdout","time":14040.92010263,"data":"remote publish: attempt 3/3 starting (9 seed version(s), 28.7 GiB)\n"}
+,{"stream_name":"stdout","time":14100.922237745,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 1.0 min\n"}
+,{"stream_name":"stdout","time":14160.922409291,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 2.0 min\n"}
+,{"stream_name":"stdout","time":14220.922565568,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 3.0 min\n"}
+,{"stream_name":"stdout","time":14280.922875619,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 4.0 min\n"}
+,{"stream_name":"stdout","time":14340.922876781,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 5.0 min\n"}
+,{"stream_name":"stdout","time":14400.923012153,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 6.0 min\n"}
+,{"stream_name":"stdout","time":14460.923170792,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 7.0 min\n"}
+,{"stream_name":"stdout","time":14520.923529172,"data":"remote publish: still pushing 9 seed version(s) (28.7 GiB) after 8.0 min\n"}
+,{"stream_name":"stdout","time":14549.351453243,"data":"remote publish attempt 3/3 failed (HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion)\n"}
+,{"stream_name":"stdout","time":14549.353236459,"data":"remote publish FAILED after 3 attempt(s) (local handoff intact, but this container ends with the session): HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion\n"}
+,{"stream_name":"stdout","time":14549.354322817,"data":"{\"remote_publish\": {\"dataset\": \"sid123123234/act-v0-5-2-null\", \"error\": \"HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion\", \"fingerprint\": \"fcf947ce7440720eee9b44f6a4398479773e5bf189801b587cab55878b5e8bc2\", \"folder\": \"/tmp/act-lab-null-1fc4d98fb7/artifacts/datasets-null/act-checkpoints/v0-5-1\", \"seeds_published\": 9, \"status\": \"failed\", \"version_notes\": \"v0-5-1 session publish: 4856 tokens/s, measured dtype, after seed 15032\"}}\n"}
+,{"stream_name":"stdout","time":14549.35437007,"data":"seed 15032: remote publish failed (HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion); continuing - the next pair's push carries this one, and the exit publish reports it if it is not transient\n"}
+,{"stream_name":"stdout","time":14549.356828026,"data":"seed 15033: starting pair (remaining 2.96 h fits pair 1.51 h + 45 min reserve (rule 1))\n"}
+,{"stream_name":"stdout","time":20108.041950671,"data":"seed 15033: pair complete ({'null': 10.398331642150879})\n"}
+,{"stream_name":"stdout","time":20108.08336739,"data":"remote publish: pushing 10 seed version(s), 31.9 GiB of handoff\n"}
+,{"stream_name":"stdout","time":20108.083408819,"data":"remote publish: attempt 1/3 starting (10 seed version(s), 31.9 GiB)\n"}
+,{"stream_name":"stdout","time":20168.11329364,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 1.0 min\n"}
+,{"stream_name":"stdout","time":20228.113516895,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 2.0 min\n"}
+,{"stream_name":"stdout","time":20288.113694709,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 3.0 min\n"}
+,{"stream_name":"stdout","time":20348.113874546,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 4.0 min\n"}
+,{"stream_name":"stdout","time":20408.114072552,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 5.0 min\n"}
+,{"stream_name":"stdout","time":20468.11428433,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 6.0 min\n"}
+,{"stream_name":"stdout","time":20528.114415066,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 7.0 min\n"}
+,{"stream_name":"stdout","time":20588.114716385,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 8.0 min\n"}
+,{"stream_name":"stdout","time":20648.114769809,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 9.0 min\n"}
+,{"stream_name":"stdout","time":20664.905750394,"data":"remote publish attempt 1/3 failed (HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion)\n"}
+,{"stream_name":"stdout","time":20664.905794998,"data":"  retrying: a failed push here loses the session's pairs\n"}
+,{"stream_name":"stdout","time":20669.908040843,"data":"remote publish: attempt 2/3 starting (10 seed version(s), 31.9 GiB)\n"}
+,{"stream_name":"stdout","time":20729.910866177,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 1.0 min\n"}
+,{"stream_name":"stdout","time":20789.911043627,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 2.0 min\n"}
+,{"stream_name":"stdout","time":20849.911260024,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 3.0 min\n"}
+,{"stream_name":"stdout","time":20909.911506858,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 4.0 min\n"}
+,{"stream_name":"stdout","time":20969.911734469,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 5.0 min\n"}
+,{"stream_name":"stdout","time":21029.911873166,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 6.0 min\n"}
+,{"stream_name":"stdout","time":21089.912026925,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 7.0 min\n"}
+,{"stream_name":"stdout","time":21149.912055416,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 8.0 min\n"}
+,{"stream_name":"stdout","time":21209.912215685,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 9.0 min\n"}
+,{"stream_name":"stdout","time":21247.085493206,"data":"remote publish attempt 2/3 failed (HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion)\n"}
+,{"stream_name":"stdout","time":21247.085528504,"data":"  retrying: a failed push here loses the session's pairs\n"}
+,{"stream_name":"stdout","time":21257.087288273,"data":"remote publish: attempt 3/3 starting (10 seed version(s), 31.9 GiB)\n"}
+,{"stream_name":"stdout","time":21317.089506558,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 1.0 min\n"}
+,{"stream_name":"stdout","time":21377.089737438,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 2.0 min\n"}
+,{"stream_name":"stdout","time":21437.089974521,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 3.0 min\n"}
+,{"stream_name":"stdout","time":21497.090145318,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 4.0 min\n"}
+,{"stream_name":"stdout","time":21557.090314714,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 5.0 min\n"}
+,{"stream_name":"stdout","time":21617.090610766,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 6.0 min\n"}
+,{"stream_name":"stdout","time":21677.090830507,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 7.0 min\n"}
+,{"stream_name":"stdout","time":21737.092015882,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 8.0 min\n"}
+,{"stream_name":"stdout","time":21789.956434627,"data":"remote publish attempt 3/3 failed (HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion)\n"}
+,{"stream_name":"stdout","time":21789.958162097,"data":"remote publish FAILED after 3 attempt(s) (local handoff intact, but this container ends with the session): HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion\n"}
+,{"stream_name":"stdout","time":21789.961836468,"data":"{\"remote_publish\": {\"dataset\": \"sid123123234/act-v0-5-2-null\", \"error\": \"HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion\", \"fingerprint\": \"78adf111c827b32004e5ac41b2ddcbee76e5337950abba3be9edd3d3a753cc25\", \"folder\": \"/tmp/act-lab-null-1fc4d98fb7/artifacts/datasets-null/act-checkpoints/v0-5-1\", \"seeds_published\": 10, \"status\": \"failed\", \"version_notes\": \"v0-5-1 session publish: 4856 tokens/s, measured dtype, after seed 15033\"}}\n"}
+,{"stream_name":"stdout","time":21789.96186574,"data":"seed 15033: remote publish failed (HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion); continuing - the next pair's push carries this one, and the exit publish reports it if it is not transient\n"}
+,{"stream_name":"stdout","time":21789.962040941,"data":"seed 15034: remaining 0.95 h \u003c 60 min: stop at next step boundary, save, publish (rule 2)\n"}
+,{"stream_name":"stdout","time":21789.963005309,"data":"session done: 3 pair(s) completed, 0.95 h remaining\n"}
+,{"stream_name":"stdout","time":21790.026899216,"data":"Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.5)\n"}
+,{"stream_name":"stdout","time":21790.035004309,"data":"remote publish: pushing 10 seed version(s), 31.9 GiB of handoff\n"}
+,{"stream_name":"stdout","time":21790.035016548,"data":"remote publish: attempt 1/3 starting (10 seed version(s), 31.9 GiB)\n"}
+,{"stream_name":"stdout","time":21850.036953111,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 1.0 min\n"}
+,{"stream_name":"stdout","time":21910.037389307,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 2.0 min\n"}
+,{"stream_name":"stdout","time":21970.037302376,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 3.0 min\n"}
+,{"stream_name":"stdout","time":22030.037576552,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 4.0 min\n"}
+,{"stream_name":"stdout","time":22090.037873604,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 5.0 min\n"}
+,{"stream_name":"stdout","time":22150.038043878,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 6.0 min\n"}
+,{"stream_name":"stdout","time":22210.038254738,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 7.0 min\n"}
+,{"stream_name":"stdout","time":22270.038492241,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 8.0 min\n"}
+,{"stream_name":"stdout","time":22330.038628424,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 9.0 min\n"}
+,{"stream_name":"stdout","time":22342.532854766,"data":"remote publish attempt 1/3 failed (HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion)\n"}
+,{"stream_name":"stdout","time":22342.532891562,"data":"  retrying: a failed push here loses the session's pairs\n"}
+,{"stream_name":"stdout","time":22347.534486226,"data":"remote publish: attempt 2/3 starting (10 seed version(s), 31.9 GiB)\n"}
+,{"stream_name":"stdout","time":22407.53722182,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 1.0 min\n"}
+,{"stream_name":"stdout","time":22467.537418315,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 2.0 min\n"}
+,{"stream_name":"stdout","time":22527.53762836,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 3.0 min\n"}
+,{"stream_name":"stdout","time":22587.537690689,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 4.0 min\n"}
+,{"stream_name":"stdout","time":22647.537905264,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 5.0 min\n"}
+,{"stream_name":"stdout","time":22707.538261149,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 6.0 min\n"}
+,{"stream_name":"stdout","time":22767.539080455,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 7.0 min\n"}
+,{"stream_name":"stdout","time":22827.538411347,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 8.0 min\n"}
+,{"stream_name":"stdout","time":22884.091353779,"data":"remote publish attempt 2/3 failed (HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion)\n"}
+,{"stream_name":"stdout","time":22884.091407202,"data":"  retrying: a failed push here loses the session's pairs\n"}
+,{"stream_name":"stdout","time":22894.093162931,"data":"remote publish: attempt 3/3 starting (10 seed version(s), 31.9 GiB)\n"}
+,{"stream_name":"stdout","time":22954.095310976,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 1.0 min\n"}
+,{"stream_name":"stdout","time":23014.095481651,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 2.0 min\n"}
+,{"stream_name":"stdout","time":23074.095707858,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 3.0 min\n"}
+,{"stream_name":"stdout","time":23134.095919426,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 4.0 min\n"}
+,{"stream_name":"stdout","time":23194.09614742,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 5.0 min\n"}
+,{"stream_name":"stdout","time":23254.096477207,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 6.0 min\n"}
+,{"stream_name":"stdout","time":23314.096671318,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 7.0 min\n"}
+,{"stream_name":"stdout","time":23374.096892536,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 8.0 min\n"}
+,{"stream_name":"stdout","time":23434.097105822,"data":"remote publish: still pushing 10 seed version(s) (31.9 GiB) after 9.0 min\n"}
+,{"stream_name":"stdout","time":23462.214168282,"data":"remote publish attempt 3/3 failed (HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion)\n"}
+,{"stream_name":"stdout","time":23462.218496647,"data":"remote publish FAILED after 3 attempt(s) (local handoff intact, but this container ends with the session): HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion\n"}
+,{"stream_name":"stdout","time":23462.218529197,"data":"{\"remote_publish\": {\"dataset\": \"sid123123234/act-v0-5-2-null\", \"error\": \"HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion; HTTPError: 400 Client Error: Bad Request for url: https://api.kaggle.com/v1/datasets.DatasetApiService/CreateDatasetVersion\", \"fingerprint\": \"78adf111c827b32004e5ac41b2ddcbee76e5337950abba3be9edd3d3a753cc25\", \"folder\": \"/tmp/act-lab-null-1fc4d98fb7/artifacts/datasets-null/act-checkpoints/v0-5-1\", \"seeds_published\": 10, \"status\": \"failed\", \"version_notes\": \"v0-5-1 session publish: 4856 tokens/s, measured dtype\"}}\n"}
+,{"stream_name":"stdout","time":23462.218538539,"data":"{\"declared_seed_queue\": [15024, 15025, 15026, 15027, 15028, 15029, 15030, 15031, 15032, 15033, 15034, 15035], \"dtype\": \"fp16\", \"dtype_rule_tokens_per_second\": 1396.431037345117, \"latest_published_seed\": 15033, \"measured_tokens_per_second\": 4855.911051655838, \"pair_time_hours\": 1.5058467286666657, \"pairs_completed\": 3, \"protocol\": \"v0-compute-efficiency-5.2\", \"remaining_hours_at_entry\": 6.833078642918056, \"schedule_tokens_per_second\": 4855.911051655838, \"seeds_requested\": [15024, 15025, 15026, 15027, 15028, 15029, 15030, 15031, 15032, 15033, 15034, 15035]}\n"}
+,{"stream_name":"stdout","time":23468.291864053,"data":"kept /kaggle/working/session-log.json\n"}
+,{"stream_name":"stdout","time":23468.292091836,"data":"kept /kaggle/working/remote-publish-log.json\n"}
+,{"stream_name":"stdout","time":23468.299583679,"data":"kept 10 seed summaries in the kernel output (publish insurance)\n"}
+,{"stream_name":"stdout","time":23468.299603208,"data":"disk working: total 19.5 GiB | free 19.5 GiB\n"}
+,{"stream_name":"stdout","time":23468.299691371,"data":"disk input: total 19.5 GiB | free 19.5 GiB\n"}
+,{"stream_name":"stdout","time":23468.299818695,"data":"disk tmp: total 8156.9 GiB | free 1016.9 GiB\n"}
+,{"stream_name":"stdout","time":23468.313623975,"data":"--- df -h ---\n"}
+,{"stream_name":"stdout","time":23468.313647814,"data":"Filesystem      Size  Used Avail Use% Mounted on\n"}
+,{"stream_name":"stdout","time":23468.313652422,"data":"/dev/loop2       20G  7.5M   20G   1% /kaggle/working\n"}
+,{"stream_name":"stdout","time":23468.313656325,"data":"overlay         8.0T  7.0T 1017G  88% /\n"}
+,{"stream_name":"stdout","time":23468.313659688,"data":"overlay         8.0T  7.0T 1017G  88% /\n"}
+,{"stream_name":"stdout","time":23468.313662903,"data":"overlay         8.0T  7.0T 1017G  88% /\n"}
+,{"stream_name":"stdout","time":23468.313853086,"data":"writable /kaggle/working: yes\n"}
+,{"stream_name":"stdout","time":23468.316429197,"data":"writable /kaggle/temp: yes\n"}
+,{"stream_name":"stdout","time":23468.316632077,"data":"writable /tmp: yes\n"}
+,{"stream_name":"stdout","time":23468.319539709,"data":"handoff root /tmp/act-lab-null-1fc4d98fb7/artifacts/datasets-null: 31.89 GiB\n"}
+,{"stream_name":"stdout","time":23468.319766787,"data":"=== null session finished after 6.52 h ===\n"}
+,{"stream_name":"stderr","time":23470.968289145,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":23470.968335794,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":23471.259333933,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":23471.259405989,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":23472.170587899,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
+,{"stream_name":"stderr","time":23473.242468988,"data":"[NbConvertApp] Writing 503897 bytes to __results__.html\n"}
+]

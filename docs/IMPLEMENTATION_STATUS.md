@@ -1,5 +1,35 @@
 # ACT Implementation Status
 
+## The null queue hit the 200 GiB private-dataset quota, not a flaky API: 3 pairs lost (2026-10-25)
+
+The 2026-10-24 refresh did not finish the null queue. A session at **17:38Z** published
+**15028-15030** and took null to **7/12**; the next at **00:13Z** trained **15031-15033**
+and **every publish answered `400 Bad Request`**. All three pairs were lost with the
+container. The cause is the account's **200 GiB private-dataset quota**: the latest
+versions summed to **199.73 GiB**, 0.27 GiB below the wall, and the next null seed is
+**3.19 GiB**. The 7-seed version landed *at* the wall; the 8-seed one would have been
+**202.9 GiB**.
+
+| | |
+|---|---|
+| **Block state** | primary **12/12**, control **12/12**, **null 7/12** (15024-15030); quota **6.46 h remaining of 30** (23.54 used), refresh **2026-10-31**; no driver live; verdict withheld. |
+| **The 17:38Z session** | restored the four published null seeds (12.76 GiB), skipped them, trained **15028** (`10.398210`), **15029** (`10.398393`) and **15030** (`10.397880`); publishes **5 / 6 / 7 seeds** in **4.8 / 5.3 / 6.3 min**, all `published`; exit `already_published`; handoff 22.32 GiB; **4.92 h**. |
+| **The 00:13Z session** | restored 7 seeds (**22.32 GiB in 2.7 min**), trained **15031** (`10.398338`), **15032** (`10.398277`) and **15033** (`10.398332`), `search_flops 0` on every pair; **every publish failed**: 8 seeds / **25.5 GiB**, 9 / **28.7**, 10 / **31.9**, each retried **3 times** (~7-9 min per upload, **nine uploads**), all `400`; exit publish failed; handoff 31.89 GiB; **6.52 h**. |
+| **The sum** | `kaggle datasets files` over the ten private datasets, latest versions: 44.13 + 31.80 + 44.23 + 31.75 + 25.42 + 22.32 + 0.08 = **199.73 GiB**. The documented limit is **200 GB private datasets**; 199.73 GiB landing and the next 3.19 GiB not is the wall behaving as GiB. |
+| **Why it was invisible** | `requests.HTTPError` carries the status line, and `create_version` discarded the response body; the retry loop treated a 400 as transient and re-uploaded 25-32 GiB. The session record's `latest_published_seed` names the latest *trained* seed, so the driver printed `10/12` while `campaign_health` read **7/12** from the dataset. |
+| **What was freed** | `act-v0-5-1` (the superseded 15000-15003 untreated block) latest version replaced with **13 files / 43,582 B**: four manifests, four reports, four top-level summaries and a README naming the removal. Total private storage **174.31 GiB**, **25.69 GiB** headroom. |
+| **Fixes** | `KaggleApiAdapter.create_version` appends the API response body to the exception; `publish_handoff` retries only **408/409/425/429** and 5xx, so a 400 stops after one attempt. **+2 tests** in `tests/test_kaggle_remote.py` (the body is kept; a rejected 400 is not re-uploaded). |
+| **What is left** | five null seeds, **15031-15035**: **7.55 h** at 1.51 h/pair against **6.46 h**. A 3-pair fire takes null to **10/12** (~5.2 h with startup and publishes); **15034-15035** need the **2026-10-31** refresh. After the prune, 10 seeds is **183.9 GiB** and 12 is **190.3 GiB**, both inside the wall. Then the verdict, CPU and free, via `--queue verdict`. |
+
+**What this does not establish.** That the 400 *was* the quota: the server's body was
+discarded, and 199.73 GiB + 3.19 GiB is an inference from the size sum and the documented
+limit, not a quoted API message. The quota's accounting (latest version versus version
+history) is not documented either; the fit is one observation at the boundary. That the
+discarded weights are unneeded: the summaries and manifests remain and the README says
+what was removed, but an analysis that needs the four 15000-15003 checkpoints would have
+to retrain them. And that null is finished: it is 7/12, its readings sit on the floor, and
+the registered verdict still withholds.
+
 ## The verdict step restored 190 GiB for 131 KiB of input (2026-10-24)
 
 The campaign's last step is the free CPU verdict, and reading it while the null queue
