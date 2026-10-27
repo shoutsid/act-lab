@@ -1,5 +1,44 @@
 # Campaign session logs - the evidence behind the exit-publish numbers
 
+## The prune holds: both re-trained pairs publish and null reaches 9/12 (2026-10-25 17:16Z)
+
+The fire after the 200 GiB wall was read re-trained the two pairs the bare `400` had discarded
+and published both. A **6 h** window fitted to a **6.46 h** week: the startup restore paid
+**22.32 GiB in 8.3 min**, skipped the seven published seeds, trained **15031** and **15032**,
+and published **8 seeds / 25.5 GiB** then **9 / 28.7 GiB** - the publish path the wall had
+refused, now landing. The session stopped by rule 1 with a third pair **4 minutes out of
+reach** (2.22 h left against 1.54 h + 45 min reserve). Null is **9/12**; the last three seeds
+need the **2026-10-31** refresh.
+
+| file | what it is | sha256 |
+|---|---|---|
+| `session-null-20261025T171639Z-live.log` | the driver's capture: the fitted window, the restore, both pairs, both publishes, the rule-1 stop | `4bc5b07180c6b9476927d74c5bc82179c5a8a9c61dcae86f91cae916d392d919` |
+| `session-null-20261025T171639Z-kernel-log.json` | the platform log: **122 events**, last at 13,647 s (3.79 h) - a clean exit, so the session's own account survived | `6aaf5037ebe8403ac95189d7cb4b46e15a187772c5cc139c04a93eecb4010755` |
+| `session-null-20261025T171639Z-session-log.json` | the record: 2 pairs (15031, 15032), `latest_published_seed: 15032`, 4732 tokens/s, pair 1.54 h, handoff 28.70 GiB | `2436b7e80f4c9501bcad56a716c8041751233db69fbc893588a62e788873d45e` |
+
+| | |
+|---|---|
+| Window / startup | declared **6 h** against the week's **6.46 h**; **4.9 min** of startup, child window 5.92 h |
+| Restore | `sid123123234/act-v0-5-2-null` **22.32 GiB in 8.3 min**; restored 7 seed versions `[15024-15030]`, all seven skipped `complete` |
+| Pairs | **15031** `null 10.398918`; **15032** `null 10.398030`; `search_flops 0` on both |
+| Publishes | 8 seeds / **25.5 GiB** (`0ffa2402fc8e`), then 9 / **28.7 GiB** (`26382a082f6f`) - both `status: published` |
+| Exit publish | skipped as `already_published` (9 seed version(s)); handoff **28.70 GiB** |
+| Stop | `seed 15033: remaining 2.22 h does not fit pair 1.54 h + 45 min reserve (rule 1)` - four minutes short of a third pair |
+| Cost | **3.79 GPU-h**; quota **6.46 -> 2.67 of 30 h** (refresh 2026-10-31) |
+| Code | the driver republished `act-lab-code` from **`3c04bba`** - the revision carrying the quota-wall fix - and pushed kernel **v4** |
+
+**What this says about the wall.** Two publishes of 25.5 and 28.7 GiB landed after the
+superseded `act-v0-5-1` checkpoints were replaced by their summaries, so the prune put the null
+queue's growth back inside the account's limit. It does not re-measure the limit: the total
+after this version is a derived **~180.7 GiB** (the prune's 174.31 GiB, plus 28.70 landing where
+22.32 sat), not a listing sum.
+
+**What this does not say.** That a third pair was ever reachable in this window: at the
+session's own 1.54 h pair time a third pair needed 2.29 h of clock and 2.22 h remained, so the
+window ended one startup's worth of minutes short - the schedule's arithmetic, not a tuning
+knob. That null is finished: three seeds (15033-15035) remain, the nine published sit within
+**0.001710 nats** of `ln(32768) = 10.3972`, and the verdict still withholds.
+
 ## The null queue reaches 7/12, then the 200 GiB quota rejects three publishes (2026-10-24/25)
 
 The 2026-10-24 refresh added six null seeds in two sessions and then lost three pairs to a

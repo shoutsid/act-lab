@@ -1,5 +1,32 @@
 # ACT Implementation Status
 
+## The publish path works again after the prune: null is 9/12, three seeds gated on the refresh (2026-10-25 17:16Z)
+
+The fire after the 200 GiB wall was read re-trained the two pairs the bare `400` had
+discarded, and both publishes landed. A **6 h** window fitted to the week's **6.46 h**: restore
+**22.32 GiB in 8.3 min**, seven seeds skipped, **15031** (`10.398918`) and **15032**
+(`10.398030`) trained and published as **8 seeds / 25.5 GiB** and **9 / 28.7 GiB**. The session
+stopped by rule 1 with a **third pair four minutes out of reach** (2.22 h left against 1.54 h +
+45 min reserve). Null is now **9/12** (15024-15032); **15033-15035** need the **2026-10-31**
+refresh, and no driver was live at the 2026-10-27 check - the fresh week is spent only if the
+campaign is relaunched. Then the verdict, CPU and free, is the last step.
+
+| | |
+|---|---|
+| **Block state** | primary **12/12**, control **12/12**, **null 9/12** (15024-15032); quota **2.67 h of 30 left**, refresh **2026-10-31**; no driver live at the 2026-10-27 check; verdict withheld. |
+| **The session** | declared 6 h (week 6.46 h), 4.9 min startup, child window 5.92 h; restore 22.32 GiB in 8.3 min, seven seeds skipped; pairs 15031/15032, `search_flops 0` on both; publishes 8 / 9 seeds at 25.5 / 28.7 GiB, both `published`; exit `already_published`; handoff 28.70 GiB; **3.79 h**, clean exit (122 platform-log events, last at 13,647 s). |
+| **The stop** | `seed 15033: remaining 2.22 h does not fit pair 1.54 h + 45 min reserve (rule 1)`. Three pairs needed 2.29 h of clock after the restore; the window ended four minutes short of one. |
+| **The readout** | nine null seeds at `10.3979`-`10.3989`, within **0.001710 nats** of `ln(32768) = 10.3972` - the floor this block's synthetic stream produces. The null queue is the verdict's do-nothing control; its readout is not a verdict input on its own. |
+| **Evidence** | The three files are committed under `artifacts/v0-session-logs/`, with their sha256s in its 2026-10-25 17:16Z entry. The driver republished `act-lab-code` from **`3c04bba`** - the revision carrying the quota-wall fix - so the publish path this session used is the fixed one. |
+| **Cost** | **3.79 GPU-h**; quota **6.46 -> 2.67 / 30 h** (refresh 2026-10-31). |
+| **What is left** | **15033-15035**, three pairs, which one 7 h registered window covers (28.7 GiB restore, three pairs, three growing publishes). The week's last **2.67 h** were fired on a fitted **2.65 h** window on 2026-10-27 (13:14Z, kernel v5) aimed at **15033**; that session fits pair + reserve by minutes and its outcome is not in this entry. Then the verdict. |
+
+**What this does not establish.** That the quota was the `400`'s cause: this session shows the
+publishes land again after the prune, but the refused response body was never read. That three
+pairs fit the fitted window: the requirement was 2.29 h of clock and 2.22 h remained. That null
+will clear: three seeds remain, all on the floor so far, and the registered verdict clause
+withholds on an incomplete block.
+
 ## The null queue hit the 200 GiB private-dataset quota, not a flaky API: 3 pairs lost (2026-10-25)
 
 The 2026-10-24 refresh did not finish the null queue. A session at **17:38Z** published

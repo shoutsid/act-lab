@@ -1,0 +1,82 @@
+{
+  "declared_seed_queue": [
+    15024,
+    15025,
+    15026,
+    15027,
+    15028,
+    15029,
+    15030,
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ],
+  "dtype": "fp16",
+  "dtype_rule_tokens_per_second": 1345.9235093142968,
+  "latest_published_seed": 15032,
+  "measured_tokens_per_second": 4731.511723187744,
+  "pair_time_hours": 1.5428087820666674,
+  "pairs": [
+    {
+      "action": "completed",
+      "adaptive_final_loss": null,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": 10.398918151855469,
+      "random_final_loss": null,
+      "remote_publish": {
+        "dataset": "sid123123234/act-v0-5-2-null",
+        "error": null,
+        "fingerprint": "0ffa2402fc8eaf4ef8298c419a721cf67fa388ee90ee2979610a438f608d7bf5",
+        "folder": "/tmp/act-lab-null-932745b41d/artifacts/datasets-null/act-checkpoints/v0-5-1",
+        "seeds_published": 8,
+        "status": "published",
+        "version_notes": "v0-5-1 session publish: 4732 tokens/s, measured dtype, after seed 15031"
+      },
+      "search_flops_by_arm": {
+        "null": 0
+      },
+      "seed": 15031,
+      "training_flops_by_arm": {
+        "null": 14024863383552000
+      }
+    },
+    {
+      "action": "completed",
+      "adaptive_final_loss": null,
+      "gated_final_loss": null,
+      "heuristic_final_loss": null,
+      "null_final_loss": 10.398029804229736,
+      "random_final_loss": null,
+      "remote_publish": {
+        "dataset": "sid123123234/act-v0-5-2-null",
+        "error": null,
+        "fingerprint": "26382a082f6f5602c4e3b45ea4e68c5247095096d136009271ceac0b61330ae1",
+        "folder": "/tmp/act-lab-null-932745b41d/artifacts/datasets-null/act-checkpoints/v0-5-1",
+        "seeds_published": 9,
+        "status": "published",
+        "version_notes": "v0-5-1 session publish: 4732 tokens/s, measured dtype, after seed 15032"
+      },
+      "search_flops_by_arm": {
+        "null": 0
+      },
+      "seed": 15032,
+      "training_flops_by_arm": {
+        "null": 14024863383552000
+      }
+    }
+  ],
+  "pairs_completed": 2,
+  "protocol": "v0-compute-efficiency-5.2",
+  "remaining_hours_at_entry": 5.726548512453611,
+  "schedule_tokens_per_second": 4731.511723187744,
+  "seeds_requested": [
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ]
+}

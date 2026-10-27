@@ -1,0 +1,162 @@
+=== ACT lab: null session ===
+dataset=sid123123234/act-v0-5-2-null hours=6 seeds=15031-15035
+code dataset: /kaggle/input/datasets/sid123123234/act-lab-code/code
+torch 2.11.0+cu128 | device Tesla T4
+gpu inventory: {'count': 2, 'names': ['Tesla T4', 'Tesla T4']}
+disk working: total 19.5 GiB | free 19.5 GiB
+disk input: total 19.5 GiB | free 19.5 GiB
+disk tmp: total 8156.9 GiB | free 1048.8 GiB
+--- df -h ---
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/loop2       20G  7.4M   20G   1% /kaggle/working
+overlay         8.0T  7.0T  1.1T  88% /
+overlay         8.0T  7.0T  1.1T  88% /
+writable /kaggle/working: yes
+writable /kaggle/temp: yes
+writable /tmp: yes
+--- throughput benchmark (the launch command's input) ---
+$ /usr/bin/python3 scripts/v0_throughput_benchmark.py --steps 50
+arm placement: 2 arm(s) in 1 wave(s) of slots=2
+{"benchmark": "v0-throughput-5.2", "declared_active_parameter_count": 7556160, "declared_parameter_count": 14928960, "device": "cuda", "device_name": "Tesla T4", "dtype_decision": "fp16", "example_deadline_check": "remaining 2.00 h does not fit pair 1.54 h + 45 min reserve (rule 1)", "fp32_floor_tokens_per_second": 2500.0, "gpu_inventory": {"count": 2, "names": ["Tesla T4", "Tesla T4"]}, "measured_tokens_per_second": 1345.9235093142968, "predicted_probe_cost_percent": {"cap4_1batch": 0.0941636252059042, "cap4_2batch": 0.1883272504118084}, "profile": "declared-285M", "schedule": {"arm_slots": 2, "arms": 2, "checkpoint_interval": 500, "declared_session_hours": 7.0, "full_pairs_per_session": 5, "max_checkpoints": 2, "pair_time_hours": 1.5428087820666674, "pairs_per_session_rule1": 4, "platform_session_cap_hours": 8.0, "sessions_for_primary": 3, "sessions_for_primary_rule1": 3, "sessions_total": 6, "three_queue_sessions": 9, "three_queue_sessions_null": 3, "three_queue_sessions_primary": 3, "three_queue_training_hours": 55.54111615440003, "working_dir_headroom_gb": 5.120000000000001, "working_dir_steady_state_gb": 14.879999999999999}, "schedule_dtype": "fp16", "schedule_tokens_per_second": 4731.511723187744, "seed_block": "15000-15011 and 15024-15035 (reserved, untouched by this benchmark)", "steps": 50, "tokens_per_second_by_dtype": {"fp16": 4731.511723187744, "fp32": 1345.9235093142968}, "tolerance_band_primary": [0.0470818126029521, 0.1883272504118084], "torch_version": "2.11.0+cu128", "warmup_steps": 5}
+measured 1345.9 tokens/s | dtype fp16 | pair_time 1.54 h
+kept /kaggle/working/v0-benchmark.json
+--- null queue (--hours 5.92 h: 4.9 min of the declared 6 h spent on startup) ---
+$ /usr/bin/python3 -m act.training.cli --mode pair-session --device cuda --hours 5.91809 --seeds 15031-15035 --session-arms null --preserve-router-on-rebuild --new-expert clone --dataset-root /tmp/act-lab-null-932745b41d/artifacts/datasets-null --session-dir /tmp/act-lab-null-932745b41d/artifacts/v0-sessions-null --kaggle-dataset sid123123234/act-v0-5-2-null --kaggle-shard-seeds 0
+Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.5)
+Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.5)
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+Dataset URL: https://www.kaggle.com/datasets/sid123123234/act-v0-5-2-null
+remote restore: sid123123234/act-v0-5-2-null downloaded in 8.3 min (22.32 GiB on disk)
+restored 7 seed version(s) from sid123123234/act-v0-5-2-null: [15024, 15025, 15026, 15027, 15028, 15029, 15030]
+session clock: 5.73 h of the declared 5.91809 h remain after 11.5 min of startup
+code revision: 3c04bbad9798f47150f076be64f03cfd8df112ad
+pair time 1.54 h (1 arm(s) in 1 wave(s) of 24576000 tokens at 4732 tokens/s + 0.1 h event overhead)
+block treatment matches the published seed(s): preserve_router_on_rebuild=True, new_expert_initialization='clone'
+seed 15031: starting pair (remaining 5.73 h fits pair 1.54 h + 45 min reserve (rule 1))
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection failed 5 times with no new data; giving up.
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection failed 5 times with no new data; giving up.
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection failed 5 times with no new data; giving up.
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection failed 5 times with no new data; giving up.
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection failed 5 times with no new data; giving up.
+seed 15031: pair complete ({'null': 10.398918151855469})
+Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.5)
+remote publish: pushing 8 seed version(s), 25.5 GiB of handoff
+remote publish: attempt 1/3 starting (8 seed version(s), 25.5 GiB)
+remote publish: still pushing 8 seed version(s) (25.5 GiB) after 1.0 min
+remote publish: still pushing 8 seed version(s) (25.5 GiB) after 2.0 min
+remote publish: still pushing 8 seed version(s) (25.5 GiB) after 3.0 min
+remote publish: still pushing 8 seed version(s) (25.5 GiB) after 4.0 min
+remote publish: still pushing 8 seed version(s) (25.5 GiB) after 5.0 min
+remote publish: still pushing 8 seed version(s) (25.5 GiB) after 6.0 min
+remote publish: still pushing 8 seed version(s) (25.5 GiB) after 7.0 min
+remote publish: still pushing 8 seed version(s) (25.5 GiB) after 8.0 min
+remote publish: still pushing 8 seed version(s) (25.5 GiB) after 9.0 min
+remote publish: sid123123234/act-v0-5-2-null version pushed (8 seed version(s)) in 9.6 min
+{"remote_publish": {"dataset": "sid123123234/act-v0-5-2-null", "error": null, "fingerprint": "0ffa2402fc8eaf4ef8298c419a721cf67fa388ee90ee2979610a438f608d7bf5", "folder": "/tmp/act-lab-null-932745b41d/artifacts/datasets-null/act-checkpoints/v0-5-1", "seeds_published": 8, "status": "published", "version_notes": "v0-5-1 session publish: 4732 tokens/s, measured dtype, after seed 15031"}}
+seed 15032: starting pair (remaining 3.98 h fits pair 1.54 h + 45 min reserve (rule 1))
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection failed 5 times with no new data; giving up.
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection failed 5 times with no new data; giving up.
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection failed 5 times with no new data; giving up.
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection failed 5 times with no new data; giving up.
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection lost, reconnecting...
+--- kaggle cli: Log stream connection failed 5 times with no new data; giving up.
+seed 15032: pair complete ({'null': 10.398029804229736})
+remote publish: pushing 9 seed version(s), 28.7 GiB of handoff
+remote publish: attempt 1/3 starting (9 seed version(s), 28.7 GiB)
+remote publish: still pushing 9 seed version(s) (28.7 GiB) after 1.0 min
+remote publish: still pushing 9 seed version(s) (28.7 GiB) after 2.0 min
+remote publish: still pushing 9 seed version(s) (28.7 GiB) after 3.0 min
+remote publish: still pushing 9 seed version(s) (28.7 GiB) after 4.0 min
+remote publish: still pushing 9 seed version(s) (28.7 GiB) after 5.0 min
+remote publish: still pushing 9 seed version(s) (28.7 GiB) after 6.0 min
+remote publish: still pushing 9 seed version(s) (28.7 GiB) after 7.0 min
+remote publish: still pushing 9 seed version(s) (28.7 GiB) after 8.0 min
+remote publish: still pushing 9 seed version(s) (28.7 GiB) after 9.0 min
+remote publish: still pushing 9 seed version(s) (28.7 GiB) after 10.0 min
+remote publish: sid123123234/act-v0-5-2-null version pushed (9 seed version(s)) in 10.8 min
+{"remote_publish": {"dataset": "sid123123234/act-v0-5-2-null", "error": null, "fingerprint": "26382a082f6f5602c4e3b45ea4e68c5247095096d136009271ceac0b61330ae1", "folder": "/tmp/act-lab-null-932745b41d/artifacts/datasets-null/act-checkpoints/v0-5-1", "seeds_published": 9, "status": "published", "version_notes": "v0-5-1 session publish: 4732 tokens/s, measured dtype, after seed 15032"}}
+seed 15033: remaining 2.22 h does not fit pair 1.54 h + 45 min reserve (rule 1)
+session done: 2 pair(s) completed, 2.22 h remaining
+Warning: Looks like you're using an outdated `kaggle` version (installed: 2.0.2), please consider upgrading to the latest version (2.2.5)
+remote publish skipped: 9 seed version(s) are already published as this state (26382a082f6f); re-uploading them would spend the session's last minutes on a copy that exists
+{"remote_publish": {"dataset": "sid123123234/act-v0-5-2-null", "error": null, "fingerprint": "26382a082f6f5602c4e3b45ea4e68c5247095096d136009271ceac0b61330ae1", "folder": "/tmp/act-lab-null-932745b41d/artifacts/datasets-null/act-checkpoints/v0-5-1", "seeds_published": 9, "status": "already_published", "version_notes": "v0-5-1 session publish: 4732 tokens/s, measured dtype, after seed 15032"}}
+{"declared_seed_queue": [15024, 15025, 15026, 15027, 15028, 15029, 15030, 15031, 15032, 15033, 15034, 15035], "dtype": "fp16", "dtype_rule_tokens_per_second": 1345.9235093142968, "latest_published_seed": 15032, "measured_tokens_per_second": 4731.511723187744, "pair_time_hours": 1.5428087820666674, "pairs_completed": 2, "protocol": "v0-compute-efficiency-5.2", "remaining_hours_at_entry": 5.726548512453611, "schedule_tokens_per_second": 4731.511723187744, "seeds_requested": [15031, 15032, 15033, 15034, 15035]}
+kept /kaggle/working/session-log.json
+kept /kaggle/working/remote-publish-log.json
+kept 9 seed summaries in the kernel output (publish insurance)
+disk working: total 19.5 GiB | free 19.5 GiB
+disk input: total 19.5 GiB | free 19.5 GiB
+disk tmp: total 8156.9 GiB | free 1020.1 GiB
+--- df -h ---
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/loop2       20G  7.5M   20G   1% /kaggle/working
+overlay         8.0T  7.0T 1021G  88% /
+overlay         8.0T  7.0T 1021G  88% /
+overlay         8.0T  7.0T 1021G  88% /
+writable /kaggle/working: yes
+writable /kaggle/temp: yes
+writable /tmp: yes
+handoff root /tmp/act-lab-null-932745b41d/artifacts/datasets-null: 28.70 GiB
+=== null session finished after 3.79 h ===
+/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\|'
+  cells[i][c] = re.sub('\\\\\|', '|', cell)
+/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\_'
+  text = re.sub(r'_', '\_', text) # Escape underscores in display text
+[NbConvertApp] Converting notebook __script__.ipynb to html
+[NbConvertApp] Writing 504180 bytes to __results__.html
