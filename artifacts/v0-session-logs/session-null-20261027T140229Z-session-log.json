@@ -1,0 +1,31 @@
+{
+  "declared_seed_queue": [
+    15024,
+    15025,
+    15026,
+    15027,
+    15028,
+    15029,
+    15030,
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ],
+  "dtype": "fp16",
+  "dtype_rule_tokens_per_second": 1276.569386390317,
+  "latest_published_seed": 15032,
+  "measured_tokens_per_second": 4489.477173191814,
+  "pair_time_hours": 1.6205928002999999,
+  "pairs": [],
+  "pairs_completed": 0,
+  "protocol": "v0-compute-efficiency-5.2",
+  "remaining_hours_at_entry": 1.9250102773830555,
+  "schedule_tokens_per_second": 4489.477173191814,
+  "seeds_requested": [
+    15033,
+    15034,
+    15035
+  ]
+}

@@ -1,5 +1,31 @@
 # ACT Implementation Status
 
+## The fitted fire was refused by the clock: null stays 9/12 and the launcher waits on the refresh (2026-10-27)
+
+The 2026-10-27 check found the week at **2.67 h** with null at 9/12 and nothing driving, and spent
+the hours on a fitted **2.65 h** window aimed at **15033**. The session's own rule refused the
+pair: it benchmarked **1.62 h/pair** (4,489.5 tokens/s against the 17:16Z session's 4,731.5) and
+its restore ran **35.3 min** (28.70 GiB at 12.4 MiB/s, against 8.3 min for 22.32 GiB the night
+before) - together ~27 minutes past what the pair needed. No seed trained, **0.73 GPU-h** billed,
+driver exit 4. Null stays **9/12**; the campaign launcher was started behind the fire, skipped the
+primary and control queues as complete, and is now sleeping on the quota gate to
+**2026-10-31T00:00Z** (82.1 h) with the lock held - so the refresh fires without an operator:
+**15033-15035** at the registered 7 h window, then the free CPU verdict.
+
+| | |
+|---|---|
+| **Block state** | primary **12/12**, control **12/12**, **null 9/12** (15024-15032); quota **1.94 h of 30**, refresh **2026-10-31**; launcher parked in the quota wait; verdict withheld. |
+| **The refused session** | declared 2.65 h (week 2.67 h), startup 4.1 min, child window 2.58 h; fp16 **4,489.5 tok/s** -> pair **1.62 h**; restore 28.70 GiB in **35.3 min**; rule 1: `seed 15033: remaining 1.92 h does not fit pair 1.62 h + 45 min reserve`; 0 pairs; `remote publish skipped at exit: no seed trained this session`; kernel v5, code `3c04bba`; **0.73 h** billed. |
+| **The fit, honestly** | The window's margin was minutes at the previous night's shape (1.54 h pair + 8.3 min restore fits 2.65 h with ~3 min to spare) and this session's benchmark (+0.08 h/pair) and restore (+0.45 h) ate it several times over. The window was already at the quota gate's practical ceiling (2.65 h declared against 2.67 h shown), so the lesson is not a different window - the pair time is measured per session, and this one was slower. |
+| **What is now armed** | `scripts/run_gate4_campaign.sh` restarted 14:02:35Z: session and control steps skipped as published; the null step's first driver attempt hit the quota gate ("only 1.94 GPU-h ... waiting rather than billing a partial session") and is sleeping to the refresh. The refresh session declares the registered 7 h window and should carry 15033-15035 - three pairs at 1.54-1.62 h plus startup, restore and three growing publishes is ~6 h. |
+| **Evidence** | The three files are committed under `artifacts/v0-session-logs/`, with their sha256s in its 2026-10-27 entry. |
+
+**What this does not establish.** That the refresh fire completes null: 15033-15035 are still
+untrained, the restore rate is what the day makes it, and no three-pair window has run at this
+size before. That the failed fire cost anything but doomed hours: the 0.73 h it billed would
+have expired at the refresh unused. And that the pair time is stable: 1.54 h and 1.62 h are the
+same command, the same dataset and the same code, an hour apart.
+
 ## The publish path works again after the prune: null is 9/12, three seeds gated on the refresh (2026-10-25 17:16Z)
 
 The fire after the 200 GiB wall was read re-trained the two pairs the bare `400` had

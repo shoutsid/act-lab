@@ -1,5 +1,42 @@
 # Campaign session logs - the evidence behind the exit-publish numbers
 
+## The week's last hours are lost to the clock: a slower benchmark and a 35-minute restore refuse the pair (2026-10-27)
+
+The 2026-10-27 check spent the week's last **2.67 h** on a fitted window aimed at **15033**, and
+the session's own deadline rule refused it: the window was priced against the shape measured the
+night before (pair 1.54 h, restore 8.3 min), but this session benchmarked **1.62 h/pair** and its
+restore ran **35.3 min** - together ~32 minutes off the clock the pair needed. Null stays
+**9/12**; 15033-15035 come from the 2026-10-31 refresh, which the relaunched launcher now waits
+for.
+
+| file | what it is | sha256 |
+|---|---|---|
+| `session-null-20261027T140229Z-live.log` | the driver's capture: the benchmark, the 35.3 min restore, the rule-1 refusal, the no-seed exit | `e89d5f0a91983c51ef262cb5f9818ec04a55d0d8e6d01c3f68bf766fa0c68136` |
+| `session-null-20261027T140229Z-kernel-log.json` | the platform log: **94 events**, last at 2,635 s (0.73 h) - a clean exit | `ebd0e2eb04a401c20db44d1c0f1136a6220281f5823999b71e774c9478145b2c` |
+| `session-null-20261027T140229Z-session-log.json` | the record: **0 pairs**, `remaining_hours_at_entry: 1.93`, pair_time 1.62 h, 4,489 tokens/s | `7507eddf3363ec5914e6b992868d967e55e44a0d7b6ba8eed41a68940450a580` |
+
+| | |
+|---|---|
+| Declaration | `--queue null --hours 2.65 --seeds 15033-15035 --max-sessions 1` against the week's **2.67 h**; kernel **v5**, code **`3c04bba`** |
+| Startup / benchmark | 4.1 min of startup, child window 2.58 h; **fp16 4,489.5 tokens/s -> pair 1.62 h** (the 17:16Z session: 4,731.5 -> 1.54 h) |
+| Restore | **28.70 GiB in 35.3 min** (12.4 MiB/s; the same dataset restored 22.32 GiB in 8.3 min the night before), nine seeds skipped `complete` |
+| The refusal | `seed 15033: remaining 1.92 h does not fit pair 1.62 h + 45 min reserve (rule 1)`; 0 pairs; `remote publish skipped at exit: no seed trained this session` |
+| Cost | **0.73 GPU-h**; quota **2.67 -> 1.94 of 30 h**; driver exit **4** ("session completed but the queue did not advance (0 -> 0 of 12 seeds)") |
+
+**What this says about the fit.** The margin that priced the fire was minutes: at the previous
+night's shape (1.54 h pair, 8.3 min restore) the 2.65 h window fits with ~3 minutes to spare; at
+this session's shape it is short by ~27 minutes. The window was already at the quota gate's
+practical ceiling (2.65 h declared against 2.67 h shown), so the reading is not that a shorter
+window or a longer one would have helped - the pair time is measured per session, and this
+session's was slower.
+
+**What this does not say.** That the fitted fire cost anything but doomed hours: the 2.67 h
+would have expired unused at the refresh, and the attempt billed 0.73 h of them - but it did
+spend those hours on a session that trained nothing. That the slow restore is a defect: it is one
+measurement of the network (12.4 MiB/s against 46 MiB/s the night before), and the restore is
+inside the session clock by design. That null is finished: 15033-15035 remain and the verdict
+still withholds.
+
 ## The prune holds: both re-trained pairs publish and null reaches 9/12 (2026-10-25 17:16Z)
 
 The fire after the 200 GiB wall was read re-trained the two pairs the bare `400` had discarded
