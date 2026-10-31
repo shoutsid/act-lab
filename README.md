@@ -32,7 +32,7 @@ Every number above is recomputed from the committed ledgers by `scripts/verify_r
 ## Status
 
 - **Research direction:** the architecture-search phase is the active line. Further scaling is gated on the width-control design in `docs/width-control-design.md`.
-- **Gate 4 (Kaggle T4×2 campaign):** execution is in progress. The live state is recorded, with dates, in the newest entries of `docs/IMPLEMENTATION_STATUS.md`, which is the authoritative source for it. This README does not track live numbers.
+- **Gate 4 (Kaggle T4×2 campaign):** execution is complete. All three queues published the declared 12-seed block, and the pre-registered verdict is `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE` (exit 2, Gate 4 withheld on the quality premise). The state is recorded in `docs/IMPLEMENTATION_STATUS.md` and `artifacts/study-summaries/gate4-verdict.json`.
 - **Code-model distillation:** an experiment comparing distillation against plain cross-entropy for a small code model is scripted (`scripts/run_code_lm_campaign.sh`). Its headline table is written only when the campaign completes.
 
 ## Architecture

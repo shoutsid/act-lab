@@ -2,7 +2,7 @@
 
 Status: the narrative report for the whole program to date - the factor map (section 3, Gate 3),
 the pre-registered study series (section 5, 101 subsections), the substrate audit (section 9) and
-the synthesis (section 10). **Updated: 2026-09-27** - sections 5.48-5.59 close the covariate
+the synthesis (section 10). **Updated: 2026-10-31** - sections 5.48-5.59 close the covariate
 programme (parameter count, layer width, expert count and total compute) and then measure the
 depth axis itself, out to six rungs above its onset, 5.60 and 5.61 bisect the one window
 that closure left open (the width axis's gate between 2.87x and 11.15x) to 1.97x and then 1.41x, 5.62
@@ -335,15 +335,16 @@ which is the plan's deferred compute-efficiency milestone - after which Gate 4
 longer a vague milestone: it is pre-registered as a protocol with declared
 config, predicted cost, and decision rules (section 5.1), amended by the
 do-nothing clause of section 5.14 and by the launch amendment of section 5.47,
-and **execution is partial** - the primary block stands at **6 of 12 seeds (15024-15029)**: the
-first session on the re-reserved block published 15024-15026 on Kaggle 2026-09-26, and kernel
-version 11 published 15027-15029 on 2026-09-27 - the first session whose restore of published
-state worked, after three that re-trained the block instead (see 10.2). The user authorized
-resumption without amendment, and the campaign driver was relaunched to wait for the weekly
-refresh. The published records for 15024-15026 are the retrained copies the 403-era sessions
-wrote, and every manifest in the dataset reads `code_revision: \"unknown\"` because a kernel has
-no `.git`; the revision is recorded from seed 15030 on. Control and null remain unlaunched, so
-no three-queue verdict exists. The authoritative completed-session record is in
+and **execution is complete** - all three queues published the declared 12-seed block
+(primary 15024-15035, control, null) by 2026-10-31, and the pre-registered verdict is
+produced: **`PASS_COST_ONLY_NO_DEMONSTRATED_EDGE`** (exit 2), so the cost criterion passes
+at the declared scale and **Gate 4 is withheld** because the quality premise is
+unsupported (adaptive wins **6 of 12** and the loss-blind control **7 of 12** against
+their own churn arms, both below the 10-of-12 bar; the null clause was evaluated and does
+not reject, adaptive beating null on 9/12). The published records for 15024-15026 are the
+retrained copies the 403-era sessions wrote, and every manifest in the dataset reads
+`code_revision: "unknown"` because a kernel has no `.git`; the revision is recorded from
+seed 15030 on. The authoritative completed-session record is in
 `artifacts/v0-session-logs/NOTES.md`; `docs/T4_RUNBOOK.md` records the unchanged procedure.
 The controller
 default remains cap-4/2-batch; cap-4/1-batch is the validated cheaper option.
@@ -369,7 +370,7 @@ mutation the search can actually reach (5.53). Section 10.4 is the bound in full
 |---|---|---|---|---|---|---|
 | Horizon replication | study 3 config at steps=144 | cap4/2-batch, 3 events, steps=144 | fresh 8000-8383 | binomial sign test, alpha=0.05 | PASS -> pass generalizes; FAIL -> pass was horizon-specific | **DONE: PASS** (231/384, p 4.04e-05, t p 1.07e-08, cost 14.0%) |
 | Richness | candidate set size at fixed probe tokens | cap4/1-batch (A) vs cap2/2-batch (B), 3 events, steps=144 | fresh 7000-7383 | binomial sign test, alpha=0.05; factor claim: paired A-vs-B, one-tailed "rich better" | PASS & A>B -> richness is the active axis; B passes & B>=A -> probe quality is; neither -> both jointly necessary | **DONE: PASS for richness** (A 228/384, p 1.4e-04, t p 5.0e-05, cost 7.3%; B 193/384, p 0.48, cost 8.1%; paired A better 225/384, z = 3.37, p 8e-04) |
-| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config, **`probe_candidate_policy=spread`** (see 5.1/5.5) | **15024-15035** (adopted 5.5 change 4 to 15000-15011, then re-reserved by 5.65: that block's first four seeds ran the pre-5.47 rebuild and their harm numbers had been read) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] + **pool-matched control clause** | cost + band + harm guard clear **and the loss-blind control arm must not clear its own gate** -> Gate 4 authorized; control passes, control missing, band miss or harm guard -> Gate 4 withheld at exit 2 | **REGISTERED as revised (sections 5.5, 5.47, 5.65); EXECUTION PARTIAL, RESUMPTION AUTHORIZED** - the last recorded check has the primary block at **6 of 12 seeds (15024-15029)** in `act-v0-5-2`: 15024-15026 published 2026-09-26, 15027-15029 published by kernel v11 on 2026-09-27 after its restore of published state worked for the first time (three earlier sessions restored nothing and re-trained the block). Quota was exhausted at 1.65 of 30 GPU-hours with the campaign driver relaunched and waiting for the weekly refresh; control/null remained unlaunched, so no three-queue verdict exists. The published 15024-15026 records are the 403-era sessions' retrained copies and every manifest reads `code_revision: "unknown"`; the revision is recorded from seed 15030 on. Resumption is authorized without amendment. This is not a registration amendment, cost failure, or Gate-4 verdict. The authoritative session record is in `artifacts/v0-session-logs/NOTES.md`; the unchanged procedure is in `docs/T4_RUNBOOK.md` |
+| Real-scale cost measurement | probe-cost amortization | cap4/1-batch (primary) + cap4/2-batch (secondary), 3 events, 24.6M tokens/arm, declared V0 285M config, **`probe_candidate_policy=spread`** (see 5.1/5.5) | **15024-15035** (adopted 5.5 change 4 to 15000-15011, then re-reserved by 5.65: that block's first four seeds ran the pre-5.47 rebuild and their harm numbers had been read) | C = adaptive search/training FLOPs per arm, <= 5% (pre-registration 1's rule) + tolerance band [0.047%, 0.189%] + **pool-matched control clause** | cost + band + harm guard clear **and the loss-blind control arm must not clear its own gate** -> Gate 4 authorized; control passes, control missing, band miss or harm guard -> Gate 4 withheld at exit 2 | **REGISTERED as revised (sections 5.5, 5.47, 5.65); EXECUTION COMPLETE - the pre-registered verdict is `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE` (exit 2), Gate 4 withheld (2026-10-31).** At the last recorded check, **12 of 12 declared seeds** are published in each of the three queues; all three published the declared block: primary **15024-15035** in `act-v0-5-2` and `act-v0-5-2-p2` (15024-15026 published 2026-09-26; 15027-15029 by kernel v11 on 2026-09-27; the rest by 2026-10-20), control 12/12, null 12/12. The published 15024-15026 records are the 403-era sessions' retrained copies and every manifest reads `code_revision: "unknown"`; the revision is recorded from seed 15030 on. Cost **0.0951%** against the 5% criterion and inside the band; the harm guard clears (adaptive wins 6/12 vs churn; rejection at >= 10 losses); the loss-blind control wins **7/12**, below its 10/12 bar, and adaptive also wins 6/12, so the section 5.44 clause records no demonstrated edge; the section 5.14 null clause was evaluated (adaptive beats null on **9/12**). This is a cost PASS with the quality premise unsupported, not a Gate-4 authorization, registration amendment, or cost failure. The authoritative session record is in `artifacts/v0-session-logs/NOTES.md`; the procedure is in `docs/T4_RUNBOOK.md`; the artifact is `artifacts/study-summaries/gate4-verdict.json` |
 | Depth-4 Gate 3 confirmation | substrate expressiveness + selection value, with the arm-RNG fix | cap4/2-batch, `spread`, `independent_arm_rng`, 3 events, steps=48, depth 4 | fresh 60000-60383 (384 pairs) | argmin vs uniform churn, alpha/3 = 0.01667 (>= 214/384); paired argmin vs pool-matched control | PASS -> Gate 3 established on a non-degenerate substrate, 5.5 adopted; POOL-DRIVEN -> withdraw the selection claim; NOT REPRODUCED -> Gate 3 open, 5.1 must not launch | **DONE: PASS** (argmin vs uniform 255/384, p `6.1e-11`; paired increment 236/384, p `4.1e-06`; pool-matched control 209/384, p `0.046`; validity control does not pass). Section 9.9 |
 
 ### 5.1 Protocol: real-scale compute-efficiency measurement (pre-registered; gates Gate 4)
@@ -8701,8 +8702,8 @@ was added to the declared block, and no number above was retaken.
 | 1. Source repository | DONE (this repository) |
 | 2. Reproducible Kaggle notebooks | DONE for the plan section 39 set (`00_environment` + section 104's `01`-`03` and `04`-`09` per section 39's role list; deterministic builder `scripts/build_notebooks.py`, byte-identical re-runs, all ten notebooks' cells executed and verified) |
 | 3. Dataset manifests | DONE for the declared path (the manifest contract - `act.ops.publish_artifacts` / `restore_artifacts` - is what the V0 checkpoint handoff publishes through: staged under a temporary directory, manifest checksummed and written **last**, then the seed directory swapped in, so a partial publish is never mistaken for a complete one; `src/act/training/v0_handoff.py`); the synthetic-tokenizer manifests remain as before |
-| 4. Baseline checkpoints | DONE for the declared block's published seeds: `act-v0-5-2` contains seeds 15024-15029, with each arm's latest event checkpoint, metrics JSON and seed summary; the non-adaptive arms use the same publish path as the adaptive arm |
-| 5. Adaptive checkpoints | DONE for the declared block's published seeds - the campaign's exit publish makes the session boundary survivable, and **6 of the active block's 12 seeds (15024-15029)** are published to `act-v0-5-2` at the last recorded check; the campaign driver is relaunched and waiting on the weekly quota, with no Gate-4 verdict yet (section 5.2 and `docs/T4_RUNBOOK.md`) |
+| 4. Baseline checkpoints | DONE for the declared block's published seeds: `act-v0-5-2` and `act-v0-5-2-p2` contain seeds 15024-15030 and 15031-15035, with each arm's latest event checkpoint, metrics JSON and seed summary; the non-adaptive arms use the same publish path as the adaptive arm |
+| 5. Adaptive checkpoints | DONE for the declared block's published seeds - the campaign's exit publish makes the session boundary survivable, and all **12 of the active block's 12 seeds (15024-15035)** are published across the primary shards at the last recorded check (2026-10-31); the three-queue verdict is produced with Gate 4 withheld (section 5.1 and `docs/T4_RUNBOOK.md`) |
 | 6. Architecture genomes | DONE for the gate model (serialization, hashing, fossils) |
 | 7. Topology evolution logs | PARTIAL (mutation histories and fossils in records) |
 | 8. Experiment registry | DONE for the gate (append-only JSONL + study summaries) |
@@ -9439,10 +9440,13 @@ difference is ~1e-4 and its sign moves seed to seed (2 wins, 4 losses for adapti
 
 The depth-3/4 covariate question is closed: sections 5.48-5.59 measure the named
 covariates and depth ladder, and 5.60-5.61 bound the width-axis price. The remaining
-registered Gate-4 question is the declared-scale cost measurement. Its execution is partial,
-with 6 of the block's 12 primary seeds in the last recorded state (15024-15029) and no
-control/null queues launched, so it has no verdict and authorizes no downstream gate. Resumption is explicitly
-authorized; this is not a change to the registration or a claim that its cost criterion failed.
+registered Gate-4 question is the declared-scale cost measurement. Its execution is complete:
+all three queues published the declared 12-seed block by 2026-10-31, and the pre-registered
+verdict is `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE` (exit 2) - cost **0.0951%** inside the
+registered band and the harm guard clear, but adaptive wins **6/12** and the loss-blind
+control **7/12** against their own churn arms, both below the 10-of-12 bar, so Gate 4 is
+withheld on the quality premise. The null clause was evaluated (adaptive beats null on
+**9/12**). This authorizes no downstream gate; it is a cost pass, not a Gate-4 verdict.
 
 The separate real-text selection assumption has a current, narrower answer: at development
 fidelity, two fresh 12-seed blocks (§5.40 and §5.66) each favored the do-nothing arm over

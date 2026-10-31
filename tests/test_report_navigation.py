@@ -241,9 +241,10 @@ def test_the_study_index_status_row_is_live() -> None:
         None,
     )
     assert row is not None, "the §5 index no longer has a real-scale row"
-    assert "RESUMPTION AUTHORIZED" in row, row
+    assert "EXECUTION COMPLETE" in row, row
     assert "IN FLIGHT" not in row, row
-    assert "6 of 12" in row, row
+    assert "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE" in row, row
+    assert "Gate 4 withheld" in row, row
     assert "docs/T4_RUNBOOK.md" in row, row
     runbook = (ROOT / "docs" / "T4_RUNBOOK.md").read_text()
     assert "RESUMPTION AUTHORIZED" in runbook
@@ -262,7 +263,7 @@ def test_the_study_index_status_row_is_live() -> None:
     # seed denominator and artifact dataset aligned with the current queue.
     checklist = _text().split("## 7. Deliverables checklist", 1)[1].split("\n## ", 1)[0]
     assert "act-v0-5-2" in checklist
-    assert "6 of the active block's 12 seeds (15024-15029)" in checklist
+    assert "12 of the active block's 12 seeds (15024-15035)" in checklist
     assert "15000-15011" not in checklist
     # A live campaign's progress is a snapshot, never a pinned constant: the
     # row, the header and §4 must all say when they were true, so a stale count

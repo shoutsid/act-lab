@@ -1,0 +1,463 @@
+{
+  "band_reading": "declared scale: the registered band applies as written",
+  "config_conformance": {
+    "conforms": true,
+    "descriptive_only": true,
+    "fields": {
+      "active_experts": {
+        "recorded": 2,
+        "registered": 2,
+        "status": "matches"
+      },
+      "arms": {
+        "recorded": [
+          "random",
+          "adaptive"
+        ],
+        "registered": [
+          "random",
+          "adaptive"
+        ],
+        "status": "matches"
+      },
+      "attention_heads": {
+        "recorded": 16,
+        "registered": 16,
+        "status": "matches"
+      },
+      "batch_size": {
+        "recorded": 2,
+        "registered": 2,
+        "status": "matches"
+      },
+      "context_size": {
+        "recorded": 2048,
+        "registered": 2048,
+        "status": "matches"
+      },
+      "depth": {
+        "recorded": 12,
+        "registered": 12,
+        "status": "matches"
+      },
+      "expert_count": {
+        "recorded": 8,
+        "registered": 8,
+        "status": "matches"
+      },
+      "expert_width": {
+        "recorded": 1024,
+        "registered": 1024,
+        "status": "matches"
+      },
+      "hidden_size": {
+        "recorded": 1024,
+        "registered": 1024,
+        "status": "matches"
+      },
+      "mutation_budget": {
+        "recorded": 3,
+        "registered": 3,
+        "status": "matches"
+      },
+      "mutation_interval": {
+        "recorded": 1500,
+        "registered": 1500,
+        "status": "matches"
+      },
+      "new_expert_initialization": {
+        "recorded": "clone",
+        "registered": "clone",
+        "status": "matches"
+      },
+      "preserve_router_on_rebuild": {
+        "recorded": true,
+        "registered": true,
+        "status": "matches"
+      },
+      "probe_batch_count": {
+        "recorded": 1,
+        "registered": 1,
+        "status": "matches"
+      },
+      "probe_candidate_policy": {
+        "recorded": "spread",
+        "registered": "spread",
+        "status": "matches"
+      },
+      "probe_selection": {
+        "recorded": "argmin",
+        "registered": "argmin",
+        "status": "matches"
+      },
+      "total_steps": {
+        "recorded": 6000,
+        "registered": 6000,
+        "status": "matches"
+      },
+      "vocab_size": {
+        "recorded": 32768,
+        "registered": 32768,
+        "status": "matches"
+      }
+    },
+    "fields_differing": [],
+    "fields_not_recorded": [],
+    "reading": "the run's recorded configuration matches the registered declared protocol on every field it records",
+    "seeds_judged": 12,
+    "seeds_with_a_recorded_config": 12
+  },
+  "declared_seeds": [
+    15024,
+    15025,
+    15026,
+    15027,
+    15028,
+    15029,
+    15030,
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ],
+  "exit_code": 2,
+  "gate_4_authorized": false,
+  "harm_guard": {
+    "adaptive_losses": 6,
+    "adaptive_wins": 6,
+    "clear": true,
+    "loss_limit": 10,
+    "pairs": 12
+  },
+  "in_tolerance_band": true,
+  "measured_cost_percent": 0.09514851524370752,
+  "notes": "Gate 4 authorization requires all 12 declared seeds complete, cost <= 5%, measured C inside the [0.5, 2]x band, the harm guard clear, the adopted section 5.5 pool-matched control clause satisfied (the loss-blind arm must NOT clear the gate, the control must have been run, and the two arms must not be indistinguishable with neither clearing the bar - section 5.44), the quality premise recorded, and the section 5.14 do-nothing clause satisfied (adaptive must beat the null arm on the declared queue, and the null queue must have been run). A band miss forces re-derivation before Gate 4 (no knob re-tuning against the measured C).",
+  "null_control": {
+    "adaptive_losses_or_ties": 3,
+    "adaptive_wins": 9,
+    "clause_rejects": false,
+    "evaluated": true,
+    "null_root": "/tmp/act-lab-dc185fe611/verdict-inputs/null",
+    "pairs": 12,
+    "per_seed": [
+      {
+        "adaptive_beats_null": false,
+        "adaptive_loss": 10.399189949035645,
+        "null_loss": 10.398030281066895,
+        "null_mutation_count": 0,
+        "null_search_flops": 0,
+        "seed": 15024
+      },
+      {
+        "adaptive_beats_null": true,
+        "adaptive_loss": 10.397704601287842,
+        "null_loss": 10.398226022720337,
+        "null_mutation_count": 0,
+        "null_search_flops": 0,
+        "seed": 15025
+      },
+      {
+        "adaptive_beats_null": true,
+        "adaptive_loss": 10.398090839385986,
+        "null_loss": 10.398334503173828,
+        "null_mutation_count": 0,
+        "null_search_flops": 0,
+        "seed": 15026
+      },
+      {
+        "adaptive_beats_null": true,
+        "adaptive_loss": 10.398457527160645,
+        "null_loss": 10.39876651763916,
+        "null_mutation_count": 0,
+        "null_search_flops": 0,
+        "seed": 15027
+      },
+      {
+        "adaptive_beats_null": false,
+        "adaptive_loss": 10.3983473777771,
+        "null_loss": 10.398210048675537,
+        "null_mutation_count": 0,
+        "null_search_flops": 0,
+        "seed": 15028
+      },
+      {
+        "adaptive_beats_null": true,
+        "adaptive_loss": 10.398276329040527,
+        "null_loss": 10.398392915725708,
+        "null_mutation_count": 0,
+        "null_search_flops": 0,
+        "seed": 15029
+      },
+      {
+        "adaptive_beats_null": true,
+        "adaptive_loss": 10.397594451904297,
+        "null_loss": 10.39788007736206,
+        "null_mutation_count": 0,
+        "null_search_flops": 0,
+        "seed": 15030
+      },
+      {
+        "adaptive_beats_null": true,
+        "adaptive_loss": 10.397859573364258,
+        "null_loss": 10.398918151855469,
+        "null_mutation_count": 0,
+        "null_search_flops": 0,
+        "seed": 15031
+      },
+      {
+        "adaptive_beats_null": false,
+        "adaptive_loss": 10.39809250831604,
+        "null_loss": 10.398029804229736,
+        "null_mutation_count": 0,
+        "null_search_flops": 0,
+        "seed": 15032
+      },
+      {
+        "adaptive_beats_null": true,
+        "adaptive_loss": 10.3979012966156,
+        "null_loss": 10.39867615699768,
+        "null_mutation_count": 0,
+        "null_search_flops": 0,
+        "seed": 15033
+      },
+      {
+        "adaptive_beats_null": true,
+        "adaptive_loss": 10.397880554199219,
+        "null_loss": 10.39796495437622,
+        "null_mutation_count": 0,
+        "null_search_flops": 0,
+        "seed": 15034
+      },
+      {
+        "adaptive_beats_null": true,
+        "adaptive_loss": 10.397494792938232,
+        "null_loss": 10.399489164352417,
+        "null_mutation_count": 0,
+        "null_search_flops": 0,
+        "seed": 15035
+      }
+    ],
+    "seeds_missing": [],
+    "win_limit": 10
+  },
+  "per_seed": [
+    {
+      "adaptive_active_parameters": 134338560,
+      "adaptive_loss": 10.399189949035645,
+      "adaptive_wins": false,
+      "random_loss": 10.398184299468994,
+      "seed": 15024
+    },
+    {
+      "adaptive_active_parameters": 134338560,
+      "adaptive_loss": 10.397704601287842,
+      "adaptive_wins": true,
+      "random_loss": 10.39809799194336,
+      "seed": 15025
+    },
+    {
+      "adaptive_active_parameters": 134338560,
+      "adaptive_loss": 10.398090839385986,
+      "adaptive_wins": false,
+      "random_loss": 10.397788763046265,
+      "seed": 15026
+    },
+    {
+      "adaptive_active_parameters": 134338560,
+      "adaptive_loss": 10.398457527160645,
+      "adaptive_wins": true,
+      "random_loss": 10.398536682128906,
+      "seed": 15027
+    },
+    {
+      "adaptive_active_parameters": 134338560,
+      "adaptive_loss": 10.3983473777771,
+      "adaptive_wins": false,
+      "random_loss": 10.398133039474487,
+      "seed": 15028
+    },
+    {
+      "adaptive_active_parameters": 134338560,
+      "adaptive_loss": 10.398276329040527,
+      "adaptive_wins": false,
+      "random_loss": 10.397966623306274,
+      "seed": 15029
+    },
+    {
+      "adaptive_active_parameters": 134338560,
+      "adaptive_loss": 10.397594451904297,
+      "adaptive_wins": true,
+      "random_loss": 10.397788524627686,
+      "seed": 15030
+    },
+    {
+      "adaptive_active_parameters": 134340608,
+      "adaptive_loss": 10.397859573364258,
+      "adaptive_wins": true,
+      "random_loss": 10.398415565490723,
+      "seed": 15031
+    },
+    {
+      "adaptive_active_parameters": 134338560,
+      "adaptive_loss": 10.39809250831604,
+      "adaptive_wins": false,
+      "random_loss": 10.397798776626587,
+      "seed": 15032
+    },
+    {
+      "adaptive_active_parameters": 134338560,
+      "adaptive_loss": 10.3979012966156,
+      "adaptive_wins": true,
+      "random_loss": 10.398094654083252,
+      "seed": 15033
+    },
+    {
+      "adaptive_active_parameters": 134340608,
+      "adaptive_loss": 10.397880554199219,
+      "adaptive_wins": false,
+      "random_loss": 10.397485256195068,
+      "seed": 15034
+    },
+    {
+      "adaptive_active_parameters": 134338560,
+      "adaptive_loss": 10.397494792938232,
+      "adaptive_wins": true,
+      "random_loss": 10.397844076156616,
+      "seed": 15035
+    }
+  ],
+  "pool_matched_control": {
+    "adaptive_wins": 7,
+    "control_passes_gate": false,
+    "dataset_root": "/tmp/act-lab-dc185fe611/verdict-inputs/control",
+    "evaluated": true,
+    "pairs": 12,
+    "per_seed": [
+      {
+        "adaptive_loss": 10.398117065429688,
+        "adaptive_wins": true,
+        "random_loss": 10.398263454437256,
+        "seed": 15024
+      },
+      {
+        "adaptive_loss": 10.397910833358765,
+        "adaptive_wins": false,
+        "random_loss": 10.397774696350098,
+        "seed": 15025
+      },
+      {
+        "adaptive_loss": 10.398268699645996,
+        "adaptive_wins": false,
+        "random_loss": 10.39792013168335,
+        "seed": 15026
+      },
+      {
+        "adaptive_loss": 10.398195266723633,
+        "adaptive_wins": true,
+        "random_loss": 10.398488521575928,
+        "seed": 15027
+      },
+      {
+        "adaptive_loss": 10.398422718048096,
+        "adaptive_wins": false,
+        "random_loss": 10.398118495941162,
+        "seed": 15028
+      },
+      {
+        "adaptive_loss": 10.397494792938232,
+        "adaptive_wins": true,
+        "random_loss": 10.397810459136963,
+        "seed": 15029
+      },
+      {
+        "adaptive_loss": 10.397172689437866,
+        "adaptive_wins": true,
+        "random_loss": 10.398272037506104,
+        "seed": 15030
+      },
+      {
+        "adaptive_loss": 10.397951364517212,
+        "adaptive_wins": true,
+        "random_loss": 10.398030281066895,
+        "seed": 15031
+      },
+      {
+        "adaptive_loss": 10.39820384979248,
+        "adaptive_wins": false,
+        "random_loss": 10.397685289382935,
+        "seed": 15032
+      },
+      {
+        "adaptive_loss": 10.397709369659424,
+        "adaptive_wins": true,
+        "random_loss": 10.398005485534668,
+        "seed": 15033
+      },
+      {
+        "adaptive_loss": 10.398016214370728,
+        "adaptive_wins": false,
+        "random_loss": 10.397990465164185,
+        "seed": 15034
+      },
+      {
+        "adaptive_loss": 10.397709369659424,
+        "adaptive_wins": true,
+        "random_loss": 10.39792013168335,
+        "seed": 15035
+      }
+    ],
+    "seeds_missing": [],
+    "win_limit": 10
+  },
+  "predicted_cost_percent": 0.0941636252059042,
+  "primary_criterion_percent": 5.0,
+  "primary_pass": true,
+  "probe_batch_count": 1,
+  "protocol": "v0-compute-efficiency-5.1",
+  "quality_premise": {
+    "adaptive_clears_bar": false,
+    "adaptive_wins": 6,
+    "control_clears_bar": false,
+    "indistinguishable": true,
+    "reading": "neither arm clears the bar (no edge to recommend Gate 4 on)",
+    "win_limit": 10
+  },
+  "queue_complete": true,
+  "run_scale": {
+    "assumptions": "the declared search shape: 3 events, 4 candidates, one probe batch of 4096 tokens per event",
+    "declared_total_training_flops": 168298360602624000,
+    "descriptive_only": true,
+    "horizon_factor": 1.0102141115979721,
+    "in_tolerance_band_at_run_scale": true,
+    "mean_adaptive_active_parameters": 134338901.33333334,
+    "measured_cost_percent": 0.09514851524370752,
+    "measured_over_predicted_at_run_scale": 1.0002630875753973,
+    "measured_total_training_flops": 166596723081216000,
+    "predicted_cost_percent_at_run_scale": 0.09512348943550859,
+    "reading": "declared scale: the registered band applies as written",
+    "run_is_at_declared_scale": true,
+    "scale_factor_measured_to_declared": 1.010193577695267
+  },
+  "seeds_complete": [
+    15024,
+    15025,
+    15026,
+    15027,
+    15028,
+    15029,
+    15030,
+    15031,
+    15032,
+    15033,
+    15034,
+    15035
+  ],
+  "seeds_missing": [],
+  "seeds_stray": [],
+  "tolerance_band_percent": [
+    0.0470818126029521,
+    0.1883272504118084
+  ],
+  "verdict": "PASS_COST_ONLY_NO_DEMONSTRATED_EDGE"
+}

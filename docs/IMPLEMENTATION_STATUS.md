@@ -1,5 +1,32 @@
 # ACT Implementation Status
 
+## The campaign is complete: null finishes 12/12 and the verdict withholds Gate 4 on the quality premise (2026-10-31)
+
+The 2026-10-31 refresh session finished the null queue: **15033-15035** trained on the
+registered **7 h** window, all three publishes landed, and null is **12/12** for
+**6.03 GPU-h** of the fresh week. The launcher then produced the pre-registered verdict:
+**`PASS_COST_ONLY_NO_DEMONSTRATED_EDGE`**, exit **2**, `gate_4_authorized: false`. The
+cost criterion passes (**0.0951%**, band `[0.047%, 0.189%]`) and the harm guard clears
+(adaptive wins **6/12**); Gate 4 is withheld because neither the adaptive arm (**6/12**)
+nor the loss-blind control (**7/12**) clears the 10-of-12 quality bar.
+
+| | |
+|---|---|
+| **Block state** | primary **12/12**, control **12/12**, **null 12/12** (15024-15035); quota **6.03 h billed of the fresh 30 h week**, **23.97 h left by subtraction** (refresh 2026-11-07); campaign launcher exited 0; verdict produced. |
+| **The session** | declared 7 h, **14.3 min** startup, child window 6.68 h; fp16 **4,454.4 tok/s** -> pair **1.63 h**; restore **28.70 GiB in 10.1 min**, nine seeds skipped; pairs **15033** `10.398676`, **15034** `10.397965`, **15035** `10.399489`; publishes **10 / 11 / 12 seeds** at **31.9 / 35.1 / 38.3 GiB**; exit `already_published`; **6.03 h**, clean exit (165 platform-log events, last at 21,741 s). |
+| **The verdict** | `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE` (exit 2): cost **0.0951%** <= 5% and inside the band; harm guard clear (6/12 adaptive wins; rejection at >= 10 losses); loss-blind control **7/12**, so it does not pass its own gate; adaptive vs churn **6/12**, so the two arms are indistinguishable and the section 5.44 clause withholds the recommendation; null clause evaluated (adaptive beats null on **9/12**); config conformance: every recorded field matches on 12 seeds. |
+| **The first run and the re-run** | the launcher's 06:18:52Z verdict read only **11** null summaries (15035's version was still propagating) and recorded `null_control.evaluated: false`, `missing [15035]`; re-running the same free command once the dataset settled fetched **12/12, 0 missing** and produced the same label with the null clause evaluated. The artifact is `artifacts/study-summaries/gate4-verdict.json`. |
+| **Evidence** | the three session files are committed under `artifacts/v0-session-logs/`, with their sha256s in its 2026-10-31 entry; the driver's `gate4-campaign.log` is local scratch and carries the launcher's verdict output. |
+| **What this authorizes** | Nothing downstream. This is a declared-scale **cost pass with the quality premise unsupported**, not a Gate-4 pass: `gate_4_authorized` is false. |
+
+**What this does not establish.** That adaptive is worse than doing nothing: it beats the
+null arm on 9/12. That the verdict is a fail: the cost half passes and the exit code
+means "PASS with qualification (a withholding clause fired)", not a cost failure. That
+the first verdict was wrong in its arithmetic: both runs agree on every field except the
+null block's evaluability, which the re-run resolves. That the campaign's synthetic
+block speaks to real text: the published losses sit on the uniform floor, and the
+real-text development-fidelity studies (sections 5.40 and 5.66) favor the do-nothing arm.
+
 ## The fitted fire was refused by the clock: null stays 9/12 and the launcher waits on the refresh (2026-10-27)
 
 The 2026-10-27 check found the week at **2.67 h** with null at 9/12 and nothing driving, and spent

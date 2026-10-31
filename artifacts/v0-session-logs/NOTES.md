@@ -1,5 +1,66 @@
 # Campaign session logs - the evidence behind the exit-publish numbers
 
+## Null finishes 12/12 at the refresh, and the campaign produces its verdict (2026-10-31)
+
+The 2026-10-31 refresh session carried the null queue's last three seeds and finished it.
+At the registered **7 h** window it restored **28.70 GiB in 10.1 min**, skipped the nine
+published seeds, trained **15033-15035**, and published after every pair - **10 seeds /
+31.9 GiB** in 12.2 min, **11 / 35.1 GiB** in 14.0, **12 / 38.3 GiB** in 15.0 - then exited
+`already_published` with **0.97 h** left, so the queue is **12/12** without a wasted
+re-upload. The campaign launcher then ran the free CPU verdict. It is
+**`PASS_COST_ONLY_NO_DEMONSTRATED_EDGE`** (exit 2): the declared-scale cost criterion
+passes and **Gate 4 is withheld** because the quality premise is unsupported - adaptive
+wins only **6 of 12** against its own churn arm, and the loss-blind control wins **7 of
+12**, both below the 10-of-12 bar.
+
+| file | what it is | sha256 |
+|---|---|---|
+| `session-null-20261031T061604Z-live.log` | the driver's capture: the benchmark, the 10.1 min restore, all three pairs, all three growing publishes, the `already_published` exit | `fe193f356549ad6dc8f62d7f064ca0459de07fd472c6fea3ea612e3e9ffcec08` |
+| `session-null-20261031T061604Z-kernel-log.json` | the platform log: **165 events**, last at 21,741 s (6.04 h) - a clean exit, so the session's own account survives | `429a6ec9136fe65049b8bf302d4be57e87d67f4b7dc9262536b99208f2f9bd53` |
+| `session-null-20261031T061604Z-session-log.json` | the record: **3 pairs** (15033-15035), `latest_published_seed: 15035`, 4,454.4 tokens/s, pair_time 1.63 h, handoff 38.27 GiB | `7bf52e917367557a98480dfa2ef36ccab12d10dba688e44100627a9707d10b86` |
+| `artifacts/study-summaries/gate4-verdict.json` | the registered decision, from the re-run that read all twelve null summaries | `77ab971b1ce0a32cd115c3bfe7ec0e3667afc6f548b1948de95f688d9323f075` |
+
+| | |
+|---|---|
+| Declaration | `--queue null` at the 2026-10-31 refresh, registered **7 h** window; kernel **v6**, code **`9a293ef`** |
+| Startup / benchmark | **14.3 min** of startup, child window 6.68 h; fp16 **4,454.4 tokens/s** (fp32 1,246.6, the dtype rule) -> pair **1.63 h** |
+| Restore | `act-v0-5-2-null` **28.70 GiB in 10.1 min**; restored nine versions `[15024-15032]`, all nine skipped `complete` |
+| Pairs | **15033** `10.398676`; **15034** `10.397965`; **15035** `10.399489`; `search_flops 0` on every pair |
+| Publishes | **10 / 11 / 12 seeds** at **31.9 / 35.1 / 38.3 GiB** in **12.2 / 14.0 / 15.0 min**, all `published`; exit publish skipped as `already_published`; handoff **38.27 GiB** |
+| Stop | `session done: 3 pair(s) completed, 0.97 h remaining` - the rule-1 deadline, not a failure |
+| Cost | **6.03 GPU-h** billed of the fresh 30 h week; **23.97 h left by subtraction** (refresh 2026-11-07) |
+| The first verdict | the launcher's 06:18:52Z run read **11 of 12** null summaries - `missing seed(s) [15035]`, the version that had landed minutes earlier - so it withheld on an unevaluated do-nothing clause while reporting the same label |
+| The re-run | started once the dataset had settled, fetched **12/12 primary, control and null summaries (0 missing)**; cost **0.0951%** against <=5%, band `[0.0471%, 0.1883%]`; harm guard **6/12** adaptive wins (clear; rejection at >=10 losses); control **7/12** (bar 10, does not pass); adaptive vs churn **6/12** -> `indistinguishable`; null clause evaluated: adaptive beats null on **9/12** (bar 10, does not reject); config conformance: every recorded field matches on 12 seeds; exit **2**, `gate_4_authorized: false` |
+
+**What this says.** Three null pairs fit the registered window with 0.97 h to spare, and
+the three losses (`10.397965`-`10.399489`) stay within **0.0023 nats** of
+`ln(32768) = 10.3972` - the same floor as the other nine. The verdict's cost half is a
+genuine declared-scale pass: **0.0951%** is inside the registered band and under the 5%
+criterion. The withholding clause is the quality premise, not cost and not the do-nothing
+clause: adaptive's **6/12** against churn is a tie, exactly the state section 5.44's
+completed clause exists to catch, and the loss-blind arm's **7/12** does not clear its
+own bar either. So the campaign's answer is "the probe is cheap, the controller has not
+shown it is better than the pool-matched churn it replaces."
+
+**What this does not say.** That adaptive is worse than doing nothing: it beats the null
+arm on **9 of 12** pairs, so the section 5.14 clause does not reject. That the first
+verdict was a different decision: both runs carry the same label and exit code; the
+re-run only makes the null clause evaluable, and that clause does not reject. That the
+label's `PASS` is a Gate-4 authorization: `gate_4_authorized` is false and the registered
+verdict is a cost pass with the recommendation withheld. That the block measures real
+text: it trains on synthetic tokens at the uniform floor, and the two real-text
+development-fidelity studies (sections 5.40 and 5.66) favor null.
+
+**The first verdict's race.** The driver declared the queue complete at 06:16:05Z and
+pushed the verdict seconds later; the verdict kernel's file listing of
+`sid123123234/act-v0-5-2-null` still showed the previous version, so 15035's summary was
+not downloaded (`null: 11 seed summary(ies) fetched, 1 missing [15035]`). The artifact it
+produced says `evaluated: false` for `null_control` while `queue_complete: true` for the
+declared block, and `report_verdict` printed it as a decision because it only tests the
+primary block. Re-running the same command after the dataset settled fetched 12/12 and
+produced `artifacts/study-summaries/gate4-verdict.json`. The race is in the listing's
+propagation, not in the verdict arithmetic; the two runs agree on every other field.
+
 ## The week's last hours are lost to the clock: a slower benchmark and a 35-minute restore refuse the pair (2026-10-27)
 
 The 2026-10-27 check spent the week's last **2.67 h** on a fitted window aimed at **15033**, and
