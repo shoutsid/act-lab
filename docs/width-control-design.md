@@ -188,9 +188,11 @@ reader can compare against an outside model (which is what the code-LM leg is fo
    `train_code_lm.py`, which is what let them land while the campaign's two arms are still in
    flight: the arms' provenance is that no file they import changed, and a new module satisfies
    that where an edit to the model would not. The freeze this section recorded is still what
-   governs item 4 below — nothing the arms read has moved. What remains is the *operator*: a
-   mutation that widens a partly trained model, records the graft in the run's own signature, and
-   perturbs the new coordinates, which start at exactly zero gradient.
+   governs item 4 below — nothing the arms read has moved. The *operator* that widens a partly
+   trained model, records the graft in the run's own signature, and perturbs the new coordinates
+   now exists in `src/act/model/width_growth.py` (`widen_genome`, `perturb_new_coordinates`,
+   `graft_widened_model`), tested on CPU in `tests/test_width_growth.py`; what remains before it
+   can be a run is the schedule arm that calls it and its pre-registration.
 2. **The preservation test exists and passes**, so the admission bar's item (a) is met: a fixed
    batch, logits before and after, across every position, with both halves of the norm
    compensation shown to be load-bearing and a refusal for the layer type the widening cannot make
@@ -268,3 +270,168 @@ effect is read within each shape. The declared headline is `wide - match` at mat
 parameters, reported with the 4.7% active-FLOP gap beside it, and the paired per-window test
 in `scripts/code_lm_table.py` is the estimator — the arms differ in exactly one declared
 thing, so its refusals do not fire.
+
+## 9. The price at the declared shape, from committed figures
+
+The operator exists, so the arm can now be priced before any hour is spent. The shape is the one
+section 5 names - grow the trained V0 student at fixed depth, one +128 step per event - and the
+base rate is the 2026-10-31 session: **1.63 h** of training for 24,576,000 tokens at h768, and
+**6.03 GPU-h** for three seed sessions, i.e. **2.01 h per session all-in** (0.38 h of startup,
+restore and publish).
+
+| width | heads | total parameters | active parameters | active / base |
+|---|---|---|---|---|
+| 768 | 12 | 204,565,248 | 91,319,040 | 1.000 |
+| 896 | 14 | 244,164,480 | 112,043,904 | 1.227 |
+| 1024 | 16 | 285,336,576 | 134,341,632 | 1.471 |
+| 1152 | 18 | 328,081,536 | 158,212,224 | 1.733 |
+
+Three events at steps 1500/3000/4500 put 6.144M tokens in each segment. Weighting each segment by
+its active-parameter ratio gives **1.358x** the base training time: **2.21 h of training, 2.59 h
+all-in**, per seed. Holding the 0.38 h overhead fixed is a lower bound - the restore and publish
+scale with the parameter count too.
+
+| arm | seeds | GPU-hours |
+|---|---|---|
+| adaptive + random schedule (the paired primary) | 12 | **31.1** |
+| fixed-wide h1152 control | 12 | 38.5 |
+| fixed-narrow h768 control | 12 | 24.1 |
+| all four arms | 48 | **93.7** |
+
+The quota is **30 h per week**, with **23.96 h** left this week (refresh 2026-11-07). So the
+four-arm design is **3.1 weeks**, and the paired primary alone is **31.1 h** - 1.1 h more than a
+fresh week holds, and 7.1 h more than this week has left. Admission bar (d) fails as written.
+The table also shows the forms that could fit: 11 seeds of the paired primary are 28.5 h (inside
+one week), and 6 seeds of all four arms are 46.9 h (1.6 weeks) but halve the sign test's
+resolution. None of those is a decision this note can make; the point is that the run cannot be
+started on the current quota without choosing one explicitly.
+
+## 10. What the hours buy, and what can actually be cut
+
+Section 9's bill invites the obvious question - why does a 12-seed arm cost a GPU week - and the
+answer is not plumbing. It is the protocol's own token budget, and `scripts/width_block_power.py`
+decomposes it from the committed rates:
+
+| step | hours |
+|---|---|
+| 24,576,000 tokens per arm at the measured 4,454.4 tok/s | 1.5326 |
+| + the fixed event/rebuild overhead (both arms overlap on the two T4s) | 1.6326 per pair |
+| x 1.358, because the schedule's three events grow the model | 2.2170 |
+| + startup, restore and publish | **2.5970 per seed** |
+
+**81.5% of every seed's hours is the declared token budget.** The removable part is 0.48 h of
+overhead, and the rest is 24.6M tokens of arithmetic at the declared throughput. No engineering
+change touches it: the only ways to shorten a seed are to train fewer tokens or a smaller model,
+and both of those are the question rather than the cost.
+
+So the reductions available are in the *design*, and there are exactly three.
+
+**1. The controls are deferred, not dropped.** The four-arm design is 93.7 h, and **62.6 h of it is
+the two fixed arms** (38.5 h fixed-wide, 24.1 h fixed-narrow). Those separate capacity from
+compute - a real question, but a second one: if the primary reads flat or negative, they are
+uninformative by construction, and if it reads positive they are the follow-up that prices it. Put
+first, they are 62.6 h spent before the one arm that can make them worth anything. The first answer
+costs 31.2 h, not 93.7 h - a 3x cut with no question changed.
+
+**2. The bar can be stricter for less, but it is a trade, not a discount.** The registered bar is
+10 of 12, whose exact one-sided level is 79/4096 = 0.019287. A perfect sweep is a *sharper* test at
+smaller n:
+
+| bar | exact level under no effect | seeds | cost |
+|---|---|---|---|
+| 6/6 | 0.015625 | 6 | 15.6 h |
+| 8/8 | 0.003906 | 8 | 20.8 h |
+| 10/12 (registered) | 0.019287 | 12 | 31.2 h |
+| 12/12 | 0.000244 | 12 | 31.2 h |
+
+6/6 is a stricter bar than 10/12 at half the cost, and 8/8 is stricter again at two thirds. What
+that comparison does *not* show is power, and it is the half that matters here: at a true per-seed
+win probability of 0.8 the registered bar fires 0.558 of the time and 6/6 fires 0.262. **An
+all-wins bar gives a strong positive claim and almost no negative one** - under no effect it fires
+1 time in 64 - so it is the cheaper design only if the effect is expected to be large. For a
+programme whose stated prior is *edge flat*, the negative reading is the one being bought, and it
+needs the seeds. The two-stage rule (six first, extend only when ambiguous) was priced for exactly
+this and does not avoid the trade: it lands at 20.7 h under no effect, 24.5 h at p = 0.65 and
+25.5 h at p = 0.80, because a 3-to-5-of-6 start extends most of the time.
+
+**3. The wall clock is not the GPU.** 31.2 h does not fit the 23.96 h left in the week that ends
+2026-11-07, so the registered form waits a week for a refresh it then only just fills. That is
+seven days of latency bought for resolution the bar does not use - and it is the largest single
+reduction available, because it is a calendar cost and no GPU hours at all.
+
+**What the hours cannot buy, and why the order matters.** The arm that would spend them does not
+exist yet: `graft_widened_model` is an operator, and no schedule has called it. That is CPU work
+and it is the actual blocker - the quota is not what stands between this note and a result.
+
+**The recommended order, cheapest first.**
+
+1. **Build the schedule arm** (editing and the width tests only - no training run at all): call the
+   graft at the three registered events, reset the optimizer, record the graft row in the mutation
+   history, and make the resume path reconstruct a checkpoint whose width moved. Nothing can start
+   before this and nothing about it needs a GPU.
+2. **Run the question at development fidelity on Kaggle CPU, for zero GPU hours** - 12 seeds,
+   real TinyStories, the shape and 400-step budget of sections 5.40 and 5.66. That is the fidelity
+   where every real-text result this programme owns was found, it resolves effects of ~0.1 nats
+   (5.40 measured 0.1355 against sd 0.1129), and a width mutation is expected to be at least that
+   large. If the controller's edge is flat there, the declared block would spend 31.2 h to
+   reproduce a known answer at a nicer fidelity - which is a decision to make *after* the pilot,
+   not before it.
+3. **Then, and only then, the declared block** - 31.2 h as registered if the pilot leaves the
+   question genuinely open and moderate effects matter; 8 seeds at 20.8 h if the pilot's effect is
+   large enough that a stricter, lower-power bar is the honest instrument. The controls follow the
+   primary, not the other way round.
+
+**What the development-fidelity pilot costs, measured (2026-11-01).** Step 2 above now has a
+price, taken on the dev shape itself rather than the declared one, through `scripts/dev_cycle.py`
+at `--device cpu` (20 steps x batch 8 x context 512, two arms, model construction included):
+
+| setting | end-to-end | per arm |
+|---|---|---|
+| 20 host threads (default) | 3,062 tok/s | ~3,350 tok/s |
+| `OMP_NUM_THREADS=1` | 947 tok/s | ~1,010 tok/s |
+
+The scaling is the load-bearing part: 20 threads buy only 3.2x, so the cheap shape is **one
+single-thread process per seed**, four at a time on a four-core CPU session, at ~4,000 tok/s
+aggregate. One arm is 1,638,400 tokens, i.e. **27.3 min** flat.
+
+Widening makes it dearer, and at the dev shape much more so than at the declared one, because
++128 on h320 is +40% width while +128 on h768 is +17%. Measured with `estimated_parameter_count`
+at the dev shape (expert width held at 320):
+
+| width | total | active | active / h320 |
+|---|---|---|---|
+| 320 | 14,928,960 | 7,556,160 | 1.000 |
+| 448 | 22,276,800 | 11,954,880 | 1.582 |
+| 576 | 30,411,072 | 17,140,032 | 2.268 |
+| 704 | 39,331,776 | 23,111,616 | 3.059 |
+
+Four 100-step segments average **1.98x** the flat cost (against the declared schedule's 1.36x), so:
+
+| block | per seed | 12 seeds, 4 processes |
+|---|---|---|
+| adaptive + random (the paired primary) | 108 min | **5.4 h** |
+| + the null arm (needed to read the pool term, outcome 2) | 162 min | **8.1 h** |
+
+Plus **nothing local** for the stream: it already exists as the published dataset
+`sid123123234/act-lab-tinystories-tokens` (41 MB, `tokens.npy` beside `val-tokens.npy`, last
+updated 2026-09-18), which the pilot kernel mounts exactly as the arch-zoo kernel does. The 1.98 GB
+download and 40M-token encode that this section first priced are done and are not rerun. Both forms
+fit one Kaggle CPU session and spend **zero GPU-hours**.
+
+**Where it runs, and where it does not.** The 5.4-8.1 h above is Kaggle's four cores, not the
+workstation's. The local footprint of the pilot is: editing the arm, the width suite (23 tests,
+4.4 s), a code-dataset version push (a 2 MB zip), and one `kernels push` / `output` pair. The
+20-step timing run behind the table above is the only local training this section ever invoked -
+about a minute - and it is already done. A Kaggle CPU session bills no GPU quota, so the pilot's
+hours are the platform's wall clock, not this machine's.
+
+**The caveat this measurement adds.** At the dev base the *dose* is not the declared dose: three
+events take the model to 3.06x its active parameters against 1.73x at h768, so a dev-fidelity
+reading is a larger perturbation than the registered arm would apply. That is not fatal - a larger
+dose is a *better* chance to see an edge if one exists, and a flat edge at 1.98x average is a
+stronger negative than the same flat edge at 1.36x - but it means the pilot cannot be read as a
+scale model of the declared block, only as a cheaper instrument for the same sign.
+
+This section is a price and an order, not a registration: choosing the seed count is the one
+decision the note deliberately leaves open, and it is a decision the pilot can make cheaper than
+the note can.

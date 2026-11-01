@@ -46,6 +46,7 @@ from act.model import (
     v0_moe_model_from_genome,
     validate_declared_v0_config,
 )
+from act.model.width_growth import graft_widened_model
 from act.topology import (
     ArchitectureGenome,
     create_genome,
@@ -206,6 +207,20 @@ class V0SessionConfig:
     # ``gate_margin = inf`` reduces the arm to the random arm plus idle
     # probe FLOPs - the built-in budget-matched random control.
     gate_margin: float = 0.0
+    # Width arm (docs/width-control-design.md section 5): a function-preserving
+    # widening at every structural event, decided two ways at the same cadence,
+    # event count and probe cost. "width" probes the current model and the graft
+    # on the same batches and accepts unless the graft loses by more than
+    # ``width_accept_margin`` nats - the gated arm's two-point contrast applied
+    # to a width step instead of an expert draw. "width_random" makes the same
+    # widen-or-skip decision from a coin seeded by (seed, step): the schedule
+    # control, not a budget-matched one. Both are single-arm sessions, as gated
+    # and null are, because each is paired against a stored or separately run
+    # arm rather than trained beside it.
+    width_heads_added: int = 2
+    width_perturbation_scale: float = 1e-3
+    width_accept_margin: float = 0.0
+    width_random_probability: float = 0.5
     # Do-nothing control (report section 5.8, motivated by the gated
     # outcome's ``reject_noop`` sweep: the only real-text configuration that
     # beat the random arms was one that performed zero mutations). The null
@@ -268,6 +283,12 @@ class V0SessionConfig:
             raise ValueError("probe_finetune_steps must be non-negative")
         if self.gate_margin < 0:
             raise ValueError("gate_margin must be non-negative")
+        if self.width_heads_added < 1:
+            raise ValueError("width_heads_added must be positive")
+        if self.width_perturbation_scale < 0:
+            raise ValueError("width_perturbation_scale must be non-negative")
+        if not 0.0 <= self.width_random_probability <= 1.0:
+            raise ValueError("width_random_probability must be in [0, 1]")
         if "gated" in self.arms and self.arms != ("gated",):
             raise ValueError("the gated arm runs as its own single-arm session (arms=('gated',))")
         if "null" in self.arms and self.arms != ("null",):
@@ -276,11 +297,22 @@ class V0SessionConfig:
             raise ValueError(
                 "the heuristic arm runs as its own single-arm session (arms=('heuristic',))"
             )
+        if "width" in self.arms and self.arms != ("width",):
+            raise ValueError("the width arm runs as its own single-arm session (arms=('width',))")
+        if "width_random" in self.arms and self.arms != ("width_random",):
+            raise ValueError(
+                "the width-random arm runs as its own single-arm session "
+                "(arms=('width_random',))"
+            )
         if self.dtype not in {"fp32", "fp16"}:
             raise ValueError(f"unsupported session dtype: {self.dtype}")
         if self.validation_batches < 1:
             raise ValueError("validation_batches must be positive")
-        unknown = [arm for arm in self.arms if arm not in {"random", "adaptive", "gated", "null", "heuristic"}]
+        unknown = [
+            arm
+            for arm in self.arms
+            if arm not in {"random", "adaptive", "gated", "null", "heuristic", "width", "width_random"}
+        ]
         if unknown:
             raise ValueError(f"unsupported V0 session arms: {unknown}")
         if len(set(self.arms)) != len(self.arms):
@@ -368,6 +400,13 @@ def predicted_cost_ratio(config: V0SessionConfig) -> float:
         # The routing-statistics heuristic books no probes; its only extra
         # cost is the post-grow rebuild every mutating arm books anyway.
         return 0.0
+    if config.arms in {("width",), ("width_random",)}:
+        # Two probe evaluations per event, the same in both arms: the current
+        # model and the graft, on the same batches. Priced at the pre-graft
+        # active size, so the ratio is a lower bound as the model grows.
+        search = events * 2 * probe_tokens * 2 * active
+        training = 2 * total * config.training_tokens()
+        return search / training
     per_candidate = probe_tokens * 2 * active
     if config.probe_finetune_steps > 0:
         per_candidate += (
@@ -1290,6 +1329,112 @@ def _null_event(
     )
 
 
+def _width_event(
+    arm_state: _SessionState,
+    model: V0MoECausalLM,
+    optimizer: torch.optim.Optimizer,
+    config: V0SessionConfig,
+    step: int,
+    device: torch.device,
+    probe_batches: tuple[Tensor, ...],
+) -> tuple[V0MoECausalLM, torch.optim.Optimizer]:
+    """One width event: graft, probe both models, then accept or decline.
+
+    The graft is :func:`act.model.width_growth.graft_widened_model` - a
+    function-preserving widening plus the perturbation the new coordinates
+    need, because a zero extension is a saddle. Both arms pay the same two
+    probe evaluations, so the contrast between them is the decision rule and
+    nothing else:
+
+    * ``width`` accepts when the widened model does not lose to the current
+      one by more than ``config.width_accept_margin`` nats;
+    * ``width_random`` accepts on a coin seeded from ``(seed, step)`` - the
+      schedule control, at the same cadence, event count and probe cost.
+
+    A declined event leaves the model, genome and optimizer untouched and
+    records the loss the graft would have paid, which is what makes the two
+    arms comparable event by event. An infeasible genome is a recorded no-op
+    rather than a crash; it books only the reference probe, because the
+    widened model is never built.
+    """
+    policy = "width" if config.arms == ("width",) else "width_random"
+    before_hash = genome_hash(arm_state.genome)
+    probe_tokens = sum(batch.numel() for batch in probe_batches)
+    reference_loss = _probe_loss(model, probe_batches)
+    arm_state.search_flops += model.active_parameter_count * probe_tokens * 2
+    try:
+        widened, widened_genome, record = graft_widened_model(
+            model,
+            arm_state.genome,
+            heads_added=config.width_heads_added,
+            perturbation_scale=config.width_perturbation_scale,
+            seed=config.seed * 1_000_003 + step,
+        )
+    except ValueError as error:
+        arm_state.mutation_history.append(
+            {
+                "step": step,
+                "policy": policy,
+                "operation": "widen_declined",
+                "layer_id": None,
+                "expert_id": None,
+                "architecture_hash_before": before_hash,
+                "architecture_hash_after": before_hash,
+                "mutation_count": arm_state.mutations,
+                "gate_decision": "infeasible",
+                "gate_margin": config.width_accept_margin,
+                "reference_probe_loss": reference_loss,
+                "draw_probe_loss": None,
+                "probe_candidates": 1,
+                "probe_batch_count": len(probe_batches),
+                "width_heads_added": config.width_heads_added,
+                "reason": str(error),
+            }
+        )
+        _prepare_model(model, config)  # undo _probe_loss's eval() switch
+        return model, optimizer
+    widened = widened.to(device)
+    widened_loss = _probe_loss(widened, probe_batches)
+    arm_state.search_flops += widened.active_parameter_count * probe_tokens * 2
+    if policy == "width":
+        accepted = widened_loss <= reference_loss + config.width_accept_margin
+        decision = "accept" if accepted else "reject"
+    else:
+        accepted = (
+            random.Random(config.seed * 1_000_003 + step).random()
+            < config.width_random_probability
+        )
+        decision = "accept_random" if accepted else "reject_random"
+    entry = {
+        **record,
+        "step": step,
+        "policy": policy,
+        "operation": "widen" if accepted else "widen_declined",
+        "architecture_hash_after": (
+            genome_hash(widened_genome) if accepted else before_hash
+        ),
+        "mutation_count": arm_state.mutations + (1 if accepted else 0),
+        "gate_decision": decision,
+        "gate_margin": config.width_accept_margin,
+        "reference_probe_loss": reference_loss,
+        "draw_probe_loss": widened_loss,
+        "probe_candidates": 2,
+        "probe_batch_count": len(probe_batches),
+    }
+    if not accepted:
+        del widened
+        _prepare_model(model, config)  # undo _probe_loss's eval() switch
+        arm_state.mutation_history.append(entry)
+        return model, optimizer
+    arm_state.genome = widened_genome
+    arm_state.mutations += 1
+    arm_state.search_flops += widened.parameter_count * 4
+    _prepare_model(widened, config)
+    new_optimizer = torch.optim.AdamW(widened.parameters(), lr=config.learning_rate)
+    arm_state.mutation_history.append(entry)
+    return widened, new_optimizer
+
+
 def _random_event(
     arm_state: _SessionState,
     model: V0MoECausalLM,
@@ -1380,7 +1525,15 @@ def _train_arm(
     # gated session at gate_margin=inf reproduces the random arm EXACTLY -
     # the built-in budget-matched random control - and at any finite margin
     # the trajectory diverges only where the gate intervenes.
-    arm_seed = config.seed * 10 + {"random": 1, "adaptive": 2, "gated": 1, "null": 1, "heuristic": 1}[mode]
+    arm_seed = config.seed * 10 + {
+        "random": 1,
+        "adaptive": 2,
+        "gated": 1,
+        "null": 1,
+        "heuristic": 1,
+        "width": 1,
+        "width_random": 1,
+    }[mode]
     # fp16 sessions train under autocast with a GradScaler over fp32 master
     # weights; fp32 sessions keep the plain path. Both are created here so a
     # resume restores into the same object graph either way.
@@ -1540,6 +1693,10 @@ def _train_arm(
                 )
             elif mode == "gated":
                 model, optimizer = _gated_event(
+                    arm_state, model, optimizer, config, step, device, probe_batches
+                )
+            elif mode in {"width", "width_random"}:
+                model, optimizer = _width_event(
                     arm_state, model, optimizer, config, step, device, probe_batches
                 )
             elif mode == "null":

@@ -172,4 +172,9 @@ artifacts/null-pair-rehearsal/*
 # could only pass on the machine that generated the file. 10 MB, and load-bearing:
 # committing it is the option that keeps the report's citation true in a fresh clone.
 !artifacts/gate3-384.jsonl
+# The width pilot (2026-11-01): the pre-registration is durable before any seed runs;
+# fetched records are committed only when a note cites their numbers.
+!artifacts/width-pilot/
+artifacts/width-pilot/*
+!artifacts/width-pilot/NOTES.md
 .DS_Store

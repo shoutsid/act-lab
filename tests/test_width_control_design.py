@@ -12,6 +12,7 @@ The numbers are the model's own; only the *choice* of which budget to hold is th
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 import pytest
@@ -184,6 +185,56 @@ def test_the_note_states_the_shape_the_arm_would_be_added_as(note: str) -> None:
     assert WIDE_TOTAL.experts_per_layer[0] == 8
     assert WIDE_TOTAL.active_experts == 2
     assert WIDE_TOTAL.expert_width == 1100
+
+
+def test_the_smaller_block_is_a_stricter_bar_and_a_power_trade(note: str) -> None:
+    """Section 10's claim: 6/6 is sharper than 10/12, and still the weaker design.
+
+    The two halves have to be read together or the section is misleading - the first says a
+    smaller block is cheaper *and* stricter, the second says it has a quarter of the power at
+    a plausible effect. Both are recomputed here from the binomial, so an edit that keeps the
+    cheaper claim and drops the trade fails rather than reads well.
+    """
+
+    def level(wins: int, trials: int) -> float:
+        return sum(
+            math.comb(trials, k) * 0.5**k * 0.5 ** (trials - k) for k in range(wins, trials + 1)
+        )
+
+    sweep, registered = level(6, 6), level(10, 12)
+    assert sweep == pytest.approx(1 / 64)
+    assert registered == pytest.approx(79 / 4096)
+    assert sweep < registered, "the sweep stopped being the stricter bar; section 10 now misreads"
+
+    # Power at p = 0.8 is where the smaller block loses, and the note has to say so.
+    def power(bar: int, trials: int, p: float) -> float:
+        return sum(
+            math.comb(trials, k) * p**k * (1 - p) ** (trials - k)
+            for k in range(bar, trials + 1)
+        )
+
+    assert power(6, 6, 0.8) == pytest.approx(0.262144)
+    assert power(10, 12, 0.8) == pytest.approx(0.558346, abs=1e-6)
+    assert power(10, 12, 0.8) > 2 * power(6, 6, 0.8)
+
+    for rendered in (
+        "0.015625",
+        "0.019287",
+        "0.003906",
+        "15.6 h",
+        "20.8 h",
+        "31.2 h",
+        "81.5%",
+        "62.6 h",
+        "2.5970",
+    ):
+        assert rendered in note, f"the note no longer states {rendered!r}"
+
+    # The per-seed bill and the bar's cost have to agree: 12 seeds at 2.5970 h is 31.2 h.
+    assert 12 * 2.5970 == pytest.approx(31.164, abs=0.001)
+    assert round(12 * 2.5970, 1) == 31.2
+    assert round(8 * 2.5970, 1) == 20.8
+    assert round(6 * 2.5970, 1) == 15.6
 
 
 def test_the_joint_fallbacks_are_legal_shapes_not_just_arithmetic(note: str) -> None:
