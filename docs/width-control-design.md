@@ -425,6 +425,14 @@ workstation's. The local footprint of the pilot is: editing the arm, the width s
 about a minute - and it is already done. A Kaggle CPU session bills no GPU quota, so the pilot's
 hours are the platform's wall clock, not this machine's.
 
+**The first Kaggle measurement, 2026-11-01.** The smoke run - one seed, two arms, 20 steps,
+two events, two single-thread processes - trained the wider arm in **273 s** (300 tok/s) and
+the coin arm in **231 s** (355 tok/s). That is **13.6 s/step** against **4.3 s/step** for the
+same shape at one thread on the workstation, so Kaggle's CPU is ~3.2x slower per step, and
+the 5.4 h figure above (which applied the workstation's 1,010 tok/s) understates the block:
+at the measured rate the 24-job block is **~8 h at four workers**, still one CPU session and
+still zero GPU-hours. The smoke's records are under `artifacts/width-pilot/smoke/`.
+
 **The caveat this measurement adds.** At the dev base the *dose* is not the declared dose: three
 events take the model to 3.06x its active parameters against 1.73x at h768, so a dev-fidelity
 reading is a larger perturbation than the registered arm would apply. That is not fatal - a larger

@@ -177,4 +177,9 @@ artifacts/null-pair-rehearsal/*
 !artifacts/width-pilot/
 artifacts/width-pilot/*
 !artifacts/width-pilot/NOTES.md
+# The harness check that priced the block: two arms, 20 steps, and the measured
+# Kaggle rate the notes quote. Tiny, and the only record of that correction.
+!artifacts/width-pilot/smoke/
+artifacts/width-pilot/smoke/*
+!artifacts/width-pilot/smoke/*.json
 .DS_Store

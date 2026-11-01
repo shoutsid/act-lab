@@ -1,0 +1,18 @@
+{
+  "failures": [],
+  "jobs": 2,
+  "kind": "width-pilot-summary",
+  "plan": {
+    "arms": [
+      "width",
+      "width_random"
+    ],
+    "budget": 2,
+    "interval": 7,
+    "seeds": [
+      71000
+    ],
+    "steps": 20
+  },
+  "records": 2
+}

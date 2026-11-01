@@ -38,10 +38,17 @@ the session machinery and is not re-registered here.
 | data | TinyStories, the published `act-lab-tinystories-tokens` stream (train and held-out) |
 | seeds | 71000-71011 (12 paired seeds) |
 | host | Kaggle CPU, four single-thread processes, **zero GPU-hours** |
-| cost, measured | 108 min per seed for the pair; **5.4 h** for 12 seeds at four processes |
+| cost, measured | the pre-registration priced 108 min per seed and **5.4 h** for 12 seeds; the 2026-11-01 smoke then measured Kaggle's CPU at **300-355 tok/s per process** (against 1,010 on the workstation), so the block's envelope is **~8 h at four workers**, with the 12 h session cap as the stop |
 
 The seeds are a fresh range, not the declared queue's 15000-15011: this is a dev-shape run and
 must not be mistaken for a declared one in any later join.
+
+**The smoke corrected the price.** Before the block ran, one seed and two arms at 20 steps
+and two events (the harness check, not evidence) trained in **273 s** for the wider arm -
+13.6 s/step, against 4.3 s/step for the same shape at one thread on the workstation. That is
+3.2x slower per step, and it is the number the envelope above uses. The 5.4 h figure was a
+workstation rate applied to Kaggle; it is kept here as the estimate the smoke replaced rather
+than quietly overwritten.
 
 ## The reading, fixed before the data
 
