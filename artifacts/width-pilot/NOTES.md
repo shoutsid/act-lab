@@ -117,3 +117,36 @@ The pilot's 5.4 h is wall clock on Kaggle's four cores and bills no GPU quota. I
 session; if the session dies, the remaining seeds are relaunched rather than restarted, since
 each job writes its own record and a record already fetched is not recomputed. The run stops
 after the twelve seeds or at the session limit, whichever comes first.
+
+## Launch (2026-11-04T16:36Z)
+
+Kernel `sid123123234/act-width-pilot` version **4** was pushed and reached `RUNNING` with the
+full registered plan: seeds 71000-71011, both arms, 400 steps, events at 100/200/300, four
+single-thread workers on Kaggle CPU. The code dataset is at `8bb017a93dd7` (the working tree
+differed only in report prose; HEAD is what ships). Records land under
+`/kaggle/working/width-pilot/` and are read against the "reading, fixed before the data"
+section above, not against the runs.
+
+## First session: 15 of 24 jobs, cut by the platform clock (2026-11-05)
+
+Version 4 ended with `CANCEL_ACKNOWLEDGED` after the log's last stream entry at 41,406 s
+(11.5 h of logged work), during the `71007:width` job. The fetch recovered **15 records**:
+complete pairs for seeds **71000-71006** (both arms, config-identical within each pair except
+`arms`), plus `71007:width_random`. The nine missing jobs are `71007:width` and both arms of
+**71008-71011**.
+
+The session's measured per-job wall time is longer than the smoke's envelope: the wider arm
+ran 2.65-3.30 h and the coin arm 2.04-3.04 h, because the graft is accepted at every event
+on every completed wider run and the active model grows to 3.06x. The 24-job block was
+priced at ~8 h from the 20-step smoke; that price was optimistic for the full 400-step
+schedule, and the platform's 12 h window, not the 8 h envelope, was the binding stop.
+
+## Resume (2026-11-05T15:55Z)
+
+Kernel version **5** was pushed with a job-scoped plan rather than the seed block: the nine
+missing `SEED:ARM` jobs only, so no fetched record is recomputed. The code dataset is at
+`a067286` (the launcher gained `--jobs` for exactly this resume; HEAD is what ships). Shape,
+budget, events, data and the two arms are unchanged from the registration; four single-thread
+workers, zero GPU-hours. Expected wall time is ~9 h from the measured per-job times, inside
+the 12 h session window. The records from both sessions are read together against the
+"reading, fixed before the data" section above - the partial block is not read as a result.
