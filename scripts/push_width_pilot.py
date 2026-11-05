@@ -77,7 +77,7 @@ def main() -> int:
         return 2
     out = Path("/kaggle/working/width-pilot")
     out.mkdir(parents=True, exist_ok=True)
-    jobs = [(seed, arm) for seed in PLAN["seeds"] for arm in PLAN["arms"]]
+    jobs = [(job["seed"], job["arm"]) for job in PLAN["jobs"]]
     env = dict(os.environ)
     env["PYTHONPATH"] = str(root / "src")
     env["OMP_NUM_THREADS"] = "1"
@@ -148,9 +148,42 @@ def _seeds(value: str) -> list[int]:
 
 
 def plan(args: argparse.Namespace) -> dict[str, object]:
+    """The staged plan. ``--jobs`` scopes a resume to jobs a session has not done.
+
+    The pilot is one session on Kaggle's CPU, and that session can be cut by the
+    platform's clock before the last job. The records fetched from it are the
+    completed jobs; re-running a seed would recompute them, so a resume names
+    the missing ``SEED:ARM`` jobs rather than the seed block. Without ``--jobs``
+    the plan is the full cross product, exactly as the block was registered.
+    """
+
+    if args.jobs:
+        jobs: list[dict[str, object]] = []
+        for item in args.jobs.split(","):
+            piece = item.strip()
+            if not piece:
+                continue
+            seed_text, separator, arm = piece.partition(":")
+            if not separator or arm not in ("width", "width_random"):
+                raise SystemExit(
+                    f"bad --jobs entry {piece!r}; expected SEED:width or "
+                    "SEED:width_random"
+                )
+            jobs.append({"seed": int(seed_text), "arm": arm})
+        if not jobs:
+            raise SystemExit("--jobs named no jobs")
+        seeds = sorted({int(job["seed"]) for job in jobs})
+        arms = sorted({str(job["arm"]) for job in jobs})
+    else:
+        seeds = _seeds(args.seeds)
+        arms = [arm for arm in args.arms.split(",") if arm]
+        jobs = [
+            {"seed": seed, "arm": arm} for seed in seeds for arm in arms
+        ]
     return {
-        "seeds": _seeds(args.seeds),
-        "arms": [arm for arm in args.arms.split(",") if arm],
+        "seeds": seeds,
+        "arms": arms,
+        "jobs": jobs,
         "steps": args.steps,
         "interval": args.interval,
         "budget": args.budget,
@@ -216,6 +249,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seeds", default="71000", help="comma-separated seeds")
     parser.add_argument("--arms", default="width,width_random")
+    parser.add_argument(
+        "--jobs",
+        default=None,
+        help="comma-separated SEED:ARM jobs; overrides --seeds/--arms to resume a partial block",
+    )
     parser.add_argument("--steps", type=int, default=400)
     parser.add_argument("--interval", type=int, default=100)
     parser.add_argument("--budget", type=int, default=3)
