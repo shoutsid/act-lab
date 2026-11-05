@@ -150,3 +150,35 @@ budget, events, data and the two arms are unchanged from the registration; four 
 workers, zero GPU-hours. Expected wall time is ~9 h from the measured per-job times, inside
 the 12 h session window. The records from both sessions are read together against the
 "reading, fixed before the data" section above - the partial block is not read as a result.
+
+## First attempt void: the scheduler counted accepted grafts (2026-11-05)
+
+The 15 records fetched from versions 4 and 5 are **not evidence**. Read against the
+registered three-event schedule, every `width_random` record carries four events at
+100/200/300/**400**, and `width` seeds 71003 and 71006 carry a fourth as well because they
+declined one. `_train_arm` gated the width event on `arm_state.mutations < mutation_budget`,
+and `mutations` counts *accepted* widenings, so an arm that declined kept firing until it
+reached three accepts or the horizon ended. The step-400 event fires after the last
+optimizer step and before the final validation, so it changes the loss the block is read on.
+The two arms therefore did not run "the same three events" this registration names, and no
+paired reading exists.
+
+The records and the reader's `protocol_deviation` output are preserved under
+`artifacts/width-pilot/void-first-attempt/` (local, git-ignored). They are not pooled with
+any later run and are not cited as a result. Kernel version 5 was deleted before it could
+write more old-schedule records.
+
+## Corrected rerun (2026-11-05)
+
+The fix in this commit makes the width arms budget *events*: a width event fires when
+`step <= mutation_interval * mutation_budget`, so the pilot's 400-step horizon has exactly
+100/200/300 whether every graft is accepted or declined. The other arms keep their
+successful-mutation budget unchanged. `test_declines_do_not_buy_extra_width_events` pins
+the toy analogue - three slots at 3/6/9 in a 12-step horizon, no event at 12 - for both a
+`width` arm that always declines and a `width_random` arm that never accepts.
+
+The block is rerun **in full**, all 24 jobs, rather than resumed: the five width records
+that happened to fire exactly three events are not reused, so every pair comes from the
+corrected scheduler. Seeds 71000-71011, both arms, 400 steps, events at 100/200/300, four
+single-thread workers, zero GPU-hours. The reading is still the one fixed before the data;
+this section records a harness repair and a rerun, not a change to the rule.

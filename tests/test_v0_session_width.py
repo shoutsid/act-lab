@@ -110,6 +110,36 @@ def test_the_random_schedule_is_a_control_at_the_same_probe_cost(tmp_path) -> No
     assert arm.search_flops > 0
 
 
+def test_declines_do_not_buy_extra_width_events(tmp_path) -> None:
+    """Both width arms fire the registered slots, not one per accepted graft.
+
+    The registration fixes three decision events before the run (the pilot's
+    100/200/300 in a 400-step horizon). This is that schedule at toy scale:
+    interval 3, budget 3, 12 steps, so the slots are 3/6/9 and step 12 - after
+    the last optimizer step and before validation - is not an event. A coin
+    arm that never accepts and an adaptive arm that always declines must both
+    stop at the third slot; budgeting accepted mutations instead fired a
+    fourth event at step 12 in every fetched ``width_random`` record.
+    """
+
+    for arm_name, knobs in (
+        ("width", {"width_accept_margin": -1e9}),
+        ("width_random", {"width_random_probability": 0.0}),
+    ):
+        arm = _arm(
+            _config(
+                arms=(arm_name,),
+                total_steps=12,
+                mutation_interval=3,
+                mutation_budget=3,
+                **knobs,
+            ),
+            tmp_path / arm_name,
+        )
+        assert [row["step"] for row in arm.mutation_history] == [3, 6, 9]
+        assert arm.mutation_count == 0
+
+
 def test_the_width_arm_is_single_and_its_knobs_are_validated() -> None:
     with pytest.raises(ValueError):
         _config(arms=("width", "random"))

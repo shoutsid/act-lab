@@ -1435,6 +1435,29 @@ def _width_event(
     return widened, new_optimizer
 
 
+def _mutation_event_due(
+    mode: str, arm_state: _SessionState, config: V0SessionConfig, step: int
+) -> bool:
+    """Whether ``step`` carries a mutation event for this arm.
+
+    The general arms spend a budget of *successful* mutations: a declined
+    draw does not consume their schedule. The width arms are a paired
+    experiment and must consume the same three decision events whether a
+    graft is accepted or declined; otherwise a coin arm that declines fires
+    a fourth event at the final step, after training but before validation,
+    and its final loss is read against a different schedule (measured
+    2026-11-05: every fetched ``width_random`` record had four events, and two
+    ``width`` records had four). Their ``mutation_budget`` is therefore a
+    count of events, fixed by the step alone.
+    """
+
+    if step % config.mutation_interval != 0:
+        return False
+    if mode in {"width", "width_random"}:
+        return step <= config.mutation_interval * config.mutation_budget
+    return arm_state.mutations < config.mutation_budget
+
+
 def _random_event(
     arm_state: _SessionState,
     model: V0MoECausalLM,
@@ -1676,10 +1699,7 @@ def _train_arm(
         # Snapshot the generator after each consumed batch so every checkpoint
         # carries the exact token-stream position it was saved at.
         arm_state.generator_state = generator.get_state()
-        if (
-            step % config.mutation_interval == 0
-            and arm_state.mutations < config.mutation_budget
-        ):
+        if _mutation_event_due(mode, arm_state, config, step):
             if mode == "adaptive":
                 model, optimizer = _adaptive_event(
                     arm_state,
