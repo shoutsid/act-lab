@@ -182,3 +182,11 @@ that happened to fire exactly three events are not reused, so every pair comes f
 corrected scheduler. Seeds 71000-71011, both arms, 400 steps, events at 100/200/300, four
 single-thread workers, zero GPU-hours. The reading is still the one fixed before the data;
 this section records a harness repair and a rerun, not a change to the rule.
+
+Kernel `sid123123234/act-width-pilot` was recreated as version **1** and reached `RUNNING`
+at **2026-11-05T16:13Z** with that full plan. The code dataset is at `44cfb1a` (the working
+tree differed only in report prose; HEAD is what ships). At the measured per-job times the
+24-job block does not fit one 12 h window, so a cut session is resumed with `--jobs` for
+the missing `SEED:ARM` pairs under the same revision - the corrected records already
+fetched are not recomputed, and the void attempt's records are never fetched into the
+block's directory.
