@@ -1,5 +1,37 @@
 # ACT Implementation Status
 
+## The next study: the width pilot's missing null arm, so the pool term stops being unknown (2026-11-07)
+
+Section 5.67 closes the pilot's **decision rule** and leaves one term of its own decomposition
+unmeasured. The registration declared four outcomes, and the two that remain live -
+**2 (pool positive, edge flat)** and **3 (both flat or negative)** - differ by exactly one
+comparison the block never ran: `null - width_random`, where the null arm applies no graft at all
+and books no probe FLOPs. Outcome 3 is what the note assumed when it closed the arm; outcome 2 was
+the note's *stated prior*. Nothing in the record can currently tell them apart, and the answer
+decides what the project's contribution is: a graft that pays with a controller that does not,
+or a gene that does not pay at this dose at all.
+
+| | |
+|---|---|
+| **The question** | Does the graft itself pay at the dev dose, separately from the rule that chooses it? `null - width_random` (negative = mutation helps), paired per seed. |
+| **Design** | **12 null-arm jobs**, seeds 71000-71011, on the already-spent block: dev shape, real TinyStories stream, 400 steps, events at 100/200/300, `arms=("null",)` - one process per job, four workers. The null arm must share `width_random`'s initialization identity, the §5.40 pairing (`arm_seed = seed * 10 + 1`), so the comparison is a same-initialization pair rather than a fresh draw. |
+| **The registered primaries it would add** | `null - width_random` at the block's own 10-of-12 bar, one-sided exact sign test at `0.019287`; the arm schedule (zero mutations, zero probe FLOPs, unchanged architecture hash) recorded as a built-in check rather than asserted. |
+| **What each answer decides** | **Pool positive** - the project's result is the graft, not the controller: the follow-up is fixed-wide versus fixed-narrow controls (which separate capacity from compute), not another decision rule, and the width arm stays closed. **Pool flat or negative** - widening does not pay at 3.06x active parameters, the width programme closes entirely, and the report's width claims stay at the factor map's level. |
+| **Cost, measured** | The coin arm's 12 jobs measured **99.6-155.8 min** (mean 130.9); a null arm applies no graft and perturbs nothing, so it is at or below that. Twelve jobs at four workers is **~5.5-6.5 h wall, zero GPU-hours** - the same instrument the pilot already used, one arm short. |
+| **What it requires before any job** | Three small pieces of CPU work, no spend: `scripts/width_pilot.py --arm` extended to `null` (the session already runs a null arm as its own single-arm session and books no probe FLOPs), the reader extended to the third arm so the pool term is computed by the registered instrument rather than by hand, and a dated **amendment in the pilot's NOTES** - the block is spent data and this comparison was not pre-registered for it, so the bar, the pairing and the outcome mapping must be written down before the first record lands. |
+| **What it does not do** | It does not reopen the width arm, does not authorize the declared 31.2 h block, and does not turn a dev-fidelity pool term into a declared-scale one. |
+
+**Why this study and not the declared real-text block.** §10.3 names declared-scale real-text
+behaviour as the remaining gap, and it still is - but its instrument is the one that just failed
+(the declared block's synthetic stream sits on the uniform floor, where the arm difference is
+`~1e-4`), it costs a GPU week rather than zero GPU-hours, and it would replicate at a nicer
+fidelity a negative that §5.40 and §5.66 already replicated **12/12 twice** at the fidelity where
+effects of this size are resolvable. There is also a concrete data limit on that design: the
+committed real stream is ~40M tokens against **24.576M per declared arm**, so twelve declared seeds
+would reuse most of one stream rather than train on twelve independent samples. The null arm costs
+nothing, uses machinery that exists, and decides which of the two follow-ups the project has. The
+declared real-text test needs its own stream and its own week; it is not the cheap next step.
+
 ## The width pilot's registered reading closes the arm: 1 win of 12 for the decision rule (2026-11-07)
 
 The development-fidelity pilot that `docs/width-control-design.md` §10 ordered before any declared
