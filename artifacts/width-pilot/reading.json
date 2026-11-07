@@ -308,6 +308,35 @@
       "winner": "width_random"
     }
   ],
+  "pool": {
+    "bar_wins": 10,
+    "convention": "negative = the mutating arm is better than doing nothing",
+    "losses": 0,
+    "mean_delta": null,
+    "missing_jobs": [
+      "71000:null",
+      "71001:null",
+      "71002:null",
+      "71003:null",
+      "71004:null",
+      "71005:null",
+      "71006:null",
+      "71007:null",
+      "71008:null",
+      "71009:null",
+      "71010:null",
+      "71011:null"
+    ],
+    "n": 0,
+    "outcome": "NOT RUN - no null-arm records; the pool term is unmeasured",
+    "paired_sd": null,
+    "paired_seeds": [],
+    "sign_test_p": null,
+    "status": "not_run",
+    "term": "width_random - null",
+    "ties": 0,
+    "wins": 0
+  },
   "protocol": {
     "deviations": [],
     "ok": true,
@@ -318,7 +347,7 @@
     ]
   },
   "record_count": 24,
-  "records_directory": "artifacts/width-pilot/kaggle",
+  "records_directory": "/home/shoutsid/code/act-lab/artifacts/width-pilot/kaggle",
   "registered_reading": true,
   "registration": "artifacts/width-pilot/NOTES.md",
   "seeds": [

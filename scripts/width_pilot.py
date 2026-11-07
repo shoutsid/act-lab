@@ -11,6 +11,7 @@ The arm is a session arm in the ordinary sense (``V0SessionConfig.arms``):
 
     PYTHONPATH=src python scripts/width_pilot.py --seed 71000 --arm width
     PYTHONPATH=src python scripts/width_pilot.py --seed 71000 --arm width_random
+    PYTHONPATH=src python scripts/width_pilot.py --seed 71000 --arm null
 
 ``--data-dir`` must contain ``tokens.npy`` and ``val-tokens.npy``; on Kaggle
 that is the mounted ``act-lab-tinystories-tokens`` dataset. A missing stream is
@@ -73,7 +74,12 @@ def _data_dir(explicit: str | None) -> Path:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, default=71000)
-    parser.add_argument("--arm", choices=("width", "width_random"), default="width")
+    parser.add_argument(
+        "--arm",
+        choices=("width", "width_random", "null"),
+        default="width",
+        help="width: adaptive rule; width_random: coin; null: do-nothing (the pool term)",
+    )
     parser.add_argument("--steps", type=int, default=400)
     parser.add_argument("--interval", type=int, default=100)
     parser.add_argument("--budget", type=int, default=3)

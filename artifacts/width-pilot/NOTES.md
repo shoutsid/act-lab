@@ -251,3 +251,49 @@ The block spent **zero GPU-hours**; its cost is the platform's wall clock, and t
 sessions are recorded above rather than folded into the result. The fetched records and this
 reading are committed beside this note (`artifacts/width-pilot/kaggle/`, `reading.json`), and
 the numbers above are the reader's output, not a hand computation.
+
+## Amendment: the null arm, registered before its first job (2026-11-07)
+
+The 12/12 reading above closes the *decision rule* and leaves the block's other term open. The
+declared decomposition is
+
+```
+adaptive - null = (adaptive - random) + (random - null)
+```
+
+and only the first bracket has been measured. The second - the **pool term** - needs a do-nothing
+arm, and outcome 2 of the four-outcome table (*pool positive, edge flat*) is therefore not yet
+excluded. It is the outcome this note named as its **prior**, so leaving it unmeasured would report
+the surprising branch as if it were the only one.
+
+**The arm.** `null`, the session's do-nothing arm: it consumes each event slot and records a no-op
+(`operation: "null"`, unchanged architecture hash, no probe and no search FLOPs). Shape, budget,
+stream and events are the registered ones; the arm takes no graft, so its final width stays 320 and
+its mutation count is 0.
+
+**The block.** 12 null-arm jobs, seeds **71000-71011** - the same spent seeds, because the
+comparison is paired against records already fetched, one process per job, four workers, Kaggle
+CPU, **zero GPU-hours**.
+
+**Pairing.** `random - null` is a same-initialization comparison, as §5.40 paired them
+(`null` shares the random arm's `arm_seed = seed * 10 + 1` identity, so the two differ in the
+mutation schedule and nothing else); the reader refuses a null record whose config differs from its
+coin arm's in anything but `arms`, or that recorded anything other than a no-op event.
+
+**The primary and the bar, fixed now.** `width_random - null` per seed, negative when the graft
+pays; **10 or more of 12** at the same exact one-sided level (79/4096 = 0.019287). Two outcomes:
+
+- **P1 (>= 10/12): pool positive.** With the edge flat at 1/12, this is outcome 2: the graft pays
+  and the decision rule does not. The follow-up is the fixed-wide versus fixed-narrow controls,
+  which separate capacity from compute - not another rule - and the width arm stays closed.
+- **P2 (<= 9/12): pool flat or negative.** Outcome 3 stands on both terms, widening does not pay at
+  3.06x active parameters, and the width programme closes at this dev dose.
+
+**What it cannot do.** It cannot reopen the declared 31.2 h block on a positive pool term (that
+needs its own registration and the two fixed controls), and it does not turn a dev-fidelity pool
+term into a declared-scale one. The dose caveat from the design note applies unchanged: 3.06x
+active parameters here against 1.73x at the declared shape.
+
+**Cost, measured.** The coin arm's 12 jobs measured **99.6-155.8 min** (mean 130.9); a null arm does
+no graft and no perturbation, so it is at or below that - **~5.5-6.5 h** at four workers, zero
+GPU-hours, on the same kernel and the same stream.

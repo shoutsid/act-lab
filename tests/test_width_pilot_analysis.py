@@ -24,6 +24,7 @@ import analyze_width_pilot as analysis  # noqa: E402
 SEEDS = analysis.SEEDS
 WIDTH = "width"
 RANDOM = "width_random"
+NULL = analysis.NULL_ARM
 
 
 def _record(
@@ -85,6 +86,78 @@ def _block(
         )
         records[(seed, RANDOM)] = _record(seed, RANDOM, random_loss, random_events)
     return records
+
+
+def _null_record(seed: int, loss: float) -> dict[str, object]:
+    """One do-nothing record: three consumed events, no graft, width unchanged."""
+
+    record = _record(seed, NULL, loss, [])
+    record["config"]["arms"] = [NULL]  # type: ignore[index]
+    record["final_hidden_size"] = 320
+    record["final_heads"] = 5
+    record["arm_result"]["mutation_count"] = 0  # type: ignore[index]
+    record["arm_result"]["mutation_history"] = [  # type: ignore[index]
+        {"step": step, "operation": "null", "policy": "null"}
+        for step in (100, 200, 300)
+    ]
+    return record
+
+
+def test_the_pool_term_is_not_run_without_null_records() -> None:
+    pool = analysis.summarize(_block(12))["pool"]
+
+    assert pool["status"] == "not_run"
+    assert pool["n"] == 0
+    assert pool["missing_jobs"] == [f"{seed}:null" for seed in SEEDS]
+
+
+def test_a_complete_null_arm_produces_a_positive_pool_term() -> None:
+    records = _block(1)
+    for seed in SEEDS:
+        records[(seed, NULL)] = _null_record(seed, 3.5)
+
+    pool = analysis.summarize(records)["pool"]
+
+    assert pool["status"] == "complete"
+    assert pool["n"] == 12
+    assert pool["wins"] == 12
+    assert pool["losses"] == 0
+    assert pool["mean_delta"] < 0
+    assert pool["sign_test_p"] == pytest.approx(1 / 4096)
+    assert pool["outcome"].startswith("pool positive")
+
+
+def test_a_pool_below_the_bar_is_flat_and_closes_the_gene() -> None:
+    records = _block(1)
+    for seed in SEEDS:
+        records[(seed, NULL)] = _null_record(seed, 2.0)
+
+    pool = analysis.summarize(records)["pool"]
+
+    assert pool["status"] == "complete"
+    assert pool["wins"] == 0
+    assert pool["outcome"].startswith("pool flat or negative")
+
+
+def test_a_null_record_that_widened_is_refused() -> None:
+    records = _block(6)
+    record = _null_record(71000, 3.5)
+    record["arm_result"]["mutation_history"][0]["operation"] = "widen"  # type: ignore[index]
+    records[(71000, NULL)] = record
+
+    with pytest.raises(analysis.ReadingError, match="null arm"):
+        analysis.summarize(records)
+
+
+def test_a_partial_null_block_leaves_the_pool_undecided() -> None:
+    records = _block(12)
+    records[(71000, NULL)] = _null_record(71000, 3.5)
+
+    pool = analysis.summarize(records)["pool"]
+
+    assert pool["status"] == "incomplete"
+    assert "71011:null" in pool["missing_jobs"]
+    assert pool["outcome"].startswith("UNDECIDABLE")
 
 
 def test_a_complete_ten_win_block_is_positive_at_the_registered_bar() -> None:

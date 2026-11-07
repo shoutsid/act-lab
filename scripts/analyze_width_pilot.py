@@ -46,6 +46,10 @@ DEFAULT_RECORDS = ROOT / "artifacts" / "width-pilot" / "kaggle"
 
 SEEDS = tuple(range(71000, 71012))
 ARMS = ("width", "width_random")
+#: The amendment's do-nothing arm. It is not part of the paired edge reading; it
+#: exists so the block's decomposition gains its other term, ``random - null``.
+NULL_ARM = "null"
+ALLOWED_ARMS = ARMS + (NULL_ARM,)
 REGISTERED_STEPS = (100, 200, 300)
 BAR_WINS = 10
 ACCEPTED = "widen"
@@ -85,7 +89,7 @@ def load_records(directory: Path) -> dict[tuple[int, str], dict[str, object]]:
         if not isinstance(payload, dict) or payload.get("kind") != "width-pilot":
             raise ReadingError(f"{path.name}: not a width-pilot record")
         seed, arm = payload.get("seed"), payload.get("arm")
-        if seed not in SEEDS or arm not in ARMS:
+        if seed not in SEEDS or arm not in ALLOWED_ARMS:
             raise ReadingError(
                 f"{path.name}: {seed}:{arm} is outside the registered block"
             )
@@ -148,14 +152,23 @@ def _validate_record(
             raise ReadingError(f"{seed}:{arm}: non-dict mutation_history entry")
         operation = entry.get("operation")
         step = entry.get("step")
-        if operation not in {ACCEPTED, DECLINED} or not isinstance(step, int):
+        if not isinstance(step, int):
+            raise ReadingError(f"{seed}:{arm}: event step {step!r} is not an int")
+        if arm == NULL_ARM:
+            # The do-nothing arm consumes each slot and records a no-op. Any
+            # other operation means this record is not the arm it claims.
+            if operation != NULL_ARM:
+                raise ReadingError(
+                    f"{seed}:{arm}: the null arm recorded a {operation!r} event"
+                )
+        elif operation not in {ACCEPTED, DECLINED}:
             raise ReadingError(
                 f"{seed}:{arm}: unexpected mutation event {operation!r} at {step!r}"
             )
         event_steps.append(step)
         if operation == ACCEPTED:
             accepted += 1
-        else:
+        elif operation == DECLINED:
             declined += 1
     if event_steps != sorted(set(event_steps)):
         raise ReadingError(f"{seed}:{arm}: event steps are not strictly increasing")
@@ -213,6 +226,66 @@ def _schedule_deviations(
     return deviations
 
 
+def _pool_reading(
+    validated: dict[tuple[int, str], dict[str, object]],
+) -> dict[str, object]:
+    """The amendment's term: ``width_random - null``, negative when the graft pays.
+
+    The three arms decompose as ``adaptive - null = (adaptive - random) +
+    (random - null)``. The edge reading above measures the first bracket; this
+    one measures the second, and it is the only comparison that can tell the
+    registration's outcome 2 (pool positive, edge flat) from outcome 3.
+    """
+
+    has_null = any(arm == NULL_ARM for _, arm in validated)
+    paired = [
+        seed
+        for seed in SEEDS
+        if (seed, NULL_ARM) in validated and (seed, "width_random") in validated
+    ]
+    deltas = [
+        float(validated[(seed, "width_random")]["loss"])
+        - float(validated[(seed, NULL_ARM)]["loss"])
+        for seed in paired
+    ]
+    wins = sum(delta < 0 for delta in deltas)
+    losses = sum(delta > 0 for delta in deltas)
+
+    if not has_null:
+        status = "not_run"
+        outcome = "NOT RUN - no null-arm records; the pool term is unmeasured"
+    elif len(paired) < len(SEEDS):
+        status = "incomplete"
+        outcome = f"UNDECIDABLE - pool block incomplete ({len(paired)}/12 pairs)"
+    elif wins >= BAR_WINS:
+        status = "complete"
+        outcome = "pool positive - the graft pays and the decision rule does not"
+    else:
+        status = "complete"
+        outcome = "pool flat or negative - widening does not pay at this dose"
+
+    return {
+        "term": "width_random - null",
+        "convention": "negative = the mutating arm is better than doing nothing",
+        "status": status,
+        "outcome": outcome,
+        "paired_seeds": paired,
+        "missing_jobs": [
+            f"{seed}:{NULL_ARM}"
+            for seed in SEEDS
+            if (seed, NULL_ARM) not in validated
+        ],
+        "n": len(deltas),
+        "wins": wins,
+        "losses": losses,
+        "ties": len(deltas) - wins - losses,
+        "mean_delta": statistics.fmean(deltas) if deltas else None,
+        "paired_sd": statistics.stdev(deltas) if len(deltas) >= 2 else None,
+        "sign_test_p": _binomial_survival(wins, len(deltas)) if deltas else None,
+        "bar_wins": BAR_WINS,
+    }
+
+
 def summarize(
     records: dict[tuple[int, str], dict[str, object]],
 ) -> dict[str, object]:
@@ -220,7 +293,7 @@ def summarize(
 
     validated: dict[tuple[int, str], dict[str, object]] = {}
     for (seed, arm), payload in records.items():
-        if seed not in SEEDS or arm not in ARMS:
+        if seed not in SEEDS or arm not in ALLOWED_ARMS:
             raise ReadingError(f"{seed}:{arm} is outside the registered block")
         validated[(seed, arm)] = _validate_record(payload, seed, arm)
 
@@ -242,6 +315,20 @@ def summarize(
             raise ReadingError(
                 f"seed {seed}: the paired arms differ in {sorted(differing)}"
             )
+        null = validated.get((seed, NULL_ARM))
+        if null is not None:
+            left, right = null["config"], random["config"]
+            assert isinstance(left, dict) and isinstance(right, dict)
+            differing = {
+                name
+                for name in set(left) | set(right)
+                if name != "arms" and left.get(name) != right.get(name)
+            }
+            if differing:
+                raise ReadingError(
+                    f"seed {seed}: the null arm differs from its coin arm in "
+                    f"{sorted(differing)}"
+                )
 
     complete_pairs = [
         seed
@@ -366,6 +453,7 @@ def summarize(
             "bar_wins": BAR_WINS,
         },
         "arm_schedule": arm_schedule,
+        "pool": _pool_reading(validated),
         "record_count": len(validated),
     }
 
@@ -439,6 +527,25 @@ def render(summary: dict[str, object]) -> str:
     else:
         lines.append("no complete pairs yet")
 
+    pool = summary.get("pool")
+    if isinstance(pool, dict):
+        lines.extend(["", "pool term (width_random - null; negative = the graft pays)"])
+        if pool["status"] == "not_run":
+            lines.append("pool: NOT RUN - no null-arm records")
+        else:
+            if pool["n"]:
+                lines.append(
+                    f"pool wins: {pool['wins']}/{pool['n']} "
+                    f"(exact one-sided p = {pool['sign_test_p']:.6f}; "
+                    f"losses {pool['losses']}, ties {pool['ties']})"
+                )
+                lines.append(f"pool mean delta: {pool['mean_delta']:+.6f} nats")
+                if pool["paired_sd"] is not None:
+                    lines.append(f"pool paired SD: {pool['paired_sd']:.6f}")
+            lines.append(f"pool status: {pool['status']}")
+            if pool["missing_jobs"]:
+                lines.append(f"pool missing: {', '.join(pool['missing_jobs'])}")
+
     lines.extend(["", "arm schedule (complete pairs only)", ""])
     lines.append("arm           accepted/events   mean accepted   final widths")
     schedule = summary["arm_schedule"]
@@ -478,6 +585,9 @@ def render(summary: dict[str, object]) -> str:
             f"block: INCOMPLETE - missing {', '.join(summary['missing_jobs'])}"
         )
     lines.extend(["", f"STATUS: {summary['status']}", f"OUTCOME: {summary['outcome']}"])
+    pool = summary.get("pool")
+    if isinstance(pool, dict) and pool["status"] != "not_run":
+        lines.append(f"POOL OUTCOME: {pool['outcome']}")
     return "\n".join(lines)
 
 

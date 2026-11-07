@@ -164,10 +164,10 @@ def plan(args: argparse.Namespace) -> dict[str, object]:
             if not piece:
                 continue
             seed_text, separator, arm = piece.partition(":")
-            if not separator or arm not in ("width", "width_random"):
+            if not separator or arm not in ("width", "width_random", "null"):
                 raise SystemExit(
-                    f"bad --jobs entry {piece!r}; expected SEED:width or "
-                    "SEED:width_random"
+                    f"bad --jobs entry {piece!r}; expected SEED:width, "
+                    "SEED:width_random or SEED:null"
                 )
             jobs.append({"seed": int(seed_text), "arm": arm})
         if not jobs:
