@@ -177,6 +177,13 @@ artifacts/null-pair-rehearsal/*
 !artifacts/width-pilot/
 artifacts/width-pilot/*
 !artifacts/width-pilot/NOTES.md
+# The block's records are committed once a note cites their numbers: the 2026-11-07
+# session's 18 records are what the cut-session note reads, and the resume does not
+# recompute them. The kernel log is the cancel's only account.
+!artifacts/width-pilot/kaggle/
+artifacts/width-pilot/kaggle/*
+!artifacts/width-pilot/kaggle/*.json
+!artifacts/width-pilot/kaggle/*.log
 # The harness check that priced the block: two arms, 20 steps, and the measured
 # Kaggle rate the notes quote. Tiny, and the only record of that correction.
 !artifacts/width-pilot/smoke/

@@ -190,3 +190,35 @@ tree differed only in report prose; HEAD is what ships). At the measured per-job
 the missing `SEED:ARM` pairs under the same revision - the corrected records already
 fetched are not recomputed, and the void attempt's records are never fetched into the
 block's directory.
+
+## Second session: 9 of 12 pairs, and the corrected schedule holds (2026-11-07)
+
+Version **1** ended `CANCEL_ACKNOWLEDGED`, its log's last stream entry at **42,849.7 s**
+(11.9 h of logged work), during the 71010 jobs. The fetch recovered **18 records**: complete
+pairs for seeds **71000-71008**, config-identical within each pair except `arms`, and every
+record carries exactly the registered events at **100/200/300**. The corrected scheduler
+held, including on the arms that declined - 71003's wider arm declined step 100, and every
+coin arm declined at least one.
+
+The six missing jobs are both arms of **71009-71011**. Read against the registration they
+are not a result: `scripts/analyze_width_pilot.py` exits **2** with `UNDECIDABLE - block
+incomplete (9/12 pairs)`. Descriptively the adaptive arm is behind - **1 win of 9**
+(p 0.998), mean delta **+0.054782 nats**, paired SD 0.049056 - because it accepted 25 of its
+27 events and reached **704** width on seven seeds (576 on two), while the coin arm accepted
+12 of 27 and reached 320-576. The reading is saved beside the records as `reading.json`
+and is not cited as an outcome.
+
+The per-job wall times explain the cut: wider **134.2-167.1 min** (mean 157.8), coin
+**99.6-155.8** (mean 130.9) - **2,598 job-minutes** for the 18 jobs, so the 24-job block is
+~57.8 job-hours, ~14.5 h at four workers against the platform's ~12 h. The ~8 h envelope
+recorded in the registration stays the workstation-rate estimate it was written as, not a
+measurement of the block.
+
+## Resume, second attempt (2026-11-07)
+
+Kernel version **2** was pushed with the six missing `SEED:ARM` jobs only, so no fetched
+record is recomputed and the void attempt's directory is still never fetched. The code
+dataset is at **`014195b`**; shape, budget, events, data and both arms are unchanged, four
+single-thread workers, zero GPU-hours. Two waves at the measured per-job times is **~5.4 h**,
+inside the session window. The block is read only when the reader exits 0; the partial
+9/12 reading above is a description of where the session stopped.
