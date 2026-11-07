@@ -9405,16 +9405,15 @@ decomposition above inherits that caveat, since all of them were read off prefix
   the null control under it (5.10): adaptive beats doing nothing
   out-of-sample, 218/384 with spread and 225/384 with prefix (5.12b).
   The depth-1 instances of Gate 3 are re-quoted as churn suppression.
--  **Gate 4 remains registered, incomplete, and has no verdict; resumption is authorized.**
-  The live block is 15024-15035; at the last recorded check six primary seeds (15024-15029) are
-  published, the last three by kernel version 11 on 2026-09-27. The weekly quota is exhausted at
-  1.65 of 30 GPU-hours and the campaign driver is relaunched and waiting for it to refresh.
-  Control and null have not launched. The registration is unchanged, and Gate 4 is neither passed nor
-  failed. The primary's six completed runs cannot answer the quality question: they train
-  on synthetic tokens and finish at the uniform-vocabulary loss floor, where the arm
-difference is ~1e-4 and its sign moves seed to seed (2 wins, 4 losses for adaptive). Completing
-  the registered block addresses its declared cost question (every seed measures 0.0942%
-  against the 5% criterion), not real-text quality.
+- **Gate 4 is complete and withheld: a cost pass with no demonstrated edge.** All three queues
+  published the declared 12-seed block (15024-15035) by 2026-10-31, and the pre-registered
+  verdict is `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE` (exit 2; §5.1, §10.3). The declared-scale
+  cost criterion passes (0.0951% against 5%, inside the registered band) and the harm guard
+  clears, but adaptive wins 6/12 and the loss-blind control 7/12 against their own churn arms,
+  both below the 10-of-12 bar, so no quality edge is demonstrated; the null clause was evaluated
+  and does not reject (adaptive beats null on 9/12). The block trains on synthetic tokens at the
+  uniform-vocabulary loss floor, where the arm difference is ~1e-4, so the verdict answers its
+  declared cost question, not real-text quality. Nothing downstream is authorized.
 
 
   **The real-text evidence already answers the adaptive-versus-null assumption at the tested
@@ -9428,9 +9427,8 @@ difference is ~1e-4 and its sign moves seed to seed (2 wins, 4 losses for adapti
   declared-scale loss floor are interpretation limits, not a change to the registered
   campaign's question.
 
-  The Gate-4 clauses, seeds, datasets and three-queue sequence remain exactly as registered.
-  The explicit resumption authorization is not a protocol amendment or a verdict;
-  `docs/T4_RUNBOOK.md` records the unchanged procedure and the live-state/quota prerequisite.
+  The Gate-4 clauses, seeds, datasets and three-queue sequence are unchanged by this reading;
+  `docs/T4_RUNBOOK.md` records the procedure as it ran.
 - **The real-text topology program is closed** (5.13). Its residue is
   the churn-harm mechanism and the replication-grade tooling (null arm,
   bit-identity checks, pre-registration discipline) the toy program now
