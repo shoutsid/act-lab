@@ -1,0 +1,340 @@
+{
+  "arm_schedule": {
+    "width": {
+      "accepted": 33,
+      "events": 36,
+      "final_widths": {
+        "576": 3,
+        "704": 9
+      },
+      "mean_accepted": 2.75,
+      "pairs": 12
+    },
+    "width_random": {
+      "accepted": 16,
+      "events": 36,
+      "final_widths": {
+        "320": 1,
+        "448": 6,
+        "576": 5
+      },
+      "mean_accepted": 1.3333333333333333,
+      "pairs": 12
+    }
+  },
+  "arms": [
+    "width",
+    "width_random"
+  ],
+  "bar_wins": 10,
+  "comparison": {
+    "bar_wins": 10,
+    "losses": 11,
+    "mean_delta": 0.05870736141999563,
+    "n": 12,
+    "paired_sd": 0.046951009432203435,
+    "sign_test_p": 0.999755859375,
+    "ties": 0,
+    "wins": 1
+  },
+  "complete_pairs": [
+    71000,
+    71001,
+    71002,
+    71003,
+    71004,
+    71005,
+    71006,
+    71007,
+    71008,
+    71009,
+    71010,
+    71011
+  ],
+  "kind": "width-pilot-reading",
+  "missing_jobs": [],
+  "outcome": "flat or negative edge (<= 9/12); close the width arm",
+  "per_seed": [
+    {
+      "delta": 0.11425906419754028,
+      "seed": 71000,
+      "width": {
+        "accepted": 3,
+        "declined": 0,
+        "events": 3,
+        "heads": 11,
+        "hidden_size": 704
+      },
+      "width_loss": 3.769578754901886,
+      "width_random": {
+        "accepted": 1,
+        "declined": 2,
+        "events": 3,
+        "heads": 7,
+        "hidden_size": 448
+      },
+      "width_random_loss": 3.6553196907043457,
+      "winner": "width_random"
+    },
+    {
+      "delta": 0.1291123628616333,
+      "seed": 71001,
+      "width": {
+        "accepted": 3,
+        "declined": 0,
+        "events": 3,
+        "heads": 11,
+        "hidden_size": 704
+      },
+      "width_loss": 3.7800586819648743,
+      "width_random": {
+        "accepted": 0,
+        "declined": 3,
+        "events": 3,
+        "heads": 5,
+        "hidden_size": 320
+      },
+      "width_random_loss": 3.650946319103241,
+      "winner": "width_random"
+    },
+    {
+      "delta": 0.0342257022857666,
+      "seed": 71002,
+      "width": {
+        "accepted": 3,
+        "declined": 0,
+        "events": 3,
+        "heads": 11,
+        "hidden_size": 704
+      },
+      "width_loss": 3.6386630535125732,
+      "width_random": {
+        "accepted": 2,
+        "declined": 1,
+        "events": 3,
+        "heads": 9,
+        "hidden_size": 576
+      },
+      "width_random_loss": 3.6044373512268066,
+      "winner": "width_random"
+    },
+    {
+      "delta": -0.02622842788696289,
+      "seed": 71003,
+      "width": {
+        "accepted": 2,
+        "declined": 1,
+        "events": 3,
+        "heads": 9,
+        "hidden_size": 576
+      },
+      "width_loss": 3.5401569604873657,
+      "width_random": {
+        "accepted": 2,
+        "declined": 1,
+        "events": 3,
+        "heads": 9,
+        "hidden_size": 576
+      },
+      "width_random_loss": 3.5663853883743286,
+      "winner": "width"
+    },
+    {
+      "delta": 0.04204684495925903,
+      "seed": 71004,
+      "width": {
+        "accepted": 3,
+        "declined": 0,
+        "events": 3,
+        "heads": 11,
+        "hidden_size": 704
+      },
+      "width_loss": 3.516816198825836,
+      "width_random": {
+        "accepted": 2,
+        "declined": 1,
+        "events": 3,
+        "heads": 9,
+        "hidden_size": 576
+      },
+      "width_random_loss": 3.474769353866577,
+      "winner": "width_random"
+    },
+    {
+      "delta": 0.08811891078948975,
+      "seed": 71005,
+      "width": {
+        "accepted": 3,
+        "declined": 0,
+        "events": 3,
+        "heads": 11,
+        "hidden_size": 704
+      },
+      "width_loss": 3.738376557826996,
+      "width_random": {
+        "accepted": 1,
+        "declined": 2,
+        "events": 3,
+        "heads": 7,
+        "hidden_size": 448
+      },
+      "width_random_loss": 3.650257647037506,
+      "winner": "width_random"
+    },
+    {
+      "delta": 0.06232798099517822,
+      "seed": 71006,
+      "width": {
+        "accepted": 2,
+        "declined": 1,
+        "events": 3,
+        "heads": 9,
+        "hidden_size": 576
+      },
+      "width_loss": 3.520465314388275,
+      "width_random": {
+        "accepted": 1,
+        "declined": 2,
+        "events": 3,
+        "heads": 7,
+        "hidden_size": 448
+      },
+      "width_random_loss": 3.458137333393097,
+      "winner": "width_random"
+    },
+    {
+      "delta": 0.029591798782348633,
+      "seed": 71007,
+      "width": {
+        "accepted": 3,
+        "declined": 0,
+        "events": 3,
+        "heads": 11,
+        "hidden_size": 704
+      },
+      "width_loss": 3.5473788380622864,
+      "width_random": {
+        "accepted": 1,
+        "declined": 2,
+        "events": 3,
+        "heads": 7,
+        "hidden_size": 448
+      },
+      "width_random_loss": 3.5177870392799377,
+      "winner": "width_random"
+    },
+    {
+      "delta": 0.01958566904067993,
+      "seed": 71008,
+      "width": {
+        "accepted": 3,
+        "declined": 0,
+        "events": 3,
+        "heads": 11,
+        "hidden_size": 704
+      },
+      "width_loss": 3.4875727891921997,
+      "width_random": {
+        "accepted": 2,
+        "declined": 1,
+        "events": 3,
+        "heads": 9,
+        "hidden_size": 576
+      },
+      "width_random_loss": 3.4679871201515198,
+      "winner": "width_random"
+    },
+    {
+      "delta": 0.04234743118286133,
+      "seed": 71009,
+      "width": {
+        "accepted": 3,
+        "declined": 0,
+        "events": 3,
+        "heads": 11,
+        "hidden_size": 704
+      },
+      "width_loss": 3.6974533796310425,
+      "width_random": {
+        "accepted": 2,
+        "declined": 1,
+        "events": 3,
+        "heads": 9,
+        "hidden_size": 576
+      },
+      "width_random_loss": 3.655105948448181,
+      "winner": "width_random"
+    },
+    {
+      "delta": 0.12489122152328491,
+      "seed": 71010,
+      "width": {
+        "accepted": 3,
+        "declined": 0,
+        "events": 3,
+        "heads": 11,
+        "hidden_size": 704
+      },
+      "width_loss": 3.659322440624237,
+      "width_random": {
+        "accepted": 1,
+        "declined": 2,
+        "events": 3,
+        "heads": 7,
+        "hidden_size": 448
+      },
+      "width_random_loss": 3.534431219100952,
+      "winner": "width_random"
+    },
+    {
+      "delta": 0.04420977830886841,
+      "seed": 71011,
+      "width": {
+        "accepted": 2,
+        "declined": 1,
+        "events": 3,
+        "heads": 9,
+        "hidden_size": 576
+      },
+      "width_loss": 3.66978257894516,
+      "width_random": {
+        "accepted": 1,
+        "declined": 2,
+        "events": 3,
+        "heads": 7,
+        "hidden_size": 448
+      },
+      "width_random_loss": 3.6255728006362915,
+      "winner": "width_random"
+    }
+  ],
+  "protocol": {
+    "deviations": [],
+    "ok": true,
+    "registered_steps": [
+      100,
+      200,
+      300
+    ]
+  },
+  "record_count": 24,
+  "records_directory": "artifacts/width-pilot/kaggle",
+  "registered_reading": true,
+  "registration": "artifacts/width-pilot/NOTES.md",
+  "seeds": [
+    71000,
+    71001,
+    71002,
+    71003,
+    71004,
+    71005,
+    71006,
+    71007,
+    71008,
+    71009,
+    71010,
+    71011
+  ],
+  "sign_test_alpha": 0.019287109375,
+  "status": "complete"
+}

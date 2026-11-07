@@ -1,5 +1,24 @@
 # ACT Implementation Status
 
+## The width pilot's registered reading closes the arm: 1 win of 12 for the decision rule (2026-11-07)
+
+The development-fidelity pilot that `docs/width-control-design.md` §10 ordered before any declared
+width block has finished on Kaggle CPU (kernel version 2, `COMPLETE`), and its registered reader
+exits **0** on **24 records, 12/12 complete pairs**. The adaptive rule wins **1 of 12** (losses 11,
+exact one-sided p `0.999756` against a bar of 10/12), mean delta **`+0.058707`** nats, paired SD
+`0.046951`. That is the registration's outcome 3 - flat or negative - whose declared consequence is
+that the width arm closes rather than opening the 31.2 h declared block.
+
+| | |
+|---|---|
+| **Block state** | **12/12 complete pairs**, seeds 71000-71011, both arms each; four single-thread workers, **zero GPU-hours**; three sessions ran it (two cut by the platform clock at 15/24 and 18/24 records, the job-scoped third complete). |
+| **The reading** | wins **1/12** (losses 11, ties 0), p `0.999756`; mean `+0.058707` nats (`width - width_random`, negative favours the rule); paired SD `0.046951`; the one win is **71003** (`-0.026228`), the largest losses **71001** (`+0.129112`) and **71010** (`+0.124891`). |
+| **The schedule the arms walked** | adaptive accepted **33/36** events, ending at **704** on nine seeds and 576 on three; coin accepted **16/36**, ending at 448 on six, 576 on five, 320 on one. The rule mostly chose the widest model, and the widest model lost. |
+| **Protocol** | the registered events 100/200/300 are present on every record and the reader reports **no deviations**; the first attempt's records (a scheduler that counted accepted grafts) remain void and were never fetched into the block. |
+| **Evidence** | `artifacts/width-pilot/kaggle/` (24 records + the completed kernel's log), `artifacts/width-pilot/reading.json`, and the note's reading section; the report records it as §5.67. |
+| **What this closes** | The declared width block (31.2 h) is **not opened**. The pilot was the instrument §10 ordered to decide that, and it answers the term the decision waited on. |
+| **What it does not** | Measure the pool term: no null arm ran at this fidelity, so outcome 2 (pool positive, edge flat) is not separated from outcome 3. Nor is it a scale model - the dev dose is 3.06x active parameters against the declared 1.73x, so this is a stronger negative at a larger dose, not the declared arm's effect size. |
+
 ## The campaign is complete: null finishes 12/12 and the verdict withholds Gate 4 on the quality premise (2026-10-31)
 
 The 2026-10-31 refresh session finished the null queue: **15033-15035** trained on the

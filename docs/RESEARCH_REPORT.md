@@ -1,8 +1,8 @@
 # Adaptive Computational Topology — Research Report
 
 Status: the narrative report for the whole program to date - the factor map (section 3, Gate 3),
-the pre-registered study series (section 5, 101 subsections), the substrate audit (section 9) and
-the synthesis (section 10). **Updated: 2026-10-31** - sections 5.48-5.59 close the covariate
+the pre-registered study series (section 5, 102 subsections), the substrate audit (section 9) and
+the synthesis (section 10). **Updated: 2026-11-07** - sections 5.48-5.59 close the covariate
 programme (parameter count, layer width, expert count and total compute) and then measure the
 depth axis itself, out to six rungs above its onset, 5.60 and 5.61 bisect the one window
 that closure left open (the width axis's gate between 2.87x and 11.15x) to 1.97x and then 1.41x, 5.62
@@ -10,12 +10,11 @@ tests the crossing's mechanism under the family's other candidate policy, 5.63 b
 path gate 5 will need and pins that a fresh initialization is distinguishable from a resumed one,
 5.64 declares the whole gate chain (with the questions each gate still leaves open), 5.65 re-reserves
 the declared block after its first four seeds were found to have run the pre-amendment rebuild, 5.66
-measures the dev-fidelity withholding-clause anchors on fresh seeds, and section 10 is re-read
-against that evidence. At the last recorded check the primary block stood at six of 12 seeds
-(15024-15029): 15024-15026 published on 2026-09-26, and 15027-15029 by kernel version 11 on
-2026-09-27 - the first session whose restore of published state worked, after three that
-re-trained the block instead. The control and null queues have not launched, and the Gate-4
-campaign remains incomplete with no verdict. Separately, TPU probe v6 completed with a registered **PORT** decision. That is a
+measures the dev-fidelity withholding-clause anchors on fresh seeds, 5.67 reads the completed
+development-fidelity width pilot (12/12 pairs, 1 win of 12, the arm closes), and section 10 is
+re-read against that evidence. The declared Gate-4 block is complete for all three queues
+(15024-15035) and its pre-registered verdict is `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE`: a cost
+pass with no demonstrated quality edge. Separately, TPU probe v6 completed with a registered **PORT** decision. That is a
 hardware-port decision, not a Gate-4 result or campaign amendment. See
 `docs/IMPLEMENTATION_STATUS.md` and `docs/T4_RUNBOOK.md` for the snapshots.
 
@@ -48,7 +47,7 @@ taking first - 9 is the audit that changed the interpretation, and 10 is the cur
 | **5.21-5.34** | The mid-training penalty and the prune-target chain: the penalty's arm-genericity (§5.22), optimizer history against the architecture change (§5.23), the discarded routing head (§5.24), prune against grow (§5.25), the freshly drawn expert (§5.26), cloning's two effects (§5.27-§5.28), the discovery path (§5.29-§5.30), and the powered prune-target studies (§5.31-§5.34). |
 | **5.35-5.40** | The declared path: defects found by reading rather than by a study (§5.35), dev-scale evidence on the real token stream (§5.36), the measured liveness contract (§5.37), whether the rebuild treatment transfers (§5.38), churn harm as a property of churn (§5.39), and the deployed configuration against the do-nothing arm (§5.40). |
 | **5.41-5.47** | Audit-derived corrections and the Gate 4 registration: the tolerance band's scale (§5.41), the clause a partial run made unfireable (§5.42), the verdict-path rehearsal (§5.43), the one-directional quality clause (§5.44), the suite's cost (§5.45), the launch path's missing rebuild treatment (§5.46), and the amendment that registers it (§5.47). |
-| **5.48-5.66** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), the two width bisections that halve the gate window the width programme left open and then test where the edge's maximum is reached (§5.60-§5.61), the crossing dose under the family's other candidate policy (§5.62), the Gate-5 transfer path with its fresh-versus-resumed check (§5.63), the gate chain itself, declared while gates 5-7 are still prose (§5.64), the re-reservation of the declared block after its first four seeds were found to have run the pre-amendment rebuild (§5.65), and the dev-fidelity anchors for the two withholding clauses that had none, registered before the declared verdict lands (§5.66). |
+| **5.48-5.67** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), the two width bisections that halve the gate window the width programme left open and then test where the edge's maximum is reached (§5.60-§5.61), the crossing dose under the family's other candidate policy (§5.62), the Gate-5 transfer path with its fresh-versus-resumed check (§5.63), the gate chain itself, declared while gates 5-7 are still prose (§5.64), the re-reservation of the declared block after its first four seeds were found to have run the pre-amendment rebuild (§5.65), and the dev-fidelity anchors for the two withholding clauses that had none, registered before the declared verdict lands (§5.66), and the development-fidelity width pilot that the design note ordered before any declared width block (§5.67). |
 | **6-10** | Reproducibility (§6), the deliverables checklist (§7), figures (§8), the substrate audit (§9), and the synthesis (§10) - which reads this track against the architecture-search track. |
 
 Reproducibility at notebook fidelity (plan sections 39 and 104) now ships with
@@ -8673,6 +8672,39 @@ flip in either direction fails a test rather than printing a plausible table.
 both functions of the already-registered rows and both stated above with their reason:
 `loss_blind_invariance` and `verdict_reading_at_dev_fidelity`. No criterion moved, nothing
 was added to the declared block, and no number above was retaken.
+
+### 5.67 The width pilot: the controller's edge on a gene that moves is flat, and the arm closes (RAN - `artifacts/width-pilot/reading.json`)
+
+**What was asked.** The design note (§10 of `docs/width-control-design.md`) ordered a
+development-fidelity pilot before the 31.2 h declared width block: a controller that decides
+*whether to widen* against a coin that decides the same thing, at the same three events, on the
+real-text substrate where every development-fidelity result in this report was found. The
+pre-registration is `artifacts/width-pilot/NOTES.md` (2026-11-01, before the first job): 12 paired
+seeds 71000-71011 on the dev shape, 400 steps, events at 100/200/300, +2 heads per graft, probe
+margin `0.0`, a `0.5` coin, and a bar of **10 of 12** wins (exact one-sided level `0.019287`).
+
+**What ran.** Kaggle CPU, zero GPU-hours, the two arms of a seed in separate single-thread
+processes; the block completed on 2026-11-07. Two sessions were cut by the platform clock (after 15 and after 18 of 24 records) and a
+job-scoped third completed the block; the cut sessions and their records are recorded in the note
+and are not part of this reading. Every record carries the registered events at 100/200/300, and
+the reader reports **no protocol deviation**.
+
+**The reading.** The adaptive rule loses: **1 win of 12** (losses 11, ties 0), exact one-sided
+sign-test p **0.999756**, mean delta **`+0.058707`** nats (`width - width_random`, negative
+favouring the rule), paired SD **`0.046951`**. Only seed **71003** favours it (`-0.026228`); its
+largest losses are **71001** (`+0.129112`) and **71010** (`+0.124891`). The schedule explains the
+size rather than complicating it: the rule accepted **33 of 36** events and ended at **704** width
+on nine seeds and 576 on three, while the coin accepted **16 of 36** and ended at 448 on six, 576
+on five and 320 on one. The rule mostly *chose* the widest model, and the widest model lost.
+
+**What it closes.** The registration's outcome 3 - *both flat or negative* - is the branch this
+lands in, and its declared consequence is that the width arm closes instead of opening the declared
+block. Two limits belong to the reading. The pilot carried **no null arm**, so it does not measure
+the pool term and cannot separate outcome 2 (pool positive, edge flat) from outcome 3; what it
+measures is the decision rule, which is the term the design note's order was waiting on. And it is
+not a scale model: at the dev base three events reach **3.06x** active parameters against the
+declared schedule's **1.73x**, so a flat edge here is a stronger negative at a larger dose, not the
+declared arm's effect size - the dose caveat §10 of the design note states in advance.
 
 ## 6. Reproducibility
 

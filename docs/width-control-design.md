@@ -443,3 +443,14 @@ scale model of the declared block, only as a cheaper instrument for the same sig
 This section is a price and an order, not a registration: choosing the seed count is the one
 decision the note deliberately leaves open, and it is a decision the pilot can make cheaper than
 the note can.
+
+**Step 2's reading, 2026-11-07.** The pilot was registered in `artifacts/width-pilot/NOTES.md` and
+has now run: 12 paired seeds, the wider arm against a coin at the same three events. The
+controller's edge is **flat or negative** - it wins **1 of 12** (p `0.999756` against a bar of
+10/12), mean `+0.058707` nats, and only seed 71003 favours it. So **step 3 is not opened**: the
+31.2 h declared block would spend a GPU week to reproduce, at a nicer fidelity, an answer the
+cheaper instrument already gives. Two qualifications travel with that decision. The pilot ran no
+null arm, so it answers the *edge* term (the one this order was waiting on) and leaves the pool
+term at dev fidelity unmeasured. And the dev dose is 3.06x active parameters against the declared
+schedule's 1.73x, so this is a stronger negative at a larger dose rather than a scale model -
+which is why the order called it "a cheaper instrument for the same sign", not a rehearsal.

@@ -184,6 +184,10 @@ artifacts/width-pilot/*
 artifacts/width-pilot/kaggle/*
 !artifacts/width-pilot/kaggle/*.json
 !artifacts/width-pilot/kaggle/*.log
+# The registered reading the note, the design note and report section 5.67 quote: the
+# reader's own output, committed so those numbers are recomputed from the records
+# rather than transcribed, and so a fresh clone can run the audit that checks them.
+!artifacts/width-pilot/reading.json
 # The harness check that priced the block: two arms, 20 steps, and the measured
 # Kaggle rate the notes quote. Tiny, and the only record of that correction.
 !artifacts/width-pilot/smoke/

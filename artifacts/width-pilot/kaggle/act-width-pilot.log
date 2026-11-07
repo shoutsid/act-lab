@@ -1,99 +1,84 @@
-[{"stream_name":"stdout","time":2.808343949,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71000 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71000.json$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71000 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71000.json\n"}
-,{"stream_name":"stdout","time":2.809099609,"data":"\n"}
-,{"stream_name":"stdout","time":2.810736654,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71001 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71001.json\n"}
-,{"stream_name":"stdout","time":2.813103181,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71001 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71001.json\n"}
-,{"stream_name":"stdout","time":11.79353786,"data":"width pilot: seed 71001 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":11.794071719,"data":"width pilot: seed 71001 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":11.794098275,"data":"width pilot: seed 71000 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":11.794102929,"data":"width pilot: seed 71000 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":5988.890728946,"data":"  final: loss 3.650946  parameters 14,928,960  mutations 0  276 tok/s  99.6 min\n"}
-,{"stream_name":"stdout","time":5988.890844595,"data":"  wrote /kaggle/working/width-pilot/width_random-seed71001.json\n"}
-,{"stream_name":"stdout","time":5990.657253285,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71002 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71002.json\n"}
-,{"stream_name":"stdout","time":5995.394612815,"data":"width pilot: seed 71002 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":7764.751949124,"data":"  final: loss 3.655320  parameters 22,276,800  mutations 1  212 tok/s  129.2 min\n"}
-,{"stream_name":"stdout","time":7764.752015092,"data":"  wrote /kaggle/working/width-pilot/width_random-seed71000.json\n"}
-,{"stream_name":"stdout","time":7766.60343612,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71002 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71002.json\n"}
-,{"stream_name":"stdout","time":7769.849574502,"data":"width pilot: seed 71002 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":9695.378236724,"data":"  final: loss 3.780059  parameters 39,331,776  mutations 3  170 tok/s  161.4 min\n"}
-,{"stream_name":"stdout","time":9695.378462833,"data":"  wrote /kaggle/working/width-pilot/width-seed71001.json\n"}
-,{"stream_name":"stdout","time":9697.591996916,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71003 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71003.json\n"}
-,{"stream_name":"stdout","time":9700.762395638,"data":"width pilot: seed 71003 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":9766.802400043,"data":"  final: loss 3.769579  parameters 39,331,776  mutations 3  169 tok/s  162.6 min\n"}
-,{"stream_name":"stdout","time":9766.802505622,"data":"  wrote /kaggle/working/width-pilot/width-seed71000.json\n"}
-,{"stream_name":"stdout","time":9769.001136718,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71003 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71003.json\n"}
-,{"stream_name":"stdout","time":9769.003705125,"data":"ok width seed 71000 exit 0\n"}
-,{"stream_name":"stdout","time":9769.008214333,"data":"ok width_random seed 71000 exit 0\n"}
-,{"stream_name":"stdout","time":9769.008391734,"data":"ok width seed 71001 exit 0\n"}
-,{"stream_name":"stdout","time":9769.00865654,"data":"ok width_random seed 71001 exit 0\n"}
-,{"stream_name":"stdout","time":9772.211571026,"data":"width pilot: seed 71003 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":15918.337227724,"data":"  final: loss 3.638663  parameters 39,331,776  mutations 3  166 tok/s  165.4 min\n"}
-,{"stream_name":"stdout","time":15918.337529622,"data":"  wrote /kaggle/working/width-pilot/width-seed71002.json\n"}
-,{"stream_name":"stdout","time":15921.587955124,"data":"ok width seed 71002 exit 0\n"}
-,{"stream_name":"stdout","time":15921.588659652,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71004 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71004.json\n"}
-,{"stream_name":"stdout","time":15931.435215329,"data":"width pilot: seed 71004 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":16927.088957039,"data":"  final: loss 3.604437  parameters 30,411,072  mutations 2  180 tok/s  152.6 min\n"}
-,{"stream_name":"stdout","time":16927.089043825,"data":"  wrote /kaggle/working/width-pilot/width_random-seed71002.json\n"}
-,{"stream_name":"stdout","time":16929.774465398,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71004 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71004.jsonok width_random seed 71002 exit 0\n"}
-,{"stream_name":"stdout","time":16929.77485408,"data":"\n"}
-,{"stream_name":"stdout","time":16933.578778624,"data":"width pilot: seed 71004 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":17753.152943325,"data":"  final: loss 3.540157  parameters 30,411,072  mutations 2  204 tok/s  134.2 min\n"}
-,{"stream_name":"stdout","time":17753.153112318,"data":"  wrote /kaggle/working/width-pilot/width-seed71003.json\n"}
-,{"stream_name":"stdout","time":17756.090848026,"data":"ok width seed 71003 exit 0$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71005 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71005.json\n"}
-,{"stream_name":"stdout","time":17756.091175459,"data":"\n"}
-,{"stream_name":"stdout","time":17759.705609764,"data":"width pilot: seed 71005 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":19120.076362937,"data":"  final: loss 3.566385  parameters 30,411,072  mutations 2  176 tok/s  155.8 min\n"}
-,{"stream_name":"stdout","time":19120.076445736,"data":"  wrote /kaggle/working/width-pilot/width_random-seed71003.json\n"}
-,{"stream_name":"stdout","time":19123.002240853,"data":"ok width_random seed 71003 exit 0\n"}
-,{"stream_name":"stdout","time":19123.002757515,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71005 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71005.json\n"}
-,{"stream_name":"stdout","time":19126.562418497,"data":"width pilot: seed 71005 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":25659.036486454,"data":"  final: loss 3.474769  parameters 30,411,072  mutations 2  189 tok/s  145.4 min\n"}
-,{"stream_name":"stdout","time":25659.036877394,"data":"  wrote /kaggle/working/width-pilot/width_random-seed71004.json\n"}
-,{"stream_name":"stdout","time":25662.03020618,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71006 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71006.json\n"}
-,{"stream_name":"stdout","time":25666.261062951,"data":"width pilot: seed 71006 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":25958.815259535,"data":"  final: loss 3.516816  parameters 39,331,776  mutations 3  164 tok/s  167.1 min\n"}
-,{"stream_name":"stdout","time":25958.81534937,"data":"  wrote /kaggle/working/width-pilot/width-seed71004.json\n"}
-,{"stream_name":"stdout","time":25961.222397292,"data":"ok width seed 71004 exit 0$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71006 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71006.json\n"}
-,{"stream_name":"stdout","time":25961.225203575,"data":"\n"}
-,{"stream_name":"stdout","time":25961.225687565,"data":"ok width_random seed 71004 exit 0\n"}
-,{"stream_name":"stdout","time":25964.331421462,"data":"width pilot: seed 71006 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":27189.85807827,"data":"  final: loss 3.650258  parameters 22,276,800  mutations 1  204 tok/s  134.4 min\n"}
-,{"stream_name":"stdout","time":27189.858191501,"data":"  wrote /kaggle/working/width-pilot/width_random-seed71005.json\n"}
-,{"stream_name":"stdout","time":27194.954782367,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71007 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71007.json\n"}
-,{"stream_name":"stdout","time":27201.729100573,"data":"width pilot: seed 71007 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":27779.897513557,"data":"  final: loss 3.738377  parameters 39,331,776  mutations 3  164 tok/s  167.0 min\n"}
-,{"stream_name":"stdout","time":27779.897693486,"data":"  wrote /kaggle/working/width-pilot/width-seed71005.json\n"}
-,{"stream_name":"stdout","time":27782.811008787,"data":"ok width seed 71005 exit 0\n"}
-,{"stream_name":"stdout","time":27782.81144977,"data":"ok width_random seed 71005 exit 0\n"}
-,{"stream_name":"stdout","time":27782.811777709,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71007 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71007.json\n"}
-,{"stream_name":"stdout","time":27785.927752075,"data":"width pilot: seed 71007 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":33192.670232815,"data":"  final: loss 3.458137  parameters 22,276,800  mutations 1  228 tok/s  120.5 min\n"}
-,{"stream_name":"stdout","time":33192.670486383,"data":"  wrote /kaggle/working/width-pilot/width_random-seed71006.json\n"}
-,{"stream_name":"stdout","time":33195.017008764,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71008 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71008.json\n"}
-,{"stream_name":"stdout","time":33198.459638271,"data":"width pilot: seed 71008 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":34029.325813033,"data":"  final: loss 3.520465  parameters 30,411,072  mutations 2  197 tok/s  139.4 min\n"}
-,{"stream_name":"stdout","time":34029.326017132,"data":"  wrote /kaggle/working/width-pilot/width-seed71006.json\n"}
-,{"stream_name":"stdout","time":34031.77605888,"data":"ok width seed 71006 exit 0\n"}
-,{"stream_name":"stdout","time":34031.776597527,"data":"ok width_random seed 71006 exit 0\n"}
-,{"stream_name":"stdout","time":34031.776947628,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71008 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71008.json\n"}
-,{"stream_name":"stdout","time":34035.023071995,"data":"width pilot: seed 71008 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":34460.310262965,"data":"  final: loss 3.517787  parameters 22,276,800  mutations 1  247 tok/s  111.2 min\n"}
-,{"stream_name":"stdout","time":34460.310464561,"data":"  wrote /kaggle/working/width-pilot/width_random-seed71007.json\n"}
-,{"stream_name":"stdout","time":34462.73373698,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71009 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71009.json\n"}
-,{"stream_name":"stdout","time":34465.738408293,"data":"width pilot: seed 71009 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":36937.585739066,"data":"  final: loss 3.547379  parameters 39,331,776  mutations 3  169 tok/s  162.3 min\n"}
-,{"stream_name":"stdout","time":36937.585807988,"data":"  wrote /kaggle/working/width-pilot/width-seed71007.json\n"}
-,{"stream_name":"stdout","time":36940.108647916,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71009 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71009.json\n"}
-,{"stream_name":"stdout","time":36940.112403206,"data":"ok width seed 71007 exit 0\n"}
-,{"stream_name":"stdout","time":36940.114100618,"data":"ok width_random seed 71007 exit 0\n"}
-,{"stream_name":"stdout","time":36943.500615377,"data":"width pilot: seed 71009 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":41804.725580617,"data":"  final: loss 3.467987  parameters 30,411,072  mutations 2  212 tok/s  129.5 min\n"}
-,{"stream_name":"stdout","time":41804.725923358,"data":"  wrote /kaggle/working/width-pilot/width_random-seed71008.json\n"}
-,{"stream_name":"stdout","time":41807.295777148,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71010 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71010.json\n"}
-,{"stream_name":"stdout","time":41810.975028777,"data":"width pilot: seed 71010 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":42843.881521119,"data":"  final: loss 3.487573  parameters 39,331,776  mutations 3  171 tok/s  160.8 min\n"}
-,{"stream_name":"stdout","time":42843.88161936,"data":"  wrote /kaggle/working/width-pilot/width-seed71008.json\n"}
-,{"stream_name":"stdout","time":42846.695587246,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71010 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71010.jsonok width seed 71008 exit 0\n"}
-,{"stream_name":"stdout","time":42846.696216602,"data":"\n"}
-,{"stream_name":"stdout","time":42846.698180129,"data":"ok width_random seed 71008 exit 0\n"}
-,{"stream_name":"stdout","time":42849.658656737,"data":"width pilot: seed 71010 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
+[{"stream_name":"stdout","time":2.80807317,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71009 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71009.json\n"}
+,{"stream_name":"stdout","time":2.808867416,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71009 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71009.json\n"}
+,{"stream_name":"stdout","time":2.80975974,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71010 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71010.json\n"}
+,{"stream_name":"stdout","time":2.811714246,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71010 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71010.json\n"}
+,{"stream_name":"stdout","time":11.42153461,"data":"width pilot: seed 71010 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":11.421560985,"data":"width pilot: seed 71009 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":11.421566151,"data":"width pilot: seed 71009 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":11.422154524,"data":"width pilot: seed 71010 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":6809.431738318,"data":"  final: loss 3.534431  parameters 22,276,800  mutations 1  242 tok/s  113.3 min\n"}
+,{"stream_name":"stdout","time":6809.431986341,"data":"  wrote /kaggle/working/width-pilot/width_random-seed71010.json\n"}
+,{"stream_name":"stdout","time":6811.473756143,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71011 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71011.json\n"}
+,{"stream_name":"stdout","time":6816.615663415,"data":"width pilot: seed 71011 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":8561.592200666,"data":"  final: loss 3.655106  parameters 30,411,072  mutations 2  193 tok/s  142.5 min\n"}
+,{"stream_name":"stdout","time":8561.59230493,"data":"  wrote /kaggle/working/width-pilot/width_random-seed71009.json\n"}
+,{"stream_name":"stdout","time":8563.634280938,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71011 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71011.json\n"}
+,{"stream_name":"stdout","time":8566.963626577,"data":"width pilot: seed 71011 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":9264.13976185,"data":"  final: loss 3.697453  parameters 39,331,776  mutations 3  178 tok/s  154.2 min\n"}
+,{"stream_name":"stdout","time":9264.140010258,"data":"  wrote /kaggle/working/width-pilot/width-seed71009.json\n"}
+,{"stream_name":"stdout","time":9266.43568029,"data":"ok width seed 71009 exit 0\n"}
+,{"stream_name":"stdout","time":9266.436068356,"data":"ok width_random seed 71009 exit 0\n"}
+,{"stream_name":"stdout","time":9296.180569062,"data":"  final: loss 3.659322  parameters 39,331,776  mutations 3  177 tok/s  154.7 min\n"}
+,{"stream_name":"stdout","time":9296.180613476,"data":"  wrote /kaggle/working/width-pilot/width-seed71010.json\n"}
+,{"stream_name":"stdout","time":9297.662620559,"data":"ok width seed 71010 exit 0\n"}
+,{"stream_name":"stdout","time":9297.662651589,"data":"ok width_random seed 71010 exit 0\n"}
+,{"stream_name":"stdout","time":12223.997193807,"data":"  final: loss 3.669783  parameters 30,411,072  mutations 2  304 tok/s  90.1 min\n"}
+,{"stream_name":"stdout","time":12223.997415173,"data":"  wrote /kaggle/working/width-pilot/width-seed71011.json\n"}
+,{"stream_name":"stdout","time":12225.629400758,"data":"ok width seed 71011 exit 0\n"}
+,{"stream_name":"stdout","time":12607.953163263,"data":"  final: loss 3.625573  parameters 22,276,800  mutations 1  407 tok/s  67.3 min\n"}
+,{"stream_name":"stdout","time":12607.953256583,"data":"  wrote /kaggle/working/width-pilot/width_random-seed71011.json\n"}
+,{"stream_name":"stdout","time":12609.115569863,"data":"ok width_random seed 71011 exit 0\n"}
+,{"stream_name":"stdout","time":12609.133641629,"data":"=== WIDTH PILOT SUMMARY ===\n"}
+,{"stream_name":"stdout","time":12609.133686022,"data":"{\n"}
+,{"stream_name":"stdout","time":12609.133694011,"data":"  \"failures\": [],\n"}
+,{"stream_name":"stdout","time":12609.133700569,"data":"  \"jobs\": 6,\n"}
+,{"stream_name":"stdout","time":12609.133705778,"data":"  \"kind\": \"width-pilot-summary\",\n"}
+,{"stream_name":"stdout","time":12609.133710636,"data":"  \"plan\": {\n"}
+,{"stream_name":"stdout","time":12609.133715155,"data":"    \"arms\": [\n"}
+,{"stream_name":"stdout","time":12609.133720806,"data":"      \"width\",\n"}
+,{"stream_name":"stdout","time":12609.133727044,"data":"      \"width_random\"\n"}
+,{"stream_name":"stdout","time":12609.133731561,"data":"    ],\n"}
+,{"stream_name":"stdout","time":12609.133735787,"data":"    \"budget\": 3,\n"}
+,{"stream_name":"stdout","time":12609.133740036,"data":"    \"interval\": 100,\n"}
+,{"stream_name":"stdout","time":12609.133744933,"data":"    \"jobs\": [\n"}
+,{"stream_name":"stdout","time":12609.133749291,"data":"      {\n"}
+,{"stream_name":"stdout","time":12609.133753636,"data":"        \"arm\": \"width\",\n"}
+,{"stream_name":"stdout","time":12609.133758373,"data":"        \"seed\": 71009\n"}
+,{"stream_name":"stdout","time":12609.133764328,"data":"      },\n"}
+,{"stream_name":"stdout","time":12609.133770162,"data":"      {\n"}
+,{"stream_name":"stdout","time":12609.133774766,"data":"        \"arm\": \"width_random\",\n"}
+,{"stream_name":"stdout","time":12609.133779358,"data":"        \"seed\": 71009\n"}
+,{"stream_name":"stdout","time":12609.133784364,"data":"      },\n"}
+,{"stream_name":"stdout","time":12609.133788851,"data":"      {\n"}
+,{"stream_name":"stdout","time":12609.133795107,"data":"        \"arm\": \"width\",\n"}
+,{"stream_name":"stdout","time":12609.133800575,"data":"        \"seed\": 71010\n"}
+,{"stream_name":"stdout","time":12609.133804986,"data":"      },\n"}
+,{"stream_name":"stdout","time":12609.133809557,"data":"      {\n"}
+,{"stream_name":"stdout","time":12609.133814155,"data":"        \"arm\": \"width_random\",\n"}
+,{"stream_name":"stdout","time":12609.133818817,"data":"        \"seed\": 71010\n"}
+,{"stream_name":"stdout","time":12609.133823289,"data":"      },\n"}
+,{"stream_name":"stdout","time":12609.13382824,"data":"      {\n"}
+,{"stream_name":"stdout","time":12609.13383248,"data":"        \"arm\": \"width\",\n"}
+,{"stream_name":"stdout","time":12609.133836967,"data":"        \"seed\": 71011\n"}
+,{"stream_name":"stdout","time":12609.133891972,"data":"      },\n"}
+,{"stream_name":"stdout","time":12609.133897697,"data":"      {\n"}
+,{"stream_name":"stdout","time":12609.133901673,"data":"        \"arm\": \"width_random\",\n"}
+,{"stream_name":"stdout","time":12609.133905169,"data":"        \"seed\": 71011\n"}
+,{"stream_name":"stdout","time":12609.133908832,"data":"      }\n"}
+,{"stream_name":"stdout","time":12609.133914014,"data":"    ],\n"}
+,{"stream_name":"stdout","time":12609.133917732,"data":"    \"seeds\": [\n"}
+,{"stream_name":"stdout","time":12609.133921636,"data":"      71009,\n"}
+,{"stream_name":"stdout","time":12609.133924943,"data":"      71010,\n"}
+,{"stream_name":"stdout","time":12609.133928307,"data":"      71011\n"}
+,{"stream_name":"stdout","time":12609.133931997,"data":"    ],\n"}
+,{"stream_name":"stdout","time":12609.133935521,"data":"    \"steps\": 400\n"}
+,{"stream_name":"stdout","time":12609.133941003,"data":"  },\n"}
+,{"stream_name":"stdout","time":12609.133945177,"data":"  \"records\": 6\n"}
+,{"stream_name":"stdout","time":12609.13394889,"data":"}\n"}
+,{"stream_name":"stderr","time":12612.484962057,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":12612.485003655,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":12612.996136846,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":12612.996170892,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":12614.186580014,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
+,{"stream_name":"stderr","time":12615.683109005,"data":"[NbConvertApp] Writing 290790 bytes to __results__.html\n"}
 ]

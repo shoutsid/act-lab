@@ -2134,6 +2134,35 @@ def check_dev_clause_anchors(root: Path, audit: Audit) -> None:
     )
 
 
+def check_width_pilot(root: Path, audit: Audit) -> None:
+    """§5.67's development-fidelity width pilot, read against its committed reading.
+
+    The section quotes a complete paired block rather than a single number: the pair
+    count, the win count against its bar, the mean and spread of the paired differences,
+    the sign test's level, and the schedule both arms actually walked. All of them are
+    read from the reader's own output, so a hand-edited reading or a drifted record set
+    fails here instead of printing a plausible paragraph.
+    """
+    payload = json.loads((root / "width-pilot" / "reading.json").read_text())
+    comparison = payload["comparison"]
+    schedule = payload["arm_schedule"]
+
+    audit.check("§5.67: complete pairs", 12, len(payload["complete_pairs"]), "§5.67")
+    audit.check("§5.67: the registered bar", 10, comparison["bar_wins"], "§5.67")
+    audit.check("§5.67: the adaptive rule's wins", 1, comparison["wins"], "§5.67")
+    audit.check("§5.67: losses", 11, comparison["losses"], "§5.67")
+    audit.check("§5.67: mean delta", 0.058707, comparison["mean_delta"], "§5.67")
+    audit.check("§5.67: paired SD", 0.046951, comparison["paired_sd"], "§5.67")
+    audit.check("§5.67: the sign test's level", 0.019287, payload["sign_test_alpha"], "§5.67")
+    audit.check("§5.67: the one winning seed", [71003], [row["seed"] for row in payload["per_seed"] if row["winner"] == "width"], "§5.67")
+    audit.check("§5.67: wider arm's accepted events", 33, schedule["width"]["accepted"], "§5.67")
+    audit.check("§5.67: wider arm's events", 36, schedule["width"]["events"], "§5.67")
+    audit.check("§5.67: seeds ending at width 704", 9, schedule["width"]["final_widths"]["704"], "§5.67")
+    audit.check("§5.67: coin arm's accepted events", 16, schedule["width_random"]["accepted"], "§5.67")
+    audit.check("§5.67: coin arms ending at width 448", 6, schedule["width_random"]["final_widths"]["448"], "§5.67")
+    audit.check("§5.67: protocol deviations", 0, len(payload["protocol"]["deviations"]), "§5.67")
+
+
 #: The audit's checks in record order. Each is a pure function of the artifacts root
 #: that appends to the audit it is handed, so they can run in separate processes and
 #: have their claims concatenated in this order - the output is identical to running
@@ -2155,6 +2184,7 @@ CHECKS: tuple[str, ...] = (
     "check_horizon_10x",
     "check_gate5_transfer",
     "check_dev_clause_anchors",
+    "check_width_pilot",
     "check_real_lm",
 )
 

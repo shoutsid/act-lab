@@ -222,3 +222,32 @@ dataset is at **`014195b`**; shape, budget, events, data and both arms are uncha
 single-thread workers, zero GPU-hours. Two waves at the measured per-job times is **~5.4 h**,
 inside the session window. The block is read only when the reader exits 0; the partial
 9/12 reading above is a description of where the session stopped.
+
+## The reading: 12/12 pairs, 1 win, and the width arm closes (2026-11-07)
+
+Kernel version **2** finished `COMPLETE` with **24 records, 12/12 complete pairs** (12,616 s of
+logged work in the 12 h session). `scripts/analyze_width_pilot.py` exits **0** and prints
+`STATUS: complete` / `OUTCOME: flat or negative edge (<= 9/12); close the width arm`. This is
+the registered reading; the 9/12 description above is not.
+
+| | |
+|---|---|
+| wins | **1 of 12** (losses 11, ties 0), exact one-sided p **0.999756**; bar 10/12 |
+| mean delta | **+0.058707 nats** (`width - width_random`, negative favours the adaptive rule), paired SD **0.046951** |
+| the one win | seed **71003**, `-0.026228`; the largest losses are **71001** `+0.129112` and **71010** `+0.124891` |
+| schedule | wider arm accepted **33/36** events, ending at **704** on nine seeds and 576 on three; coin arm accepted **16/36**, ending at 448 on six, 576 on five, 320 on one |
+| protocol | the registered events 100/200/300 on every record, no deviations |
+
+The reading lands in outcome 3 of the four declared - *both flat or negative* - and its
+registered consequence applies: the declared 31.2 h block is not started. Two limits are part
+of the reading rather than of the prose around it. The pilot carried **no null arm**, so it
+cannot separate outcome 2 (pool positive, edge flat) from outcome 3; what it measures is the
+decision rule, which is the term the declared block was gated on, and the decomposition still
+needs the null arm if anyone wants the pool term at this fidelity. And the dev dose is
+**3.06x** active parameters against the declared schedule's **1.73x**, so a flat edge here is
+a stronger negative at a larger dose, not a scale model of the declared one.
+
+The block spent **zero GPU-hours**; its cost is the platform's wall clock, and the two cut
+sessions are recorded above rather than folded into the result. The fetched records and this
+reading are committed beside this note (`artifacts/width-pilot/kaggle/`, `reading.json`), and
+the numbers above are the reader's output, not a hand computation.
