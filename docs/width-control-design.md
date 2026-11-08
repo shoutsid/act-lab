@@ -449,8 +449,24 @@ has now run: 12 paired seeds, the wider arm against a coin at the same three eve
 controller's edge is **flat or negative** - it wins **1 of 12** (p `0.999756` against a bar of
 10/12), mean `+0.058707` nats, and only seed 71003 favours it. So **step 3 is not opened**: the
 31.2 h declared block would spend a GPU week to reproduce, at a nicer fidelity, an answer the
-cheaper instrument already gives. Two qualifications travel with that decision. The pilot ran no
-null arm, so it answers the *edge* term (the one this order was waiting on) and leaves the pool
-term at dev fidelity unmeasured. And the dev dose is 3.06x active parameters against the declared
+cheaper instrument already gives. The dev dose is 3.06x active parameters against the declared
 schedule's 1.73x, so this is a stronger negative at a larger dose rather than a scale model -
 which is why the order called it "a cheaper instrument for the same sign", not a rehearsal.
+
+**The pool term, 2026-11-08.** The missing arm has since run on the same spent seeds (12 null
+jobs, zero GPU-hours), so the term this order left unmeasured is now read:
+`width_random - null` is **0 wins of 12** (11 losses, one tie), mean **`+0.037768`** nats, paired
+SD **`0.030954`**, p **`1.000000`** against the same **10 of 12** bar. Outcome (2) - pool positive,
+edge flat - does not hold. Outcome (3) does: **both terms are flat or negative**, the controller
+does not beat the coin and the graft does not beat doing nothing at 3.06x active parameters. The
+width programme closes at this dose, the declared 31.2 h block stays closed, and no further spend
+is authorised by this reading. The single tie is seed 71001, where the coin arm declined all three
+grafts and therefore ran the null arm's exact trajectory.
+
+One record-keeping qualification belongs to that term. Every null record booked a fourth, inert
+no-op at step 400, because `_mutation_event_due` sent the null arm through the mutation-budget
+branch and the arm never increments `mutations`. The entry changes no draw, rebuild or FLOPs and
+leaves the architecture hash unchanged, so the losses are the registered three-event schedule's;
+but the booked schedule is not the registered one, so the reader withholds the registered seal
+(`status: protocol_deviation`, exit 3) and reports the term **descriptively**, and the arm now
+runs the fixed three-event schedule.
