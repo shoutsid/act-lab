@@ -415,6 +415,25 @@ PROFILES: dict[str, dict] = {
         "bonferroni_divisor": 3.0,
         "summary": "artifacts/study-summaries/width-d4-dose4-576.json",
     },
+    # Section 5.69: the **ratio window**. §10.1's crossing rule is a ratio,
+    # `|adaptive - random| / (random - null)`, and it was read off committed cells
+    # as an interval rather than a threshold: every cell at 1.37 or above opens the
+    # gate (1.37, 1.53, 1.55, 1.64), every cell below 1.10 leaves it shut (0.96,
+    # 0.88, 0.80, and 1.10 at 4.01x), and no cell has ever been placed between
+    # them. This cell is that placement - depth 3, width 61, 140,422 parameters
+    # (4.58x), interpolated between the 4.01x and 5.66x rungs so the measured ratio
+    # lands near 1.25. One primary, held at the neighbours' 315/576 bar for
+    # comparability rather than derived from a single comparison. See
+    # `dose5_verdict` for the declared prediction and the four fixed branches.
+    "width-d3-dose5": {
+        "seeds": tuple(range(101000, 101576)),
+        "overrides": {"depth": 3, "hidden_size": 61},
+        "run_revision": None,  # frozen below, before the first shard
+        "report_section": "5.69",
+        "per_cell_primary": True,
+        "bonferroni_divisor": 3.0,
+        "summary": "artifacts/study-summaries/width-d3-dose5-576.json",
+    },
     # Section 5.62: the crossing under the family's *other* candidate policy. Every
     # width dose and every rung of the depth ladder is prefix-policy, so "the gate
     # opens where the controller's edge overtakes the pool term" (§10.1's ratio
@@ -572,6 +591,23 @@ DOSE4_ABOVE_REFERENCE = DOSE3_ABOVE_REFERENCE  # 3.80x, the nearest lower dose a
 # term is still positive and below its 2.87x peak (the decline has begun).
 DOSE4_EDGE_BRACKET = (-0.359770, -0.243801)
 DOSE4_POOL_BRACKET = (0.0, 0.305267)
+# The ratio window (section 5.69): §10.1's rule, placed where it is undetermined.
+# The two depth-3 neighbours that bracket this dose on the width ladder are 4.01x
+# (ratio 1.10, gate shut by five seeds) and 5.66x (ratio 1.55, open), so width 61
+# is the interpolation between them in parameter space, and the window [1.10,
+# 1.37] - the interval no committed cell occupies - is what the dose lands in.
+DOSE5_PROFILE = "width-d3-dose5"
+DOSE5_CLOSED = "width-d3-dose4"  # 4.01x: ratio 1.10, shut by five seeds
+DOSE5_OPEN = "width-d3-dose3"  # 5.66x: ratio 1.55, open
+DOSE5_BELOW = "width-d3-dose"  # 2.87x: the lower rung, descriptive
+# The declared ratio prediction, fixed before the run: the neighbours' ratios
+# interpolated in parameter space (1.096 at 123,006 and 1.552 at 173,672 ->
+# 1.253 at 140,422), with the band at \u00b10.10 - a stated margin, not a fit.
+DOSE5_RATIO_BAND = (1.15, 1.35)
+# The weaker, directional half, also declared: the gate is still shut here,
+# because the nearest committed cell is shut at 1.10 and a threshold must sit
+# above it. A pass is the informative miss, and the branch says what it means.
+DOSE5_GATE_OPEN_DECLARED = False
 # The crossing under the other candidate policy (section 5.62). Every width dose
 # and every depth rung in this family is `prefix`-policy, so both of the newest
 # claims - the edge-dominated stage 5.60 found, and 10.1's ratio rule - rest on a
@@ -1619,6 +1655,115 @@ def dose4_verdict(shards: int, alpha: float) -> int:
     return 0
 
 
+def dose5_verdict(shards: int, alpha: float) -> int:
+    """Section 5.69's primary, ratio reading and branches: the window's interior.
+
+    §10.1's crossing rule is a ratio, `|adaptive - random| / (random - null)`, and
+    it was read off committed cells as an interval rather than a threshold: every
+    cell at 1.37 or above is open, every cell below 1.10 is closed, and no cell has
+    been placed between them. This dose is that placement - depth 3, width 61,
+    140,422 parameters (4.58x), interpolated between the 4.01x and 5.66x rungs to
+    land the ratio near 1.25.
+
+    One primary, at the neighbours' own ``alpha/3`` level (bar 315/576), held there
+    for comparability rather than derived from a single comparison:
+
+    - P1 (the cell creates value at the bar): the gate's own reading.
+
+    And one **declared prediction**, fixed before the run and reported either way:
+    the measured ratio lands inside `DOSE5_RATIO_BAND` (1.15-1.35), i.e. the
+    interpolation from the two committed neighbours describes the mechanism rather
+    than only their endpoints. The directional half is declared too: the gate is
+    still shut, because the nearest committed cell is shut at 1.10 and a threshold
+    must sit above it.
+
+    Branches, fixed before the run (P1, ratio-in-band):
+
+    - shut and in band: the ratio window narrows to [this ratio, 1.37] and the
+      width price to (140,422, 173,672] - the threshold sits above this dose.
+    - open and in band: the window narrows to [1.10, this ratio] and the price to
+      (123,006, 140,422] - the declared shut-gate prediction missed, and the ratio
+      rule survives its first interior placement.
+    - shut, out of band: the window does not narrow - the neighbours'
+      interpolation missed, and the threshold is still only bounded to (1.10, 1.37).
+    - open, out of band: the gate opened below every ratio the rule called closed,
+      so the threshold is not the interpolation and the window does not narrow.
+    """
+    level = alpha / 3
+    cell = _cell_stats(DOSE5_PROFILE, shards, level)
+    p1 = bool(cell["creates_value"])
+    edge = _cell_deltas(DOSE5_PROFILE, shards, "adaptive", "random")
+    pool = _cell_deltas(DOSE5_PROFILE, shards, "random", "null")
+    edge_mean = sum(edge) / len(edge)
+    pool_mean = sum(pool) / len(pool)
+    ratio = abs(edge_mean) / pool_mean if pool_mean else float("inf")
+    low, high = DOSE5_RATIO_BAND
+    in_band = low <= ratio <= high
+    print(
+        f"\nratio (|adaptive - random| / (random - null)): {ratio:.4f}"
+        f" (declared band [{low:.2f}, {high:.2f}]) -> in band: {in_band}"
+        f"  [edge {edge_mean:+.6f}, pool {pool_mean:+.6f}]"
+    )
+    print(
+        "declared gate at this dose: "
+        f"{'open' if DOSE5_GATE_OPEN_DECLARED else 'shut'}"
+        f" -> measured {'open' if p1 else 'shut'}"
+    )
+    branches = {
+        (False, True): (
+            "gate shut inside the window: the ratio window narrows to "
+            f"[{ratio:.2f}, 1.37] and the width price to (140,422, 173,672] - "
+            "the threshold sits above this dose"
+        ),
+        (True, True): (
+            "gate open inside the window: the ratio window narrows to "
+            f"[1.10, {ratio:.2f}] and the width price to (123,006, 140,422] - "
+            "the declared shut-gate prediction missed, and the ratio rule survives "
+            "its first interior placement"
+        ),
+        (False, False): (
+            "gate shut but the ratio landed outside its declared band: the window "
+            "does not narrow - the neighbours' interpolation missed, and the "
+            "threshold is still only bounded to (1.10, 1.37)"
+        ),
+        (True, False): (
+            "gate open with the ratio outside its declared band: the gate opened "
+            "below every ratio the rule called closed, so the threshold is not the "
+            "interpolation and the window does not narrow"
+        ),
+    }
+    print(f"BRANCH: {branches[(p1, in_band)]}")
+    if DOSE5_GATE_OPEN_DECLARED != p1:
+        print(
+            "PREDICTION missed: the gate's declared state at this dose was wrong; "
+            "the branch names what that means"
+        )
+
+    # Descriptive: the depth-3 ladder the window is read off.
+    for label, profile in (
+        ("depth 3  width 48 (2.87x)", DOSE5_BELOW),
+        ("depth 3  width 57 (4.01x, shut)", DOSE5_CLOSED),
+        ("depth 3  width 61 (4.58x, this arm)", DOSE5_PROFILE),
+        ("depth 3  width 68 (5.66x, open)", DOSE5_OPEN),
+        ("depth 3  width 96 (11.15x)", "width-d3-dose2"),
+    ):
+        try:
+            value = _cell_deltas(profile, shards, "adaptive", "null")
+            cell_edge = _cell_deltas(profile, shards, "adaptive", "random")
+            cell_pool = _cell_deltas(profile, shards, "random", "null")
+        except Exception:  # a committed 384-seed cell read at this arm's n
+            continue
+        value_mean = sum(value) / len(value)
+        edge_cell = sum(cell_edge) / len(cell_edge)
+        pool_cell = sum(cell_pool) / len(cell_pool)
+        cell_ratio = abs(edge_cell) / pool_cell if pool_cell else float("inf")
+        print(
+            f"  {label:<34} value {value_mean:+.6f}  edge {edge_cell:+.6f}  "
+            f"pool {pool_cell:+.6f}  ratio {cell_ratio:.3f}"
+        )
+    return 0
+
+
 def dose3_spread_verdict(shards: int, alpha: float) -> int:
     """Section 5.62's primary, predictions and branches: the crossing off-policy.
 
@@ -2624,6 +2769,12 @@ def main() -> int:
     )
     dose4_p.add_argument("--shards", type=int, required=True)
     dose4_p.add_argument("--alpha", type=float, default=ALPHA)
+    dose5_p = sub.add_parser(
+        "dose5-verdict",
+        help="section 5.69: the dose placed inside the crossing rule's ratio window",
+    )
+    dose5_p.add_argument("--shards", type=int, required=True)
+    dose5_p.add_argument("--alpha", type=float, default=ALPHA)
     spread_p = sub.add_parser(
         "dose3-spread-verdict",
         help="section 5.62: the crossing dose under the other candidate policy",
@@ -2678,6 +2829,8 @@ def main() -> int:
         return dose3_verdict(args.shards, args.alpha)
     if args.command == "dose4-verdict":
         return dose4_verdict(args.shards, args.alpha)
+    if args.command == "dose5-verdict":
+        return dose5_verdict(args.shards, args.alpha)
     if args.command == "dose3-spread-verdict":
         return dose3_spread_verdict(args.shards, args.alpha)
     if args.command == "depth8-verdict":

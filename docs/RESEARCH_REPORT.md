@@ -1,7 +1,7 @@
 # Adaptive Computational Topology — Research Report
 
 Status: the narrative report for the whole program to date - the factor map (section 3, Gate 3),
-the pre-registered study series (section 5, 103 subsections), the substrate audit (section 9) and
+the pre-registered study series (section 5, 104 subsections), the substrate audit (section 9) and
 the synthesis (section 10). **Updated: 2026-11-08** - sections 5.48-5.59 close the covariate
 programme (parameter count, layer width, expert count and total compute) and then measure the
 depth axis itself, out to six rungs above its onset, 5.60 and 5.61 bisect the one window
@@ -13,7 +13,8 @@ the declared block after its first four seeds were found to have run the pre-ame
 measures the dev-fidelity withholding-clause anchors on fresh seeds, 5.67 reads the completed
 development-fidelity width pilot (12/12 pairs, 1 win of 12, the arm closes), 5.68 measures that
 pilot's missing null arm - the graft never pays, 0 of 12, recorded descriptively after one inert
-extra event in the null records - and section 10 is re-read against that evidence. The declared Gate-4 block is complete for all three queues
+extra event in the null records, and 5.69 places a dose inside the crossing rule's ratio window, the one
+interval §10.1 left untested - and section 10 is re-read against that evidence. The declared Gate-4 block is complete for all three queues
 (15024-15035) and its pre-registered verdict is `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE`: a cost
 pass with no demonstrated quality edge. Separately, TPU probe v6 completed with a registered **PORT** decision. That is a
 hardware-port decision, not a Gate-4 result or campaign amendment. See
@@ -34,7 +35,7 @@ the defects found along the way).
 
 ## Contents
 
-A reader looking for one thing rather than all of it: the top-level sections, then section 5's 92
+A reader looking for one thing rather than all of it: the top-level sections, then section 5's 93
 subsections grouped by what they answer. Section 9 and section 10 are the two reading paths worth
 taking first - 9 is the audit that changed the interpretation, and 10 is the current state.
 
@@ -48,7 +49,7 @@ taking first - 9 is the audit that changed the interpretation, and 10 is the cur
 | **5.21-5.34** | The mid-training penalty and the prune-target chain: the penalty's arm-genericity (§5.22), optimizer history against the architecture change (§5.23), the discarded routing head (§5.24), prune against grow (§5.25), the freshly drawn expert (§5.26), cloning's two effects (§5.27-§5.28), the discovery path (§5.29-§5.30), and the powered prune-target studies (§5.31-§5.34). |
 | **5.35-5.40** | The declared path: defects found by reading rather than by a study (§5.35), dev-scale evidence on the real token stream (§5.36), the measured liveness contract (§5.37), whether the rebuild treatment transfers (§5.38), churn harm as a property of churn (§5.39), and the deployed configuration against the do-nothing arm (§5.40). |
 | **5.41-5.47** | Audit-derived corrections and the Gate 4 registration: the tolerance band's scale (§5.41), the clause a partial run made unfireable (§5.42), the verdict-path rehearsal (§5.43), the one-directional quality clause (§5.44), the suite's cost (§5.45), the launch path's missing rebuild treatment (§5.46), and the amendment that registers it (§5.47). |
-| **5.48-5.68** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), the two width bisections that halve the gate window the width programme left open and then test where the edge's maximum is reached (§5.60-§5.61), the crossing dose under the family's other candidate policy (§5.62), the Gate-5 transfer path with its fresh-versus-resumed check (§5.63), the gate chain itself, declared while gates 5-7 are still prose (§5.64), the re-reservation of the declared block after its first four seeds were found to have run the pre-amendment rebuild (§5.65), and the dev-fidelity anchors for the two withholding clauses that had none, registered before the declared verdict lands (§5.66), the development-fidelity width pilot that the design note ordered before any declared width block (§5.67), and the null arm that measures that pilot's pool term, recorded descriptively after one inert extra event in the null records (§5.68). |
+| **5.48-5.69** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), the two width bisections that halve the gate window the width programme left open and then test where the edge's maximum is reached (§5.60-§5.61), the crossing dose under the family's other candidate policy (§5.62), the Gate-5 transfer path with its fresh-versus-resumed check (§5.63), the gate chain itself, declared while gates 5-7 are still prose (§5.64), the re-reservation of the declared block after its first four seeds were found to have run the pre-amendment rebuild (§5.65), and the dev-fidelity anchors for the two withholding clauses that had none, registered before the declared verdict lands (§5.66), the development-fidelity width pilot that the design note ordered before any declared width block (§5.67), and the null arm that measures that pilot's pool term, recorded descriptively after one inert extra event in the null records (§5.68), and the dose placed inside §10.1's ratio window to locate its threshold (§5.69). |
 | **6-10** | Reproducibility (§6), the deliverables checklist (§7), figures (§8), the substrate audit (§9), and the synthesis (§10) - which reads this track against the architecture-search track. |
 
 Reproducibility at notebook fidelity (plan sections 39 and 104) now ships with
@@ -8745,6 +8746,64 @@ reader judges the edge reading and the pool block separately, so this deviation 
 both terms - the decision rule does not beat the coin, and the graft does not beat doing nothing at
 **3.06x** active parameters. The width programme closes at this dose, the declared 31.2 h block
 stays closed, and the dose caveat from the design note (§10) is unchanged.
+
+### 5.69 Pre-registration: a dose inside the crossing rule's ratio window (RAN - summary `width-d3-dose5-576.json`)
+
+§10.1's crossing rule is not a side of the onset but a **ratio**: `|adaptive - random| / (random - null)`.
+Read off the committed cells it is an **interval**, not a threshold - every cell at 1.37 or above opens the
+gate (1.37, 1.53, 1.55, 1.64) and every cell below 1.10 leaves it shut (0.96, 0.88, 0.80, and 1.10 at
+4.01x), and no cell has ever been placed between them. The 4.01x rung is why that interval matters: it
+missed the bar by five seeds (`310/576`, mean `-0.028562`) with its mean already crossed, so the window is
+exactly where the statistic the gate reads separates from the statistic the ratio predicts.
+
+This arm places one cell inside it. Depth 3, width **61**: **140,422** parameters, **4.58x** the above-onset
+cell, interpolated between the 4.01x and 5.66x rungs in parameter space.
+
+| cell | depth | width | total params | x onset | ratio | measured |
+|---|---|---|---|---|---|---|
+| `width-d3-dose` (5.49) | 3 | 48 | 88,032 | 2.87x | 0.80 | `+0.061466` - shut |
+| `width-d3-dose4` (5.61) | 3 | 57 | 123,006 | 4.01x | 1.10 | `-0.028562`, `310/576` - shut by five |
+| **`width-d3-dose5`** | **3** | **61** | **140,422** | **4.58x** | *~1.25 predicted* | *this arm* |
+| `width-d3-dose3` (5.60) | 3 | 68 | 173,672 | 5.66x | 1.55 | `-0.127992` - open |
+
+**Design.** One fresh cell, one gene changed (`hidden_size` 57 -> 61), every other registered knob
+unchanged; fresh block **101000-101575**.
+
+**Primary.** One, at the neighbours' own `alpha/3` level, bar **315/576**. The level is held there rather
+than weakened to a single-comparison `alpha = 0.05` (bar ~310), because a weaker bar would put this cell
+below the 4.01x rung's and make the two incomparable.
+
+- **P1 (the cell creates value at the bar):** the gate's own reading.
+
+**Declared predictions, fixed before the run.**
+
+- the measured ratio lands inside **[1.15, 1.35]** - the neighbours' ratios interpolated in parameter space
+  (1.096 at 123,006, 1.552 at 173,672 -> 1.253 at 140,422), with a stated +-0.10 margin; and
+- the gate is still **shut** at this dose, because the nearest committed cell is shut at 1.10 and a
+  threshold must sit above it. This half is declared as the weaker of the two: a pass is the informative
+  miss.
+
+**Pre-registered interpretation (fixed before running).**
+
+- **shut and in band:** the ratio window narrows to **[1.25, 1.37]** and the width price to
+  **(140,422, 173,672]** - the threshold sits above this dose.
+- **open and in band:** the window narrows to **[1.10, 1.25]** and the price to **(123,006, 140,422]** - the
+  declared shut-gate prediction missed, and the ratio rule survives its first interior placement.
+- **shut, out of band:** the window does not narrow; the neighbours' interpolation missed and the
+  threshold is still only bounded to (1.10, 1.37).
+- **open, out of band:** the gate opened below every ratio the rule called closed, so the threshold is not
+  the interpolation and the window does not narrow.
+
+**Descriptive secondaries.** The depth-3 width ladder's value, controller edge, pool term and ratio at
+every rung.
+
+**Scope.** Fixed 48-step budget, as in 5.49-5.62: at this budget a wide substrate is a worse model in
+absolute loss and the value the gate reports is escape from that collapse. The cell is cross-column
+descriptive in this family's convention while P1 is a test on its own cell.
+
+**Cost.** ~1.58 s/seed at depth 3, so 576 seeds is **~15.2 min** of single-thread CPU across 20 shards -
+no GPU quota. Block 101000-101575 is the first free 576-window at or after 100,576, checked by a test
+against every other profile and every committed summary's recorded seeds.
 
 ## 6. Reproducibility
 
