@@ -193,4 +193,11 @@ artifacts/width-pilot/kaggle/*
 !artifacts/width-pilot/smoke/
 artifacts/width-pilot/smoke/*
 !artifacts/width-pilot/smoke/*.json
+# Section 5.70's registration (2026-11-08): the declaration the twelve pairs are
+# read against has to be in the tree before any seed, for the same reason the
+# width pilot's does. The staged kernels and fetched rows stay ignored until a
+# note cites their numbers.
+!artifacts/real-text-declared/
+artifacts/real-text-declared/*
+!artifacts/real-text-declared/NOTES.md
 .DS_Store
