@@ -167,4 +167,4 @@ def test_the_run_revision_is_declared_before_the_first_shard() -> None:
     revision = study.PROFILES[study.DOSE5_PROFILE]["run_revision"]
     # ``None`` is the state a registration passes through between the code
     # landing and the freeze commit; the run may not start until it is a hash.
-    assert revision is None or re.fullmatch(r"[0-9a-f]{7}", revision), revision
+    assert re.fullmatch(r"[0-9a-f]{7}", revision), revision
