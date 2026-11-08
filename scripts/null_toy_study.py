@@ -428,7 +428,7 @@ PROFILES: dict[str, dict] = {
     "width-d3-dose5": {
         "seeds": tuple(range(101000, 101576)),
         "overrides": {"depth": 3, "hidden_size": 61},
-        "run_revision": None,  # frozen below, before the first shard
+        "run_revision": "2920671",  # frozen before the first shard
         "report_section": "5.69",
         "per_cell_primary": True,
         "bonferroni_divisor": 3.0,
