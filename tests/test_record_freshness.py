@@ -10,6 +10,7 @@ document the command that writes its own record.
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -19,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from check_record_freshness import (  # noqa: E402
     check_arm,
     commands_in,
+    differing_keys,
     documented_commands,
     option,
     ordered_candidates,
@@ -165,6 +167,51 @@ def test_every_watcher_command_is_documented_by_the_arm_it_writes():
                 f"{watcher.name} runs {missing} for {experiment}, which its runbook does "
                 "not document"
             )
+
+
+def _ranked(tmp_path: Path, name: str, payload: object) -> Path:
+    path = tmp_path / name
+    path.write_text(json.dumps(payload))
+    return path
+
+
+def test_ranked_float_noise_is_not_drift(tmp_path):
+    """The committed files were written on another platform.
+
+    Measured 2026-11-08 over the six arms `--strict-rank` flagged: every difference
+    was a float leaf within 1.0e-14 relative, with no structural or value change and
+    `decision.md` byte-identical. Refreshing the artifacts would bake this machine's
+    last bits into the committed record and fail again on the next platform, so the
+    comparison has to absorb the noise rather than the record churn around it.
+    """
+    fresh = _ranked(
+        tmp_path,
+        "fresh.json",
+        {"sigmas": 16.01063053328132, "best": "a", "n": 3, "nested": {"w": [1.0, 2.0]}},
+    )
+    committed = _ranked(
+        tmp_path,
+        "committed.json",
+        {"sigmas": 16.010630533281315, "best": "a", "n": 3, "nested": {"w": [1.0, 2.0]}},
+    )
+    assert differing_keys(fresh, committed) == []
+
+
+def test_a_real_numeric_change_still_fails_the_rank(tmp_path):
+    """The tolerance is for last bits, not for a moved number (1e-6 here)."""
+    fresh = _ranked(tmp_path, "fresh.json", {"sigmas": 16.0106305})
+    committed = _ranked(tmp_path, "committed.json", {"sigmas": 16.0206305})
+    assert differing_keys(fresh, committed) == ["sigmas"]
+    # A change deep inside a list or a dict is still a change to its top-level key.
+    moved = _ranked(tmp_path, "moved.json", {"fit": {"coef": [1.0, 0.5]}})
+    base = _ranked(tmp_path, "base.json", {"fit": {"coef": [1.0, 0.6]}})
+    assert differing_keys(moved, base) == ["fit"]
+
+
+def test_structural_and_non_float_changes_still_fail_the_rank(tmp_path):
+    fresh = _ranked(tmp_path, "fresh.json", {"best": "a", "flag": True, "new": 1})
+    committed = _ranked(tmp_path, "committed.json", {"best": "b", "flag": False})
+    assert differing_keys(fresh, committed) == ["best", "flag", "new"]
 
 
 def _arm_with_ledgers(root: Path, name: str, seeds: tuple[int, ...]) -> Path:

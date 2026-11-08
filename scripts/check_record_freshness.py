@@ -20,7 +20,11 @@ the Monte-Carlo ones, whose draws are seeded.
 ``ranked.json`` is reported but not failed on. It carries a schema that legitimately
 grows - newer runs record diagnostics the older files predate - so drift there is a
 note about how old a file is, not a claim about the science. ``--strict-rank`` turns it
-into a failure too, which is what makes "refresh this file" a check.
+into a failure too, which is what makes "refresh this file" a check. Floats in it are
+compared with a stated relative tolerance: the committed files were written on another
+platform, and last-bit differences in derived values are not drift (measured 2026-11-08
+over the six arms the strict check flagged: worst relative difference ``1.0e-14``, every
+leaf float, no structural or value change, and ``decision.md`` byte-identical).
 
 Two things make it fast enough to be run casually, and both are about *not* doing work
 rather than about doing it differently - the analysis itself must stay bit-identical or
@@ -45,6 +49,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import json
+import math
 import os
 import re
 import shlex
@@ -298,8 +303,40 @@ def regenerate(repo: Path, root: Path, argv: list[str]) -> tuple[int, str]:
     return completed.returncode, (completed.stderr or completed.stdout)[-800:]
 
 
+#: Relative tolerance for a float leaf in ``ranked.json``. The artifacts were
+#: produced on another platform, and derived values (sigmas, fitted coefficients,
+#: Monte-Carlo statistics) differ there in their last bits. Measured 2026-11-08 over
+#: the six arms the strict check flagged: worst relative difference 1.0e-14, every
+#: difference a float leaf, no structural or value change, ``decision.md`` identical.
+#: Refreshing the files would bake this machine's noise into the committed record and
+#: fail again on the next platform, so the comparison absorbs it instead.
+RANK_FLOAT_TOLERANCE = 1e-9
+#: Absolute floor for a leaf sitting at zero, where a relative tolerance has no scale.
+RANK_FLOAT_FLOOR = 1e-12
+
+
+def _same(left: object, right: object) -> bool:
+    """Structural equality, with float leaves compared at the stated tolerance."""
+    if isinstance(left, dict) and isinstance(right, dict):
+        return set(left) == set(right) and all(_same(left[key], right[key]) for key in left)
+    if isinstance(left, list) and isinstance(right, list):
+        return len(left) == len(right) and all(
+            _same(a, b) for a, b in zip(left, right)
+        )
+    if isinstance(left, float) and isinstance(right, float):
+        return math.isclose(
+            left, right, rel_tol=RANK_FLOAT_TOLERANCE, abs_tol=RANK_FLOAT_FLOOR
+        )
+    return left == right
+
+
 def differing_keys(fresh: Path, committed: Path) -> list[str]:
-    """Top-level keys whose values differ, so schema growth is named not guessed."""
+    """Top-level keys whose values differ, so schema growth is named not guessed.
+
+    Values are compared structurally and float leaves at `RANK_FLOAT_TOLERANCE`, so
+    the question is "did this key's content move" rather than "is this file byte-
+    identical to one written on a different machine".
+    """
     try:
         left = json.loads(fresh.read_text())
         right = json.loads(committed.read_text())
@@ -308,7 +345,9 @@ def differing_keys(fresh: Path, committed: Path) -> list[str]:
     return sorted(
         key
         for key in set(left) | set(right)
-        if left.get(key, "<absent>") != right.get(key, "<absent>")
+        if key not in left
+        or key not in right
+        or not _same(left[key], right[key])
     )
 
 
@@ -356,7 +395,7 @@ def check_arm(repo: Path, root: Path, arm: Path, *, strict_rank: bool) -> ArmRes
             else []
         )
         detail = (
-            "ranked.json identical"
+            "ranked.json matches (float leaves at relative 1e-9)"
             if not drift
             else f"ranked.json differs in {len(drift)} key(s): {', '.join(drift[:4])}"
         )
