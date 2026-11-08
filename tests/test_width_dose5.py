@@ -126,12 +126,16 @@ def test_the_ratio_prediction_is_the_neighbours_own_readings() -> None:
 def test_the_block_is_fresh_against_every_other_claim() -> None:
     seeds = study.PROFILES[study.DOSE5_PROFILE]["seeds"]
     assert seeds == tuple(range(101000, 101576))
+    own = Path(study.PROFILES[study.DOSE5_PROFILE]["summary"]).name
     used: set[int] = set()
     for name, spec in study.PROFILES.items():
         if name == study.DOSE5_PROFILE:
             continue
         used |= set(spec["seeds"])
     for path in SUMMARIES.glob("*.json"):
+        # This arm's own summary is the record of the block, not another claim.
+        if path.name == own:
+            continue
         payload = json.loads(path.read_text())
         if isinstance(payload, dict) and isinstance(payload.get("seeds"), list):
             used |= {seed for seed in payload["seeds"] if isinstance(seed, int)}

@@ -8747,7 +8747,7 @@ both terms - the decision rule does not beat the coin, and the graft does not be
 **3.06x** active parameters. The width programme closes at this dose, the declared 31.2 h block
 stays closed, and the dose caveat from the design note (§10) is unchanged.
 
-### 5.69 Pre-registration: a dose inside the crossing rule's ratio window (RAN - summary `width-d3-dose5-576.json`)
+### 5.69 The ratio window: the gate opens at 4.58x inside the interval the rule left open (RAN - summary `width-d3-dose5-576.json`)
 
 §10.1's crossing rule is not a side of the onset but a **ratio**: `|adaptive - random| / (random - null)`.
 Read off the committed cells it is an **interval**, not a threshold - every cell at 1.37 or above opens the
@@ -8804,6 +8804,28 @@ descriptive in this family's convention while P1 is a test on its own cell.
 **Cost.** ~1.58 s/seed at depth 3, so 576 seeds is **~15.2 min** of single-thread CPU across 20 shards -
 no GPU quota. Block 101000-101575 is the first free 576-window at or after 100,576, checked by a test
 against every other profile and every committed summary's recorded seeds.
+
+**Outcome (run 2026-11-08 on Kaggle CPU, kernel `act-width-dose5` v1, revision `2920671`, 20 shards;
+summary `width-d3-dose5-576.json`). Registered branch 2 - the gate is open and the ratio landed in its
+band: the ratio window narrows to [1.10, 1.26] and the width price to (123,006, 140,422].**
+
+| cell | params | adaptive-vs-null | mean delta | p | creates value |
+|---|---|---|---|---|---|
+| depth 3, width 61 (4.58x) | 140,422 | 338/576 | `-0.069389` | `1.78e-05` | **yes** (bar `315`) |
+
+The cell clears the bar by **23 seeds** where the 4.01x rung missed it by five (`310/576`), so the bar's
+crossing is now located between 4.01x and 4.58x - a 1.14x width window - and the ratio that predicted the
+crossing (**1.2575**) is inside the band the neighbours' interpolation declared. The decomposition moves
+the way the staging says it should: the controller's edge is `-0.338858` (its ladder maximum so far,
+`468/576`) and the pool term is **still positive** at `+0.269470`, so this is the edge-dominated stage
+rather than the pool collapse.
+
+The declared predictions split: the ratio band **hit**, the declared shut-gate half **missed**. The miss
+is the informative one, and not a small one - the gate opens well below the interval's old upper end -
+so the threshold sits below every cell that bracketed it from above, and §10.1's "bracketed by
+construction" is now a located interval rather than an inference. What one interior point cannot do is
+distinguish a threshold at 1.26 from a smooth rise: the interval narrows, the rule's functional form does
+not follow from it.
 
 ## 6. Reproducibility
 
@@ -9501,15 +9523,17 @@ Written as a ratio of the two terms, the committed widths and depths fall into a
 | `width-d3-equal` (5.48) | 1.02x | `-0.1307` | `+0.1484` | 0.88 | closed |
 | `width-d3-dose` (5.49) | 2.87x | `-0.2438` | `+0.3053` | 0.80 | closed |
 | `width-d3-dose4` (5.61) | 4.01x | `-0.3263` | `+0.2977` | **1.10** | closed - mean crossed, bar not |
+| `width-d3-dose5` (5.69) | 4.58x | `-0.3389` | `+0.2695` | **1.26** | **open** |
 | `width-d3-dose3` (5.60) | 5.66x | `-0.3598` | `+0.2318` | **1.55** | **open** |
 | `depth4-prefix` (5.12) | 1.00x (depth) | `-0.1072` | `+0.0701` | **1.53** | **open** |
 | `width-d4-equal` (5.48) | 1.34x | `-0.1207` | `+0.0880` | **1.37** | **open** |
 
 **No cell with a positive pool term and a ratio below 1 opens the gate** (0.96, 0.88, 0.80 - all
-closed), **the single cell between the mean's crossing and the bar's is the 1.10 near miss, and every
-cell at 1.37 or above is open** - with the pool term's own sign irrelevant once it turns negative
+closed), **the single cell between the mean's crossing and the bar's was the 1.10 near miss until 5.69
+placed one inside it, and every cell at 1.26 or above is open** - with the pool term's own sign irrelevant once it turns negative
 (the 3.80x, 5.32x, 7.52x and 14.82x doses, and every depth rung from 6 up, are open with a negative
-one). So the crossing is located in the *ratio*, bracketed by construction to `[1.10, 1.37]`, and it
+one). So the crossing is located in the *ratio*, bracketed to `[1.10, 1.26]` by construction plus one
+interior placement, and it
 **corrects a reading sections 5.60 and 5.61 gave**: those arms read the staging as a division between
 the sides of the onset ("below it the edge crosses, above it the pool does"), and the onset cell
 itself is a counterexample - `depth4-prefix` is open at ratio 1.53 with a **positive** pool term. What
@@ -9517,8 +9541,11 @@ tracks the mechanism is the *dose*, not the side: on either ladder the small-dos
 edge-dominated and the large-dose end is pool-dominated, and what makes the depth axis look
 pool-only is that every rung at the registered width except the onset itself sits on the far side of
 that transition. This is a descriptive reading of committed cells, made after both arms rather than
-predicted by either, and the interval `[1.10, 1.37]` was bracketed by the doses rather than derived -
-the test it invites is a dose placed to land inside it on a ladder that has not been swept.
+predicted by either, and the interval `[1.10, 1.37]` was bracketed by the doses rather than derived.
+**The test it invited has since been run (5.69):** a dose placed to land inside it opens the gate at
+ratio **1.2575**, so the interval narrows to `[1.10, 1.26]` - and the arm's declared shut-gate
+prediction missed, which is what says the threshold sits below the bracketing cells rather than at
+their midpoint.
 
 **And it has had its first out-of-policy test (5.62, added 2026-09-21).** Every cell in the table
 above is prefix-policy, so the crossing dose was re-run under `spread`: the gate opens again

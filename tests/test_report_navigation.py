@@ -354,6 +354,7 @@ def test_the_crossing_rule_is_read_from_the_committed_ladders() -> None:
         ("width-d3-equal-576.json", 0.88, False),
         ("width-d3-dose-576.json", 0.80, False),
         ("width-d3-dose4-576.json", 1.10, False),
+        ("width-d3-dose5-576.json", 1.26, True),
         ("width-d3-dose3-576.json", 1.55, True),
         ("null-control-depth4-prefix-384.json", 1.53, True),
         ("width-d4-equal-576.json", 1.37, True),
@@ -373,10 +374,13 @@ def test_the_crossing_rule_is_read_from_the_committed_ladders() -> None:
     closed = [r for r, is_open in ratios if not is_open]
     open_ = [r for r, is_open in ratios if is_open]
     assert max(closed) == pytest.approx(1.0959, abs=0.001)
-    assert min(open_) == pytest.approx(1.37, abs=0.01)
+    # 5.69's interior cell is the lowest open ratio, where the old bracket's
+    # upper end was 1.37.
+    assert min(open_) == pytest.approx(1.2575, abs=0.01)
     assert max(closed) < min(open_), "the boundary is no longer bracketed"
     text = " ".join(_text().split())
-    assert "bracketed by construction to `[1.10, 1.37]`" in text
+    assert "bracketed to `[1.10, 1.26]` by construction plus one interior placement" in text
+    assert "The test it invited has since been run (5.69)" in text
     assert "corrects a reading sections 5.60 and 5.61 gave" in text
     assert "tracks the mechanism is the *dose*, not the side" in text
     # The rule's out-of-policy test, and the caveat it produced.

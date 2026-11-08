@@ -2191,6 +2191,40 @@ def check_width_pilot(root: Path, audit: Audit) -> None:
     )
 
 
+def check_width_dose5(root: Path, audit: Audit) -> None:
+    """§5.69's ratio-window dose, read against its committed summary.
+
+    The section quotes one cell's win count, its bar, the two decomposed terms,
+    the ratio they form, and the window the branch declares. All of them are read
+    from the summary the verdict wrote, so a transcript that drifts from the
+    artifact fails here instead of printing a plausible paragraph.
+    """
+    payload = json.loads(
+        (root / "study-summaries" / "width-d3-dose5-576.json").read_text()
+    )
+    comparisons = payload["comparisons"]
+    edge = comparisons["adaptive_vs_random"]["mean_delta"]
+    pool = -comparisons["null_vs_random"]["mean_delta"]
+    audit.check("§5.69: seeds", 576, len(payload["seeds"]), "§5.69")
+    audit.check("§5.69: run revision", "2920671", payload["code_revision"], "§5.69")
+    audit.check("§5.69: wins", 338, comparisons["adaptive_vs_null"]["wins"], "§5.69")
+    audit.check(
+        "§5.69: bar",
+        315,
+        comparisons["adaptive_vs_null"]["min_wins_bonferroni"],
+        "§5.69",
+    )
+    audit.check(
+        "§5.69: mean delta",
+        -0.069389,
+        comparisons["adaptive_vs_null"]["mean_delta"],
+        "§5.69",
+    )
+    audit.check("§5.69: edge mean", -0.338858, edge, "§5.69")
+    audit.check("§5.69: pool mean", 0.269470, pool, "§5.69")
+    audit.check("§5.69: ratio", 1.2575, abs(edge) / pool, "§5.69")
+
+
 #: The audit's checks in record order. Each is a pure function of the artifacts root
 #: that appends to the audit it is handed, so they can run in separate processes and
 #: have their claims concatenated in this order - the output is identical to running
@@ -2213,6 +2247,7 @@ CHECKS: tuple[str, ...] = (
     "check_gate5_transfer",
     "check_dev_clause_anchors",
     "check_width_pilot",
+    "check_width_dose5",
     "check_real_lm",
 )
 

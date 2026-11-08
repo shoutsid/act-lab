@@ -1,5 +1,23 @@
 # ACT Implementation Status
 
+## The ratio window: the gate opens at 4.58x, and the crossing rule survives its first interior placement (2026-11-08)
+
+§10.1's rule left an interval: every ratio at 1.37 or above opens the gate, every ratio below 1.10 shuts
+it, and nothing had been placed between them. One cell now sits there - depth 3, width 61 (140,422
+parameters, 4.58x) - and it **opens the gate**: **338/576** against the 315 bar, mean **`-0.069389`**,
+p `1.78e-05`. Its decomposition is the edge-dominated side the staging predicts (edge `-0.338858`, pool
+still positive at `+0.269470`), and the measured ratio **1.2575** lands inside the declared band
+[1.15, 1.35].
+
+| | |
+|---|---|
+| **Registered branch** | Open and in band: the ratio window narrows to **[1.10, 1.26]**, the width price to **(123,006, 140,422]**, and the bar's crossing is now located between 4.01x (310/576, five seeds short) and 4.58x - a 1.14x width window. |
+| **Predictions** | The ratio band **hit**; the declared shut-gate half **missed**. The miss is the informative one: the gate opens well below the interval's old upper end, so the threshold sits below every cell that bracketed it from above, and §10.1's interval is now located rather than inferred. |
+| **What one point cannot do** | Distinguish a threshold at 1.26 from a smooth rise. The interval narrows; the rule's functional form does not follow from one interior cell. |
+| **Cost and venue** | Kaggle CPU, kernel `act-width-dose5` v1 `COMPLETE`, 20 shards, 576 seeds, ~941 s, **zero GPU-hours**. No experiment compute ran locally; the local step was pytest plus the statistics over the fetched shards. |
+
+Recorded in report §5.69 and summary `artifacts/study-summaries/width-d3-dose5-576.json`.
+
 ## The null arm: the graft never pays, and the harness booked one inert extra event (2026-11-08)
 
 The pilot's missing pool term has now been measured on the spent seeds (kernel version 3,
