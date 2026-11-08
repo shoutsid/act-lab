@@ -149,6 +149,36 @@ def test_a_null_record_that_widened_is_refused() -> None:
         analysis.summarize(records)
 
 
+def test_a_null_arm_that_booked_an_extra_event_deviates_the_pool_not_the_edge() -> None:
+    # Measured 2026-11-07: the pilot's null records booked a fourth, inert no-op
+    # at step 400. The edge reading never used the null arm, so it stands; the
+    # pool term cannot be called registered, and the direction is still reported.
+    records = _block(1)
+    for seed in SEEDS:
+        record = _null_record(seed, 3.5)
+        record["arm_result"]["mutation_history"].append(  # type: ignore[index]
+            {"step": 400, "operation": "null", "policy": "null"}
+        )
+        records[(seed, NULL)] = record
+
+    summary = analysis.summarize(records)
+
+    assert summary["status"] == "complete"
+    assert summary["registered_reading"] is True
+    assert summary["protocol"]["ok"] is True
+    pool = summary["pool"]
+    assert pool["status"] == "protocol_deviation"
+    assert pool["registered_reading"] is False
+    assert len(pool["protocol"]["deviations"]) == 12
+    assert all(
+        deviation["extra_steps"] == [400]
+        for deviation in pool["protocol"]["deviations"]
+    )
+    assert pool["wins"] == 12
+    assert "descriptive term: pool positive" in pool["outcome"]
+    assert "pool protocol: FAILED" in analysis.render(summary)
+
+
 def test_a_partial_null_block_leaves_the_pool_undecided() -> None:
     records = _block(12)
     records[(71000, NULL)] = _null_record(71000, 3.5)

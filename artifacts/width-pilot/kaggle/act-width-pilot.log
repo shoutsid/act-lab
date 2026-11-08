@@ -1,84 +1,146 @@
-[{"stream_name":"stdout","time":2.80807317,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71009 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71009.json\n"}
-,{"stream_name":"stdout","time":2.808867416,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71009 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71009.json\n"}
-,{"stream_name":"stdout","time":2.80975974,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71010 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71010.json\n"}
-,{"stream_name":"stdout","time":2.811714246,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71010 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71010.json\n"}
-,{"stream_name":"stdout","time":11.42153461,"data":"width pilot: seed 71010 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":11.421560985,"data":"width pilot: seed 71009 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":11.421566151,"data":"width pilot: seed 71009 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":11.422154524,"data":"width pilot: seed 71010 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":6809.431738318,"data":"  final: loss 3.534431  parameters 22,276,800  mutations 1  242 tok/s  113.3 min\n"}
-,{"stream_name":"stdout","time":6809.431986341,"data":"  wrote /kaggle/working/width-pilot/width_random-seed71010.json\n"}
-,{"stream_name":"stdout","time":6811.473756143,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71011 --arm width --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width-seed71011.json\n"}
-,{"stream_name":"stdout","time":6816.615663415,"data":"width pilot: seed 71011 arm width 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":8561.592200666,"data":"  final: loss 3.655106  parameters 30,411,072  mutations 2  193 tok/s  142.5 min\n"}
-,{"stream_name":"stdout","time":8561.59230493,"data":"  wrote /kaggle/working/width-pilot/width_random-seed71009.json\n"}
-,{"stream_name":"stdout","time":8563.634280938,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71011 --arm width_random --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/width_random-seed71011.json\n"}
-,{"stream_name":"stdout","time":8566.963626577,"data":"width pilot: seed 71011 arm width_random 1,638,400 tokens, events at [100, 200, 300]\n"}
-,{"stream_name":"stdout","time":9264.13976185,"data":"  final: loss 3.697453  parameters 39,331,776  mutations 3  178 tok/s  154.2 min\n"}
-,{"stream_name":"stdout","time":9264.140010258,"data":"  wrote /kaggle/working/width-pilot/width-seed71009.json\n"}
-,{"stream_name":"stdout","time":9266.43568029,"data":"ok width seed 71009 exit 0\n"}
-,{"stream_name":"stdout","time":9266.436068356,"data":"ok width_random seed 71009 exit 0\n"}
-,{"stream_name":"stdout","time":9296.180569062,"data":"  final: loss 3.659322  parameters 39,331,776  mutations 3  177 tok/s  154.7 min\n"}
-,{"stream_name":"stdout","time":9296.180613476,"data":"  wrote /kaggle/working/width-pilot/width-seed71010.json\n"}
-,{"stream_name":"stdout","time":9297.662620559,"data":"ok width seed 71010 exit 0\n"}
-,{"stream_name":"stdout","time":9297.662651589,"data":"ok width_random seed 71010 exit 0\n"}
-,{"stream_name":"stdout","time":12223.997193807,"data":"  final: loss 3.669783  parameters 30,411,072  mutations 2  304 tok/s  90.1 min\n"}
-,{"stream_name":"stdout","time":12223.997415173,"data":"  wrote /kaggle/working/width-pilot/width-seed71011.json\n"}
-,{"stream_name":"stdout","time":12225.629400758,"data":"ok width seed 71011 exit 0\n"}
-,{"stream_name":"stdout","time":12607.953163263,"data":"  final: loss 3.625573  parameters 22,276,800  mutations 1  407 tok/s  67.3 min\n"}
-,{"stream_name":"stdout","time":12607.953256583,"data":"  wrote /kaggle/working/width-pilot/width_random-seed71011.json\n"}
-,{"stream_name":"stdout","time":12609.115569863,"data":"ok width_random seed 71011 exit 0\n"}
-,{"stream_name":"stdout","time":12609.133641629,"data":"=== WIDTH PILOT SUMMARY ===\n"}
-,{"stream_name":"stdout","time":12609.133686022,"data":"{\n"}
-,{"stream_name":"stdout","time":12609.133694011,"data":"  \"failures\": [],\n"}
-,{"stream_name":"stdout","time":12609.133700569,"data":"  \"jobs\": 6,\n"}
-,{"stream_name":"stdout","time":12609.133705778,"data":"  \"kind\": \"width-pilot-summary\",\n"}
-,{"stream_name":"stdout","time":12609.133710636,"data":"  \"plan\": {\n"}
-,{"stream_name":"stdout","time":12609.133715155,"data":"    \"arms\": [\n"}
-,{"stream_name":"stdout","time":12609.133720806,"data":"      \"width\",\n"}
-,{"stream_name":"stdout","time":12609.133727044,"data":"      \"width_random\"\n"}
-,{"stream_name":"stdout","time":12609.133731561,"data":"    ],\n"}
-,{"stream_name":"stdout","time":12609.133735787,"data":"    \"budget\": 3,\n"}
-,{"stream_name":"stdout","time":12609.133740036,"data":"    \"interval\": 100,\n"}
-,{"stream_name":"stdout","time":12609.133744933,"data":"    \"jobs\": [\n"}
-,{"stream_name":"stdout","time":12609.133749291,"data":"      {\n"}
-,{"stream_name":"stdout","time":12609.133753636,"data":"        \"arm\": \"width\",\n"}
-,{"stream_name":"stdout","time":12609.133758373,"data":"        \"seed\": 71009\n"}
-,{"stream_name":"stdout","time":12609.133764328,"data":"      },\n"}
-,{"stream_name":"stdout","time":12609.133770162,"data":"      {\n"}
-,{"stream_name":"stdout","time":12609.133774766,"data":"        \"arm\": \"width_random\",\n"}
-,{"stream_name":"stdout","time":12609.133779358,"data":"        \"seed\": 71009\n"}
-,{"stream_name":"stdout","time":12609.133784364,"data":"      },\n"}
-,{"stream_name":"stdout","time":12609.133788851,"data":"      {\n"}
-,{"stream_name":"stdout","time":12609.133795107,"data":"        \"arm\": \"width\",\n"}
-,{"stream_name":"stdout","time":12609.133800575,"data":"        \"seed\": 71010\n"}
-,{"stream_name":"stdout","time":12609.133804986,"data":"      },\n"}
-,{"stream_name":"stdout","time":12609.133809557,"data":"      {\n"}
-,{"stream_name":"stdout","time":12609.133814155,"data":"        \"arm\": \"width_random\",\n"}
-,{"stream_name":"stdout","time":12609.133818817,"data":"        \"seed\": 71010\n"}
-,{"stream_name":"stdout","time":12609.133823289,"data":"      },\n"}
-,{"stream_name":"stdout","time":12609.13382824,"data":"      {\n"}
-,{"stream_name":"stdout","time":12609.13383248,"data":"        \"arm\": \"width\",\n"}
-,{"stream_name":"stdout","time":12609.133836967,"data":"        \"seed\": 71011\n"}
-,{"stream_name":"stdout","time":12609.133891972,"data":"      },\n"}
-,{"stream_name":"stdout","time":12609.133897697,"data":"      {\n"}
-,{"stream_name":"stdout","time":12609.133901673,"data":"        \"arm\": \"width_random\",\n"}
-,{"stream_name":"stdout","time":12609.133905169,"data":"        \"seed\": 71011\n"}
-,{"stream_name":"stdout","time":12609.133908832,"data":"      }\n"}
-,{"stream_name":"stdout","time":12609.133914014,"data":"    ],\n"}
-,{"stream_name":"stdout","time":12609.133917732,"data":"    \"seeds\": [\n"}
-,{"stream_name":"stdout","time":12609.133921636,"data":"      71009,\n"}
-,{"stream_name":"stdout","time":12609.133924943,"data":"      71010,\n"}
-,{"stream_name":"stdout","time":12609.133928307,"data":"      71011\n"}
-,{"stream_name":"stdout","time":12609.133931997,"data":"    ],\n"}
-,{"stream_name":"stdout","time":12609.133935521,"data":"    \"steps\": 400\n"}
-,{"stream_name":"stdout","time":12609.133941003,"data":"  },\n"}
-,{"stream_name":"stdout","time":12609.133945177,"data":"  \"records\": 6\n"}
-,{"stream_name":"stdout","time":12609.13394889,"data":"}\n"}
-,{"stream_name":"stderr","time":12612.484962057,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
-,{"stream_name":"stderr","time":12612.485003655,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
-,{"stream_name":"stderr","time":12612.996136846,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
-,{"stream_name":"stderr","time":12612.996170892,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
-,{"stream_name":"stderr","time":12614.186580014,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
-,{"stream_name":"stderr","time":12615.683109005,"data":"[NbConvertApp] Writing 290790 bytes to __results__.html\n"}
+[{"stream_name":"stdout","time":2.537131639,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71000 --arm null --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/null-seed71000.json\n"}
+,{"stream_name":"stdout","time":2.538356518,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71001 --arm null --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/null-seed71001.json\n"}
+,{"stream_name":"stdout","time":2.539236867,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71002 --arm null --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/null-seed71002.json\n"}
+,{"stream_name":"stdout","time":2.542775103,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71003 --arm null --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/null-seed71003.json\n"}
+,{"stream_name":"stdout","time":11.579865398,"data":"width pilot: seed 71001 arm null 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":11.579905304,"data":"width pilot: seed 71000 arm null 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":11.579911423,"data":"width pilot: seed 71002 arm null 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":11.580796945,"data":"width pilot: seed 71003 arm null 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":6069.094190427,"data":"  final: loss 3.557803  parameters 14,928,960  mutations 0  272 tok/s  101.0 min\n"}
+,{"stream_name":"stdout","time":6069.09435341,"data":"  wrote /kaggle/working/width-pilot/null-seed71002.json\n"}
+,{"stream_name":"stdout","time":6071.397706809,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71004 --arm null --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/null-seed71004.json\n"}
+,{"stream_name":"stdout","time":6076.748239302,"data":"width pilot: seed 71004 arm null 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":6079.091987429,"data":"  final: loss 3.650946  parameters 14,928,960  mutations 0  271 tok/s  101.1 min\n"}
+,{"stream_name":"stdout","time":6079.092160447,"data":"  wrote /kaggle/working/width-pilot/null-seed71001.json\n"}
+,{"stream_name":"stdout","time":6081.381651612,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71005 --arm null --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/null-seed71005.json\n"}
+,{"stream_name":"stdout","time":6085.157695019,"data":"width pilot: seed 71005 arm null 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":6133.589337755,"data":"  final: loss 3.491780  parameters 14,928,960  mutations 0  269 tok/s  102.0 min\n"}
+,{"stream_name":"stdout","time":6133.589415675,"data":"  wrote /kaggle/working/width-pilot/null-seed71003.json\n"}
+,{"stream_name":"stdout","time":6135.874508895,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71006 --arm null --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/null-seed71006.json\n"}
+,{"stream_name":"stdout","time":6139.576809035,"data":"width pilot: seed 71006 arm null 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":6150.035560128,"data":"  final: loss 3.633416  parameters 14,928,960  mutations 0  268 tok/s  102.3 min\n"}
+,{"stream_name":"stdout","time":6150.035622625,"data":"  wrote /kaggle/working/width-pilot/null-seed71000.json\n"}
+,{"stream_name":"stdout","time":6152.074282484,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71007 --arm null --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/null-seed71007.jsonok null seed 71000 exit 0\n"}
+,{"stream_name":"stdout","time":6152.074398862,"data":"ok null seed 71001 exit 0\n"}
+,{"stream_name":"stdout","time":6152.074408035,"data":"ok null seed 71002 exit 0\n"}
+,{"stream_name":"stdout","time":6152.074456306,"data":"ok null seed 71003 exit 0\n"}
+,{"stream_name":"stdout","time":6152.075494931,"data":"\n"}
+,{"stream_name":"stdout","time":6155.414602859,"data":"width pilot: seed 71007 arm null 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":12369.00724663,"data":"  final: loss 3.449272  parameters 14,928,960  mutations 0  261 tok/s  104.9 min\n"}
+,{"stream_name":"stdout","time":12369.00766522,"data":"  wrote /kaggle/working/width-pilot/null-seed71004.json\n"}
+,{"stream_name":"stdout","time":12371.92912615,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71008 --arm null --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/null-seed71008.json\n"}
+,{"stream_name":"stdout","time":12371.931764346,"data":"ok null seed 71004 exit 0\n"}
+,{"stream_name":"stdout","time":12376.24254075,"data":"width pilot: seed 71008 arm null 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":12416.496887681,"data":"  final: loss 3.588558  parameters 14,928,960  mutations 0  260 tok/s  105.5 min\n"}
+,{"stream_name":"stdout","time":12416.497049728,"data":"  wrote /kaggle/working/width-pilot/null-seed71005.json\n"}
+,{"stream_name":"stdout","time":12419.088401234,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71009 --arm null --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/null-seed71009.jsonok null seed 71005 exit 0\n"}
+,{"stream_name":"stdout","time":12419.088573075,"data":"\n"}
+,{"stream_name":"stdout","time":12422.701970059,"data":"width pilot: seed 71009 arm null 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":12462.225745293,"data":"  final: loss 3.449746  parameters 14,928,960  mutations 0  260 tok/s  105.4 min\n"}
+,{"stream_name":"stdout","time":12462.225961001,"data":"  wrote /kaggle/working/width-pilot/null-seed71006.json\n"}
+,{"stream_name":"stdout","time":12464.82569157,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71010 --arm null --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/null-seed71010.jsonok null seed 71006 exit 0\n"}
+,{"stream_name":"stdout","time":12464.827763795,"data":"\n"}
+,{"stream_name":"stdout","time":12468.368410035,"data":"width pilot: seed 71010 arm null 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":12513.857544305,"data":"  final: loss 3.485665  parameters 14,928,960  mutations 0  259 tok/s  106.0 min\n"}
+,{"stream_name":"stdout","time":12513.857654802,"data":"  wrote /kaggle/working/width-pilot/null-seed71007.json\n"}
+,{"stream_name":"stdout","time":12516.099245191,"data":"ok null seed 71007 exit 0\n"}
+,{"stream_name":"stdout","time":12516.100019251,"data":"$ /usr/bin/python3 /kaggle/input/datasets/sid123123234/act-lab-code/code/scripts/width_pilot.py --seed 71011 --arm null --steps 400 --interval 100 --budget 3 --data-dir /kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens --out /kaggle/working/width-pilot/null-seed71011.json\n"}
+,{"stream_name":"stdout","time":12519.626679564,"data":"width pilot: seed 71011 arm null 1,638,400 tokens, events at [100, 200, 300]\n"}
+,{"stream_name":"stdout","time":18812.110900124,"data":"  final: loss 3.421154  parameters 14,928,960  mutations 0  255 tok/s  107.3 min\n"}
+,{"stream_name":"stdout","time":18812.111365417,"data":"  wrote /kaggle/working/width-pilot/null-seed71008.json\n"}
+,{"stream_name":"stdout","time":18814.478691096,"data":"ok null seed 71008 exit 0\n"}
+,{"stream_name":"stdout","time":18838.317133515,"data":"  final: loss 3.550792  parameters 14,928,960  mutations 0  256 tok/s  106.9 min\n"}
+,{"stream_name":"stdout","time":18838.317247089,"data":"  wrote /kaggle/working/width-pilot/null-seed71009.json\n"}
+,{"stream_name":"stdout","time":18840.326862637,"data":"ok null seed 71009 exit 0\n"}
+,{"stream_name":"stdout","time":18854.237972067,"data":"  final: loss 3.531373  parameters 14,928,960  mutations 0  257 tok/s  106.4 min\n"}
+,{"stream_name":"stdout","time":18854.23801611,"data":"  wrote /kaggle/working/width-pilot/null-seed71010.json\n"}
+,{"stream_name":"stdout","time":18855.823816749,"data":"ok null seed 71010 exit 0\n"}
+,{"stream_name":"stdout","time":18907.899858423,"data":"  final: loss 3.597410  parameters 14,928,960  mutations 0  257 tok/s  106.5 min\n"}
+,{"stream_name":"stdout","time":18907.899905907,"data":"  wrote /kaggle/working/width-pilot/null-seed71011.json\n"}
+,{"stream_name":"stdout","time":18909.42359864,"data":"ok null seed 71011 exit 0\n"}
+,{"stream_name":"stdout","time":18909.446470128,"data":"=== WIDTH PILOT SUMMARY ===\n"}
+,{"stream_name":"stdout","time":18909.446505199,"data":"{\n"}
+,{"stream_name":"stdout","time":18909.446509948,"data":"  \"failures\": [],\n"}
+,{"stream_name":"stdout","time":18909.446513616,"data":"  \"jobs\": 12,\n"}
+,{"stream_name":"stdout","time":18909.446517056,"data":"  \"kind\": \"width-pilot-summary\",\n"}
+,{"stream_name":"stdout","time":18909.446522104,"data":"  \"plan\": {\n"}
+,{"stream_name":"stdout","time":18909.44652665,"data":"    \"arms\": [\n"}
+,{"stream_name":"stdout","time":18909.446532016,"data":"      \"null\"\n"}
+,{"stream_name":"stdout","time":18909.446536794,"data":"    ],\n"}
+,{"stream_name":"stdout","time":18909.446541825,"data":"    \"budget\": 3,\n"}
+,{"stream_name":"stdout","time":18909.446547369,"data":"    \"interval\": 100,\n"}
+,{"stream_name":"stdout","time":18909.446552847,"data":"    \"jobs\": [\n"}
+,{"stream_name":"stdout","time":18909.446557714,"data":"      {\n"}
+,{"stream_name":"stdout","time":18909.446562491,"data":"        \"arm\": \"null\",\n"}
+,{"stream_name":"stdout","time":18909.446567502,"data":"        \"seed\": 71000\n"}
+,{"stream_name":"stdout","time":18909.446572581,"data":"      },\n"}
+,{"stream_name":"stdout","time":18909.446577196,"data":"      {\n"}
+,{"stream_name":"stdout","time":18909.44658207,"data":"        \"arm\": \"null\",\n"}
+,{"stream_name":"stdout","time":18909.446585603,"data":"        \"seed\": 71001\n"}
+,{"stream_name":"stdout","time":18909.446588932,"data":"      },\n"}
+,{"stream_name":"stdout","time":18909.446591891,"data":"      {\n"}
+,{"stream_name":"stdout","time":18909.446665392,"data":"        \"arm\": \"null\",\n"}
+,{"stream_name":"stdout","time":18909.446672255,"data":"        \"seed\": 71002\n"}
+,{"stream_name":"stdout","time":18909.446676399,"data":"      },\n"}
+,{"stream_name":"stdout","time":18909.446680055,"data":"      {\n"}
+,{"stream_name":"stdout","time":18909.44668376,"data":"        \"arm\": \"null\",\n"}
+,{"stream_name":"stdout","time":18909.446687595,"data":"        \"seed\": 71003\n"}
+,{"stream_name":"stdout","time":18909.446691428,"data":"      },\n"}
+,{"stream_name":"stdout","time":18909.446695016,"data":"      {\n"}
+,{"stream_name":"stdout","time":18909.446699061,"data":"        \"arm\": \"null\",\n"}
+,{"stream_name":"stdout","time":18909.44670175,"data":"        \"seed\": 71004\n"}
+,{"stream_name":"stdout","time":18909.446704412,"data":"      },\n"}
+,{"stream_name":"stdout","time":18909.446706749,"data":"      {\n"}
+,{"stream_name":"stdout","time":18909.4467091,"data":"        \"arm\": \"null\",\n"}
+,{"stream_name":"stdout","time":18909.446712933,"data":"        \"seed\": 71005\n"}
+,{"stream_name":"stdout","time":18909.446716833,"data":"      },\n"}
+,{"stream_name":"stdout","time":18909.446720517,"data":"      {\n"}
+,{"stream_name":"stdout","time":18909.446724708,"data":"        \"arm\": \"null\",\n"}
+,{"stream_name":"stdout","time":18909.446728296,"data":"        \"seed\": 71006\n"}
+,{"stream_name":"stdout","time":18909.446732516,"data":"      },\n"}
+,{"stream_name":"stdout","time":18909.446744244,"data":"      {\n"}
+,{"stream_name":"stdout","time":18909.446748395,"data":"        \"arm\": \"null\",\n"}
+,{"stream_name":"stdout","time":18909.446752241,"data":"        \"seed\": 71007\n"}
+,{"stream_name":"stdout","time":18909.446756,"data":"      },\n"}
+,{"stream_name":"stdout","time":18909.446759891,"data":"      {\n"}
+,{"stream_name":"stdout","time":18909.446763572,"data":"        \"arm\": \"null\",\n"}
+,{"stream_name":"stdout","time":18909.446767439,"data":"        \"seed\": 71008\n"}
+,{"stream_name":"stdout","time":18909.446771327,"data":"      },\n"}
+,{"stream_name":"stdout","time":18909.446774901,"data":"      {\n"}
+,{"stream_name":"stdout","time":18909.446778531,"data":"        \"arm\": \"null\",\n"}
+,{"stream_name":"stdout","time":18909.446782332,"data":"        \"seed\": 71009\n"}
+,{"stream_name":"stdout","time":18909.446786216,"data":"      },\n"}
+,{"stream_name":"stdout","time":18909.446790137,"data":"      {\n"}
+,{"stream_name":"stdout","time":18909.446794039,"data":"        \"arm\": \"null\",\n"}
+,{"stream_name":"stdout","time":18909.446797724,"data":"        \"seed\": 71010\n"}
+,{"stream_name":"stdout","time":18909.446801289,"data":"      },\n"}
+,{"stream_name":"stdout","time":18909.446805162,"data":"      {\n"}
+,{"stream_name":"stdout","time":18909.446808123,"data":"        \"arm\": \"null\",\n"}
+,{"stream_name":"stdout","time":18909.446811879,"data":"        \"seed\": 71011\n"}
+,{"stream_name":"stdout","time":18909.44681546,"data":"      }\n"}
+,{"stream_name":"stdout","time":18909.446819119,"data":"    ],\n"}
+,{"stream_name":"stdout","time":18909.446822763,"data":"    \"seeds\": [\n"}
+,{"stream_name":"stdout","time":18909.446826971,"data":"      71000,\n"}
+,{"stream_name":"stdout","time":18909.446830729,"data":"      71001,\n"}
+,{"stream_name":"stdout","time":18909.446834652,"data":"      71002,\n"}
+,{"stream_name":"stdout","time":18909.44683846,"data":"      71003,\n"}
+,{"stream_name":"stdout","time":18909.446841947,"data":"      71004,\n"}
+,{"stream_name":"stdout","time":18909.446845511,"data":"      71005,\n"}
+,{"stream_name":"stdout","time":18909.446856718,"data":"      71006,\n"}
+,{"stream_name":"stdout","time":18909.446860417,"data":"      71007,\n"}
+,{"stream_name":"stdout","time":18909.44686409,"data":"      71008,\n"}
+,{"stream_name":"stdout","time":18909.446867748,"data":"      71009,\n"}
+,{"stream_name":"stdout","time":18909.446871395,"data":"      71010,\n"}
+,{"stream_name":"stdout","time":18909.44687508,"data":"      71011\n"}
+,{"stream_name":"stdout","time":18909.446878741,"data":"    ],\n"}
+,{"stream_name":"stdout","time":18909.446882357,"data":"    \"steps\": 400\n"}
+,{"stream_name":"stdout","time":18909.446886456,"data":"  },\n"}
+,{"stream_name":"stdout","time":18909.446890129,"data":"  \"records\": 12\n"}
+,{"stream_name":"stdout","time":18909.446893921,"data":"}\n"}
+,{"stream_name":"stderr","time":18912.376025139,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":18912.376060862,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":18912.74126676,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":18912.741324506,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":18913.809262433,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
+,{"stream_name":"stderr","time":18915.120205401,"data":"[NbConvertApp] Writing 292643 bytes to __results__.html\n"}
 ]

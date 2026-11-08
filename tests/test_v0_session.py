@@ -1077,13 +1077,13 @@ def test_null_arm_performs_no_mutation_and_books_no_search(tmp_path: Path) -> No
     assert arm.mode == "null"
     assert arm.mutation_count == 0
     assert arm.search_flops == 0
-    # Every interval slot fires (the budget guard counts mutations, which
-    # stay 0 - exactly like the gated arm's all-reject run on the diagnostic
-    # block: 3 slots at this config). On the registered real-data schedule
-    # (interval 200, steps 600) there are exactly 3 slots = mutation_budget,
-    # so the null arm consumes precisely the random arms' event count.
-    assert len(arm.mutation_history) == 3
-    assert [event["step"] for event in arm.mutation_history] == [2, 4, 6]
+    # The budget is a count of event slots, not of successful mutations (which
+    # stay 0 for this arm): two slots at this config, matching the arms it is
+    # paired with. It used to fall through the general branch, which fires
+    # while mutations < budget and therefore every interval for this arm -
+    # measured on the pilot: a fourth, inert no-op at the final step.
+    assert len(arm.mutation_history) == 2
+    assert [event["step"] for event in arm.mutation_history] == [2, 4]
     for event in arm.mutation_history:
         assert event["policy"] == "null"
         assert event["operation"] == "null"
@@ -1091,6 +1091,23 @@ def test_null_arm_performs_no_mutation_and_books_no_search(tmp_path: Path) -> No
         assert event["mutation_count"] == 0
         assert event["probe_candidates"] == 0
         assert event["architecture_hash_before"] == event["architecture_hash_after"]
+
+
+def test_null_arm_books_exactly_its_event_slots(tmp_path: Path) -> None:
+    """The schedule counts slots, not successful mutations.
+
+    The pilot's real-data config (400 steps, interval 100, budget 3) gave the
+    null arm a fourth, inert no-op at the final step: it never increments
+    ``mutations``, so the general branch fired at every interval. The width
+    arms were moved to the fixed count for the same reason; the null arm
+    belongs there too.
+    """
+    arm = run_v0_session(
+        _null_config(71, total_steps=8, mutation_interval=2, mutation_budget=3),
+        checkpoint_dir=tmp_path / "null",
+    ).arms[0]
+
+    assert [event["step"] for event in arm.mutation_history] == [2, 4, 6]
 
 
 def test_null_arm_matches_random_training_flops(tmp_path: Path) -> None:

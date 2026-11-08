@@ -297,3 +297,39 @@ active parameters here against 1.73x at the declared shape.
 **Cost, measured.** The coin arm's 12 jobs measured **99.6-155.8 min** (mean 130.9); a null arm does
 no graft and no perturbation, so it is at or below that - **~5.5-6.5 h** at four workers, zero
 GPU-hours, on the same kernel and the same stream.
+
+## Reading the null arm: the pool term never pays, and one inert extra event is recorded (2026-11-08)
+
+The block ran on Kaggle CPU (kernel version 3, `COMPLETE`, 12/12 records, four workers). The
+reader exits **3** on it rather than 0, and this section is the record of why.
+
+**The pool term.** `width_random - null`, 12 pairs: **0 wins, 11 losses, 1 tie**, mean **`+0.037768`**
+nats, paired SD **`0.030954`**, exact one-sided p **`1.000000`** against the 10/12 bar. On no seed is
+the coin arm's loss below the do-nothing arm's. That is **P2** - pool flat or negative - whose
+registered consequence is that outcome 3 stands on both terms and the width programme closes at
+this dose. The sign is not near the bar.
+
+The tie is seed **71001**, and it is a coincidence of the design rather than a lost record: the
+coin arm declined all three events there, so its architecture never left 320/5 and, on the same
+initialization and stream, it ran the null arm's trajectory to the same loss
+(`3.650946319103241` in both). The two records still differ where a declined draw costs something -
+`search_flops` (`4.795e11` against `0`), their histories, and their wall times.
+
+**The deviation, recorded rather than folded in.** Every null record booked events at
+`[100, 200, 300, 400]`. `_mutation_event_due` sent the null arm down the general branch
+(`mutations < budget`); the arm never increments `mutations`, so it fired at every interval through
+the final step instead of the registered three slots. The fourth entry is inert - the null event
+draws nothing, rebuilds nothing, books no probe or search FLOPs, and leaves the architecture hash
+unchanged - so the measured losses are those of the registered three-event schedule; but the
+booked schedule is not the registered one, so the reader withholds the registered seal
+(`status: protocol_deviation`, exit 3) and reports the term **descriptively**.
+
+Fixed in the same commit: `null` joins the width arms' fixed-count branch (for this arm too the
+budget is a slot count), pinned in `tests/test_v0_session.py`; and the reader now judges the edge
+reading and the pool block separately, so a null-block deviation cannot propagate to §5.67's
+registered reading, which stands. A fully compliant re-run is 12 more jobs - **1.68-1.79 h** each
+(mean **1.74**), under 6 h at four workers, zero GPU-hours - if the registered seal is wanted;
+the direction is 0 of 12, not a borderline a re-run could plausibly flip.
+
+**Cost, measured.** 1.68-1.79 h per job (mean 1.74), **~20.9 job-hours** for the block, zero
+GPU-hours.

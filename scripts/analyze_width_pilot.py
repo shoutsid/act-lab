@@ -205,11 +205,14 @@ def _validate_record(
 
 def _schedule_deviations(
     records: dict[tuple[int, str], dict[str, object]],
+    arms: tuple[str, ...],
 ) -> list[dict[str, object]]:
-    """Records whose events differ from the registered 100/200/300."""
+    """``arms``' records whose events differ from the registered 100/200/300."""
 
     deviations: list[dict[str, object]] = []
     for (seed, arm), record in sorted(records.items()):
+        if arm not in arms:
+            continue
         steps = record["event_steps"]
         assert isinstance(steps, tuple)
         extra = [step for step in steps if step not in REGISTERED_STEPS]
@@ -228,6 +231,7 @@ def _schedule_deviations(
 
 def _pool_reading(
     validated: dict[tuple[int, str], dict[str, object]],
+    deviations: list[dict[str, object]],
 ) -> dict[str, object]:
     """The amendment's term: ``width_random - null``, negative when the graft pays.
 
@@ -257,6 +261,13 @@ def _pool_reading(
     elif len(paired) < len(SEEDS):
         status = "incomplete"
         outcome = f"UNDECIDABLE - pool block incomplete ({len(paired)}/12 pairs)"
+    elif deviations:
+        status = "protocol_deviation"
+        direction = "pool positive" if wins >= BAR_WINS else "pool flat or negative"
+        outcome = (
+            "UNDECIDABLE as registered - the null arm did not book the "
+            f"registered three events; descriptive term: {direction}"
+        )
     elif wins >= BAR_WINS:
         status = "complete"
         outcome = "pool positive - the graft pays and the decision rule does not"
@@ -268,7 +279,13 @@ def _pool_reading(
         "term": "width_random - null",
         "convention": "negative = the mutating arm is better than doing nothing",
         "status": status,
+        "registered_reading": status == "complete",
         "outcome": outcome,
+        "protocol": {
+            "registered_steps": list(REGISTERED_STEPS),
+            "ok": not deviations,
+            "deviations": deviations,
+        },
         "paired_seeds": paired,
         "missing_jobs": [
             f"{seed}:{NULL_ARM}"
@@ -279,6 +296,13 @@ def _pool_reading(
         "wins": wins,
         "losses": losses,
         "ties": len(deltas) - wins - losses,
+        "event_steps": sorted(
+            {
+                int(step)
+                for seed in paired
+                for step in validated[(seed, NULL_ARM)]["event_steps"]  # type: ignore[union-attr]
+            }
+        ),
         "mean_delta": statistics.fmean(deltas) if deltas else None,
         "paired_sd": statistics.stdev(deltas) if len(deltas) >= 2 else None,
         "sign_test_p": _binomial_survival(wins, len(deltas)) if deltas else None,
@@ -341,7 +365,11 @@ def summarize(
         for arm in ARMS
         if (seed, arm) not in validated
     ]
-    deviations = _schedule_deviations(validated)
+    # The edge reading and the pool block are judged separately: a deviation in
+    # the do-nothing arm cannot invalidate the pairs that never ran it, and the
+    # pool term cannot borrow the edge's registration.
+    deviations = _schedule_deviations(validated, ("width", "width_random"))
+    null_deviations = _schedule_deviations(validated, (NULL_ARM,))
 
     per_seed: list[dict[str, object]] = []
     deltas: list[float] = []
@@ -453,7 +481,7 @@ def summarize(
             "bar_wins": BAR_WINS,
         },
         "arm_schedule": arm_schedule,
-        "pool": _pool_reading(validated),
+        "pool": _pool_reading(validated, null_deviations),
         "record_count": len(validated),
     }
 
@@ -543,6 +571,18 @@ def render(summary: dict[str, object]) -> str:
                 if pool["paired_sd"] is not None:
                     lines.append(f"pool paired SD: {pool['paired_sd']:.6f}")
             lines.append(f"pool status: {pool['status']}")
+            pool_protocol = pool.get("protocol")
+            if isinstance(pool_protocol, dict) and not pool_protocol["ok"]:
+                lines.append(
+                    "pool protocol: FAILED - the null arm booked events outside "
+                    "the registered schedule; no registered pool reading"
+                )
+                for arm, extra, missing, seeds in _deviation_groups(  # type: ignore[arg-type]
+                    pool_protocol["deviations"]
+                ):
+                    lines.append(
+                        f"  {arm}: extra {extra} missing {missing} on seeds {seeds}"
+                    )
             if pool["missing_jobs"]:
                 lines.append(f"pool missing: {', '.join(pool['missing_jobs'])}")
 
@@ -622,10 +662,13 @@ def main() -> int:
         )
         print(f"\nwrote {args.out}")
 
+    pool = summary.get("pool")
+    if summary["status"] == "protocol_deviation" or (
+        isinstance(pool, dict) and pool.get("status") == "protocol_deviation"
+    ):
+        return 3
     if summary["status"] == "complete":
         return 0
-    if summary["status"] == "protocol_deviation":
-        return 3
     return 2
 
 

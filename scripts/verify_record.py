@@ -2161,6 +2161,34 @@ def check_width_pilot(root: Path, audit: Audit) -> None:
     audit.check("§5.67: coin arm's accepted events", 16, schedule["width_random"]["accepted"], "§5.67")
     audit.check("§5.67: coin arms ending at width 448", 6, schedule["width_random"]["final_widths"]["448"], "§5.67")
     audit.check("§5.67: protocol deviations", 0, len(payload["protocol"]["deviations"]), "§5.67")
+    # §5.68's pool block: the term is reported descriptively because the null
+    # arm booked a fourth, inert no-op, which the reader refuses to call
+    # registered. All of it is read from the same audited payload.
+    pool = payload["pool"]
+    audit.check("§5.68: pool pairs", 12, pool["n"], "§5.68")
+    audit.check("§5.68: the graft's pool wins", 0, pool["wins"], "§5.68")
+    audit.check("§5.68: pool losses", 11, pool["losses"], "§5.68")
+    audit.check("§5.68: pool ties", 1, pool["ties"], "§5.68")
+    audit.check("§5.68: pool mean delta", 0.037768, pool["mean_delta"], "§5.68")
+    audit.check("§5.68: pool paired SD", 0.030954, pool["paired_sd"], "§5.68")
+    audit.check(
+        "§5.68: null-block event steps",
+        [100, 200, 300, 400],
+        pool["event_steps"],
+        "§5.68",
+    )
+    audit.check(
+        "§5.68: null-block protocol deviations",
+        12,
+        len(pool["protocol"]["deviations"]),
+        "§5.68",
+    )
+    audit.check(
+        "§5.68: the pool reading is not registered",
+        False,
+        pool["registered_reading"],
+        "§5.68",
+    )
 
 
 #: The audit's checks in record order. Each is a pure function of the artifacts root

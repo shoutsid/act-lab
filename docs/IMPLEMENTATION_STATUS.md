@@ -1,5 +1,26 @@
 # ACT Implementation Status
 
+## The null arm: the graft never pays, and the harness booked one inert extra event (2026-11-08)
+
+The pilot's missing pool term has now been measured on the spent seeds (kernel version 3,
+`COMPLETE`, 12/12 records, zero GPU-hours). `width_random - null` is **0 wins of 12** (losses 11,
+one tie), mean **`+0.037768`** nats, paired SD **`0.030954`**, exact one-sided p `1.000000` against
+the 10-of-12 bar: the graft does not beat doing nothing, so the registration's **P2** holds and
+outcome 3 stands on both terms. The single tie is seed **71001**, where the coin arm declined all
+three grafts and therefore ran the null arm's exact trajectory (`3.650946319103241` on both) - a
+real all-declined coincidence, distinguishable from a duplicated record by its `search_flops`,
+history and wall time.
+
+| | |
+|---|---|
+| **What was read** | `artifacts/width-pilot/reading.json` by the registered reader, with the pool term beside the edge reading and its own 10/12 bar. |
+| **The deviation** | Every null record booked events at `[100, 200, 300, 400]`: `_mutation_event_due` put `null` in the general branch, which fires while `mutations < budget`, and this arm never increments `mutations`. The fourth entry is inert (no draw, no rebuild, no FLOPs, unchanged hash), so the losses are the registered schedule's, but the booked schedule is not - the reader withholds the seal (`protocol_deviation`, exit 3) and reports the term descriptively. |
+| **Fix** | `null` joins the width arms' fixed-count branch, pinned by `tests/test_v0_session.py`; the reader judges the edge reading and the pool block separately, so §5.67's registered reading is untouched. |
+| **Cost** | 1.68-1.79 h per job (mean 1.74), ~20.9 job-hours, zero GPU-hours. |
+| **Open choice** | A compliant re-run (12 jobs, under 6 h, zero GPU-hours) if the registered seal is wanted; the direction is 0 of 12, not a borderline. |
+
+Recorded in `artifacts/width-pilot/NOTES.md` (reading section, 2026-11-08) and report §5.68.
+
 ## The next study: the width pilot's missing null arm, so the pool term stops being unknown (2026-11-07)
 
 Section 5.67 closes the pilot's **decision rule** and leaves one term of its own decomposition

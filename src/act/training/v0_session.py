@@ -1449,11 +1449,16 @@ def _mutation_event_due(
     2026-11-05: every fetched ``width_random`` record had four events, and two
     ``width`` records had four). Their ``mutation_budget`` is therefore a
     count of events, fixed by the step alone.
+
+    The null arm belongs in the same set: it never mutates, so the general
+    branch below would fire at *every* interval for as long as training runs,
+    not for the budget's three slots (measured 2026-11-07: every fetched null
+    record on the 400-step pilot booked a fourth, inert no-op at 400).
     """
 
     if step % config.mutation_interval != 0:
         return False
-    if mode in {"width", "width_random"}:
+    if mode in {"width", "width_random", "null"}:
         return step <= config.mutation_interval * config.mutation_budget
     return arm_state.mutations < config.mutation_budget
 

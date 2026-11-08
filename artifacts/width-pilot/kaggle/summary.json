@@ -1,46 +1,78 @@
 {
   "failures": [],
-  "jobs": 6,
+  "jobs": 12,
   "kind": "width-pilot-summary",
   "plan": {
     "arms": [
-      "width",
-      "width_random"
+      "null"
     ],
     "budget": 3,
     "interval": 100,
     "jobs": [
       {
-        "arm": "width",
+        "arm": "null",
+        "seed": 71000
+      },
+      {
+        "arm": "null",
+        "seed": 71001
+      },
+      {
+        "arm": "null",
+        "seed": 71002
+      },
+      {
+        "arm": "null",
+        "seed": 71003
+      },
+      {
+        "arm": "null",
+        "seed": 71004
+      },
+      {
+        "arm": "null",
+        "seed": 71005
+      },
+      {
+        "arm": "null",
+        "seed": 71006
+      },
+      {
+        "arm": "null",
+        "seed": 71007
+      },
+      {
+        "arm": "null",
+        "seed": 71008
+      },
+      {
+        "arm": "null",
         "seed": 71009
       },
       {
-        "arm": "width_random",
-        "seed": 71009
-      },
-      {
-        "arm": "width",
+        "arm": "null",
         "seed": 71010
       },
       {
-        "arm": "width_random",
-        "seed": 71010
-      },
-      {
-        "arm": "width",
-        "seed": 71011
-      },
-      {
-        "arm": "width_random",
+        "arm": "null",
         "seed": 71011
       }
     ],
     "seeds": [
+      71000,
+      71001,
+      71002,
+      71003,
+      71004,
+      71005,
+      71006,
+      71007,
+      71008,
       71009,
       71010,
       71011
     ],
     "steps": 400
   },
-  "records": 6
+  "records": 12
 }

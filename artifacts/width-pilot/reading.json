@@ -311,30 +311,143 @@
   "pool": {
     "bar_wins": 10,
     "convention": "negative = the mutating arm is better than doing nothing",
-    "losses": 0,
-    "mean_delta": null,
-    "missing_jobs": [
-      "71000:null",
-      "71001:null",
-      "71002:null",
-      "71003:null",
-      "71004:null",
-      "71005:null",
-      "71006:null",
-      "71007:null",
-      "71008:null",
-      "71009:null",
-      "71010:null",
-      "71011:null"
+    "event_steps": [
+      100,
+      200,
+      300,
+      400
     ],
-    "n": 0,
-    "outcome": "NOT RUN - no null-arm records; the pool term is unmeasured",
-    "paired_sd": null,
-    "paired_seeds": [],
-    "sign_test_p": null,
-    "status": "not_run",
+    "losses": 11,
+    "mean_delta": 0.03776848812898,
+    "missing_jobs": [],
+    "n": 12,
+    "outcome": "UNDECIDABLE as registered - the null arm did not book the registered three events; descriptive term: pool flat or negative",
+    "paired_sd": 0.0309536025656465,
+    "paired_seeds": [
+      71000,
+      71001,
+      71002,
+      71003,
+      71004,
+      71005,
+      71006,
+      71007,
+      71008,
+      71009,
+      71010,
+      71011
+    ],
+    "protocol": {
+      "deviations": [
+        {
+          "arm": "null",
+          "extra_steps": [
+            400
+          ],
+          "missing_steps": [],
+          "seed": 71000
+        },
+        {
+          "arm": "null",
+          "extra_steps": [
+            400
+          ],
+          "missing_steps": [],
+          "seed": 71001
+        },
+        {
+          "arm": "null",
+          "extra_steps": [
+            400
+          ],
+          "missing_steps": [],
+          "seed": 71002
+        },
+        {
+          "arm": "null",
+          "extra_steps": [
+            400
+          ],
+          "missing_steps": [],
+          "seed": 71003
+        },
+        {
+          "arm": "null",
+          "extra_steps": [
+            400
+          ],
+          "missing_steps": [],
+          "seed": 71004
+        },
+        {
+          "arm": "null",
+          "extra_steps": [
+            400
+          ],
+          "missing_steps": [],
+          "seed": 71005
+        },
+        {
+          "arm": "null",
+          "extra_steps": [
+            400
+          ],
+          "missing_steps": [],
+          "seed": 71006
+        },
+        {
+          "arm": "null",
+          "extra_steps": [
+            400
+          ],
+          "missing_steps": [],
+          "seed": 71007
+        },
+        {
+          "arm": "null",
+          "extra_steps": [
+            400
+          ],
+          "missing_steps": [],
+          "seed": 71008
+        },
+        {
+          "arm": "null",
+          "extra_steps": [
+            400
+          ],
+          "missing_steps": [],
+          "seed": 71009
+        },
+        {
+          "arm": "null",
+          "extra_steps": [
+            400
+          ],
+          "missing_steps": [],
+          "seed": 71010
+        },
+        {
+          "arm": "null",
+          "extra_steps": [
+            400
+          ],
+          "missing_steps": [],
+          "seed": 71011
+        }
+      ],
+      "ok": false,
+      "registered_steps": [
+        100,
+        200,
+        300
+      ]
+    },
+    "registered_reading": false,
+    "sign_test_p": 1.0,
+    "status": "protocol_deviation",
     "term": "width_random - null",
-    "ties": 0,
+    "ties": 1,
     "wins": 0
   },
   "protocol": {
@@ -346,7 +459,7 @@
       300
     ]
   },
-  "record_count": 24,
+  "record_count": 36,
   "records_directory": "/home/shoutsid/code/act-lab/artifacts/width-pilot/kaggle",
   "registered_reading": true,
   "registration": "artifacts/width-pilot/NOTES.md",
