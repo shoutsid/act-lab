@@ -50,6 +50,20 @@ declared block's 6/12, which is the same direction at the same shape.
 Branch C is the one the synthetic block already landed in (6/12), so a second C would be
 consistent rather than surprising; it would not be evidence for the controller.
 
+## The vocabulary mismatch, recorded before the first pair (2026-11-08)
+
+The declared config's vocabulary is **32,768**, while the published stream's ids span
+**0-8,191** (the stream was built with the 8,192-token BPE the real-LM leg trained).
+`WindowSampler` accepts the stream - every id is inside the vocabulary - but the upper
+24,576 embedding rows never receive a gradient. That is a capacity the data cannot use,
+and it is identical for both arms, so it cannot produce the paired contrast; what it
+does mean is that the absolute losses here are **not** comparable to the real-LM
+report's 8,192-vocab model, and the block is the declared *shape* on real tokens rather
+than the real-LM model's shape. Rebuilding the stream at 32,768 is impossible with this
+tokenizer, and shrinking the model's vocabulary would change the declared parameter
+count and void the registration. It is run as declared and read for the sign and the
+paired delta, not for its absolute loss.
+
 ## The caveat this block carries
 
 The committed stream is **~40M tokens** against **24.576M per arm**, so twelve seeds share
