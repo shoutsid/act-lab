@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Wait out Kaggle's two-GPU-session cap, push wave c, then fetch section 5.70.
+# Wait out Kaggle's two-GPU-session cap, push wave c, then fetch and read 5.70.
 #
 # Waves a and b were accepted; wave c was refused with "Maximum batch GPU session
 # count of 2 reached." That refusal exits 0 and prints an error, so success is the
@@ -9,7 +9,8 @@
 #
 #   setsid nohup bash scripts/watch_real_text_declared.sh > /tmp/realtext-watch.log 2>&1 &
 #
-# Exit 0 once all three waves are terminal and fetched; 1 at the deadline.
+# Exit 0 once all three waves are terminal, fetched, and the twelve-seed reading is
+# written; 2 if the fetch/reading failed; 1 at the deadline.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -44,8 +45,15 @@ while [ "$(date +%s)" -lt "$DEADLINE" ]; do
     if terminal "$a" && terminal "$b" && terminal "$c"; then
       say "all three terminal; fetching"
       PYTHONPATH=src python scripts/push_real_text_declared.py --fetch
-      say "fetch exit $?"
-      exit 0
+      fetch_code=$?
+      say "fetch exit $fetch_code"
+      if [ "$fetch_code" -ne 0 ]; then
+        exit 2
+      fi
+      PYTHONPATH=src python scripts/summarize_real_text_declared.py
+      read_code=$?
+      say "reading exit $read_code"
+      exit "$read_code"
     fi
   fi
   sleep "$POLL"
