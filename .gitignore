@@ -195,8 +195,9 @@ artifacts/width-pilot/smoke/*
 !artifacts/width-pilot/smoke/*.json
 # Section 5.70's registration (2026-11-08): the declaration the twelve pairs are
 # read against has to be in the tree before any seed, for the same reason the
-# width pilot's does. The staged kernels and fetched rows stay ignored until a
-# note cites their numbers.
+# width pilot's does. The reader's output is committed under
+# `artifacts/study-summaries/`; the staged kernels and fetched rows stay scratch
+# because it embeds every per-seed row.
 !artifacts/real-text-declared/
 artifacts/real-text-declared/*
 !artifacts/real-text-declared/NOTES.md

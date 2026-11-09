@@ -1,8 +1,8 @@
 # Adaptive Computational Topology — Research Report
 
 Status: the narrative report for the whole program to date - the factor map (section 3, Gate 3),
-the pre-registered study series (section 5, 104 subsections), the substrate audit (section 9) and
-the synthesis (section 10). **Updated: 2026-11-08** - sections 5.48-5.59 close the covariate
+the pre-registered study series (section 5, 105 subsections), the substrate audit (section 9) and
+the synthesis (section 10). **Updated: 2026-11-09** - sections 5.48-5.59 close the covariate
 programme (parameter count, layer width, expert count and total compute) and then measure the
 depth axis itself, out to six rungs above its onset, 5.60 and 5.61 bisect the one window
 that closure left open (the width axis's gate between 2.87x and 11.15x) to 1.97x and then 1.41x, 5.62
@@ -13,8 +13,10 @@ the declared block after its first four seeds were found to have run the pre-ame
 measures the dev-fidelity withholding-clause anchors on fresh seeds, 5.67 reads the completed
 development-fidelity width pilot (12/12 pairs, 1 win of 12, the arm closes), 5.68 measures that
 pilot's missing null arm - the graft never pays, 0 of 12, recorded descriptively after one inert
-extra event in the null records, and 5.69 places a dose inside the crossing rule's ratio window, the one
-interval §10.1 left untested - and section 10 is re-read against that evidence. The declared Gate-4 block is complete for all three queues
+extra event in the null records, 5.69 places a dose inside the crossing rule's ratio window, the one
+interval §10.1 left untested, and 5.70 carries the withheld quality premise to the real stream at the
+declared shape - 9 of 12, the declared prediction missed and the 10-of-12 bar not cleared. Section 10
+is re-read against that evidence. The declared Gate-4 block is complete for all three queues
 (15024-15035) and its pre-registered verdict is `PASS_COST_ONLY_NO_DEMONSTRATED_EDGE`: a cost
 pass with no demonstrated quality edge. Separately, TPU probe v6 completed with a registered **PORT** decision. That is a
 hardware-port decision, not a Gate-4 result or campaign amendment. See
@@ -35,7 +37,7 @@ the defects found along the way).
 
 ## Contents
 
-A reader looking for one thing rather than all of it: the top-level sections, then section 5's 93
+A reader looking for one thing rather than all of it: the top-level sections, then section 5's 105
 subsections grouped by what they answer. Section 9 and section 10 are the two reading paths worth
 taking first - 9 is the audit that changed the interpretation, and 10 is the current state.
 
@@ -49,7 +51,7 @@ taking first - 9 is the audit that changed the interpretation, and 10 is the cur
 | **5.21-5.34** | The mid-training penalty and the prune-target chain: the penalty's arm-genericity (§5.22), optimizer history against the architecture change (§5.23), the discarded routing head (§5.24), prune against grow (§5.25), the freshly drawn expert (§5.26), cloning's two effects (§5.27-§5.28), the discovery path (§5.29-§5.30), and the powered prune-target studies (§5.31-§5.34). |
 | **5.35-5.40** | The declared path: defects found by reading rather than by a study (§5.35), dev-scale evidence on the real token stream (§5.36), the measured liveness contract (§5.37), whether the rebuild treatment transfers (§5.38), churn harm as a property of churn (§5.39), and the deployed configuration against the do-nothing arm (§5.40). |
 | **5.41-5.47** | Audit-derived corrections and the Gate 4 registration: the tolerance band's scale (§5.41), the clause a partial run made unfireable (§5.42), the verdict-path rehearsal (§5.43), the one-directional quality clause (§5.44), the suite's cost (§5.45), the launch path's missing rebuild treatment (§5.46), and the amendment that registers it (§5.47). |
-| **5.48-5.69** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), the two width bisections that halve the gate window the width programme left open and then test where the edge's maximum is reached (§5.60-§5.61), the crossing dose under the family's other candidate policy (§5.62), the Gate-5 transfer path with its fresh-versus-resumed check (§5.63), the gate chain itself, declared while gates 5-7 are still prose (§5.64), the re-reservation of the declared block after its first four seeds were found to have run the pre-amendment rebuild (§5.65), and the dev-fidelity anchors for the two withholding clauses that had none, registered before the declared verdict lands (§5.66), the development-fidelity width pilot that the design note ordered before any declared width block (§5.67), and the null arm that measures that pilot's pool term, recorded descriptively after one inert extra event in the null records (§5.68), and the dose placed inside §10.1's ratio window to locate its threshold (§5.69). |
+| **5.48-5.70** | The covariate programme, in the order it closed: layer width (§5.48-§5.50), the training budget (§5.51-§5.52), expert count (§5.53), total compute (§5.54), the depth dose with its four rungs above it (§5.55-§5.59), the two width bisections that halve the gate window the width programme left open and then test where the edge's maximum is reached (§5.60-§5.61), the crossing dose under the family's other candidate policy (§5.62), the Gate-5 transfer path with its fresh-versus-resumed check (§5.63), the gate chain itself, declared while gates 5-7 are still prose (§5.64), the re-reservation of the declared block after its first four seeds were found to have run the pre-amendment rebuild (§5.65), and the dev-fidelity anchors for the two withholding clauses that had none, registered before the declared verdict lands (§5.66), the development-fidelity width pilot that the design note ordered before any declared width block (§5.67), and the null arm that measures that pilot's pool term, recorded descriptively after one inert extra event in the null records (§5.68), the dose placed inside §10.1's ratio window to locate its threshold (§5.69), and the declared-shape real-text block that carries the withheld quality premise onto the real stream and lands in branch C, 9 of 12 (§5.70). |
 | **6-10** | Reproducibility (§6), the deliverables checklist (§7), figures (§8), the substrate audit (§9), and the synthesis (§10) - which reads this track against the architecture-search track. |
 
 Reproducibility at notebook fidelity (plan sections 39 and 104) now ships with
@@ -8827,6 +8829,68 @@ construction" is now a located interval rather than an inference. What one inter
 distinguish a threshold at 1.26 from a smooth rise: the interval narrows, the rule's functional form does
 not follow from it.
 
+### 5.70 The declared-shape real-text block reads 9 of 12: the prediction missed, the bar did not clear (RAN - summary `real-text-declared-12.json`)
+
+**What was asked.** §10.3 left one question the free GPU week could buy: the declared Gate-4 block
+answered its cost question on **synthetic** tokens at the uniform-vocabulary floor, where the arm
+difference is `~1e-4`, and the only real-text evidence (§5.40, §5.66) sat at development fidelity and
+favored doing nothing 12/12 twice. This block moved the withheld quality premise - adaptive against
+matched random churn on final held-out loss - onto the real TinyStories stream at the declared shape.
+Twelve paired seeds **15036-15047**, both arms in one session per seed, 6000 steps at batch 2 x context
+2048 (**24,576,000 tokens per arm**), fp16 on one T4 x2, three mutation events at **1500/3000/4500**,
+and the §5.47 rebuild treatment. Registration, branches and caveats were committed before the first seed
+(`artifacts/real-text-declared/NOTES.md`): bar **10 of 12**, exact one-sided p `0.019287`.
+
+**What ran.** Three waves of four seeds on Kaggle (`act-realtext-a/b/c`, run 2026-11-08 to 2026-11-09), code revision **`8fe7bbf`**.
+All twelve pairs fetched with one revision, both arms present, the three events on the registered steps,
+and twelve finite losses: walls **1.468-1.784 h** per pair, **19.405 h** total. Wave c exists as **two
+versions** - a watcher restart re-pushed it while version 1 was `RUNNING` - so the rows are version 2's
+and the duplicate is priced at up to **~6.3 h**, worst case **~25.7 h** of the 30 h week. The watcher now
+refuses to push when a version already exists.
+
+**The reading.** Adaptive won **9 of 12** (losses 3, no ties), mean `adaptive - random` **`-0.013136`**
+nats, paired SD **`0.022574`**, exact one-sided p **`0.072998`** against the 10-of-12 bar. The registered
+branch is **C - not demonstrated**: reported as inconclusive, the same withholding as the synthetic
+block, no downstream authorization.
+
+| | |
+|---|---|
+| Pairs | **12/12**, seeds 15036-15047, one revision |
+| Wins | **9** (losses 3, ties 0) |
+| Mean delta | **`-0.013136`** nats |
+| Paired SD | **`0.022574`** |
+| Exact p | **`0.072998`** (bar 10/12) |
+| Branch | **C - not demonstrated** |
+
+**The declared prediction missed in direction, not in conclusion.** The registration predicted the
+dev-fidelity negative would replicate: adaptive at most **3 of 12**. The block did not do that - 9 of 12
+is the other side - but 9 is short of the registered bar, and `0.073` is above a conventional one-sided
+`0.05` as well, so the miss is not a win. Reading the 9/12 tail as evidence for the controller would be
+choosing the statistic after seeing the numbers, which is what the pre-registration exists to prevent.
+
+**The waves are not homogeneous, and the record says so.** The first eight seeds (waves a and b) were
+**8/8** for adaptive with mean `-0.024220`; the last four (wave c) won **1/4** with mean `+0.009032`. The
+three losses are seeds **15044** (`+0.032837`), **15045** (`+0.009266`) and **15046** (`+0.014782`). Wave
+means are descriptive and unregistered - four seeds cannot separate a session or run-order effect from
+noise - but with the duplicate c version in the provenance the block should not be read as twelve
+exchangeable pairs.
+
+**What it changes.** The synthetic block's 6/12 and this block's 9/12 are different substrates, so they
+are not a replication pair; what has changed is that the real-text question now has a declared-shape
+reading rather than an inference from development fidelity. The direction is no longer the dev-fidelity
+negative, but the bar is not cleared, so the registered consequence is unchanged.
+
+**Caveats the reading carries.** The twelve seeds share one **~40.04M-token** stream against 24.576M
+per arm: each draws its own windows, but they are not twelve independent text samples. The declared
+vocabulary is **32,768** while the stream's ids stop at **8,191**, so 24,576 embedding rows never train -
+identical in both arms, so the paired contrast is valid, but absolute losses are not comparable to the
+real-LM model's 8,192-vocab readings. And wave c's duplicate is a cost and provenance fact, not a change
+to the contrast: same seeds, same revision, same data.
+
+**What it does not do.** It does not measure the pool term (`random - null`) at declared scale, which
+needs its own twelve null seeds and a second GPU week; it does not clear Gate 4's quality premise or
+authorize Gate 5; and it does not settle text beyond TinyStories.
+
 ## 6. Reproducibility
 
 - Verdict machinery and experiment code: `src/act/evolution/`
@@ -9580,9 +9644,11 @@ decomposition above inherits that caveat, since all of them were read off prefix
   sign-test p `1/4096`). §5.66 reproduced the ordering on another fresh 12-seed block under the
   `spread` policy (12/12; mean `-0.1262` nats; p `1/4096`). These are separate replications,
   not a pooled estimate: at this real-text development fidelity, adaptive expert-capacity
-  changes have not demonstrated value over doing nothing. This does not establish the result
-  at declared scale or for other controllers/substrates. The evidence and the synthetic
-  declared-scale loss floor are interpretation limits, not a change to the registered
+  changes have not demonstrated value over doing nothing. §5.70 has since moved that test to the
+  declared scale on the real stream: adaptive won **9/12** against matched churn, mean `-0.013136`
+  nats, short of the campaign's 10-of-12 bar, so the premise remains undemonstrated there too.
+  The result is still not established for other controllers or substrates. The evidence and the
+  synthetic declared-scale loss floor are interpretation limits, not a change to the registered
   campaign's question.
 
   The Gate-4 clauses, seeds, datasets and three-queue sequence are unchanged by this reading;
@@ -9604,11 +9670,14 @@ control **7/12** against their own churn arms, both below the 10-of-12 bar, so G
 withheld on the quality premise. The null clause was evaluated (adaptive beats null on
 **9/12**). This authorizes no downstream gate; it is a cost pass, not a Gate-4 verdict.
 
-The separate real-text selection assumption has a current, narrower answer: at development
-fidelity, two fresh 12-seed blocks (§5.40 and §5.66) each favored the do-nothing arm over
-adaptive on 12/12 seeds. That replicates the negative result at that fidelity; it does not
-settle declared-scale real-text behavior. The declared-scale primary uses synthetic tokens,
-so its near-floor loss comparisons are not a substitute for the missing real-text test.
+The separate real-text selection assumption now has a declared-scale test rather than an
+inference from development fidelity. §5.70 ran twelve paired seeds at the declared 285M/134M
+shape on the real TinyStories stream: adaptive won **9/12**, mean `-0.013136` nats, paired SD
+`0.022574`, exact p `0.072998` against the 10-of-12 bar - branch **C, not demonstrated**. That
+misses the registration's prediction (at most 3/12) in direction but does not clear the bar,
+so the withholding is unchanged and nothing downstream is authorized. At development fidelity,
+two fresh 12-seed blocks (§5.40 and §5.66) still favored the do-nothing arm 12/12 twice; the
+declared-scale synthetic primary's near-floor comparisons remain a separate, cost-side reading.
 The detailed covariate and depth history that follows is retained as the audit trail; queue
 status statements are snapshots, not live remote checks.
 

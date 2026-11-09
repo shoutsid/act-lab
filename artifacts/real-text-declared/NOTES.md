@@ -97,6 +97,34 @@ the record takes the fetched rows from version 2 and prices the duplicate at up 
 watcher now refuses to push when a c version already exists. The duplicate cannot
 change the paired contrast: same seeds, same revision, same data.
 
+## The reading (2026-11-09)
+
+All twelve pairs fetched from one revision (`8fe7bbf`), both arms, three events on the
+registered steps. Adaptive won **9 of 12**, no ties: mean `adaptive - random`
+**`-0.013136`** nats, paired SD **`0.022574`**, exact one-sided p **`0.072998`** against
+the 10-of-12 bar. That is branch **C - not demonstrated**: inconclusive, the same
+withholding as the synthetic block, no downstream authorization.
+
+| wave | seeds | adaptive wins | mean delta (nats) |
+|---|---|---|---|
+| a | 15036-15039 | 4/4 | `-0.028009` |
+| b | 15040-15043 | 4/4 | `-0.020431` |
+| c | 15044-15047 | 1/4 | `+0.009032` |
+
+The registration predicted the dev-fidelity negative would replicate - adaptive at most
+3 of 12 - and the reading misses that prediction in direction: 9 of 12 is the other side.
+It does not clear the bar, and `0.073` is above a conventional one-sided `0.05` as well, so
+the miss is not a win. The three losses are seeds 15044 (`+0.032837`), 15045
+(`+0.009266`) and 15046 (`+0.014782`); all three are in wave c. That split is descriptive
+and unregistered - four seeds cannot separate a session effect from noise - but with the
+duplicate c version in the provenance the block should not be read as twelve exchangeable
+pairs.
+
+Cost: **19.405 h** measured (1.468-1.784 h per pair), against the ~20.3 h registration;
+with the duplicate c version priced at up to ~6.3 h, worst case **~25.7 h** of the 30 h
+week. The writer is `scripts/summarize_real_text_declared.py`, which refuses a partial
+block and recomputes every statistic from the fetched rows.
+
 ## What this does not do
 
 It does not measure the pool term (`random - null`) at declared scale: that needs its own
@@ -108,8 +136,8 @@ does not settle text beyond TinyStories. It does not authorize Gate 5.
 - per-seed rows: `artifacts/real-text-declared/kernel/<wave>/seed-<n>.json`
   (`final_loss`, `validation_loss`, FLOPs, mutations, architecture hash, wall time);
 - the fetched summary and log in the same tree;
-- the reading: `artifacts/study-summaries/real-text-declared-12.json`, written only after
-  all twelve pairs are fetched, with the sign test and the mean computed from the rows;
+- the reading: `artifacts/study-summaries/real-text-declared-12.json`, written 2026-11-09
+  after all twelve pairs were fetched, with the sign test and the mean computed from the rows;
 - the report section 5.70 and the status entry, added with the result.
 
 Runner/pusher: `scripts/push_real_text_declared.py`. Registration pins:

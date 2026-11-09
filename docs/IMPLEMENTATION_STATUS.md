@@ -1,5 +1,30 @@
 # ACT Implementation Status
 
+## The declared-shape real-text block reads 9 of 12: the prediction missed, the bar did not clear (2026-11-09)
+
+Section 5.70 moved Gate 4's withheld quality premise off the synthetic floor: twelve paired
+seeds at the declared **285M total / 134M active** shape, on the real TinyStories stream.
+Adaptive won **9 of 12** (no ties), mean `adaptive - random` **`-0.013136`** nats, paired SD
+**`0.022574`**, exact one-sided p **`0.072998`** against the campaign's 10-of-12 bar. The
+registered branch is **C - not demonstrated**, the same withholding as the synthetic block,
+so nothing downstream is authorized.
+
+The registration predicted the development-fidelity negative would replicate (adaptive at
+most 3 of 12). It did not: 9 of 12 is the opposite direction. But 9 is short of the bar, and
+the same tail is `0.073` even without the bar, so the prediction's miss is not a win - the
+registered consequence is unchanged.
+
+| | |
+|---|---|
+| **Block state** | **12/12 pairs**, seeds 15036-15047, both arms each, three events at 1500/3000/4500, one revision `8fe7bbf`; three waves a/b/c of four seeds. |
+| **The reading** | wins **9/12** (losses 3: 15044 `+0.032837`, 15045 `+0.009266`, 15046 `+0.014782`), mean **`-0.013136`**, SD **`0.022574`**, p **`0.072998`**; branch **C**, `passes: false`. |
+| **The waves** | a and b were **8/8** for adaptive (mean `-0.024220`); c won **1/4** (mean `+0.009032`). Descriptive and unregistered - four seeds cannot separate a session effect from noise - but the block is not twelve exchangeable pairs. |
+| **Venue and cost** | Kaggle GPU, kernels `act-realtext-a/b/c`, revision `8fe7bbf`, fp16 on one T4 x2; walls **1.468-1.784 h** per pair, **19.405 h** total; the duplicate c version is priced at up to ~6.3 h, worst case **~25.7 h** of the 30 h week. No local experiment compute. |
+| **Caveats** | the twelve seeds share one ~40.04M-token stream against 24.576M per arm; the declared vocabulary is 32,768 while the stream's ids stop at 8,191, so 24,576 embedding rows never train (identical in both arms); wave c exists as two versions. |
+| **What it changes** | The real-text question now has a declared-shape reading instead of an inference from dev fidelity. It does not measure the pool term at declared scale, does not clear Gate 4's quality premise, and does not open Gate 5. |
+
+Recorded in report §5.70 and summary `artifacts/study-summaries/real-text-declared-12.json`.
+
 ## The ratio window: the gate opens at 4.58x, and the crossing rule survives its first interior placement (2026-11-08)
 
 §10.1's rule left an interval: every ratio at 1.37 or above opens the gate, every ratio below 1.10 shuts

@@ -1,0 +1,218 @@
+{
+ "alpha": 0.05,
+ "built_in_checks": {
+  "all_twelve_seeds_present": true,
+  "both_arms_in_every_seed": true,
+  "declared_bar_matches_exact_binomial": true,
+  "final_loss_is_the_held_out_validation_loss": true,
+  "one_code_revision": true,
+  "three_events_on_the_registered_steps": true
+ },
+ "caveats": [
+  "the twelve seeds share one ~40.04M-token stream against 24.576M per arm: each draws its own windows, but they are not twelve independent text samples",
+  "the declared vocabulary is 32768 while the stream's ids stop at 8191, so 24576 embedding rows never train; identical for both arms, and absolute losses are not comparable to the real-LM model's 8192-vocab readings"
+ ],
+ "code_revision": "8fe7bbff1b3f1e10e08260e6c434e43a21085a83",
+ "config": {
+  "batch_size": 2,
+  "context_size": 2048,
+  "data_path": "/kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens/tokens.npy",
+  "new_expert_initialization": "clone",
+  "preserve_router_on_rebuild": true,
+  "probe_candidate_policy": "spread",
+  "total_steps": 6000,
+  "val_data_path": "/kaggle/input/datasets/sid123123234/act-lab-tinystories-tokens/val-tokens.npy"
+ },
+ "declared": {
+  "batch_size": 2,
+  "context_size": 2048,
+  "shape": "285M total / 134M active",
+  "tokens_per_arm": 24576000,
+  "total_steps": 6000,
+  "vocab_size": 32768
+ },
+ "declared_bar_wins": 10,
+ "kind": "real-text-declared-5.70",
+ "observed": {
+  "active_parameters": [
+   134338560,
+   134344704
+  ],
+  "total_parameters": [
+   279042048,
+   291631104
+  ],
+  "wall_hours": [
+   1.467674415840043,
+   1.783803207145797,
+   19.40485805855857
+  ]
+ },
+ "per_seed": [
+  {
+   "adaptive_active_parameters": 134338560,
+   "adaptive_loss": 1.9187630414962769,
+   "adaptive_mutations": 3,
+   "delta": -0.028377652168273926,
+   "random_active_parameters": 134342656,
+   "random_loss": 1.9471406936645508,
+   "random_mutations": 3,
+   "seed": 15036,
+   "wall_seconds": 5317.988790035248
+  },
+  {
+   "adaptive_active_parameters": 134340608,
+   "adaptive_loss": 1.8734950721263885,
+   "adaptive_mutations": 3,
+   "delta": -0.033837199211120605,
+   "random_active_parameters": 134342656,
+   "random_loss": 1.9073322713375092,
+   "random_mutations": 3,
+   "seed": 15037,
+   "wall_seconds": 5292.352095603943
+  },
+  {
+   "adaptive_active_parameters": 134340608,
+   "adaptive_loss": 1.9296390116214752,
+   "adaptive_mutations": 3,
+   "delta": -0.03185230493545532,
+   "random_active_parameters": 134344704,
+   "random_loss": 1.9614913165569305,
+   "random_mutations": 3,
+   "seed": 15038,
+   "wall_seconds": 5283.627897024155
+  },
+  {
+   "adaptive_active_parameters": 134342656,
+   "adaptive_loss": 1.8978799879550934,
+   "adaptive_mutations": 3,
+   "delta": -0.017967969179153442,
+   "random_active_parameters": 134340608,
+   "random_loss": 1.9158479571342468,
+   "random_mutations": 3,
+   "seed": 15039,
+   "wall_seconds": 5337.94175863266
+  },
+  {
+   "adaptive_active_parameters": 134340608,
+   "adaptive_loss": 1.9083026349544525,
+   "adaptive_mutations": 3,
+   "delta": -0.009965270757675171,
+   "random_active_parameters": 134340608,
+   "random_loss": 1.9182679057121277,
+   "random_mutations": 3,
+   "seed": 15040,
+   "wall_seconds": 6011.303102254868
+  },
+  {
+   "adaptive_active_parameters": 134338560,
+   "adaptive_loss": 1.8787565529346466,
+   "adaptive_mutations": 3,
+   "delta": -0.04641669988632202,
+   "random_active_parameters": 134340608,
+   "random_loss": 1.9251732528209686,
+   "random_mutations": 3,
+   "seed": 15041,
+   "wall_seconds": 5955.655352830887
+  },
+  {
+   "adaptive_active_parameters": 134340608,
+   "adaptive_loss": 1.9479622840881348,
+   "adaptive_mutations": 3,
+   "delta": -0.012486904859542847,
+   "random_active_parameters": 134342656,
+   "random_loss": 1.9604491889476776,
+   "random_mutations": 3,
+   "seed": 15042,
+   "wall_seconds": 6001.0707795619965
+  },
+  {
+   "adaptive_active_parameters": 134340608,
+   "adaptive_loss": 1.9087563455104828,
+   "adaptive_mutations": 3,
+   "delta": -0.012855052947998047,
+   "random_active_parameters": 134340608,
+   "random_loss": 1.9216113984584808,
+   "random_mutations": 3,
+   "seed": 15043,
+   "wall_seconds": 5938.715475320816
+  },
+  {
+   "adaptive_active_parameters": 134340608,
+   "adaptive_loss": 1.9194625318050385,
+   "adaptive_mutations": 3,
+   "delta": 0.032837122678756714,
+   "random_active_parameters": 134338560,
+   "random_loss": 1.8866254091262817,
+   "random_mutations": 3,
+   "seed": 15044,
+   "wall_seconds": 6421.691545724869
+  },
+  {
+   "adaptive_active_parameters": 134338560,
+   "adaptive_loss": 1.9128214716911316,
+   "adaptive_mutations": 3,
+   "delta": 0.009266376495361328,
+   "random_active_parameters": 134340608,
+   "random_loss": 1.9035550951957703,
+   "random_mutations": 3,
+   "seed": 15045,
+   "wall_seconds": 6296.008208036423
+  },
+  {
+   "adaptive_active_parameters": 134344704,
+   "adaptive_loss": 1.9557970464229584,
+   "adaptive_mutations": 3,
+   "delta": 0.014781743288040161,
+   "random_active_parameters": 134340608,
+   "random_loss": 1.9410153031349182,
+   "random_mutations": 3,
+   "seed": 15046,
+   "wall_seconds": 5994.331677436829
+  },
+  {
+   "adaptive_active_parameters": 134340608,
+   "adaptive_loss": 1.8627473711967468,
+   "adaptive_mutations": 3,
+   "delta": -0.020759224891662598,
+   "random_active_parameters": 134342656,
+   "random_loss": 1.8835065960884094,
+   "random_mutations": 3,
+   "seed": 15047,
+   "wall_seconds": 6006.80232834816
+  }
+ ],
+ "primary": {
+  "bar": 10,
+  "binomial_p": 0.072998046875,
+  "branch": "C",
+  "consequence": "reported as inconclusive, same withholding as the synthetic block; no downstream authorization",
+  "max_delta": 0.032837122678756714,
+  "mean_delta": -0.013136086364587149,
+  "min_delta": -0.04641669988632202,
+  "pairs": 12,
+  "passes": false,
+  "reading": "not demonstrated",
+  "sample_sd": 0.0225742467914487,
+  "ties": 0,
+  "wins": 9
+ },
+ "protocol": "declared shape on the real TinyStories stream, adaptive versus random churn paired within seed, three events at 1500/3000/4500",
+ "record_type": "study-summary",
+ "report_section": "5.70",
+ "seeds": [
+  15036,
+  15037,
+  15038,
+  15039,
+  15040,
+  15041,
+  15042,
+  15043,
+  15044,
+  15045,
+  15046,
+  15047
+ ],
+ "summary_note": "Declared-shape real-text block (report section 5.70), seeds 15036-15047, revision 8fe7bbf. Every quoted statistic recomputes from the embedded per-seed rows; the p-value is the exact one-tailed binomial sign test at the campaign's 10-of-12 bar."
+}
