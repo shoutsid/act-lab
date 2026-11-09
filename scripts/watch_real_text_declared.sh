@@ -31,6 +31,18 @@ while [ "$(date +%s)" -lt "$DEADLINE" ]; do
   b=$(status_of act-realtext-b)
   say "a: ${a:-<no status>} | b: ${b:-<no status>}"
 
+  # A restarted watcher has no memory of an accepted version, and Kaggle's CLI
+  # has no cancel: on 2026-11-09 a restart re-pushed c while v1 was RUNNING. An
+  # existing version (any status) is therefore treated as pushed; only a kernel
+  # that does not exist yet is pushed.
+  if [ "$pushed" -eq 0 ]; then
+    c=$(status_of act-realtext-c)
+    if echo "$c" | grep -q "has status"; then
+      say "c already exists: ${c} (not re-pushing)"
+      pushed=1
+    fi
+  fi
+
   if [ "$pushed" -eq 0 ] && { terminal "$a" || terminal "$b"; }; then
     out=$(kaggle kernels push -p artifacts/real-text-declared/kernel/c 2>&1)
     say "push c: ${out//$'\n'/ }"

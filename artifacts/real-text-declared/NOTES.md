@@ -86,6 +86,17 @@ its registered dtype is fp32, which cannot be paired with this block's fp16 arms
 making dtype a confound. The TPU week stays unused until that defect is fixed for a study
 that needs it.
 
+## Run provenance: wave c exists as two versions (2026-11-09)
+
+Wave c was pushed at 03:37Z when a slot freed and **again at 03:48Z** when the
+watcher was restarted; the restart had no memory of the accepted version. Kaggle
+accepted version 2 while version 1 was `RUNNING`, so the platform may have run the
+same four seeds twice. The CLI exposes only the latest version and has no cancel, so
+the record takes the fetched rows from version 2 and prices the duplicate at up to
+**~6.3 GPU-hours** (worst case, taking the block to ~25-27 h of the 30 h week). The
+watcher now refuses to push when a c version already exists. The duplicate cannot
+change the paired contrast: same seeds, same revision, same data.
+
 ## What this does not do
 
 It does not measure the pool term (`random - null`) at declared scale: that needs its own
